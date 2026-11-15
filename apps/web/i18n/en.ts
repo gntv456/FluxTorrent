@@ -2607,7 +2607,11 @@ const enBase: Omit<
     used: "Applied to torrent #{id}; auto-consumed after >4% downloaded",
     tempInviteKind: "Invite voucher",
     renameCardKind: "Rename card",
-    renameHint: "Auto-applied when renaming in UserCP",
+    renameHint: "Enter a new username to redeem",
+    renameUse: "Rename",
+    renamePrompt: "New username (3-24 chars: letters/digits/underscore/CJK)",
+    renameNameLength: "Username must be 3-24 characters",
+    renameDone: "Renamed: {old} → {new}. Takes effect on next login.",
     inviteConfirm: "Redeem for one invite code?",
     inviteRedeemed:
       "Redeemed! Invite code: {code} (valid until {date}) — manage in Invites",

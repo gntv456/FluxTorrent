@@ -14,7 +14,7 @@ pub(crate) mod home;
 mod home_attendance;
 mod home_layout;
 pub(crate) mod home_news;
-mod home_settings;
+mod home_settings; // home.rs 经 super:: 取考勤/比例守望配置
 pub mod idempotency;
 mod links;
 mod misc_handlers;
@@ -43,8 +43,7 @@ pub use qenv::*;
 pub use risk::*;
 pub use throttle::*;
 pub use view_layout::*;
-
-/// 出网抓取统一超时（更新检查/商店索引/远程包/PT-Gen/适配器拉取共用，P2 统一 20s）
+// 出网抓取统一超时（更新检查/商店索引/远程包/PT-Gen/适配器拉取共用，P2 统一 20s）
 pub(crate) const OUTBOUND_FETCH_TIMEOUT_SECS: u64 = 20;
 use crate::social_http::{
     endangered_list, team_create, team_join, team_leave, team_list, team_mine,
@@ -119,6 +118,7 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(crate::auth_http::me_overview)
         .service(crate::auth_http::me_settings_get)
         .service(crate::auth_http::me_settings_put)
+        .service(crate::auth_http::me_rename)
         .service(my_torrentlist)
         .service(crate::auth_http::user_torrentlist)
         .service(crate::auth_http::users_list)

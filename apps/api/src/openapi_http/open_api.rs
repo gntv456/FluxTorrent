@@ -128,6 +128,7 @@ use utoipa::OpenApi;
         crate::community_http::notice_prefs_get,
         crate::community_http::notice_prefs_set,
         crate::auth_http::me_badges,
+        crate::auth_http::me_rename,
         crate::community_http::my_staff_messages,
         crate::community_http::my_ticket_confirm,
         crate::community_http::my_subscription_calendar,

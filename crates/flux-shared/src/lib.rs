@@ -82,17 +82,14 @@ pub fn voucher_without_redeem_port(kind: &str) -> bool {
 /// 「花得掉」正面清单——核销口真在读这些 kind 的券或订单行（P-477）。
 ///
 /// 放这里而不是放 api：生效链（发卡/发券那一侧）在本 crate，而核销口分成两支
-/// ——`economy_http/voucher_use.rs`（券）与 `gaps_http/misc.rs`（补签按订单行张数），
+/// ——`economy_http/voucher_use.rs`（券）与`gaps_http/misc.rs`（补签按订单行张数），
 /// api 侧的售卖口与娱乐屋的奖品绑定口都必须是同一把尺子：
 /// - `makeup_card` / `resub_card`：补签口读 `shop_orders` ×
 ///   `i.kind IN ('makeup_card','resub_card')`（0066 起 resub 是同一支口的别名）；
 /// - `temp_invite` / `voucher_free` / `voucher_neutral`：`voucher_use.rs`
-///   认的三种券种（后两者由 `voucher_kind()` 折成 free/neutral）。
-///
-/// 反面 case：`rename_card` 在 `apply_item_effect` 里有臂（会发一张
-/// `user_vouchers.kind='rename_card'`），但没有任何口认它——用户侧不存在自助改名
-/// 端点，唯一改名口 `POST /admin/users/{id}/rename` 判 `USER_RESETPASS` 且不读券。
-/// 装上核销口那天，把这一档加回来即可恢复售卖与奖品绑定。
+///   认的三种券种（后两者由 `voucher_kind()` 折成 free/neutral）；
+/// - `rename_card`：`auth_http/me_rename.rs` 的 `POST /me/rename`（2026-11-15
+///   起认券——此前 rename_card 是 P-477 的反面 case，核销口装上即解封售卖）。
 pub fn redeem_port_exists(kind: &str) -> bool {
     matches!(
         kind,
@@ -101,6 +98,7 @@ pub fn redeem_port_exists(kind: &str) -> bool {
             | "temp_invite"
             | "voucher_free"
             | "voucher_neutral"
+            | "rename_card"
     )
 }
 
@@ -576,11 +574,12 @@ mod tests {
         // 订单行侧：gaps_http/misc.rs 的补签（makeup_card 与历史别名 resub_card）
         assert!(redeem_port_exists("makeup_card"));
         assert!(redeem_port_exists("resub_card"));
-        // P-477 的反面：发得出券但没人认 ⇒ 必须不在清单里
-        assert!(!redeem_port_exists("rename_card"));
+        // P-477 的反面案例已收口：rename_card 装上核销口（me_rename.rs）
+        // 后不再是废纸，进入正面清单
+        assert!(redeem_port_exists("rename_card"));
         assert!(!redeem_port_exists("vip")); // 状态类不走核销口，走 has_effect
                                              // 成对判据：凭证类缺核销口才算废纸
-        assert!(voucher_without_redeem_port("rename_card"));
+        assert!(!voucher_without_redeem_port("rename_card"));
         assert!(!voucher_without_redeem_port("temp_invite"));
         assert!(!voucher_without_redeem_port("makeup_card"));
         assert!(!voucher_without_redeem_port("vip"));

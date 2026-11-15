@@ -4,7 +4,11 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
 import { useI18n, apiErrorMessage } from "@/i18n/client";
 import { dateLocale } from "@/i18n/config";
-import { INPUT_MD } from "@/lib/ui-classes";
+import {
+  ConfirmPair,
+  RedeemForm,
+  StartButton,
+} from "@/components/voucher-redeem-forms";
 
 type VoucherKind =
   | "free"
@@ -31,6 +35,13 @@ type InviteRedeem = {
   expires_at: string;
 };
 
+/** rename_card 核销响应（me_rename）：改名成功返回新旧名 */
+type RenameRedeem = {
+  voucher_id: number;
+  old_name: string;
+  new_name: string;
+};
+
 const KIND_LABEL: Record<string, (d: VouchersDict) => string> = {
   free: (d) => d.freeKind,
   neutral: (d) => d.neutralKind,
@@ -48,13 +59,14 @@ const KIND_BADGE: Record<string, string> = {
 type VouchersDict = ReturnType<typeof useI18n>["dict"]["vouchers"];
 
 /** 我的券面板（0073 免费券/中性券 + 0211 分券种口径）：
- *  free/neutral 绑种子；temp_invite 核销即得邀请码；rename_card 在
- *  UserCP 改名时消费，这里只展示。 */
+ *  free/neutral 绑种子；temp_invite 核销即得邀请码；rename_card
+ *  在此输入新用户名核销（POST /me/rename，2026-11-15 起）。 */
 export function VoucherPanel() {
   const { dict, locale } = useI18n();
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
   const [using, setUsing] = useState<number | null>(null);
   const [torrentId, setTorrentId] = useState("");
+  const [renameTo, setRenameTo] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -98,6 +110,31 @@ export function VoucherPanel() {
             ),
         );
         setUsing(null);
+        await load();
+      } catch (err) {
+        setError(apiErrorMessage(dict, err));
+      }
+      return;
+    }
+    // rename_card：输入新用户名核销（POST /me/rename 自动抵扣最早到期的一张）
+    if (target.kind === "rename_card") {
+      const name = renameTo.trim();
+      if (name.length < 3 || name.length > 24) {
+        setError(dict.vouchers.renameNameLength);
+        return;
+      }
+      setError(null);
+      try {
+        const r = await api.post<RenameRedeem>("/api/v1/me/rename", {
+          new_name: name,
+        });
+        setMessage(
+          dict.vouchers.renameDone
+            .replace("{old}", r.old_name)
+            .replace("{new}", r.new_name),
+        );
+        setUsing(null);
+        setRenameTo("");
         await load();
       } catch (err) {
         setError(apiErrorMessage(dict, err));
@@ -159,71 +196,55 @@ export function VoucherPanel() {
                     )}
                   </span>
                 ) : v.kind === "rename_card" ? (
-                  <span className="text-xs text-sub">
-                    {dict.vouchers.renameHint}
-                  </span>
+                  using === v.id ? (
+                    <RedeemForm
+                      placeholder={dict.vouchers.renamePrompt}
+                      value={renameTo}
+                      maxLength={24}
+                      onChange={setRenameTo}
+                      onConfirm={() => void use(v.id)}
+                      onCancel={() => setUsing(null)}
+                    />
+                  ) : (
+                    <StartButton
+                      label={dict.vouchers.renameUse}
+                      onStart={() => {
+                        setUsing(v.id);
+                        setMessage(null);
+                        setError(null);
+                      }}
+                    />
+                  )
                 ) : using === v.id ? (
                   v.kind === "temp_invite" ? (
                     <div className="flex flex-col gap-2">
                       <p className="text-xs text-sub">
                         {dict.vouchers.inviteConfirm}
                       </p>
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-primary"
-                          onClick={() => void use(v.id)}
-                        >
-                          {dict.vouchers.confirm}
-                        </button>
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-ghost"
-                          onClick={() => setUsing(null)}
-                        >
-                          {dict.vouchers.cancel}
-                        </button>
-                      </div>
+                      <ConfirmPair
+                        onConfirm={() => void use(v.id)}
+                        onCancel={() => setUsing(null)}
+                      />
                     </div>
                   ) : (
-                    <div className="flex flex-col gap-2">
-                      <input
-                        className={`${INPUT_MD} w-full text-sm`}
-                        placeholder={dict.vouchers.torrentIdPlaceholder}
-                        value={torrentId}
-                        onChange={(e) => setTorrentId(e.target.value)}
-                        inputMode="numeric"
-                      />
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-primary"
-                          onClick={() => void use(v.id)}
-                        >
-                          {dict.vouchers.confirm}
-                        </button>
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-ghost"
-                          onClick={() => setUsing(null)}
-                        >
-                          {dict.vouchers.cancel}
-                        </button>
-                      </div>
-                    </div>
+                    <RedeemForm
+                      placeholder={dict.vouchers.torrentIdPlaceholder}
+                      value={torrentId}
+                      inputMode="numeric"
+                      onChange={setTorrentId}
+                      onConfirm={() => void use(v.id)}
+                      onCancel={() => setUsing(null)}
+                    />
                   )
                 ) : (
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-primary"
-                    onClick={() => {
+                  <StartButton
+                    label={dict.vouchers.use}
+                    onStart={() => {
                       setUsing(v.id);
                       setMessage(null);
                       setError(null);
                     }}
-                  >
-                    {dict.vouchers.use}
-                  </button>
+                  />
                 )}
               </div>
             </div>

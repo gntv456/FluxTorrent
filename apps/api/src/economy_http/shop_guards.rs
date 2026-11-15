@@ -9,7 +9,7 @@ use crate::errors::{DomainError, DomainResult};
 
 /// 卡类：按张插订单行、由各自的核销口消费，不走 `apply_item_effect`。
 pub(super) fn card_kind_probe(kind: &str) -> bool {
-    matches!(kind, "makeup_card" | "temp_invite")
+    matches!(kind, "makeup_card" | "temp_invite" | "rename_card")
 }
 
 /// 「花得掉」清单转发到共享层（`flux_shared::redeem_port_exists`，P-477）：
@@ -80,10 +80,10 @@ mod tests {
 
     #[test]
     fn voucher_with_no_redeem_port_is_refused() {
-        // P-477 现场：改名卡发得出券，但全仓没有核销口 ⇒ 售卖口拦在扣款前
-        assert!(refused("rename_card"));
+        // P-477 现场已收口：me_rename.rs 装上核销口后改名卡可售
+        assert!(!refused("rename_card"));
         // 白名单与核销口清单不许再漂移：card_kind_probe 里的每一档都必须花得掉
-        for k in ["makeup_card", "temp_invite"] {
+        for k in ["makeup_card", "temp_invite", "rename_card"] {
             assert!(card_kind_probe(k) && redeem_port_exists(k), "{k}");
         }
         // 未知品类同样拒（老行为不回归）
