@@ -1,0 +1,4 @@
+psql:/tmp/c5.sql:10: ERROR:  column i.user_id does not exist
+LINE 4: ...     (SELECT count(*) FROM iyuu_crossseed i WHERE i.user_id ...
+                                                             ^
+HINT:  Perhaps you meant to reference the column "c.user_id".

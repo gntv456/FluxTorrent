@@ -1344,6 +1344,9 @@ const zhCnBase = {
     colDelta: "近1小时上传",
     colTime: "上报时间",
     eventsTitle: "作弊事件待办",
+    sessionsTitle: "可疑会话（近 1 小时）",
+    sessionsNote:
+      "上传增量 > 500 GB 或折算均速 > 100 MB/s 的活跃会话，实时探测无历史。",
     eventsNote:
       "存在未处置幽灵做种/速率超限/基线回退事件的用户，做种收益已自动停发；处置后自动恢复。",
     eventsEmpty: "暂无待处置事件",

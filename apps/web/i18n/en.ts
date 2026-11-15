@@ -1441,6 +1441,9 @@ const enBase: Omit<
     colDelta: "Upload (1h)",
     colTime: "Reported at",
     eventsTitle: "Pending cheat events",
+    sessionsTitle: "Suspicious sessions (last 1h)",
+    sessionsNote:
+      "Live sessions with >500 GB upload delta or >100 MB/s average; real-time probe, no history.",
     eventsNote:
       "Users with unresolved ghost-seed / over-ceiling / counter-reset events have seeding rewards suspended; resolving restores them.",
     eventsEmpty: "No pending events",

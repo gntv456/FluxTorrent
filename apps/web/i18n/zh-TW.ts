@@ -1389,6 +1389,9 @@ const zhTwBase: Omit<
     colDelta: "近1小時上傳",
     colTime: "上報時間",
     eventsTitle: "作弊事件待辦",
+    sessionsTitle: "可疑會話（近 1 小時）",
+    sessionsNote:
+      "上傳增量 > 500 GB 或折算均速 > 100 MB/s 的活躍會話，即時探測無歷史。",
     eventsNote:
       "存在未處置幽靈做種/速率超限/基準回退事件的用戶，做種收益已自動停發；處置後自動恢復。",
     eventsEmpty: "暫無待處置事件",

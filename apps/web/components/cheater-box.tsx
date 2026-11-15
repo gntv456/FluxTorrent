@@ -31,10 +31,30 @@ function fmtBytes(n: number): string {
   return `${(n / (1024 * 1024)).toFixed(0)} MB`;
 }
 
-/** 作弊者信箱（同类站 cheaterbox.php 复刻）：可疑会话 + 作弊事件处置待办 */
+/** 作弊者信箱（同类站 cheaterbox.php 复刻）：可疑会话 + 五面板标签页。
+ *  0491 前五面板平铺整页近 1300 行不可扫读——改页签切换（事件/案件/
+ *  观察名单/申诉/准确率），只挂载当前页（其余面板数据不拉取）。 */
+type PanelKey = "events" | "cases" | "risk" | "appeals" | "accuracy";
+
+const PANELS: { key: PanelKey; label: keyof typeof LABEL_KEYS }[] = [
+  { key: "events", label: "eventsTitle" },
+  { key: "cases", label: "casesTitle" },
+  { key: "risk", label: "riskTitle" },
+  { key: "appeals", label: "appealTitle" },
+  { key: "accuracy", label: "caTitle" },
+] as const;
+const LABEL_KEYS = {
+  eventsTitle: 1,
+  casesTitle: 1,
+  riskTitle: 1,
+  appealTitle: 1,
+  caTitle: 1,
+} as const;
+
 export function CheaterBox() {
   const { dict, locale } = useI18n();
   const t = dict.cheaterbox;
+  const [panel, setPanel] = useState<PanelKey>("events");
   const [rows, setRows] = useState<CheaterRow[] | null>(null);
   // P-615：取数失败曾被演成「0 条 + 本页为空」——复核人员会以为没有可疑会话
   const [failed, setFailed] = useState(false);
@@ -77,13 +97,43 @@ export function CheaterBox() {
         {rows !== null && !failed && <small>{rows.length}</small>}
       </header>
 
-      {/* 作弊事件待办 + 反作弊案件队列（0367 M1）+ 风险观察名单（0368 M2）
-          + 反作弊申诉复核队列（0369 M3）+ 规则准确率（0372 M5） */}
-      <CheatEventsTable />
-      <CheatCasePanel />
-      <RiskWatchlist />
-      <CheatAppealQueue />
-      <CheatAccuracyPanel />
+      {/* 五面板页签（只挂载当前页：切到才拉数据，未选面板零请求） */}
+      <div
+        className="mb-2 flex flex-wrap gap-2"
+        role="tablist"
+        aria-label={t.title}
+      >
+        {PANELS.map((p) => (
+          <button
+            key={p.key}
+            type="button"
+            role="tab"
+            aria-selected={panel === p.key}
+            className={
+              "rounded-full border px-3 py-1 text-xs font-bold " +
+              (panel === p.key
+                ? "border-[var(--compat-orange)] " +
+                  "text-[var(--compat-orange-dark)]"
+                : "border-[var(--border-soft)] text-sub")
+            }
+            onClick={() => setPanel(p.key)}
+          >
+            {t[p.label] as string}
+          </button>
+        ))}
+      </div>
+
+      {panel === "events" && <CheatEventsTable />}
+      {panel === "cases" && <CheatCasePanel />}
+      {panel === "risk" && <RiskWatchlist />}
+      {panel === "appeals" && <CheatAppealQueue />}
+      {panel === "accuracy" && <CheatAccuracyPanel />}
+      {panel === "events" && (
+        <>
+          <h3 className="mt-4 text-sm font-bold text-ink">{t.sessionsTitle}</h3>
+          <p className="mb-2 text-xs text-sub">{t.sessionsNote}</p>
+        </>
+      )}
 
       {rows === null ? (
         <p className="funbox__empty">…</p>
