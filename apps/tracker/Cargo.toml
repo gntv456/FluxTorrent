@@ -1,6 +1,6 @@
 [package]
 name = "flux-tracker"
-version = "0.5.18"
+version = "0.5.19-dev.1"
 edition.workspace = true
 
 [dependencies]
