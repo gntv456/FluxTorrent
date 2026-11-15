@@ -221,8 +221,9 @@ export function PosterRibbon({ items }: { items: PosterItem[] }) {
 export function LatestPosters({ items }: { items: PosterItem[] }) {
   const { dict } = useI18n();
   const compact = useIsCompact();
-  if (items.length === 0) return null;
+  // hooks 必须无条件先行（rules-of-hooks）：空列表的提前 return 放 hook 之后
   const { copies, wrapRef } = useLoopCopy(items, !compact);
+  if (items.length === 0) return null;
   return (
     <div ref={wrapRef} className="poster-marquee-wrap overflow-x-hidden">
       <div className="px-1 py-2">
