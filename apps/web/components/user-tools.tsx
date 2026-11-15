@@ -1,6 +1,31 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { api, hasSessionCookie } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+
+/** /me/badges 返回口径（me_badges handler） */
+interface ToolBadges {
+  unread: number;
+  tickets: number;
+  friend_requests: number;
+  staff: { reports: number; cheaters: number; staffbox: number } | null;
+}
+
+/** 工具行角标（/me/badges 口径）：UserTools 仅在下拉打开时挂载，
+ *  mount 即取一次——其余计数只在打开瞬间有意义，不值得常驻轮询；
+ *  null=未登录/取数失败，此时收件箱回落 /me 的 unread prop。 */
+function useToolBadges(): ToolBadges | null {
+  const [badges, setBadges] = useState<ToolBadges | null>(null);
+  useEffect(() => {
+    if (!hasSessionCookie()) return;
+    api
+      .get<ToolBadges>("/api/v1/me/badges")
+      .then(setBadges)
+      .catch(() => {});
+  }, []);
+  return badges;
+}
 
 /** 线性图标（24×24 stroke，仿同类站 userbar 图标语义） */
 function Icon({ d, extra }: { d: string; extra?: string }) {
@@ -40,9 +65,23 @@ const ICONS = {
   rss: { d: "M5 11 A8.5 8.5 0 0 1 13.5 19.5 M5 5.5 A14 14 0 0 1 19 19.5" },
 };
 
+/** 角标（与收件箱同款样式；>99 显示 99+） */
+function Badge({ n }: { n: number }) {
+  if (n <= 0) return null;
+  return (
+    <span className="userbar-tool__badge num">
+      {n > 99 ? "99+" : n}
+    </span>
+  );
+}
+
 /** 快捷工具条（同类站 userbar 口径）：收件箱/发件箱/作弊者/举报信箱/管理组信箱/社交/RSS。
  *  仅图标按钮，4+3 上下两行；RSS 直达获取RSS页（getrss.php 同款）。
- *  收件箱按钮带未读数角标（NP userbar 邮箱图标同款）。 */
+ *  角标口径（/me/badges，0491）：每个工具渲染自己的可操作计数：
+ *  收件箱=未读私信；管理组信箱=员工的未答队列、会员的工单待确认；
+ *  举报信箱=待处理举报（员工）；作弊者=嫌疑会话（员工）；社交=好友申请。
+ *  发件箱/RSS 无待办语义不设角标。staff=null（无权限）时员工侧数字
+ *  整组不渲染，不演「队列清零」。 */
 export function UserTools({
   unread = 0,
   mods = {},
@@ -53,6 +92,11 @@ export function UserTools({
   const mod = (k: string) => mods[k] !== false;
   const { dict } = useI18n();
   const t = dict.usertools;
+  const badges = useToolBadges();
+  const staff = badges?.staff ?? null;
+  // 员工管未答队列；普通会员的待办是「已答复待确认」（确认入口在
+  // /contactstaff 我的工单——staffbox 会员会被重定向）
+  const staffBadge = staff ? staff.staffbox : (badges?.tickets ?? 0);
 
   return (
     <div className="usertools usertools--grid">
@@ -65,11 +109,7 @@ export function UserTools({
       >
         <span className="relative inline-flex">
           <Icon {...ICONS.inbox} />
-          {unread > 0 && (
-            <span className="userbar-tool__badge num">
-              {unread > 99 ? "99+" : unread}
-            </span>
-          )}
+          <Badge n={badges ? badges.unread : unread} />
         </span>
       </a>
       )}
@@ -89,7 +129,10 @@ export function UserTools({
         title={t.cheaters}
         aria-label={t.cheaters}
       >
-        <Icon {...ICONS.cheaters} />
+        <span className="relative inline-flex">
+          <Icon {...ICONS.cheaters} />
+          {staff && <Badge n={staff.cheaters} />}
+        </span>
       </a>
       <a
         className="userbar-tool userbar-tool--icon"
@@ -97,7 +140,10 @@ export function UserTools({
         title={t.reportBox}
         aria-label={t.reportBox}
       >
-        <Icon {...ICONS.flag} />
+        <span className="relative inline-flex">
+          <Icon {...ICONS.flag} />
+          {staff && <Badge n={staff.reports} />}
+        </span>
       </a>
       {mod("messages") && (
       <a
@@ -106,7 +152,10 @@ export function UserTools({
         title={t.staffBox}
         aria-label={t.staffBox}
       >
-        <Icon {...ICONS.staff} />
+        <span className="relative inline-flex">
+          <Icon {...ICONS.staff} />
+          <Badge n={staffBadge} />
+        </span>
       </a>
       )}
       {mod("friends") && (
@@ -116,7 +165,10 @@ export function UserTools({
         title={t.socialList}
         aria-label={t.socialList}
       >
-        <Icon {...ICONS.social} />
+        <span className="relative inline-flex">
+          <Icon {...ICONS.social} />
+          <Badge n={badges?.friend_requests ?? 0} />
+        </span>
       </a>
       )}
       <a

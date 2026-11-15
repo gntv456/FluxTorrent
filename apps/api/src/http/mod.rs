@@ -103,11 +103,10 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(crate::staff_http::wiki_delete)
         .service(crate::staff_http::wiki_revisions)
         .service(crate::auth_http::login)
-        // 邮箱激活通道（C7-#4）：verify 匿名点击（邮件链接）、resend 限流
+        // 邮箱激活（C7-#4）：verify 匿名点击（邮件链接）、resend 限流；
+        // passkey（0227）：passkey_list 曾漏挂致 passkeys-card 长期 404。
         .service(crate::auth_http::email_verify)
         .service(crate::auth_http::email_resend)
-        // passkey（WebAuthn）第二通道（0227）：passkey_list（GET /me/passkeys）此前只进了
-        // mount_passkey——该 mount 无调用者（逐个挂载时被遗漏），passkeys-card 长期 404。
         .service(crate::auth_http::passkey_list)
         .service(crate::auth_http::passkey_begin)
         .service(crate::auth_http::passkey_finish)
@@ -115,6 +114,7 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(crate::auth_http::passkey_login_finish)
         .service(crate::auth_http::passkey_remove)
         .service(crate::auth_http::me)
+        .service(crate::auth_http::me_badges)
         .service(crate::auth_http::me_perms)
         .service(crate::auth_http::me_overview)
         .service(crate::auth_http::me_settings_get)

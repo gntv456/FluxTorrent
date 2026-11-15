@@ -75,8 +75,7 @@ use utoipa::OpenApi;
         crate::torrent_http::trump_resolve,
         // C1（同类站对标 2026-10-16）：会话口下载直链签发
         crate::publish_http::download_link,
-        // F4（2026-10-16）社区域 85 条路由注解化，
-        // 聚合合计 17 开放 + 38 种子 + 85 社区 = 140 个操作。
+        // F4（2026-10-16）社区域 85 条路由注解化，合计 17+38+85=140 操作。
         crate::community_http::admin_match_create,
         crate::community_http::admin_match_score,
         crate::community_http::artists_list,
@@ -128,6 +127,7 @@ use utoipa::OpenApi;
         crate::community_http::message_stream,
         crate::community_http::notice_prefs_get,
         crate::community_http::notice_prefs_set,
+        crate::auth_http::me_badges,
         crate::community_http::my_staff_messages,
         crate::community_http::my_ticket_confirm,
         crate::community_http::my_subscription_calendar,
@@ -256,6 +256,7 @@ mod tests {
             "/api/v1/messages/inbox",
             "/api/v1/messages/boxes",
             "/api/v1/me/messages/stream",
+            "/api/v1/me/badges",
             "/api/v1/medals",
             "/api/v1/medals/progress",
             "/api/v1/me/medals",
@@ -285,19 +286,14 @@ mod tests {
             .map(|v| v.as_object().map(|o| o.len()).unwrap_or(0))
             .sum();
         // 开放域 17 操作（16 键，/me/tokens 双方法）+ 种子域 38 操作
-        // + 社区域 85 操作（76 键，同键多方法：like/unlike、
-        // post_like 与 post_unlike 分列 get/post 风格的 PUT/DELETE）
-        // （/torrents/{id} 上有 get/put/delete 三方法、/torrents/{id}/tags
-        // 有 get/put、/torrents/{id}/comments 有 get/post、
-        // /torrents/{id}/previews 有 get/post/delete，故键数少于操作数）
-        // C1（2026-10-16）：+1 download-link = 144
-        // 64c5a097（2026-10-18）：社区 +forums/mine、+forums/side = 146
-        // 并行 forum 批（2026-10-18 晚）：+forums/recent = 147
-        // 0406/0409 批：+shoutbox_clear、+site_activity = 149
-        // 0417（2026-10-24）：+DELETE /torrents/{id}/bookmark 对称口 = 150
+        // + 社区域 85 操作（76 键，同键多方法；/torrents/{id} 三方法等
+        // 故键数少于操作数）。
+        // 沿革：144（C1 download-link）→ 146（forums/mine+side）→
+        // 147（forums/recent）→ 149（shoutbox_clear+site_activity）→
+        // 150（0417 bookmark 对称口）→ 152（0491 +GET /me/badges）
         assert_eq!(
-            ops, 151,
-            "聚合应有 151 个操作（开放 17 + 种子 41 + 社区 93）"
+            ops, 152,
+            "聚合应有 152 个操作（开放 17 + 种子 41 + 社区 94）"
         );
     }
 }

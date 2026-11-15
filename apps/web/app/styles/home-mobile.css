@@ -484,6 +484,15 @@
   color: var(--mint);
   background: var(--mint-soft);
 }
+/* 利益前置角签（2026-11-15）：「签到 +15」右半段，同胶囊内白纱层 */
+.mhome-strip__gain {
+  margin-left: 5px;
+  padding: 1px 5px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.28);
+  font-style: normal;
+  font-size: 11px;
+}
 
 /* ============ 30 天新增：迷你 sparkline ============ */
 .mhome-spark {

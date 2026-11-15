@@ -806,6 +806,8 @@ export interface PreserveEnvelope {
   items: PreserveItem[];
   total: number;
   stats: PreserveStats;
+  /** 每保满一天可得（preserve_bonus_per_day，认领按钮利益角签用） */
+  bonus_per_day?: number;
   page: number;
   per_page: number;
 }

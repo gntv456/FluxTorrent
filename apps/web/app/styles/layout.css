@@ -1866,6 +1866,15 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   font-size: 12.5px;
   font-weight: 800;
 }
+/* 利益前置角签（2026-11-15）：「签到 +N」内嵌白纱层 */
+.attendance-gain {
+  margin-left: 5px;
+  padding: 1px 5px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.28);
+  font-style: normal;
+  font-size: 11.5px;
+}
 .attendance-msg {
   margin: 8px 14px 0;
   color: var(--success);

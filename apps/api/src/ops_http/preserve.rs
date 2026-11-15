@@ -198,6 +198,17 @@ pub(super) async fn preserve_list(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
 
+    // 利益前置（2026-11-15）：认领按钮直接标「每保满一天 +N」。
+    // 与 worker 结算（preserve_settle）同一把尺、同一条 COALESCE——
+    // 这里写 100、那边读 100 以外的值就是两张皮。
+    let bonus_per_day: i64 = sqlx::query_scalar(
+        "SELECT COALESCE((SELECT value FROM site_settings WHERE name = \
+         'preserve_bonus_per_day')::bigint, 100)",
+    )
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(100);
+
     Ok(ok(serde_json::json!({
         "items": rows,
         "total": total,
@@ -206,6 +217,7 @@ pub(super) async fn preserve_list(
             "official": official, "general": (preserving - official).max(0),
             "today_in": today_in, "today_out": today_out,
         },
+        "bonus_per_day": bonus_per_day,
         "page": page, "per_page": per,
     })))
 }

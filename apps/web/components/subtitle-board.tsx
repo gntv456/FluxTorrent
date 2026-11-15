@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import type {
@@ -17,6 +17,7 @@ import {
 import { SubtitleAwardsBoard } from "@/components/subtitle-awards-board";
 import { SubtitleRequestPanel } from "@/components/subtitle-request-panel";
 import { SubtitleUploadForm } from "@/components/subtitle-upload-form";
+import { SubtitlePager } from "@/components/subtitle-pager";
 
 // 字幕区（参考站 subtitles.php 复刻 + 0146 治理）：
 // 标题条 → 规则卡（按 kind 切影视/歌词两套）→ 上传表单（元数据 + kind 显隐）
@@ -108,25 +109,30 @@ export function SubtitleBoard({
   const rules = kind === "lyric" ? (t.lyricRules ?? t.rules) : t.rules;
 
   const pages = Math.max(1, Math.ceil(total / perPage));
-  const pageWin = useMemo(() => {
-    const arr: number[] = [];
-    const lo = Math.max(1, page - 2);
-    const hi = Math.min(pages, lo + 4);
-    for (let i = lo; i <= hi; i++) arr.push(i);
-    return arr;
-  }, [page, pages]);
 
   return (
     <div className="subtitles-wrap">
-      {/* 标题条：字 字幕区 | 上传字幕 - 总上传量 */}
+      {/* 标题条：字 字幕区 | 上传字幕(按钮弹窗) - 总上传量 */}
       <header className="subtitles-head">
         <span className="subtitles-head__mark" aria-hidden="true">
           字
         </span>
         <strong>{t.title}</strong>
         <small>
-          {t.uploadTitle} - {t.totalUploaded} {fmtKB(totalSize)}
+          {t.totalUploaded} {fmtKB(totalSize)}
         </small>
+        <span className="ml-auto">
+          <SubtitleUploadForm
+            kind={kind}
+            langs={langs}
+            fixedTorrentId={fixedTorrentId}
+            onMsg={setMsg}
+            onUploaded={() => {
+              load();
+              setReloadKey((k) => k + 1);
+            }}
+          />
+        </span>
       </header>
 
       {failed && (
@@ -135,10 +141,19 @@ export function SubtitleBoard({
         </p>
       )}
 
-      {/* 规则卡（kind 两套） */}
-      <section className="subtitles-rules">
-        <h2>{t.rulesTitle}</h2>
-        <ul>
+      {/* 规则卡（kind 两套）：收进 details 折叠（2026-11-15——六条规则
+          整块平铺把搜索条和列表往下挤一屏，规则是发上传前才需要读的辅线；
+          与保种区工具抽屉同款交互） */}
+      <details className="subtitles-rules">
+        <summary
+          className={
+            "cursor-pointer select-none text-[14.5px] font-bold " +
+            "text-[var(--text-brand)]"
+          }
+        >
+          {t.rulesTitle}
+        </summary>
+        <ul className="!mt-2">
           {rules.map((r) => (
             <li key={r} dangerouslySetInnerHTML={{ __html: boldRule(r) }} />
           ))}
@@ -146,18 +161,9 @@ export function SubtitleBoard({
         <p className="subtitles-required-note">
           {t.requiredNote.replace("*", "*")}
         </p>
-      </section>
+      </details>
 
-      <SubtitleUploadForm
-        kind={kind}
-        langs={langs}
-        fixedTorrentId={fixedTorrentId}
-        onMsg={setMsg}
-        onUploaded={() => {
-          load();
-          setReloadKey((k) => k + 1);
-        }}
-      />
+      {/* 上传表单已收进标题条按钮弹窗（2026-11-15）：页面上不再平铺十行输入 */}
 
       {/* 搜索：关键词 + 语言下拉 + AI 筛选 + 每页 */}
       <form
@@ -244,37 +250,12 @@ export function SubtitleBoard({
 
       {/* 分页条（A7：count 同谓词，翻页不重叠） */}
       {pages > 1 && (
-        <nav className="mt-2 flex items-center justify-center gap-2 text-sm">
-          <button
-            type="button"
-            className="btn2"
-            disabled={page <= 1}
-            onClick={() => setPage(page - 1)}
-          >
-            ‹
-          </button>
-          {pageWin.map((p) => (
-            <button
-              key={p}
-              type="button"
-              className={p === page ? "btn" : "btn2"}
-              onClick={() => setPage(p)}
-            >
-              {p}
-            </button>
-          ))}
-          <button
-            type="button"
-            className="btn2"
-            disabled={page >= pages}
-            onClick={() => setPage(page + 1)}
-          >
-            ›
-          </button>
-          <span className="text-sub">
-            {total} · {page}/{pages}
-          </span>
-        </nav>
+        <SubtitlePager
+          page={page}
+          pages={pages}
+          total={total}
+          onPage={setPage}
+        />
       )}
 
       {/* 求字幕悬赏（pots）+ 评选榜（0148） */}

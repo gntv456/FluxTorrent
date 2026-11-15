@@ -15,6 +15,7 @@ import {
 import { useFocusTrap } from "@/lib/use-focus-trap";
 import { ShjAtlasEduDrill } from "@/components/shj-atlas-edu";
 import { ico } from "@/components/shj-atlas-icons";
+import { useScrollingClass } from "@/components/shj-atlas-scroll";
 import { ShjAtlasFoot } from "@/components/shj-atlas-foot";
 
 /** 山海经「山海图鉴」竖排侧栏（乙 · 结构层）。
@@ -64,8 +65,7 @@ export function ShjAtlas({
   const [rail, setRail] = useState(false);
   useEffect(() => {
     try {
-      const saved = localStorage.getItem("flux-shj-rail");
-      setRail(saved === "1");
+      setRail(localStorage.getItem("flux-shj-rail") === "1");
     } catch {
       /* 隐私模式读不到就按默认展开 */
     }
@@ -99,6 +99,8 @@ export function ShjAtlas({
   // 收起时 useFocusTrap 会把焦点还给分组标题，触发 onFocus 又把浮层打开
   // （Esc/点外收起后会「关不上」）。关闭动作置位一次，由下一次 onFocus 消费。
   const suppressFocusOpenRef = useRef(false);
+  // 滚动条静止隐藏（2026-11-15）：处理器拆 shj-atlas-scroll（300 门禁）
+  const onNavScroll = useScrollingClass();
   const closeFlyout = () => {
     suppressFocusOpenRef.current = true;
     setFlyout(null);
@@ -188,11 +190,10 @@ export function ShjAtlas({
           <i>{dict.common.themeShanhaijing}</i>
         </span>
       </Link>
-      <nav className="shj-atlas__scroll">
+      <nav className="shj-atlas__scroll" onScroll={onNavScroll}>
         {eduDrill && eduItem ? (
           <ShjAtlasEduDrill
-            sub={eduItem.sub!}
-            active={isActive}
+            sub={eduItem.sub!} active={isActive}
             onClose={() => setEduDrill(null)}
           />
         ) : (
@@ -266,9 +267,7 @@ export function ShjAtlas({
               >
                 <span className="shj-atlas__gname">{g.group}</span>
                 <span className="shj-atlas__gline" aria-hidden />
-                <span className="shj-atlas__gcaret" aria-hidden>
-                  ▾
-                </span>
+                <span className="shj-atlas__gcaret" aria-hidden>▾</span>
               </button>
               <ul className="shj-atlas__list" hidden={isClosed}>
                 {g.items.map((n) => (
@@ -284,6 +283,7 @@ export function ShjAtlas({
                   role="group"
                   aria-label={g.group}
                   ref={flyoutRef}
+                  onScroll={onNavScroll}
                 >
                   <p className="shj-atlas__ftitle">{g.group}</p>
                   <ul className="shj-atlas__list">

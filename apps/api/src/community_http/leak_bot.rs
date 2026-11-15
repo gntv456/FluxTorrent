@@ -141,6 +141,25 @@ pub(crate) async fn leak_resolve(
 // shoutbox 里发 /命令 即触发系统账号回话（当前会话内直接返回，不落库系统消息——
 // 避免机器人刷屏；统计命令只读、零风险）。
 
+/// 命令清单单一事实源：/shoutbox/bot 清单接口、/help 与未知命令的回话、
+/// 前端快捷按钮三处共用。desc 写人话（按钮上直接可见，不再靠悬浮提示）。
+const BOT_COMMANDS: &[(&str, &str)] = &[
+    ("/free", "看现在有哪些免费/双倍促销的种子"),
+    ("/stats", "看站点现状（几人/几种/几条做种）"),
+    ("/me", "看我的数据（上传/下载/分享率/魔力）"),
+    ("/me 动作", "发言以 /me 开头 = 斜体动作（/me 摸鱼）"),
+    ("/help", "列出全部命令"),
+];
+
+/// /help 与未知命令的回话：多行清单（前端 whitespace-pre-line 渲染）。
+fn bot_help_text() -> String {
+    let mut s = String::from("输入命令、或点输入框下方的按钮直接发：");
+    for (cmd, desc) in BOT_COMMANDS {
+        s.push_str(&format!("\n{cmd} —— {desc}"));
+    }
+    s
+}
+
 #[utoipa::path(
     get,
     path = "/api/v1/shoutbox/bot",
@@ -150,12 +169,10 @@ pub(crate) async fn leak_resolve(
 #[get("/shoutbox/bot")]
 pub(crate) async fn shoutbox_bot_help() -> impl Responder {
     ok(serde_json::json!({
-        "commands": [
-            { "cmd": "/free",  "desc": "当前生效的免费/双倍促销种子" },
-            { "cmd": "/stats", "desc": "站点实时统计（用户/种子/做种）" },
-            { "cmd": "/me",    "desc": "我的数据摘要（上传/下载/分享率/魔力）" },
-            { "cmd": "/help",  "desc": "命令列表" },
-        ]
+        "commands": BOT_COMMANDS
+            .iter()
+            .map(|(cmd, desc)| serde_json::json!({ "cmd": cmd, "desc": desc }))
+            .collect::<Vec<_>>(),
     }))
 }
 
@@ -231,7 +248,8 @@ pub(crate) async fn shoutbox_bot_exec(
                 spark
             )
         }
-        _ => "可用命令：/free /stats /me /help".to_string(),
+        "/help" | "" => bot_help_text(),
+        _ => format!("没有「{cmd}」这个命令。{}", bot_help_text()),
     };
     let body =
         serde_json::json!({ "cmd": cmd, "reply": reply, "cards": cards });

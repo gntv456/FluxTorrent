@@ -12,7 +12,11 @@
 //   5) 棘轮（逐步收紧到标准门禁）：基线只许降不许升。文件比登记的更瘦/
 //      超宽行更少时，登记值必须跟着降下来（跑 --update 收缩），否则挂——
 //      防止「辛辛苦苦拆完，一次 --update 兜底又松回去」。基线清零即达标。
-// 用法：node scripts/line_limit_guard.mjs [--update]（CI 一步；exit 1 = 违规）。
+// 用法：node scripts/line_limit_guard.mjs [--update | --touch <文件…>]
+//   --update 全量重算（只在确认无并行会话在改树时用）；
+//   --touch <文件…> 定向收缩单文件（2026-11-15 新增，与 design_guard
+//   --touch 同手法——并行会话在树上时只落自己的账，不洗白别人）。
+//   （CI 一步；exit 1 = 违规）。
 import { readFileSync, existsSync, writeFileSync } from "node:fs";
 import { globCompat as globSync } from "./lib/glob_compat.mjs";
 import path from "node:path";
@@ -135,6 +139,65 @@ for (const rel of files) {
     }
     nextBaseline[rel + "::wide"] = wide;
   }
+}
+
+if (process.argv.includes("--touch")) {
+  // 定向收缩（2026-11-15，与 design_guard --touch 同手法）：只重算指定
+  // 文件的基线（行数 + ::wide 两条都按当前实测重写），其余键原样保留。
+  // 全量 --update 的已知险情：会把**并行会话**刚引入的新超限/新超宽一并
+  // 写进基线（= 洗白）——memory 有先例（「--update 会收编未跟踪文件」）。
+  // 单文件瘦了/平移了就走这里，人工看过 diff 才落账。
+  const at = process.argv.indexOf("--touch");
+  const targets = process.argv.slice(at + 1).filter((a) => !a.startsWith("-"));
+  if (!targets.length) {
+    console.error(
+      "--touch 需要至少一个文件（路径相对仓库根，如 " +
+        "apps/web/components/foo.tsx）",
+    );
+    process.exit(1);
+  }
+  const norm = (p) => p.replace(/\\/g, "/");
+  const byRel = new Map(files.map((f) => [f, f]));
+  let n = 0;
+  const next = { ...baseline };
+  const touched = [];
+  for (const raw of targets) {
+    const rel = byRel.get(norm(raw));
+    if (!rel) {
+      console.error(`--touch 目标不在门禁扫描范围: ${raw}`);
+      process.exit(1);
+    }
+    const lines = readLines(rel);
+    const nLines = lines.length;
+    const limit = LIMITS[path.extname(rel)];
+    // 行数：超限按实测重写；瘦回限内 = 达标，删键（基线清零即出清）。
+    if (nLines > limit) next[rel] = nLines;
+    else delete next[rel];
+    // 超宽：同款（0 = 删键）
+    const wide = wideLines(lines);
+    if (wide > 0) next[rel + "::wide"] = wide;
+    else delete next[rel + "::wide"];
+    touched.push(rel);
+    n++;
+    console.log(
+      `  ${rel}: ${nLines} 行 (限 ${limit}) · 超宽 ${wide}` +
+        `${nLines <= limit && baseline[rel] !== undefined ? " · 出清" : ""}`,
+    );
+  }
+  // 键序保持：按原基线的键顺序写出（新键追加在尾），diff 面只剩被
+  // touch 的键——整文件重排的噪音 diff（-610/+610）会淹没真实变化，
+  // review 和回滚都难（历史 --update 提交 38640cd8 即此形状）。
+  const ordered = {};
+  for (const k of Object.keys(baseline)) {
+    if (k in next) ordered[k] = next[k];
+  }
+  for (const k of Object.keys(next)) {
+    if (!(k in ordered)) ordered[k] = next[k];
+  }
+  // 存量基线是 2 空格缩进（diff 面最小化；--update 的 null,1 与此不一致是历史现状）
+  writeFileSync(BASELINE, JSON.stringify(ordered, null, 2) + "\n");
+  console.log(`baseline touched: ${n} 个文件（其余键未动）`);
+  process.exit(0);
 }
 
 if (process.argv.includes("--update")) {

@@ -86,6 +86,15 @@ pub async fn attendance_json(
     ) as i32;
     let total_days = att.len() as i32;
     let checked_today = att.iter().any(|(d, _, _, _)| *d == today);
+    // 利益前置（2026-11-15）：今日首签可得（attendance_first，缺省 10 与
+    // CheckInParams::default 同源）。手机端签到条按钮直接标「+N」，已签不渲染。
+    let first_reward: i64 = sqlx::query_scalar(
+        "SELECT COALESCE(NULLIF((SELECT value FROM site_settings \
+         WHERE name = 'attendance_first'), '')::bigint, 10)",
+    )
+    .fetch_one(db)
+    .await
+    .unwrap_or(10);
     // 0425 签到热力足迹（同类站对标 B 批）：近 12 个月逐月签到天数。
     // att 已是本人全量行（按日升序），直接分桶，无新查询。
     let year_ago = today - chrono::Duration::days(365);
@@ -108,6 +117,9 @@ pub async fn attendance_json(
         // 0425：12 个月热力 + 今日风云榜（TOP3 + 本人次序）
         "heatmap": heatmap,
         "today_board": today_board(db, today).await,
+        // 利益前置（2026-11-15）：今日首签可得（attendance_first，缺省 10
+        // 与 CheckInParams::default 同源）；手机端签到条按钮直接标「+N」
+        "first_reward": first_reward,
     }))
 }
 

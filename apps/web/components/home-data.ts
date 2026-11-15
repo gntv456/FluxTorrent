@@ -18,6 +18,8 @@ export interface HomeData {
     checked_today: boolean;
     calendar: { date: string; day: number; done: boolean; reward: number }[];
     makeup_cards?: number;
+    /** 今日首签可得（attendance_first，利益前置角签用；已签不渲染） */
+    first_reward?: number;
   };
   resource_stats: {
     today: number;

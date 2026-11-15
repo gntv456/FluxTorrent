@@ -119,6 +119,10 @@ export function AttendanceCard({
               disabled={checkinBusy}
             >
               {checkinBusy ? dict.my.checkinBusy : t.checkinNow}
+              {/* 利益前置（2026-11-15）：今日首签可得直接标在按钮上 */}
+              {att?.first_reward ? (
+                <i className="attendance-gain">+{att.first_reward}</i>
+              ) : null}
             </button>
           )}
           <ResubButton cards={att?.makeup_cards ?? 0} />

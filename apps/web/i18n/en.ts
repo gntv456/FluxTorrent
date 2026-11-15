@@ -1738,6 +1738,13 @@ const enBase: Omit<
     clear: "Clear",
     clearAsk: "Clear ALL shoutbox messages? This cannot be undone.",
     clearDone: "Cleared {n} messages",
+    cooldown: "Too fast — wait {n}s",
+    cooldownShort: "{n}s",
+    deleted: "Message deleted",
+    del: "Del",
+    delConfirm: "Delete this message?",
+    mePlaceholder: "Say something, or /me action, /command (1-300 chars)",
+    emojiTitle: "Emoji",
   },
   apidocs: {
     ungrouped: "Ungrouped",
@@ -2874,6 +2881,7 @@ const enBase: Omit<
       "Subscribe in any RSS-capable BT client. The URL contains your private key — do not share it.",
     listTitle: "Preserved resources",
     totalResults: "{n} results",
+    bonusPerDay: "+{n} per day",
     claimedByCol: "Claimed by",
     action: "Action",
     resurrectionHint:
@@ -8139,7 +8147,8 @@ const ticketEn: Dict["ticket"] = {
 
 const shoutbotEn: Dict["shoutbot"] = {
   botName: "bot",
-  commandsHint: "Commands: {cmds}",
+  commandsHint:
+    "Type a / command or tap a button below — the bot replies instantly",
   replyFailed: "Command failed",
   unknownCmd: "Unknown command; available: /free /stats /me /help",
 };

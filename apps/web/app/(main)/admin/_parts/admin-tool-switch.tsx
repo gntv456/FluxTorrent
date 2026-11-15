@@ -74,15 +74,34 @@ export function renderSimpleTool(
           <P.ContentManage />
         </section>
       );
-    case "freeleech":
-      // 站方级促销 + intent 审批队列（0356）+ 用户自购档位注册表（0213）
+    case "freeleech": {
+      // 站方级促销 + intent 审批队列（0356）+ 用户自购档位注册表（0213）。
+      // 2026-11-15 版式对齐保种区/字幕区：主面板（促销表+新增表单）首位，
+      // 两个配置辅线（审批队列/种类价目）收 details 折叠——管理员进来
+      // 第一眼是「现在挂着什么促销」，不是三块表全量平铺。
+      const promoT = dict.adminPromoIntents;
+      const promoK = dict.adminPromoKinds;
+      const foldHead =
+        "cursor-pointer select-none text-base font-bold " +
+        "text-[var(--text-brand)]";
       return (
         <>
           <P.FreeleechPanel />
-          <P.PromoIntentsPanel />
-          <P.AdminPromoKinds />
+          <details className="brand-panel p-4">
+            <summary className={foldHead}>{promoT.title}</summary>
+            <div className="mt-3">
+              <P.PromoIntentsPanel />
+            </div>
+          </details>
+          <details className="brand-panel p-4">
+            <summary className={foldHead}>{promoK.title}</summary>
+            <div className="mt-3">
+              <P.AdminPromoKinds />
+            </div>
+          </details>
         </>
       );
+    }
     case "clearcache":
       return <P.ClearCachePanel />;
     case "p2tools":

@@ -103,6 +103,17 @@ export function TaskTierPanel({
               onClick={() => onClaim(task.id)}
             >
               {task.claimed_by_me ? t.claimedByMe : t.claimBtn}
+              {/* 利益前置（2026-11-15）：奖励额直接标上按钮 */}
+              {!task.claimed_by_me && task.reward ? (
+                <i
+                  className={
+                    "ml-1 rounded-[6px] bg-white/25 px-1 py-px " +
+                    "text-[11px] not-italic"
+                  }
+                >
+                  +{Number(task.reward).toFixed(0)}
+                </i>
+              ) : null}
             </button>
           </article>
         ))}
@@ -132,6 +143,17 @@ export function TaskTierPanel({
               onClick={() => onClaim(task.id)}
             >
               {task.claimed_by_me ? t.claimedByMe : t.claimBtn}
+              {/* 利益前置（2026-11-15）：奖励额直接标上按钮 */}
+              {!task.claimed_by_me && task.reward ? (
+                <i
+                  className={
+                    "ml-1 rounded-[6px] bg-white/25 px-1 py-px " +
+                    "text-[11px] not-italic"
+                  }
+                >
+                  +{Number(task.reward).toFixed(0)}
+                </i>
+              ) : null}
             </button>
           </article>
         ))}

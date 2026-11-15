@@ -202,6 +202,8 @@ table.brand-wide-table-scroll {
   box-shadow: var(--shadow-card);
   padding: 12px 16px;
 }
+/* 规则卡折叠态（2026-11-15）：summary/间距走组件内原子类；
+ * 平铺变体（详情页 subtitles-rules 仍在用）样式保持原样 */
 .subtitles-rules h2 {
   margin: 0 0 8px;
   color: var(--text-brand);
@@ -1382,43 +1384,43 @@ table.subtitles-upload-table {
   font-size: 22px;
   font-weight: 900;
 }
-.preserve-hero__copy > span:last-child {
-  font-size: 12.5px;
-  opacity: 0.92;
+.preserve-hero__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin-left: auto;
+  padding-left: 14px;
+  border-left: 1px solid var(--border-soft);
 }
-.preserve-stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 10px;
+.preserve-hero__stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
-.preserve-stats > div {
-  padding: 12px 14px;
-  border: 1px solid var(--compat-line-soft);
-  border-radius: var(--r-md);
-  background: var(--compat-paper);
-  box-shadow: var(--shadow-card);
-}
-.preserve-stats strong {
-  display: block;
+.preserve-hero__stat strong {
   color: var(--text-strong);
-  font-size: 20px;
+  font-size: 17px;
   font-weight: 900;
 }
-.preserve-stats span {
+.preserve-hero__stat small {
   color: var(--text-faint);
-  font-size: 12px;
+  font-size: 11.5px;
+  white-space: nowrap;
 }
-.preserve-filter-card h2,
-.preserve-rss h2,
+.preserve-tools summary {
+  cursor: pointer;
+}
+.preserve-tools summary,
 .preserve-list-card__heading h2 {
+  padding: 10px 16px;
   margin: 0;
   color: var(--text-brand);
   font-size: 15px;
   font-weight: 800;
+  user-select: none;
 }
-.preserve-filter-card .brand-panel__head,
-.preserve-filter-card {
-  padding: 12px 16px;
+.preserve-tools__body {
+  padding: 4px 16px 14px;
 }
 .preserve-filter {
   display: flex;
@@ -1460,14 +1462,15 @@ table.subtitles-upload-table {
   font-size: 13px;
   font-weight: 700;
 }
-.preserve-rss {
-  padding: 12px 16px;
-}
-.preserve-rss p {
-  margin: 8px 0 0;
+.preserve-tools__rss {
+  margin: 12px 0 8px;
   color: var(--text-muted);
   font-size: 12.5px;
   line-height: 1.7;
+}
+.preserve-tools__rss strong {
+  margin-right: 6px;
+  color: var(--text-brand);
 }
 .preserve-list-card__heading {
   display: flex;
@@ -1481,20 +1484,16 @@ table.subtitles-upload-table {
   color: var(--text-faint);
   font-size: 12.5px;
 }
-.preserve-list-table {
-  border-radius: 0;
-  border: 0;
-  box-shadow: none;
-}
-/* M6.3：保种列表 10 列窄屏兜底——与 M1 admin 裸表同款（块化+横滚），
- * 前台无 admin-panel-content 兜底，此处自带 */
+/* M6.3：保种列表窄屏兜底（2026-11-15 并入圆角清零块） */
 table.preserve-list-table {
   display: block;
   width: max-content;
   max-width: 100%;
   overflow-x: auto;
+  border-radius: 0;
+  border: 0;
+  box-shadow: none;
 }
-
 /* ============ PM 管理组（contactstaff.php 复刻） ============ */
 .contactstaff-wrap {
   display: flex;

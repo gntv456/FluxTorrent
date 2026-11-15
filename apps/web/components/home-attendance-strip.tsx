@@ -29,6 +29,9 @@ export function AttendanceStrip({
   const pct = next
     ? Math.max(0, Math.min(100, ((att.streak - from) / span) * 100))
     : 0;
+  // 利益前置（2026-11-15）：未签时按钮标「今日可得 +N」（attendance_first）；
+  // 已签是 is-done 态不标——按钮上的数字必须是「点了能拿到」的
+  const firstReward = att.checked_today ? null : (att.first_reward ?? null);
   return (
     <div className="mhome-strip md:hidden">
       <span className="mhome-strip__ico" aria-hidden="true">
@@ -71,6 +74,11 @@ export function AttendanceStrip({
           disabled={checkinBusy}
         >
           {t.checkinNow}
+          {/* 利益前置（2026-11-15）：首签奖励直接标在按钮上，
+              /attendance rules.first（未签=今日可得）；已签不标 */}
+          {firstReward ? (
+            <i className="mhome-strip__gain">+{firstReward}</i>
+          ) : null}
         </button>
       )}
     </div>

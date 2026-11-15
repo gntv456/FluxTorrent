@@ -522,16 +522,12 @@
  ],
  "components/section-kind-bool.tsx": [],
  "components/seed-stats-card.tsx": [
-  55,
-  63,
-  72,
-  82,
-  85,
-  86,
-  87,
-  100,
-  106,
-  107
+  68,
+  69,
+  70,
+  97,
+  103,
+  104
  ],
  "components/sessions-card.tsx": [],
  "components/setting-field-controls.tsx": [],

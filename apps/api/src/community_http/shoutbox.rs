@@ -19,6 +19,7 @@ use crate::state::AppState;
 #[derive(serde::Serialize, sqlx::FromRow)]
 struct ShoutRow {
     id: i64,
+    user_id: i64,
     username: Option<String>,
     message: String,
     created_at: chrono::DateTime<chrono::Utc>,
@@ -40,7 +41,7 @@ pub(crate) async fn shoutbox_list(
     // 审计修复（P1）：与全站鉴权口径对齐——聊天记录含用户名与发言内容，不应对匿名开放
     let _auth = require_auth(&req, &state).await?;
     let rows: Vec<ShoutRow> = sqlx::query_as(
-                "SELECT sb.id, u.username, sb.message, \
+                "SELECT sb.id, sb.user_id, u.username, sb.message, \
          sb.created_at FROM shoutbox sb LEFT JOIN users u ON u.id = sb.user_id ORDER BY sb.id DESC LIMIT 50",
     )
     .fetch_all(&state.repo.db)
@@ -58,7 +59,8 @@ struct ShoutReq {
     post,
     path = "/api/v1/shoutbox",
     tag = "社区/喊话",
-    description = "发喊话（每 10 秒一条；被禁言者不可发；不收费）。",
+    description = "发喊话（每 10 秒一条；被禁言者不可发；不收费）。\n\
+     /me 开头 = 动作消息（斜体第三人称，存 * 前缀）。",
     responses(
         (status = 200, description = "ok"),
         (status = 401, description = "会话未登录（code 2001）"),
@@ -70,9 +72,16 @@ pub(crate) async fn shoutbox_send(
     body: web::Json<ShoutReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    if body.message.trim().is_empty() || body.message.chars().count() > 300 {
+    let trimmed = body.message.trim();
+    if trimmed.is_empty() || trimmed.chars().count() > 300 {
         return Err(DomainError::Validation("发言需 1-300 字".into()));
     }
+    // /me 动作（IRC/ NP 口径）：落库存 `* ` 前缀，渲染侧斜体第三人称。
+    // 前缀由服务端加——普通消息以 * 开头会被剥掉，无法伪造动作。
+    let stored = trimmed
+        .strip_prefix("/me ")
+        .map(|rest| format!("* {rest}"))
+        .unwrap_or_else(|| trimmed.to_string());
     // 禁言位（NP chatpost 口径）：被禁言用户不能在聊天室继续刷屏
     let can_chat: bool = sqlx::query_scalar(
         "SELECT COALESCE(forumpost, TRUE) FROM users WHERE id = $1",
@@ -95,7 +104,7 @@ pub(crate) async fn shoutbox_send(
         "INSERT INTO shoutbox (user_id, message) VALUES ($1, $2) RETURNING id",
     )
     .bind(auth.id)
-    .bind(body.message.trim())
+    .bind(&stored)
     .fetch_one(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;

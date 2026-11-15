@@ -1637,6 +1637,13 @@ const zhCnBase = {
     clear: "清空",
     clearAsk: "确定清空聊天室全部发言？此操作不可撤销。",
     clearDone: "已清空 {n} 条发言",
+    cooldown: "发言太快，{n} 秒后再发",
+    cooldownShort: "{n}s",
+    deleted: "已删除该发言",
+    del: "删",
+    delConfirm: "删除这条发言？",
+    mePlaceholder: "说点什么，或 /me 动作、/命令（1-300 字）",
+    emojiTitle: "常用表情",
   },
   apidocs: {
     ungrouped: "未分组",
@@ -2815,6 +2822,7 @@ const zhCnBase = {
       "可在支持 RSS 的 BT 客户端中订阅保种资源。地址包含个人密钥，请勿公开分享。",
     listTitle: "保种资源",
     totalResults: "共 {n} 个结果",
+    bonusPerDay: "每保满 1 天 +{n}",
     claimedByCol: "认领人",
     action: "操作",
     resurrectionHint:
@@ -7973,7 +7981,7 @@ export const zhCN = {
   /** 聊天机器人 /命令（/shoutbox/bot/exec，0078） */
   shoutbot: {
     botName: "机器人",
-    commandsHint: "支持命令：{cmds}",
+    commandsHint: "输 / 开头的命令或点下方按钮，机器人直接回话",
     replyFailed: "命令执行失败",
     unknownCmd: "未知命令，可用：/free /stats /me /help",
   },

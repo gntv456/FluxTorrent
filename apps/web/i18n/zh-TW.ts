@@ -1682,6 +1682,13 @@ const zhTwBase: Omit<
     clear: "清空",
     clearAsk: "確定清空聊天室全部發言？此操作不可撤銷。",
     clearDone: "已清空 {n} 條發言",
+    cooldown: "發言太快，{n} 秒後再發",
+    cooldownShort: "{n}s",
+    deleted: "已刪除該發言",
+    del: "刪",
+    delConfirm: "刪除這條發言？",
+    mePlaceholder: "說點什麼，或 /me 動作、/命令（1-300 字）",
+    emojiTitle: "常用表情",
   },
   apidocs: {
     ungrouped: "未分組",
@@ -2787,6 +2794,7 @@ const zhTwBase: Omit<
       "可在支持 RSS 的 BT 客戶端中訂閱保種資源。地址包含個人密鑰，請勿公開分享。",
     listTitle: "保種資源",
     totalResults: "共 {n} 個結果",
+    bonusPerDay: "每保滿 1 天 +{n}",
     claimedByCol: "認領人",
     action: "操作",
     resurrectionHint:
@@ -7869,7 +7877,7 @@ const ticketTw: Dict["ticket"] = {
 
 const shoutbotTw: Dict["shoutbot"] = {
   botName: "機器人",
-  commandsHint: "支援命令：{cmds}",
+  commandsHint: "輸入 / 開頭的命令或點下方按鈕，機器人直接回話",
   replyFailed: "命令執行失敗",
   unknownCmd: "未知命令，可用：/free /stats /me /help",
 };

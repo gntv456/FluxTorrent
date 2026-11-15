@@ -467,11 +467,18 @@
 }
 
 /* ===== 滚动区与分组 ===== */
+/* 滚动条静止隐藏（2026-11-15）：常驻 thin 在深色玉青底上是一条亮线，
+   视觉噪音。改为 scroll 时 JS 挂 .is-scrolling 才恢复 thin——
+   thin 宽度 < item 宽度余量，出现/消失不引起内容位移。 */
 [data-theme="shanhaijing"] .shj-atlas__scroll,
 [data-theme="shanhaijing-light"] .shj-atlas__scroll {
   flex: 1;
   padding: 8px 10px 16px;
   overflow-y: auto;
+  scrollbar-width: none;
+}
+[data-theme="shanhaijing"] .shj-atlas__scroll.is-scrolling,
+[data-theme="shanhaijing-light"] .shj-atlas__scroll.is-scrolling {
   scrollbar-width: thin;
 }
 [data-theme="shanhaijing"] .shj-atlas__list,
@@ -749,6 +756,13 @@
     justify-content: center;
     cursor: pointer;
   }
+  /* 轨态条目图标居中（2026-11-15，同 .is-rail 修复——label 出流后
+     flex 只剩 ico，没有 justify-content 时贴 padding-left 偏左） */
+  [data-theme="shanhaijing"] .shj-atlas__item,
+  [data-theme="shanhaijing-light"] .shj-atlas__item {
+    position: relative;
+    justify-content: center;
+  }
   [data-theme="shanhaijing"] .shj-atlas__gcaret,
   [data-theme="shanhaijing-light"] .shj-atlas__gcaret {
     display: none;
@@ -767,6 +781,11 @@
     background: var(--shj-nav-bg);
     border-right: 1px solid var(--border-deep);
     box-shadow: 8px 0 32px rgba(0, 0, 0, 0.5);
+    scrollbar-width: none;
+  }
+  /* 浮层滚动条同款静止隐藏（scroll 事件由组件统一挂类） */
+  [data-theme="shanhaijing"] .shj-atlas__flyout.is-scrolling,
+  [data-theme="shanhaijing-light"] .shj-atlas__flyout.is-scrolling {
     scrollbar-width: thin;
   }
   [data-theme="shanhaijing"] .shj-atlas__ftitle,
@@ -1769,6 +1788,15 @@
   }
   [data-theme="shanhaijing"] .shj-atlas.is-rail .shj-atlas__gtitle,
   [data-theme="shanhaijing-light"] .shj-atlas.is-rail .shj-atlas__gtitle {
+    justify-content: center;
+  }
+  /* 轨态条目图标居中（2026-11-15 修复）：label 已 position:absolute 出流，
+     flex 只剩 ico 一个在流子级——此前没有 justify-content，图标贴在
+     padding-left 10px 处，在 44px item 里肉眼偏左。position:relative
+     让裁剪隐藏的 label 锚回条目自身（此前飘到 fixed 侧栏原点堆叠）。 */
+  [data-theme="shanhaijing"] .shj-atlas.is-rail .shj-atlas__item,
+  [data-theme="shanhaijing-light"] .shj-atlas.is-rail .shj-atlas__item {
+    position: relative;
     justify-content: center;
   }
   [data-theme="shanhaijing"] .shj-atlas.is-rail .shj-atlas__gcaret,
