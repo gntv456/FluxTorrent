@@ -10,7 +10,7 @@
  "apps/worker/src/jobs/backfill.rs::wide": 1,
  "apps/worker/src/jobs/catalog_jobs.rs": 309,
  "apps/worker/src/jobs/class_adj.rs::wide": 7,
- "apps/worker/src/jobs/collusion.rs": 305,
+ "apps/worker/src/jobs/collusion.rs": 335,
  "apps/worker/src/jobs/hr.rs::wide": 4,
  "apps/worker/src/jobs/hr_warn_ladder.rs::wide": 2,
  "apps/worker/src/jobs/jixiao.rs::wide": 1,

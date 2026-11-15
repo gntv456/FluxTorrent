@@ -115,14 +115,16 @@ pub(crate) async fn cheat_enforce(db: &PgPool) -> anyhow::Result<u64> {
 
     // 事件自然过期（2026-11-15 误伤纠偏）：探测型规则的信号只在「持续
     // 命中」时有效——断流后永不过期曾积压 291 条 bitthief 僵尸。只收探测
-    // 类（reset/speed/corr/deal 是累计读数证据，断流≠洗白，留人工结案）。
+    // 类（reset/speed/corr 是累计读数证据，断流≠洗白，留人工结案；deal
+    // 2026-11-16 并入——它的信号是共现观察，断流即嫌疑消失）。
     // false_positive 不置：「信号消失」≠「判定错误」，不污染准确率分母。
-    // bitthief/nearcap 走 agent 等值；ghost 用 hash8 回链种子再验冷种。
+    // bitthief/nearcap 走 agent 等值；ghost/deal 用 hash8 回链验证。
     let expired = sqlx::query(
         "UPDATE cheat_events c SET resolved_at = now() \
          WHERE c.resolved_at IS NULL AND c.false_positive IS NOT TRUE \
            AND c.last_seen < now() - interval '7 days' \
            AND ( c.agent IN ('bitthief', 'nearcap') \
+             OR c.agent LIKE 'deal:%' \
              OR ( c.agent LIKE 'ghost:%' AND NOT EXISTS ( \
                   SELECT 1 FROM torrents t \
                     JOIN snatches o ON o.torrent_id = t.id AND o.leeching \

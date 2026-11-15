@@ -3,6 +3,21 @@
 本文件记录面向部署者的显著变更。格式参照 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)；
 版本号在首个语义化 tag（v0.x）发布后启用。
 
+## [0.5.19-dev.2] - 2026-11-16
+
+定位：**self_deal 规则校准**——CGNAT 网络上热门种共现假阳根治
+（线上 125/967 人被标 = 规则在该网络失效）。
+
+### 修复
+- self_deal 判定门槛：同账号对须在 30 分钟窗内 ≥3 颗种同向共现才记
+  （site_settings: `collusion_deal_min_swarms`，出厂 3，可调 1..50）——
+  真对刷是持续流量搬移，必跨多种；CGNAT 陌生共现集中在一两颗热门种
+- `peer_ip` 证据列修复：旧写法把 info_hash 绑进 peer_ip，证据面板
+  看到的一直是哈希不是 IP（collusion.rs 待修项收口）
+- near_cap/down_under/bitthief/self_deal 四处留痕同加 24h 去重闸
+  （job 每 10 分钟一轮，条件持续即 hits 每 10 分钟 +1）
+- deal 并入探测型 7 天自然过期名单（信号是共现观察，断流即嫌疑消失）
+
 ## [0.5.19-dev.1] - 2026-11-16
 
 定位：**反作弊留痕去重**——reset/speed/corr/ghost 四个计账伴生留痕口

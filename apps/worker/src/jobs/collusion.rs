@@ -67,7 +67,8 @@ pub async fn near_cap_check(db: &PgPool) -> anyhow::Result<u64> {
              VALUES ($1, $2, \
              'near_cap_rhythm（汇报间隔长期贴近容忍上限，疑似临时挂载型假做种）') \
              ON CONFLICT (user_id, agent, reason) DO UPDATE \
-               SET hits = cheat_events.hits + 1, last_seen = now()",
+               SET hits = cheat_events.hits + 1, last_seen = now() \
+             WHERE cheat_events.last_seen < now() - interval '24 hours'",
         )
         .bind(uid)
         .bind(format!("nearcap:{torrent_id}"))
@@ -88,6 +89,10 @@ pub async fn near_cap_check(db: &PgPool) -> anyhow::Result<u64> {
 /// ① 同 IP 双账号对刷（30 分钟窗口聚合 announce_ips）。
 /// NAT 误伤规避：只认「同 IP 同 swarm 且一方 seeding、另一方 leeching」
 /// 的方向性对倒；双方都在下载（NAT 拼团）或都在做种（同盒子保种）不命中。
+/// CGNAT 去噪（2026-11-16）：热门种上两个真人共用户口型 IP 一传一下
+/// 是常态（线上 125/967 人被标 = 规则在这张网上失效）。真对刷是持续的
+/// 流量搬移，必然跨多颗种同向共现；故要求同一账号对在窗内 ≥N 颗种
+/// 都成立（site_settings: collusion_deal_min_swarms，出厂 3）才记。
 pub async fn self_deal_check(db: &PgPool) -> anyhow::Result<u64> {
     // 近 30 分钟内，同 IP 同 swarm 里「我下你种 + 你下我种」任一方向的账号对。
     // 去重键 = 无序账号对 + hash（a<b 规范化），防止一 swarm 多 peer 重复计数。
@@ -96,7 +101,18 @@ pub async fn self_deal_check(db: &PgPool) -> anyhow::Result<u64> {
     // ≈ 6.9 亿中间行，实测 56 行就产生 400 行过滤）。改为先按 (ip, hash)
     // 聚合成小数组再在数组内配对：每组通常只有 2~4 个账号，配对数是组内
     // 平方但组极小；聚合在索引扫描上下推，PG 只物化多账号组。
-    let rows: Vec<(i64, i64, String)> = sqlx::query_as(
+    let min_swarms: i64 = sqlx::query_scalar::<_, String>(
+        "SELECT value FROM site_settings \
+         WHERE name = 'collusion_deal_min_swarms'",
+    )
+    .fetch_optional(db)
+    .await
+    .ok()
+    .flatten()
+    .and_then(|v| v.parse::<i64>().ok())
+    .unwrap_or(3)
+    .clamp(1, 50);
+    let rows: Vec<(i64, i64, String, String)> = sqlx::query_as(
         r#"
         WITH per_group AS (
             SELECT ip, info_hash,
@@ -129,26 +145,38 @@ pub async fn self_deal_check(db: &PgPool) -> anyhow::Result<u64> {
              AND b.user_id = sides.leecher AND b.leeching
              AND b.seen_at > now() - interval '30 minutes'
             WHERE s1.user_id < s2.user_id
+        ),
+        -- 同一账号对在窗内 ≥N 颗种同向共现才算数（见函数头 CGNAT 去噪）
+        persistent AS (
+            SELECT ua, ub FROM deals
+            GROUP BY ua, ub
+            HAVING count(DISTINCT info_hash) >= $1
         )
-        SELECT DISTINCT ua, ub, info_hash FROM deals
+        SELECT DISTINCT d.ua, d.ub, d.info_hash, d.ip
+        FROM deals d
+        JOIN persistent p ON p.ua = d.ua AND p.ub = d.ub
         "#,
     )
+    .bind(min_swarms)
     .fetch_all(db)
     .await?;
     let mut n = 0u64;
-    for (ua, ub, hash) in rows {
+    for (ua, ub, hash, ip) in rows {
         let agent = format!("deal:{}", &hash[..8.min(hash.len())]);
         for uid in [ua, ub] {
+            // peer_ip 存的是共享出口 IP（2026-11-16 修：旧写法把 info_hash
+            // 绑进 peer_ip，证据列一直是哈希）；24h 去重闸同 audit_hold。
             let _ = sqlx::query(
                 "INSERT INTO cheat_events (user_id, agent, peer_ip, reason) \
                  VALUES ($1, $2, $3, \
                  'self_deal（同 IP 双账号同 swarm 一传一下，疑似对刷）') \
                  ON CONFLICT (user_id, agent, reason) DO UPDATE \
-                   SET hits = cheat_events.hits + 1, last_seen = now()",
+                   SET hits = cheat_events.hits + 1, last_seen = now() \
+                 WHERE cheat_events.last_seen < now() - interval '24 hours'",
             )
             .bind(uid)
             .bind(&agent)
-            .bind(&hash)
+            .bind(&ip)
             .execute(db)
             .await?;
         }
@@ -222,7 +250,8 @@ pub async fn down_under_check(db: &PgPool) -> anyhow::Result<u64> {
              VALUES ($1, 'down_under', \
              'down_under（自报下载量低于 swarm 佐证量，疑似谎报下载）') \
              ON CONFLICT (user_id, agent, reason) DO UPDATE \
-               SET hits = cheat_events.hits + 1, last_seen = now()",
+               SET hits = cheat_events.hits + 1, last_seen = now() \
+             WHERE cheat_events.last_seen < now() - interval '24 hours'",
         )
         .bind(uid)
         .execute(db)
@@ -270,7 +299,8 @@ pub async fn bitthief_check(db: &PgPool) -> anyhow::Result<u64> {
              VALUES ($1, 'bitthief', \
              'zero_upload_seeder（完成后长期零上传，疑似 BitThief/捂盘）') \
              ON CONFLICT (user_id, agent, reason) DO UPDATE \
-               SET hits = cheat_events.hits + 1, last_seen = now()",
+               SET hits = cheat_events.hits + 1, last_seen = now() \
+             WHERE cheat_events.last_seen < now() - interval '24 hours'",
         )
         .bind(uid)
         .execute(db)
