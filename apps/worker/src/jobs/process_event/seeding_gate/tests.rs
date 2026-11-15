@@ -19,7 +19,22 @@ fn x(phys_down: i64, corroborated: Option<i64>) -> Evidence {
         completed_event: false,
         uploaded_total: 0,
         has_demand: true,
+        mature: true,
     }
+}
+
+/// 辅种宽限期（2026-11-16）：刚辅种上新种（未过成熟期）时 unproven 是
+/// 每个跨种者的必经态——种上有需求也不该记幽灵。
+#[test]
+fn fresh_crossseed_on_demanded_swarm_is_not_ghost() {
+    let mut e = x(0, None);
+    e.mature = false;
+    let v = verdict(&e, SIZE);
+    assert!(!v.ghost_note, "新辅种宽限期内不记 ghost");
+    assert!(!v.seeding, "宽限期 ≠ 在种资格（收益照旧拿不到）");
+    // 过了成熟期仍 unproven → 照记
+    let v = verdict(&x(0, None), SIZE);
+    assert!(v.ghost_note);
 }
 
 #[test]

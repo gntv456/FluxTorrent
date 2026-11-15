@@ -59,7 +59,16 @@ pub(crate) struct Evidence {
     /// 幽灵留痕的需求门槛：没有下载者就没有受害者——冷启动的跨种
     /// 种子「无从佐证」不该记账，跨种经济才不被误报淹没。
     pub(crate) has_demand: bool,
+    /// 该做种声明是否已过**成熟期**（稳定汇报 ≥
+    /// [`GHOST_MATURITY_ANNOUNCES`] 次）。刚辅种上新种时「未下载/未喂出/
+    /// 无佐证」是每个跨种者的必经态（数据来自外站，xreport 管道接入前
+    /// 佐证恒空）——t=0 就记 ghost 是对辅种经济的定义级误伤；给一天
+    /// 宽限，届时仍未被喂出/佐证洗白才算嫌疑。
+    pub(crate) mature: bool,
 }
+
+/// 幽灵成熟期（稳定 announce 次数）：30 分钟间隔 × 48 ≈ 24h。
+pub(crate) const GHOST_MATURITY_ANNOUNCES: i32 = 48;
 
 /// 判据结论。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -102,8 +111,10 @@ pub(crate) fn verdict(x: &Evidence, torrent_size: i64) -> Verdict {
     let completed =
         x.completed_event && x.left == 0 && proven && covered && x.had_baseline;
     // 幽灵签名：既没真下过、没被佐证、也没喂出过字节——
-    // 且种上确有下载需求（有人在下/下过）时才值得记
-    let ghost_note = x.left == 0 && x.port > 0 && !proven && x.has_demand;
+    // 且种上确有下载需求（有人在下/下过）、且声明已过成熟期
+    // （刚辅种的新种 unproven 是必经态，见 `Evidence::mature`）
+    let ghost_note =
+        x.left == 0 && x.port > 0 && !proven && x.has_demand && x.mature;
     Verdict {
         seeding,
         completed,

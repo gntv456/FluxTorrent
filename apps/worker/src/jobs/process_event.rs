@@ -147,6 +147,7 @@ pub(crate) async fn process_event(
             completed_event: ev.event == "completed",
             uploaded_total: pf.uploaded_total,
             has_demand: pf.has_demand,
+            mature: g.announce_count >= seeding_gate::GHOST_MATURITY_ANNOUNCES,
         },
         torrent_size,
     );

@@ -140,10 +140,11 @@ pub(crate) async fn ledger_guard(
         i64,
         i64,
         Option<chrono::DateTime<chrono::Utc>>,
+        i32,
     )> = sqlx::query_as(
         "SELECT last_up, last_down, \
              EXTRACT(EPOCH FROM (now() - last_seen_at))::bigint, \
-             uploaded, downloaded, reset_last_at \
+             uploaded, downloaded, reset_last_at, total_announces \
              FROM snatches WHERE user_id = $1 AND torrent_id = $2 \
              FOR UPDATE",
     )
@@ -151,13 +152,13 @@ pub(crate) async fn ledger_guard(
     .bind(torrent_id)
     .fetch_optional(&mut **tx)
     .await?;
-    let (last_up, last_down, acc_up, acc_down, reset_last_at) = last
-        .map(|(u, d, _, au, ad, r)| (u, d, au, ad, r))
-        .unwrap_or((0, 0, 0, 0, None));
+    let (last_up, last_down, acc_up, acc_down, reset_last_at, announces) = last
+        .map(|(u, d, _, au, ad, r, n)| (u, d, au, ad, r, n))
+        .unwrap_or((0, 0, 0, 0, None, 0));
     let mut anchor = anchor_for(
         ev.up,
         ev.down,
-        last.map(|(u, d, _, _, _, _)| (u, d)),
+        last.map(|(u, d, _, _, _, _, _)| (u, d)),
         reset_accept_bytes,
     );
     // P0-1 频次限制（六轮审计）：近零重置在 RESET_WINDOW_SECS 窗内只认可一次。
@@ -223,7 +224,7 @@ pub(crate) async fn ledger_guard(
         (0, 0)
     };
     let secs = last
-        .and_then(|(_, _, s, _, _, _)| s)
+        .and_then(|(_, _, s, _, _, _, _)| s)
         .unwrap_or(120)
         .clamp(1, secs_cap.max(1));
     let ceiling_bps = credit_ceiling(tx).await;
@@ -261,6 +262,9 @@ pub(crate) async fn ledger_guard(
         // 下也非零，不会误杀免费种的真做种者）∪ 历史 credited 下载
         // （兜住「重新做种老种子」与客户端计数器归零重来的场景）。
         phys_down: credit_down.max(acc_down),
+        // 稳定汇报次数（0304 计数列）：ghost 成熟期门槛的原料——刚辅种上
+        // 新种时「未下载/未喂出/无佐证」是每个跨种者的必经态，不算幽灵
+        announce_count: announces,
     })
 }
 
@@ -287,6 +291,8 @@ pub(crate) struct GuardOutcome {
     pub(crate) raw_down: i64,
     /// 下载侧物理量：本笔 credited 与历史 credited 的较大值
     pub(crate) phys_down: i64,
+    /// 稳定汇报次数（snatches.total_announces，INT4）：ghost 成熟期门槛原料
+    pub(crate) announce_count: i32,
 }
 
 /// 单次 announce 可入账的速率上限（字节/秒）：`traffic_credit_max_bps`（0285）优先，
