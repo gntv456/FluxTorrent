@@ -58,46 +58,43 @@ pub async fn me_badges(
     .unwrap_or(0);
     // 员工三队列：无 staff.message 权限整个分支持 null（普通用户照常拿到
     // 前三个计数；不是把 403 演成 0——0 会暗示「队列处理完了」）
-    let staff = if crate::authz::can(
-        &state,
-        &auth,
-        crate::authz::perm::STAFF_MESSAGE,
-    )
-    .await
-    {
-        let reports = sqlx::query_scalar::<_, i64>(
-            "SELECT count(*) FROM reports WHERE status = 0",
-        )
-        .fetch_one(db)
-        .await
-        .unwrap_or(0);
-        let cheaters = sqlx::query_scalar::<_, i64>(
-            // 与 /admin/cheaters 同口径（近 1 小时增量/速度双阈值）
-            "SELECT count(*) FROM snatches s \
+    let staff =
+        if crate::authz::can(&state, &auth, crate::authz::perm::STAFF_MESSAGE)
+            .await
+        {
+            let reports = sqlx::query_scalar::<_, i64>(
+                "SELECT count(*) FROM reports WHERE status = 0",
+            )
+            .fetch_one(db)
+            .await
+            .unwrap_or(0);
+            let cheaters = sqlx::query_scalar::<_, i64>(
+                // 与 /admin/cheaters 同口径（近 1 小时增量/速度双阈值）
+                "SELECT count(*) FROM snatches s \
              JOIN LATERAL (SELECT COALESCE(sum(tl.delta_up), 0)::bigint AS d \
               FROM traffic_ledger tl WHERE tl.user_id = s.user_id \
               AND tl.torrent_id = s.torrent_id \
               AND tl.window_start > now() - interval '1 hour') g ON TRUE \
              WHERE (s.seeding OR s.leeching) \
              AND (g.d > 536870912000 OR g.d / 3600 > 104857600)",
-        )
-        .fetch_one(db)
-        .await
-        .unwrap_or(0);
-        let staffbox = sqlx::query_scalar::<_, i64>(
-            "SELECT count(*) FROM staffmessages WHERE answered = 0",
-        )
-        .fetch_one(db)
-        .await
-        .unwrap_or(0);
-        serde_json::json!({
-            "reports": reports,
-            "cheaters": cheaters,
-            "staffbox": staffbox,
-        })
-    } else {
-        serde_json::Value::Null
-    };
+            )
+            .fetch_one(db)
+            .await
+            .unwrap_or(0);
+            let staffbox = sqlx::query_scalar::<_, i64>(
+                "SELECT count(*) FROM staffmessages WHERE answered = 0",
+            )
+            .fetch_one(db)
+            .await
+            .unwrap_or(0);
+            serde_json::json!({
+                "reports": reports,
+                "cheaters": cheaters,
+                "staffbox": staffbox,
+            })
+        } else {
+            serde_json::Value::Null
+        };
     Ok(ok(serde_json::json!({
         "unread": unread,
         "tickets": tickets,

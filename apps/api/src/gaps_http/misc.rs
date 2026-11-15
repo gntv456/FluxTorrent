@@ -28,8 +28,7 @@ pub async fn resub_use(
     let auth = require_auth(&req, &state).await?;
     let date = chrono::NaiveDate::parse_from_str(&body.target_date, "%Y-%m-%d")
         .map_err(|_| DomainError::Validation("日期格式 YYYY-MM-DD".into()))?;
-    // 只能补过去 30 天内（2026-11-15 工单 8221：旧站口径 30 天，7 天窗口
-    // 与补签卡发放量不匹配——断签一个月直接无力回天，现与签到日历说明统一）
+    // 只能补过去 30 天内（工单 8221：对齐旧站 30 天口径与日历说明）
     let days_ago =
         ((chrono::Utc::now() + chrono::Duration::hours(8)).date_naive() - date)
             .num_days();
