@@ -8,21 +8,15 @@
 //!                  + webhook 广播（复用 audit::webhook_broadcast）
 //!                  + 自动开案（0367 M1：reports ref_type='cheat' 落案件，
 //!                    同用户至多一个进行中案件，署名取在册最低 staff）
-//!   （经济侧拉黑由 seeding_reward 的 NOT EXISTS 承担：存在未处置
-//!     ghost/speed/reset 事件的用户停发做种收益，管理组处置后自动恢复）
+//!   （经济侧拉黑由 seeding_reward 的 NOT EXISTS 承担，处置后自动恢复）
 //!
-//! 幂等：每用户每事件只发一次 L1/L2——L1 靠 messages 里带 `[[cheat:{agent}]]`
-//! 隐式键的 7 天 NOT EXISTS（六轮补齐，此前 L1 无去重、实测 10 分钟一刷）；
-//! L2 靠 staffmessages 的 NOT EXISTS（管理组处置 resolved_at 置位后同
-//! 一事件不再重复告警）。员工（class_id ≥ 90）不自动发信，避免测试/运维
-//! 流量误伤。
-//!
-//! 自动开案的幂等与告警去重**相互独立**：告警 7 天窗口挡重，案件靠
-//! uq_cheat_case_open 唯一索引挡重——告警可能已发过，但案件被 done 关闭后
-//! 新证据再达 L2 线应开新案（ON CONFLICT 只挡 status IN (0,2) 的进行中案件）。
+//! 幂等/去重：L1 靠 messages 里 `[[cheat:{agent}]]` 隐式键 7 天 NOT EXISTS；
+//! L2 双级闸（每用户每日 + 7 天前缀）+ 员工（class_id ≥ 90）不发信。
+//! 自动开案与告警去重**相互独立**：案件靠 uq_cheat_case_open 唯一索引挡重
+//! （只挡 status IN (0,2) 进行中），案件 done 后新证据再达 L2 线会开新案。
 
 use super::sanction_sweep::sanction_sweep;
-use super::staff_alert::{alerted_within_7d, staff_alert};
+use super::staff_alert::{alerted_within_24h, alerted_within_7d, staff_alert};
 use sqlx::PgPool;
 
 const L2_SUBJ: &str = "作弊事件累进告警";
@@ -119,18 +113,34 @@ pub(crate) async fn cheat_enforce(db: &PgPool) -> anyhow::Result<u64> {
     // 停权到期清扫（0369 M3）：逻辑在 sanction_sweep.rs（本 job 每 10m 调一次）。
     sanction_sweep(db).await?;
 
-    // 高危类：进 L1/L2 告警网的事件。
-    // 五轮实测两处断口（2026-10-08）：
-    //  ① 旧写法 `c.agent = 'torrent:%'` 是**等值**比较，字面量里带 %——
-    //     永远匹配不到任何行（audit.rs 写的是 `torrent:{id}`）。应为 LIKE。
-    //  ② `corr:`（自报上传超佐证上界）、`xreport_over:`（佐证量超出本人物理
-    //     额度）、`xreport:absurd`（单次佐证超 10 GiB）、`nearcap:`（0304 贴边
-    //     汇报画像）这四类此前**不在任何处置过滤器里**：写了台账、面板看得见，
-    //     但 L1/L2 永不触发——0304 那套「网盘挂 NAS 临时挂载型假做种专杀」
-    //     实测就是只产画像不产处置。
-    // 注意本表与 seeding_reward 的「做种收益拉黑名单」（ghost/speed/reset 三类）
-    // 是**有意的两个口径**：告警面宽于经济拉黑面。seeding.rs 此刻是另一路的
-    // 在制品，扩它那份名单留到下一批（见本轮报告「遗留」）。
+    // 事件自然过期（2026-11-15 误伤纠偏）：探测型规则的信号只在「持续
+    // 命中」时有效——断流后永不过期曾积压 291 条 bitthief 僵尸。只收探测
+    // 类（reset/speed/corr/deal 是累计读数证据，断流≠洗白，留人工结案）。
+    // false_positive 不置：「信号消失」≠「判定错误」，不污染准确率分母。
+    // bitthief/nearcap 走 agent 等值；ghost 用 hash8 回链种子再验冷种。
+    let expired = sqlx::query(
+        "UPDATE cheat_events c SET resolved_at = now() \
+         WHERE c.resolved_at IS NULL AND c.false_positive IS NOT TRUE \
+           AND c.last_seen < now() - interval '7 days' \
+           AND ( c.agent IN ('bitthief', 'nearcap') \
+             OR ( c.agent LIKE 'ghost:%' AND NOT EXISTS ( \
+                  SELECT 1 FROM torrents t \
+                    JOIN snatches o ON o.torrent_id = t.id AND o.leeching \
+                       AND o.last_seen_at > now() - interval '7 days' \
+                  WHERE left(t.info_hash::text, 8) = right(c.agent, 8))))",
+    )
+    .execute(db)
+    .await?
+    .rows_affected();
+    if expired > 0 {
+        tracing::info!(expired, "cheat_enforce: 探测型事件自然过期");
+    }
+
+    // 高危类：进 L1/L2 告警网的事件（告警面宽于 seeding_reward 的经济拉黑
+    // 面——ghost/speed/reset 三类，有意两口径）。历史上两处断口：
+    //  ① `c.agent = 'torrent:%'` 等值比较永不匹配（应为 LIKE，已修）；
+    //  ② corr:/xreport_over:/xreport:absurd/nearcap: 曾不在任何处置过滤器，
+    //     只产画像不产处置（0304 的 NAS 临时挂载型假做种专杀，已并入）。
     let rows: Vec<(i64, String, String, i64)> = sqlx::query_as(
         "SELECT c.user_id, c.agent, c.reason, c.hits \
          FROM cheat_events c \
@@ -213,8 +223,8 @@ pub(crate) async fn cheat_enforce(db: &PgPool) -> anyhow::Result<u64> {
             .bind(uid)
             .bind(format!(
                 "[[cheat:{agent}]]系统检测到您的做种/流量数据存在异常记录（{}，累计 {} 次）。\
-                 若您确在使用特殊客户端或代理，请联系管理组说明；未处理的异常记录\
-                 将暂停做种收益结算，管理组核实后自动恢复。",
+                 若您确在使用特殊客户端或代理，请联系管理组说明；异常记录会在\
+                 后台留档供管理组核实，经案件处置产生停权才会暂停收益。",
                 reason, hits
             ))
             .bind(format!("[[cheat:{agent}]]"))
@@ -237,10 +247,14 @@ pub(crate) async fn cheat_enforce(db: &PgPool) -> anyhow::Result<u64> {
             let prefix = format!("[[cheat:{agent}]]用户 #{uid} ");
             let body = format!(
                 "{prefix}的作弊事件累计达 {hits} 次（{agent} / {reason}），\
-                 其做种收益已被自动暂停，并已在后台「反作弊案件」自动开案。\
-                 请及时认领核实并处置。"
+                 已在后台「反作弊案件」自动开案。\
+                 请及时认领核实并处置（处置可产生停权；未处置不停收益）。"
             );
-            let dup = alerted_within_7d(db, "cheater", L2_SUBJ, &prefix).await;
+            // 两级去重（2026-11-15 洪水纠偏）：原 7 天前缀闸粒度是
+            // 「每个 (user,agent) 各一封」，三天灌了 4865 封；叠加
+            // alerted_within_24h 的每用户每日闸。
+            let dup = alerted_within_24h(db, "cheater", L2_SUBJ, uid).await
+                || alerted_within_7d(db, "cheater", L2_SUBJ, &prefix).await;
             let n = if dup {
                 0
             } else {

@@ -113,3 +113,27 @@ pub(crate) async fn alerted_within_7d(
         }
     }
 }
+
+/// 每用户每日闸（2026-11-15 洪水纠偏第二级）：7 天前缀去重的粒度是
+/// 「每个 (user,agent)/band 前缀各一封」，96 个 gating 用户 × 多前缀
+/// 三天灌了 8161 封。同用户 24h 内已就**任意**该类告警过则静默，
+/// 与前缀闸叠加生效。读失败按未告警处理（同上，宁重发勿丢告警）。
+pub(crate) async fn alerted_within_24h(
+    db: &PgPool,
+    permission: &str,
+    subject: &str,
+    uid: i64,
+) -> bool {
+    let r = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS (SELECT 1 FROM staffmessages \
+          WHERE permission = $1 AND subject = $2 \
+            AND body LIKE '[[%]]用户 #' || $3 || ' %' \
+            AND created_at > now() - interval '24 hours')",
+    )
+    .bind(permission)
+    .bind(subject)
+    .bind(uid.to_string())
+    .fetch_one(db)
+    .await;
+    r.unwrap_or(false)
+}

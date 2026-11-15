@@ -61,17 +61,7 @@ const SPLIT_SQL: &str = r#"
             count(*) FILTER (WHERE cat = 'unreach') AS unreachable,
             count(*) FILTER (WHERE cat = 'stale') AS stale,
             (SELECT (u.status >= 2
-                     OR COALESCE(u.cheat_banned_until > now(), false)
-                     OR EXISTS (
-                         SELECT 1 FROM cheat_events c
-                         WHERE c.user_id = u.id
-                           AND c.resolved_at IS NULL
-                           AND false_positive IS NOT TRUE
-                           AND (c.agent LIKE 'ghost:%'
-                                OR c.agent LIKE 'speed:%'
-                                OR c.agent LIKE 'reset:%'
-                                OR c.agent LIKE 'corr:%')
-                     ))
+                     OR COALESCE(u.cheat_banned_until > now(), false))
              FROM users u WHERE u.id = $1) AS suspended
         FROM (
             SELECT CASE
@@ -145,17 +135,9 @@ const EST_SQL: &str = r#"
               AND NOT COALESCE(u.cheat_banned_until > now(), false)
               AND s.last_seen_at > now()
                   - ($2::bigint * interval '1 second')
-              AND NOT EXISTS (
-                  SELECT 1 FROM cheat_events c
-                  WHERE c.user_id = u.id AND c.resolved_at IS NULL
-                    AND false_positive IS NOT TRUE
-                    AND (c.agent LIKE 'ghost:%'
-                         OR c.agent LIKE 'speed:%'
-                         OR c.agent LIKE 'reset:%'
-                         OR c.agent LIKE 'corr:%')
-                  LIMIT 1
-              )
-        ),
+              -- 2026-11-15 站长拍板：未处置探测事件不停发收益（口径与
+              -- worker/seeding.rs 对齐：只随 cheat_banned_until 停）
+            ),
         s2 AS (
             SELECT count(*) AS n,
                    COALESCE(sum(b), 0) AS bonus_raw,

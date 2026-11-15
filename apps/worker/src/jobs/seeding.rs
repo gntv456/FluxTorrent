@@ -95,24 +95,15 @@ pub async fn seeding_reward(
                 WHERE u.status < 2
                   -- 0369 M3：作弊停权期间同挂起口径停发做种收益（到期由
                   -- cheat_enforce 清扫 cheat_banned_until 后自动恢复）。
+                  -- 2026-11-15 站长拍板：未处置探测事件（ghost/speed/reset）
+                  -- **不再停发收益**——原 NOT EXISTS 闸因 false_positive 全
+                  -- NULL 从未生效过，修复后实测会拦 60 人（reset 41/speed
+                  -- 18/ghost 7），其中计数器回退/盒子超速/冷种探测的合法
+                  -- 解释占多数（实测假阳率 94% 级）。探测信号只产出证据与
+                  -- 案件，经济处罚权收归案件停权处置（cheat_banned_until）。
                   AND NOT COALESCE(u.cheat_banned_until > now(), false)
                   AND s.last_seen_at > now() - ($2::bigint * interval '1 second')
-                  AND NOT EXISTS (
-                      SELECT 1 FROM cheat_events c
-                      WHERE c.user_id = u.id AND c.resolved_at IS NULL
-                        -- false_positive（0482e 事故纠偏标记）不算拉黑证据：
-                        -- tracker XFF 断链期间的同 IP 假阳性不应停真实用户收益。
-                        -- 三值陷阱（2026-11-15 线上实证）：该列从未被写入，
-                        -- 1211 条未结事件全是 NULL，`NOT NULL`=NULL → 子查询
-                        -- 恒空，「未结事件停发收益」整个机制从未生效过
-                        --（96 个挂 ghost/reset 事件的用户照常领收益）。
-                        AND false_positive IS NOT TRUE
-                        AND (c.agent LIKE 'ghost:%' OR c.agent LIKE 'speed:%'
-                             OR c.agent LIKE 'reset:%'
-                             OR c.agent LIKE 'corr:%')
-                      LIMIT 1
-                  )
-            ),
+                ),
             per_user AS (
                 SELECT user_id, donor, sum(b) AS bonus_raw
                 FROM per_torrent GROUP BY user_id, donor

@@ -1445,7 +1445,7 @@ const enBase: Omit<
     sessionsNote:
       "Live sessions with >500 GB upload delta or >100 MB/s average; real-time probe, no history.",
     eventsNote:
-      "Users with unresolved ghost-seed / over-ceiling / counter-reset events have seeding rewards suspended; resolving restores them.",
+      "Unresolved ghost-seed / speed-cap / counter-reset events keep escalating alerts and auto-open cases; seeding income is NOT affected by unresolved events and only stops after a case sanction.",
     eventsEmpty: "No pending events",
     colEventUser: "User",
     colEventKind: "Kind",

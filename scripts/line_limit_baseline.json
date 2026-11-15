@@ -22,7 +22,7 @@
  "apps/worker/src/jobs/preserve.rs::wide": 7,
  "apps/worker/src/jobs/process_event.rs": 309,
  "apps/worker/src/jobs/process_event.rs::wide": 13,
- "apps/worker/src/jobs/risk_score.rs": 424,
+ "apps/worker/src/jobs/risk_score.rs": 423,
  "apps/worker/src/jobs/run.rs": 327,
  "apps/worker/src/jobs/run.rs::wide": 1,
  "apps/worker/src/jobs/seeding.rs::wide": 10,

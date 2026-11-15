@@ -9,6 +9,29 @@ use super::group::ANNOUNCE_GROUP;
 use super::process_event::process_event;
 use sqlx::PgPool;
 
+/// 私网/保留地址判定（ghost 前置①）：NAT 网关与内网穿透来源的 conn
+/// 探测结果不可信（实测 cheat_events.peer_ip 里出现过 172.18.0.1）。
+/// 解析失败按私网处理（宁漏勿误——ghost 只剩两条前置都过的窄口）。
+fn is_private_ip(ip: &str) -> bool {
+    let seg: Vec<&str> = ip.trim_matches(|c| c == '.').split('.').collect();
+    if seg.len() != 4 {
+        return true; // IPv6/异常格式：走保守豁免
+    }
+    let ok: Vec<u16> = seg
+        .iter()
+        .filter_map(|s| s.parse::<u16>().ok())
+        .collect();
+    if ok.len() != 4 {
+        return true;
+    }
+    let [a, b, _, _] = [ok[0], ok[1], ok[2], ok[3]];
+    matches!(a, 10 | 127 | 0)
+        || (a == 172 && (16..=31).contains(&b))
+        || (a == 192 && b == 168)
+        || (a == 169 && b == 254)
+        || (a == 100 && (64..=127).contains(&b))
+}
+
 /// 处理一条 announce 事件。
 ///
 /// 返回 `(ack, user_id, torrent_id)`：
@@ -56,17 +79,39 @@ pub(crate) async fn handle_entry(
                 .await;
             }
             // connectable 抽样联动（0071 P1-9 → 2026-10-07 保种组审计 P0-2）：
-            // 不可达 + 零上传 + 无监听端口 → 幽灵做种实锤。事件键从
+            // 不可达 + 零上传 + 无监听端口 → 幽灵做种信号。事件键从
             // 'connectable' 改为 'ghost:{hash8}'——速度/回退/幽灵三类统一
             // 按种子分键（旧 'connectable' 是全账号单行，hits 聚合后无法
             // 定位是哪颗种子在刷，累进处置也分不出轻重）。
-            if ev.conn == Some(0) && ev.port == 0 && ev.up == 0 {
+            // ── 2026-11-15 误伤纠偏（94% 假阳实证）三前置 ──
+            // ① 私网 IP 豁免：NAT/代理后探测不可达是常态（实测事件里
+            //    出现过 172.18.0.1 网关地址），conn 结果对私网来源不可信；
+            // ② swarm 需求门槛：近 7 天有活跃 leecher 才谈得上「捂盘」
+            //    （与 bitthief 规则同款前置；冷种保种者零上传是正常行为，
+            //    ghost 侧 54 人里 43 人由此误伤——保种库越大被抽越多）；
+            // ③ 发布者豁免：种子 owner 本人首发做种，「未下载却有完整
+            //    数据」是发布形态（shmt86 案：0 下载 87TB 上传与 swarm
+            //    真实消费量对账平衡，属批量发布者而非刷量）。
+            if ev.conn == Some(0)
+                && ev.port == 0
+                && ev.up == 0
+                && !is_private_ip(&ev.ip)
+            {
                 let ghost_key =
                     format!("ghost:{}", &ev.hash[..8.min(ev.hash.len())]);
                 let _ = sqlx::query(
                     "INSERT INTO cheat_events (user_id, agent, \
-                     peer_ip, reason) VALUES ($1, $2, \
-                     $3, 'ghost_seed（无监听端口且回连不可达的幽灵做种）') \
+                     peer_ip, reason) \
+                     SELECT $1, $2, $3, \
+                     'ghost_seed（无监听端口且回连不可达的幽灵做种）' \
+                     WHERE EXISTS ( \
+                         SELECT 1 FROM snatches o \
+                         WHERE o.torrent_id = $4 \
+                           AND o.user_id <> $1 AND o.leeching \
+                           AND o.last_seen_at > now() - interval '7 days') \
+                       AND NOT EXISTS ( \
+                         SELECT 1 FROM torrents t \
+                         WHERE t.id = $4 AND t.owner_id = $1) \
                      ON CONFLICT (user_id, agent, reason) DO UPDATE \
                        SET hits = cheat_events.hits + 1, \
                            last_seen = now()",
@@ -74,6 +119,7 @@ pub(crate) async fn handle_entry(
                 .bind(ev.user)
                 .bind(&ghost_key)
                 .bind(&ev.ip)
+                .bind(torrent_id)
                 .execute(db)
                 .await;
             }

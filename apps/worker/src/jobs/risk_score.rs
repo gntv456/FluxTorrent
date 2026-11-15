@@ -18,18 +18,17 @@
 //!     权重调参后的安全网（增量轮 1h 内也会自愈，双保险）。
 //!
 //! 只计入 resolved_at IS NULL 的存活证据（staff 处置即解除）；职员
-//! （class_id ≥ 90）不计分——其测试/运维流量不生成观察名单。
-//! 已处置/过期用户的分数行**不删**（保留 0 分留存），删了会被增量轮
-//! 的「无分数行」分支立刻插回，造成删-插 churn。
+//! （class_id ≥ 90）不计分——其测试/运维流量不生成观察名单。已处置/
+//! 过期用户的分数行**不删**（保留 0 分留存），删了会被增量轮的
+//! 「无分数行」分支立刻插回，造成删-插 churn。
 //!
-//! 写入门禁：upsert 的 WHERE 只挡 score/band 均未变——这是 decay 机制的
-//! 支点（未变则不写 ⇒ updated_at 停留 ⇒ 1h 后落入脏集被重算）。若去掉
-//! 门禁变成每轮必写，updated_at 永远新鲜，无新证据的用户再也不进脏集，
-//! 分数冻结。shadow_breakdown 随分数变化时刷新（含各家族 hits/权重/贡献分）。
+//! 写入门禁：upsert 的 WHERE 只挡 score/band 均未变——decay 支点（未变
+//! 则不写 ⇒ updated_at 停留 ⇒ 1h 后落入脏集被重算；去掉门禁则每轮必写、
+//! 分数冻结）。shadow_breakdown 随分数变化时刷新。
 
 use super::cheat_enforce::auto_open_case;
 use super::risk_backtest::drain_pending_backtests;
-use super::staff_alert::{alerted_within_7d, staff_alert};
+use super::staff_alert::{alerted_within_24h, alerted_within_7d, staff_alert};
 use sqlx::PgPool;
 use std::collections::HashMap;
 
@@ -38,12 +37,8 @@ use std::collections::HashMap;
 const RECENT_DAYS: i32 = 90;
 /// 规则集版本（0391）。
 ///
-/// 此前是**硬编码常量**：改公式或调权后，存量分数行的版本号还是 1，
-/// 面板上「这批分数是哪版权重算的」无从判断。现改为读
-/// `cheat_rulesets.active`——分数行指向一张真实存在的版本，
-/// 任何时候都能查回当时的权重快照。
-///
-/// 查不到（例如 0391 迁移尚未落库）时退回 1，保持旧行为。
+/// 读 `cheat_rulesets.active`（曾为硬编码 1——调权后存量行无从判断出处）；
+/// 查不到（0391 迁移未落库）时退回 1，保持旧行为。
 async fn active_ruleset_ver(db: &PgPool) -> i32 {
     sqlx::query_scalar::<_, i32>(
         "SELECT COALESCE(max(version), 1) FROM cheat_rulesets WHERE active",
@@ -286,7 +281,12 @@ pub async fn risk_score(db: &PgPool, full: bool) -> anyhow::Result<u64> {
         let escalate = band == "critical" && old != "critical";
         if watch(old) != watch(band) || escalate {
             let prefix = format!("[[risk:{uid}:{band}]]");
-            if !alerted_within_7d(db, "cheater", BAND_SUBJ, &prefix).await {
+            // 每用户每日闸（2026-11-15 洪水纠偏）：前缀含 band，进出 watch+
+            // 抖动一个来回就两封，3296 条洪水多由此灌出。24h 内已就风险
+            // 档位告警过则静默（档位仍写表，只是不重复打扰）。
+            if !alerted_within_24h(db, "cheater", BAND_SUBJ, *uid).await
+                && !alerted_within_7d(db, "cheater", BAND_SUBJ, &prefix).await
+            {
                 let body = format!(
                     "{prefix}用户 #{uid} 风险评分 {score}（{old} → {band}）。\
                      构成：{}。watch 及以上已进后台观察名单。",
@@ -307,10 +307,9 @@ pub async fn risk_score(db: &PgPool, full: bool) -> anyhow::Result<u64> {
         // 每轮重算都尝试：ON CONFLICT 挡进行中案件（幂等）；案件被 done
         // 关闭后新证据/新衰减触发重算时会开新案（同 M1 语义）。
         //
-        // 【0391 影子模式】risk_shadow_mode=1 时**只记不判**：
-        // 把「会开案」这件事写进 cheat_shadow_scores.would_open，
-        // 但不真的开案。理由：改一个权重就可能给一批人开案，
-        // 没有「先看看会多判多少人」这一步，改参数等于闭眼按扳机。
+        // 【0391 影子模式】risk_shadow_mode=1 时**只记不判**：把「会开案」
+        // 写进 cheat_shadow_scores.would_open 而不真开——改权重可能给一批人
+        // 开案，没有「先看看会多判多少人」这步等于闭眼按扳机。
         let would_open = band == "high" || band == "critical";
         if would_open {
             if shadow {

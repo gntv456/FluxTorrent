@@ -83,7 +83,7 @@ export function CheatEventsTable() {
 
   return (
     <>
-      {/* 作弊事件待办（处置后自动恢复该用户的做种收益结算） */}
+      {/* 作弊事件待办（处置即出队并进准确率统计；收益仅随案件停权变化） */}
       <div className="mt-2 mb-1 flex items-center justify-between">
         <h3 className="text-sm font-bold text-ink">{t.eventsTitle}</h3>
         <button
