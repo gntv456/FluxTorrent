@@ -132,6 +132,7 @@ version_min 不能大于 version_max	version_min 不能大於 version_max	versio
 种子促销需指定 torrent_id	種子促銷需指定 torrent_id	Torrent promotion requires a torrent_id
 站点未配置对外访问地址（PUBLIC_SITE_URL），无法发送邀请邮件	站點未設定對外存取位址（PUBLIC_SITE_URL），無法寄送邀請郵件	The site has no public URL configured (PUBLIC_SITE_URL); the invitation email cannot be sent
 补签日期不能晚于今天	補簽日期不能晚於今天	The make-up date cannot be later than today
+只能补过去 30 天内	只能補過去 30 天內	Makeup is limited to the last 30 days
 该 intent 已处理（非待审状态）	該 intent 已處理（非待審狀態）	This intent is already handled (not pending)
 该 intent 已过结束时间，自动置 expired	該 intent 已過結束時間，自動設為 expired	This intent has passed its end time and was set to expired
 该促销类型不可走审批（不存在/未启用/置顶类）	該促銷類型不可走審批（不存在/未啟用/置頂類）	This promotion type cannot go through approval (missing, disabled, or pinned type)
