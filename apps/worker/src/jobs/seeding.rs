@@ -101,8 +101,12 @@ pub async fn seeding_reward(
                       SELECT 1 FROM cheat_events c
                       WHERE c.user_id = u.id AND c.resolved_at IS NULL
                         -- false_positive（0482e 事故纠偏标记）不算拉黑证据：
-                        -- tracker XFF 断链期间的同 IP 假阳性不应停真实用户收益
-                        AND NOT c.false_positive
+                        -- tracker XFF 断链期间的同 IP 假阳性不应停真实用户收益。
+                        -- 三值陷阱（2026-11-15 线上实证）：该列从未被写入，
+                        -- 1211 条未结事件全是 NULL，`NOT NULL`=NULL → 子查询
+                        -- 恒空，「未结事件停发收益」整个机制从未生效过
+                        --（96 个挂 ghost/reset 事件的用户照常领收益）。
+                        AND false_positive IS NOT TRUE
                         AND (c.agent LIKE 'ghost:%' OR c.agent LIKE 'speed:%'
                              OR c.agent LIKE 'reset:%'
                              OR c.agent LIKE 'corr:%')

@@ -66,7 +66,7 @@ const SPLIT_SQL: &str = r#"
                          SELECT 1 FROM cheat_events c
                          WHERE c.user_id = u.id
                            AND c.resolved_at IS NULL
-                           AND NOT c.false_positive
+                           AND false_positive IS NOT TRUE
                            AND (c.agent LIKE 'ghost:%'
                                 OR c.agent LIKE 'speed:%'
                                 OR c.agent LIKE 'reset:%'
@@ -148,7 +148,7 @@ const EST_SQL: &str = r#"
               AND NOT EXISTS (
                   SELECT 1 FROM cheat_events c
                   WHERE c.user_id = u.id AND c.resolved_at IS NULL
-                    AND NOT c.false_positive
+                    AND false_positive IS NOT TRUE
                     AND (c.agent LIKE 'ghost:%'
                          OR c.agent LIKE 'speed:%'
                          OR c.agent LIKE 'reset:%'
