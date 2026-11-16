@@ -317,3 +317,6 @@ url 无效	url 無效	Invalid url
 该考核记录已被收回	該考核記錄已被收回	This exam record has already been revoked
 标题最多 120 个字符	標題最多 120 個字元	The title cannot exceed 120 characters.
 该玩法等级不足	該玩法等級不足	Your level is too low for this game
+改名卡不存在、已使用或已过期	改名卡不存在、已使用或已過期	The rename card does not exist, has already been used, or has expired
+新用户名与当前相同	新使用者名稱與目前相同	The new username is the same as the current one
+没有可用的改名卡——可在商店购买（我的券页面自动抵扣）	沒有可用的改名卡——可在商店購買（我的券頁面自動抵扣）	No rename card available — purchase one in the shop (auto-applied on the My vouchers page)

@@ -289,12 +289,12 @@ mod tests {
         // 开放域 17 操作（16 键，/me/tokens 双方法）+ 种子域 38 操作
         // + 社区域 85 操作（76 键，同键多方法；/torrents/{id} 三方法等
         // 故键数少于操作数）。
-        // 沿革：144（C1 download-link）→ 146（forums/mine+side）→
-        // 147（forums/recent）→ 149（shoutbox_clear+site_activity）→
-        // 150（0417 bookmark 对称口）→ 152（0491 +GET /me/badges）
+        // 沿革：144→146（forums/mine+side）→147（forums/recent）→
+        // 149（shoutbox_clear+site_activity）→150（0417 bookmark 对称口）
+        // →152（0491 +GET /me/badges）→153（1b80bfbc +POST /me/rename）
         assert_eq!(
-            ops, 152,
-            "聚合应有 152 个操作（开放 17 + 种子 41 + 社区 94）"
+            ops, 153,
+            "聚合应有 153 个操作（开放 17 + 种子 41 + 社区 95）"
         );
     }
 }

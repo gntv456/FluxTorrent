@@ -101,6 +101,7 @@
  "apps/api/src/auth_http/login.rs": 7,
  "apps/api/src/auth_http/logout.rs": 1,
  "apps/api/src/auth_http/me.rs": 5,
+ "apps/api/src/auth_http/me_rename.rs": 7,
  "apps/api/src/auth_http/me_badges.rs": 6,
  "apps/api/src/auth_http/me_history.rs": 2,
  "apps/api/src/auth_http/me_security.rs": 9,

@@ -17,10 +17,8 @@ fn is_private_ip(ip: &str) -> bool {
     if seg.len() != 4 {
         return true; // IPv6/异常格式：走保守豁免
     }
-    let ok: Vec<u16> = seg
-        .iter()
-        .filter_map(|s| s.parse::<u16>().ok())
-        .collect();
+    let ok: Vec<u16> =
+        seg.iter().filter_map(|s| s.parse::<u16>().ok()).collect();
     if ok.len() != 4 {
         return true;
     }
