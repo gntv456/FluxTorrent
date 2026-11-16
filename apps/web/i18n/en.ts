@@ -8155,7 +8155,8 @@ const ticketEn: Dict["ticket"] = {
 const shoutbotEn: Dict["shoutbot"] = {
   botName: "bot",
   commandsHint:
-    "Type a / command or tap a button below — the bot replies instantly",
+    "Type a / command or tap the / button to pick one — the bot replies instantly",
+  commandsTitle: "Bot commands",
   replyFailed: "Command failed",
   unknownCmd: "Unknown command; available: /free /stats /me /help",
 };

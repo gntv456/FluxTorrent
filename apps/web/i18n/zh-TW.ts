@@ -7884,7 +7884,8 @@ const ticketTw: Dict["ticket"] = {
 
 const shoutbotTw: Dict["shoutbot"] = {
   botName: "機器人",
-  commandsHint: "輸入 / 開頭的命令或點下方按鈕，機器人直接回話",
+  commandsHint: "輸入 / 開頭的命令或點「/」選命令，機器人直接回話",
+  commandsTitle: "機器人命令",
   replyFailed: "命令執行失敗",
   unknownCmd: "未知命令，可用：/free /stats /me /help",
 };

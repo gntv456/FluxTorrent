@@ -242,14 +242,6 @@ export function ShoutBox({ active = true }: { active?: boolean } = {}) {
           </li>
         )}
       </ul>
-      {commands.length > 0 && (
-        <ShoutCommands
-          commands={commands}
-          busy={busy}
-          onRun={(cmd) => void send(cmd)}
-          onFill={(cmd) => setText(cmd)}
-        />
-      )}
       {msg && <p className="shoutbox__msg">{msg}</p>}
       <form
         className="shoutbox__form"
@@ -258,6 +250,16 @@ export function ShoutBox({ active = true }: { active?: boolean } = {}) {
           void send();
         }}
       >
+        {/* 2026-11-16：命令候选收编为「/」弹出钮（原按钮墙常驻占版面），
+            与表情钮并排在输入行左端 */}
+        {commands.length > 0 && (
+          <ShoutCommands
+            commands={commands}
+            busy={busy}
+            onRun={(cmd) => void send(cmd)}
+            onFill={(cmd) => setText(cmd)}
+          />
+        )}
         <ShoutEmojiBar onPick={(emoji) => setText((v) => v + emoji)} />
         <input
           value={text}

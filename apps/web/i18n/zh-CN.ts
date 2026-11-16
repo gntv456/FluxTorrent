@@ -7988,7 +7988,8 @@ export const zhCN = {
   /** 聊天机器人 /命令（/shoutbox/bot/exec，0078） */
   shoutbot: {
     botName: "机器人",
-    commandsHint: "输 / 开头的命令或点下方按钮，机器人直接回话",
+    commandsHint: "输 / 开头的命令或点「/」选命令，机器人直接回话",
+    commandsTitle: "机器人命令",
     replyFailed: "命令执行失败",
     unknownCmd: "未知命令，可用：/free /stats /me /help",
   },
