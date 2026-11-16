@@ -160,8 +160,10 @@ export default async function PreservePage({
                       className="inline align-[-3px]"
                     />
                   </th>
-                  {/* 保种区专属列：认领人 + 认领操作 */}
+                  {/* 保种区专属列：认领人 + 认领操作（对应 extra 两列）+
+                      行为列（TorrentTr 自带，此前表头少 1 列整行错位） */}
                   <th className="w-24">{dict.preserve.claimedByCol}</th>
+                  <th className="w-24" aria-label={dict.preserve.claimAction} />
                   <th className="w-24">{dict.torrents.colActions}</th>
                 </tr>
               </thead>

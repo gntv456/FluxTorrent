@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { api, ApiError } from "@/lib/api-client";
 import { apiErrorMessage, useI18n } from "@/i18n/client";
@@ -37,6 +38,7 @@ export function TorrentActions({
   const [busy, setBusy] = useState(false);
   const [askDelete, setAskDelete] = useState(false);
   const ref = useRef<HTMLSpanElement>(null);
+  const menuRef = useRef<HTMLSpanElement>(null);
   const moreBtnRef = useRef<HTMLButtonElement>(null);
 
   /** 打开菜单：按 ⋮ 钮的视口坐标计算 fixed 定位；下沿空间不足（估高 128px）改向上翻 */
@@ -58,7 +60,13 @@ export function TorrentActions({
   useEffect(() => {
     if (!open) return;
     const onDoc = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node))
+      const n = e.target as Node;
+      // 菜单 portal 到 body 后不在 ref 子树内，须单独豁免（否则点菜单项
+      // 先被 mousedown 关菜单，onClick 落空）
+      if (
+        (ref.current && !ref.current.contains(n)) &&
+        (menuRef.current && !menuRef.current.contains(n))
+      )
         setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
@@ -211,45 +219,49 @@ export function TorrentActions({
       >
         ⋮
       </button>
-      {open && menuPos && (
-        <span
-          className="torrents-menu torrents-menu--fixed"
-          role="menu"
-          style={{ top: menuPos.top, right: menuPos.right }}
-        >
-          <button
-            type="button"
-            role="menuitem"
-            disabled={busy}
-            onClick={bookmark}
+      {open &&
+        menuPos &&
+        createPortal(
+          <span
+            className="torrents-menu torrents-menu--fixed"
+            role="menu"
+            ref={menuRef}
+            style={{ top: menuPos.top, right: menuPos.right }}
           >
-            ☆ {dict.torrents.bookmark}
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            disabled={busy}
-            onClick={copyDlLink}
-          >
-            🔗 {dict.torrents.copyDlLink}
-          </button>
-          <button type="button" role="menuitem" onClick={edit}>
-            ✎ {dict.torrents.edit}
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            className="danger"
-            disabled={busy}
-            onClick={() => {
-              setOpen(false);
-              setAskDelete(true);
-            }}
-          >
-            🗑 {dict.torrents.delete}
-          </button>
-        </span>
-      )}
+            <button
+              type="button"
+              role="menuitem"
+              disabled={busy}
+              onClick={bookmark}
+            >
+              ☆ {dict.torrents.bookmark}
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              disabled={busy}
+              onClick={copyDlLink}
+            >
+              🔗 {dict.torrents.copyDlLink}
+            </button>
+            <button type="button" role="menuitem" onClick={edit}>
+              ✎ {dict.torrents.edit}
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              className="danger"
+              disabled={busy}
+              onClick={() => {
+                setOpen(false);
+                setAskDelete(true);
+              }}
+            >
+              🗑 {dict.torrents.delete}
+            </button>
+          </span>,
+          document.body,
+        )}
       {/* W-19：删除确认（danger + 种子名二次输入；遮罩误触不关） */}
       <ConfirmDialog
         open={askDelete}
