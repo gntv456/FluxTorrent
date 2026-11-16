@@ -62,7 +62,7 @@ const tabbar = { shop: "商店" };
 const allOn = () => true;
 
 describe("defaultNav", () => {
-  it("全模块开启时一级 4 项 + 6 分组，顺序稳定（快照）", () => {
+  it("全模块开启时一级 5 项 + 6 分组，顺序稳定（快照）", () => {
     const r = defaultNav({
       nav,
       tabbar,
@@ -70,11 +70,13 @@ describe("defaultNav", () => {
       modules: allOn,
       customItems: [],
     });
-    // IA-1（W-30）：/top 从一级让位给顶栏搜索，落「资源发现」组首项
+    // 2026-11-16 站长定稿：默认一级 = 首页/论坛/资源库/保种区/发布
+    // （教育四级导航只在教育板块站点挂，本快照无教育分类不出现）
     expect(r.primary.map((p) => p.href)).toEqual([
       "/",
-      "/torrents",
       "/forums",
+      "/torrents",
+      "/preserve",
       "/upload",
     ]);
     expect(r.groups.map((g) => g.group)).toEqual([
@@ -92,6 +94,9 @@ describe("defaultNav", () => {
     expect(r.groups[2].items.at(-1)?.label).toBe("魔力明细");
     // 成长荣誉组首项：等级要求公开页（0226 P2 触点 #2）
     expect(r.groups[3].items[0]?.href).toBe("/classes");
+    // 保种区升一级后，「字幕与保种」组里不再重复
+    const subs = r.groups[1];
+    expect(subs.items.some((i) => i.href === "/preserve")).toBe(false);
   });
 
   it("模块开关过滤：forums 关闭一级消失，games 关闭娱乐组剔除", () => {

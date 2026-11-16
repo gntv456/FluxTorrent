@@ -124,10 +124,8 @@ export function customNav(items: MenuItem[]): {
 /** 默认导航（customNav 不生效时的全站口径）。
  *  分组顺序：资源发现 / 字幕与保种 / 魔力经济 / 成长荣誉 / 娱乐 / 更多。
  *  条目按 module 开关过滤；forums 关闭一级入口消失（三审 C-3 与 footer 同口径）。
- *  IA-1（DS-PLAN-01 W-30，2026-10-13）：发现组 12 项拆为「资源发现 /
- *  字幕与保种」两组降一层（五组杂烩在一层是「全都重要=全都不重要」的
- *  病症，六站横评支持分层诚实）；/top 从一级让位给顶栏搜索直显框
- *  （一级 5 项 → 4 项 + 搜索，同类站 同构），入口一个不删。 */
+ *  IA-1（W-30）：发现组 12 项拆两组降一层；/top 让位给顶栏搜索。
+ *  2026-11-16 站长定稿一级六项：首页/论坛/资源库/[教育]/保种区/发布。 */
 export function defaultNav({
   nav,
   tabbar,
@@ -147,6 +145,7 @@ export function defaultNav({
   const g = (on: boolean, item: NavItem) => (on ? [item] : []);
   const primary: NavItem[] = [
     { href: "/", label: nav.home },
+    ...(modules("forums") ? [{ href: "/forums", label: nav.forums }] : []),
     {
       href: "/torrents",
       label: nav.library,
@@ -158,7 +157,11 @@ export function defaultNav({
     ...(libraryCats && hasEduCat(libraryCats)
       ? [eduPrimary(nav.eduRes, nav)]
       : []),
-    ...(modules("forums") ? [{ href: "/forums", label: nav.forums }] : []),
+    // 保种区一级直挂（2026-11-16 站长定稿：默认一级 = 首页/论坛/
+    // 资源库/保种区/发布/更多）——原来压在「字幕与保种」组触达弱
+    ...(modules("preserve")
+      ? [{ href: "/preserve", label: nav.preserve }]
+      : []),
     { href: "/upload", label: nav.upload },
   ];
   const groups: NavGroup[] = [
@@ -195,9 +198,7 @@ export function defaultNav({
         ...(dimOn("subtitle_group")
           ? [{ href: "/subtitle-groups", label: nav.subtitleGroups }]
           : []),
-        ...(modules("preserve")
-          ? [{ href: "/preserve", label: nav.preserve }]
-          : []),
+        // 保种区已升一级（2026-11-16），组里不再重复
         ...(socialOn
           ? [
               { href: "/endangered", label: nav.endangered },
