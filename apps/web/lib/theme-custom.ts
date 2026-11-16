@@ -1,10 +1,11 @@
 /** 用户自选主题色（QQ 调色盘「自选颜色」对标，2026-11-14）。
  *
- * 机制：选自选色时 data-theme 落 brand（日间亮底），再从用户所选 #rrggbb
- * 派生整组品牌令牌（HSL 换算 + 对比度钳制），以 **inline style 写在 <html>
- * 上**——inline 优先级高于任何 [data-theme] 样式表块，用户级覆盖站长级
- * theme_token_*（:root 注入）是合理优先序。选任何预设档即清除 inline 覆盖。
- * 仅亮色族生效：custom 恒落 brand，暗色档不受影响。
+ * 机制：选自选色时 data-theme 落当前主题族的品牌亮底（brand 族落 brand、
+ * 山海经族保持 shanhaijing），再从用户所选 #rrggbb 派生令牌组，以
+ * **inline style 写在 <html> 上**——inline 优先级高于任何 [data-theme]
+ * 样式表块，用户级覆盖站长级 theme_token_*（:root 注入）是合理优先序。
+ * 选任何预设档即清除 inline 覆盖。brand 族仅亮色生效（custom 恒落
+ * brand 亮底）；山海经族玄墨/宣纸两档都生效（按档位各出一组对比度）。
  *
  * 派生算法必须与 app/layout.tsx ThemeNoFlash 内联脚本里的 ES5 等价实现
  * **逐字同构**（hexToHsl + deriveVars 两函数；沿用 syncThemeCss 双实现的
@@ -13,7 +14,11 @@
  * 存储两键：flux-theme="custom"（档位）+ flux-custom-color="#rrggbb"（色值），
  * 都在 localStorage（纯客户端，后端不存，与主题偏好同口径）。 */
 
-import { CUSTOM_COLOR_STORAGE_KEY, type ThemeChoice } from "@/lib/themes";
+import {
+  CUSTOM_COLOR_STORAGE_KEY,
+  type ThemeChoice,
+} from "@/lib/themes";
+import { contrast, hslHex } from "@/lib/theme-custom-math";
 
 const HEX_RE = /^#[0-9a-fA-F]{6}$/;
 
@@ -40,6 +45,12 @@ export function hexToHsl(hex: string): [number, number, number] | null {
   return [Math.round(h), Math.round(s * 100), Math.round(l * 100)];
 }
 
+/** 派生模式：brand = 品牌族（brand/pastel 13 款，整组换肤）；
+ *  shanhaijing = 山海经族（玄墨/宣纸两档，只换用户色相相关位——
+ *  岩彩底/墨字/金环/金箔渐变/纱层是山海经身份，inline 不碰）。
+ *  mode 由调用方按 data-theme 前缀判定（shanhaijing* → shanhaijing）。 */
+export type CustomMode = "brand" | "shanhaijing";
+
 /** 数值钳制（ES5 无 Math.clamp，两版同实现） */
 function clamp(v: number, lo: number, hi: number): number {
   return Math.min(hi, Math.max(lo, v));
@@ -49,8 +60,18 @@ function clamp(v: number, lo: number, hi: number): number {
  *  落点：客户端 inline style / 内联脚本同款 inline）。对比度口径：
  *  - sky（主交互/实心钮底）：L 钳 38 → 白字 ≥4.5:1；
  *  - skyDeep（标题/文本品牌位）：L 26 → 白底 AA 大裕量；
- *  - soft/wash（浅底）：L 90-97，深字合成后 ≥4.5。 */
-export function deriveCustomVars(hex: string): Record<string, string> | null {
+ *  - soft/wash（浅底）：L 90-97，深字合成后 ≥4.5。
+ *
+ *  mode="shanhaijing"（2026-11-16）：山海经族专用派生——inline 只覆写
+ *  「跟随用户色相」的主干位，玄墨档按暗底、宣纸档按亮底（底值见
+ *  PAPER/INKPAGE 常量，摘自 shanhaijing-theme.css 既有档位）。保留位
+ *  （不产出=不被覆盖）：表面五阶/墨字五阶/金环 --focus-ring/
+ *  金箔渐变 --grad-aurora/--sun/--coral/--mint/纱层墨色系。 */
+export function deriveCustomVars(
+  hex: string,
+  mode: CustomMode = "brand",
+  lightMode = false,
+): Record<string, string> | null {
   const hsl = hexToHsl(hex);
   if (!hsl) return null;
   const [h, rawS] = hsl;
@@ -60,6 +81,78 @@ export function deriveCustomVars(hex: string): Record<string, string> | null {
     a === undefined
       ? `hsl(${h}, ${ss}%, ${ll}%)`
       : `hsla(${h}, ${ss}%, ${ll}%, ${a})`;
+  if (mode === "shanhaijing") {
+    /* 山海经族：只换用户色相位（键集是 brand 集的子集）。
+     * L 值按 WCAG 迭代求达标（≥4.5）——原色明度跨度大（深绿 L32 / 金
+     * L52），固定 L 会失守。迭代逻辑与 ES5 版 __shjL 逐字同构（见
+     * theme-custom-es5.ts）。文字口径对齐山海经本档（非 brand 白字）：
+     * 玄墨档实心钮底配墨字（--text-on-accent 原值）、文字位对暗底；
+     * 宣纸档实心钮底配宣纸字、文字位对亮底。 */
+    // design-cov-exempt: 山海经主题块锚定值字面量（shanhaijing-theme.css
+    // 既有档位原值，平台锚定非新设计色）——下面三行常量均按此豁免
+    const PAPER = "#f7f3e8"; // design-cov-exempt: 同上
+    const INKPAGE = "#0a0f0d"; // design-cov-exempt: 同上
+    const ONACCENT = "#101914"; // design-cov-exempt: 同上
+    const target = (base: number, dir: 1 | -1, other: string) => {
+      let l = base;
+      for (let i = 0; i < 24; i++) {
+        const cand = hslHex(h, s, l);
+        if (contrast(cand, other) >= 4.5) break;
+        l += dir;
+        if (l < 4 || l > 96) break;
+      }
+      return Math.round(l);
+    };
+    const skyL = lightMode ? target(30, -1, PAPER) : target(78, 1, ONACCENT);
+    const deepL = lightMode ? target(26, -1, PAPER) : target(56, 1, INKPAGE);
+    const sky = hsl1(s, skyL);
+    const deep = hsl1(s, deepL);
+    const surf = hsl1(s, 38);
+    const skySoft = lightMode ? hsl1(s, 40, 0.12) : hsl1(s, 50, 0.14);
+    const indigoSoft = lightMode ? hsl1(s, 40, 0.12) : hsl1(s, 50, 0.16);
+    const candySoft = lightMode ? hsl1(s, 40, 0.12) : hsl1(s, 50, 0.14);
+    const ringSoft = lightMode ? hsl1(s, 40, 0.24) : hsl1(s, 50, 0.28);
+    const shA = lightMode ? 32 : 42;
+    const shadow = hsl1(s, shA, lightMode ? 0.22 : 0.28);
+    const shadowSoft = hsl1(s, shA, lightMode ? 0.14 : 0.18);
+    const rule = hsl1(s, shA, lightMode ? 0.4 : 0.5);
+    const line = lightMode ? hsl1(s, 30, 0.34) : hsl1(s, 42, 0.26);
+    const orangeBright = lightMode ? hsl1(s, 38) : surf;
+    const tideSurf = lightMode ? hsl1(s, 26) : hsl1(s, 38);
+    const tideFoam = lightMode ? hsl1(s, 62) : hsl1(s, 66);
+    const tideGrid = lightMode ? hsl1(s, 40, 0.1) : hsl1(s, 50, 0.09);
+    const tideMist = lightMode ? hsl1(s, 40, 0.14) : hsl1(s, 30, 0.2);
+    const tideHaze = lightMode ? hsl1(s, 40, 0.1) : hsl1(s, 28, 0.14);
+    return {
+      "--sky": sky,
+      "--sky-deep": deep,
+      "--sky-soft": skySoft,
+      "--indigo": deep,
+      "--indigo-soft": indigoSoft,
+      "--candy": deep,
+      "--candy-soft": candySoft,
+      "--text-brand": deep,
+      "--info": deep,
+      "--focus-ring-soft": ringSoft,
+      "--accent-shadow": shadow,
+      "--accent-shadow-soft": shadowSoft,
+      "--accent-rule": rule,
+      "--compat-glow": surf,
+      "--compat-line": line,
+      "--compat-orange": lightMode ? deep : sky,
+      "--compat-orange-bright": orangeBright,
+      "--compat-orange-dark": deep,
+      /* 潮汐桥接：全局结构类消费（山海经块的等效供给被 inline 覆写） */
+      "--tide-deep": sky,
+      "--tide-sea": sky,
+      "--tide-surf": tideSurf,
+      "--tide-foam": tideFoam,
+      "--tide-signal": deep,
+      "--tide-grid": tideGrid,
+      "--tide-mist": tideMist,
+      "--tide-haze": tideHaze,
+    };
+  }
   const sky = hsl1(s, 38);
   const skySurf = hsl1(s, 50);
   const skyDeep = hsl1(clamp(s, 32, 58), 26);
@@ -137,13 +230,18 @@ export function deriveCustomVars(hex: string): Record<string, string> | null {
 
 /** 把派生令牌写进 <html> 的 inline style（inline > 任何 [data-theme] 块）。
  *  上一次应用的键集记在模块级缓存（单页会话内可靠），换色先逐键摘旧再写新，
- *  避免新旧派生键集合不同时残留。传 null = 清除全部。 */
-export function applyCustomStyle(hex: string | null): void {
+ *  避免新旧派生键集合不同时残留。传 null = 清除全部。
+ *  mode：brand（缺省）| shanhaijing；lightMode：宣纸亮档口径。 */
+export function applyCustomStyle(
+  hex: string | null,
+  mode: CustomMode = "brand",
+  lightMode = false,
+): void {
   if (typeof document === "undefined") return;
   const root = document.documentElement;
   applyLastKeys.forEach((k) => root.style.removeProperty(k));
   applyLastKeys = [];
-  const vars = hex ? deriveCustomVars(hex) : null;
+  const vars = hex ? deriveCustomVars(hex, mode, lightMode) : null;
   if (!vars) {
     delete root.dataset.customThemed;
     return;
@@ -191,4 +289,12 @@ export function normalizeChoice(
   color: string | null,
 ): ThemeChoice {
   return choice === "custom" && !color ? "auto" : choice;
+}
+
+/** 自选色的派生模式判定（按当前生效主题 id；与 no-flash 内联脚本
+ *  的 `t.indexOf('shanhaijing')===0` 前缀判定同口径） */
+export function customModeOf(theme: string | undefined): CustomMode {
+  return theme && theme.indexOf("shanhaijing") === 0
+    ? "shanhaijing"
+    : "brand";
 }

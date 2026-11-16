@@ -18,6 +18,7 @@ export function PastelGroups({
   nameOf,
   groupName,
   customLabel,
+  isActive,
   onPick,
   onPickCustom,
 }: {
@@ -29,6 +30,8 @@ export function PastelGroups({
   groupName: (g: ThemeGroup) => string;
   /** 自选颜色卡文案（dict.common.themeCustom，由父组件取好传入） */
   customLabel: string;
+  /** 色卡 active 判断（明暗家族口径：暗色系统落 -night 孪生也亮勾） */
+  isActive: (id: ThemeId) => boolean;
   onPick: (id: ThemeId) => void;
   onPickCustom: (hex: string) => void;
 }) {
@@ -41,7 +44,7 @@ export function PastelGroups({
             <div className="thmenu__grp-name">{groupName(g)}</div>
             <div className="thmenu__grid" role="group">
               {byGroup(g).map((id) => {
-                const active = choice === id;
+                const active = isActive(id);
                 return (
                   <button
                     key={id}

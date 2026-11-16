@@ -84,11 +84,55 @@ describe("resolveTheme（跟随系统路径无回归）", () => {
     expect(THEMES[resolveTheme("auto")].scheme).toBe("light");
   });
 
-  it("手选具体主题原样通过；非法存储值归 auto 再解析", () => {
+  it("auto 深色档恒落 brand-night（淡彩夜款不抢 auto）", () => {
     stubMatchMedia(true);
-    for (const id of THEME_IDS) expect(resolveTheme(id)).toBe(id);
+    expect(resolveTheme("auto")).toBe("brand-night");
+    stubMatchMedia(false);
+    expect(resolveTheme("auto")).toBe("brand");
+  });
+
+  it("手选经典档原样通过；淡彩手选跟随系统明暗族落孪生档", () => {
+    // 暗色系统：经典档原样；淡彩日款落 -night 孪生（家族命中）
+    stubMatchMedia(true);
+    expect(resolveTheme("brand")).toBe("brand");
+    expect(resolveTheme("brand-night")).toBe("brand-night");
+    expect(resolveTheme("shanhaijing")).toBe("shanhaijing");
+    expect(resolveTheme("shanhaijing-light")).toBe("shanhaijing-light");
+    for (const id of THEME_IDS) {
+      const def = THEMES[id];
+      if (!def.group) continue; // 经典档上面已直证
+      const want = id.endsWith("-night") ? id : `${id}-night`;
+      expect(resolveTheme(id), id).toBe(want);
+      expect(THEMES[resolveTheme(id)].scheme, id).toBe("dark");
+    }
+    // 亮色系统：全部原样通过
+    stubMatchMedia(false);
+    for (const id of THEME_IDS) expect(resolveTheme(id), id).toBe(id);
     const parsed = parseChoice("not-a-theme");
     expect(parsed).toBe("auto");
+    stubMatchMedia(true);
     expect(THEMES[resolveTheme(parsed)].scheme).toBe("dark");
+  });
+
+  it("themeSibling 明暗孪生映射（淡彩成对；brand 成对；无孪生自反）", async () => {
+    const { themeSibling } = await import("@/lib/themes");
+    expect(themeSibling("seablue")).toBe("seablue-night");
+    expect(themeSibling("seablue-night")).toBe("seablue");
+    expect(themeSibling("purple-you")).toBe("purple-you-night");
+    // brand 的暗色孪生就是 brand-night（映射对称；resolveTheme 对经典档
+    // 不走 sibling——跟随闸在 resolveTheme 的 group 字段，不在本函数）
+    expect(themeSibling("brand")).toBe("brand-night");
+    expect(themeSibling("brand-night")).toBe("brand");
+    // 山海经亮档无 -night 孪生 → 自反
+    expect(themeSibling("shanhaijing-light")).toBe("shanhaijing-light");
+    expect(themeSibling("shanhaijing")).toBe("shanhaijing");
+  });
+
+  it("themeNameKey：淡彩夜款与日款同名（剥 -night）；经典夜款独立名", async () => {
+    expect(themeNameKey("seablue")).toBe("themeSeablue");
+    expect(themeNameKey("seablue-night")).toBe("themeSeablue");
+    expect(themeNameKey("purple-you-night")).toBe("themePurpleYou");
+    expect(themeNameKey("brand")).toBe("themeBrand");
+    expect(themeNameKey("brand-night")).toBe("themeBrandNight");
   });
 });

@@ -69,6 +69,20 @@ export const THEME_TO_CAT_ICON_SET: Record<ThemeId, CatIconSetId> = {
   "calm-green": "aurora",
   "blue-mood": "aurora",
   "purple-you": "aurora",
+  // QQ 调色盘 13 款夜间变体（2026-11-16）：同款色相暗色皮，仍 aurora 套
+  "seablue-night": "aurora",
+  "sakura-night": "aurora",
+  "sprout-night": "aurora",
+  "summer-night": "aurora",
+  "dragon-night": "aurora",
+  "gold-night": "aurora",
+  "lilac-night": "aurora",
+  "bean-green-night": "aurora",
+  "cinnabar-night": "aurora",
+  "orange-pop-night": "aurora",
+  "calm-green-night": "aurora",
+  "blue-mood-night": "aurora",
+  "purple-you-night": "aurora",
 };
 
 /** 未知/未来主题 id 的兜底集（含 tide 待确认项） */

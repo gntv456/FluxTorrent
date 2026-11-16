@@ -709,3 +709,44 @@
     transition: none;
   }
 }
+
+/* 夜间变体 13 张色卡（2026-11-16）：同款色相暗色渐变（提亮端色） */
+.thsw--seablue-night {
+  background: linear-gradient(135deg, #06101a, #091a2c, #082842);
+}
+.thsw--sakura-night {
+  background: linear-gradient(135deg, #18090f, #280e17, #3f0c1f);
+}
+.thsw--sprout-night {
+  background: linear-gradient(135deg, #09170f, #102519, #183322);
+}
+.thsw--summer-night {
+  background: linear-gradient(135deg, #0c1a06, #15290c, #203614);
+}
+.thsw--dragon-night {
+  background: linear-gradient(135deg, #1c0d04, #2b170b, #41250a);
+}
+.thsw--gold-night {
+  background: linear-gradient(135deg, #1b1405, #2a200b, #392d11);
+}
+.thsw--lilac-night {
+  background: linear-gradient(135deg, #0e0a16, #181026, #23123a);
+}
+.thsw--bean-green-night {
+  background: linear-gradient(135deg, #0c140f, #162019, #1d2e23);
+}
+.thsw--cinnabar-night {
+  background: linear-gradient(135deg, #180908, #261210, #3e130d);
+}
+.thsw--orange-pop-night {
+  background: linear-gradient(135deg, #1d0e03, #2d1908, #452b06);
+}
+.thsw--calm-green-night {
+  background: linear-gradient(135deg, #0a160e, #132318, #183326);
+}
+.thsw--blue-mood-night {
+  background: linear-gradient(135deg, #070e19, #0a182c, #0d243e);
+}
+.thsw--purple-you-night {
+  background: linear-gradient(135deg, #0f0a17, #1d0f27, #2d0f3c);
+}

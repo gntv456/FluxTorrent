@@ -21,6 +21,7 @@ import {
 import {
   applyCustomStyle,
   clearCustomColor,
+  customModeOf,
   readCustomColor,
   saveCustomColor,
 } from "@/lib/theme-custom";
@@ -119,6 +120,18 @@ export function ThemeToggle({
     return () => mq.removeEventListener?.("change", onChange);
   }, [choice, applyTheme]);
 
+  // 淡彩手动档跟随系统：偏好翻转时日/夜孪生互切（2026-11-16 夜间变体批）。
+  // 经典档（brand/brand-night/山海经）不受系统偏好影响，不挂监听。
+  useEffect(() => {
+    if (choice === "auto" || choice === "custom" || !window.matchMedia) return;
+    const def = THEMES[choice];
+    if (!def?.group) return; // 经典档无孪生
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const onChange = () => applyTheme(resolveTheme(choice));
+    mq.addEventListener?.("change", onChange);
+    return () => mq.removeEventListener?.("change", onChange);
+  }, [choice, applyTheme]);
+
   // 跨实例同步：页面挂两份 ThemeToggle（顶栏 + 抽屉/图鉴侧栏），各自独立
   // useState 会在切换后互不跟随（本页实测：顶栏切 seablue，抽屉标签仍留
   // 旧档）。storage 事件同 tab 不触发，但两实例共用同一 DOM——直接监听
@@ -150,16 +163,23 @@ export function ThemeToggle({
     [applyTheme],
   );
 
-  /** 自选颜色提交（原生取色器 onChange；停止前不关面板便于微调） */
+  /** 自选颜色提交（原生取色器 onChange；停止前不关面板便于微调）。
+   *  山海经族保持山海经档（玄墨/宣纸按当前档派生），brand 族落 brand。 */
   const pickCustom = useCallback(
     (hex: string) => {
       const up = hex.toUpperCase();
+      const cur = document.documentElement.dataset.theme ?? "";
+      const isShj = cur.indexOf("shanhaijing") === 0;
       setChoice("custom");
       setCustomColor(up);
       saveCustomColor(up);
       persist("custom");
-      applyTheme("brand");
-      applyCustomStyle(up);
+      applyTheme(isShj ? "shanhaijing" : "brand");
+      applyCustomStyle(
+        up,
+        isShj ? "shanhaijing" : "brand",
+        cur === "shanhaijing-light",
+      );
       window.dispatchEvent(
         new CustomEvent(THEME_SYNC_EVENT, { detail: "custom" }),
       );
@@ -178,6 +198,21 @@ export function ThemeToggle({
     (id: ThemeId) => dictCommon[themeNameKey(id)] ?? id,
     [dictCommon],
   );
+  // active 态按明暗家族判断：面板只有日款色卡，暗色系统下手选落的是
+  // -night 孪生（choice 存日款 id、data-theme 是 -night）——孪生命中即亮勾
+  const currentTheme = mounted
+    ? (document.documentElement.dataset.theme as ThemeId | undefined)
+    : undefined;
+  const isFamilyActive = useCallback(
+    (id: ThemeId) =>
+      choice === id ||
+      choice === `${id}-night` ||
+      (choice !== "auto" && choice !== "custom" && currentTheme === id) ||
+      (choice !== "auto" &&
+        choice !== "custom" &&
+        currentTheme === `${id}-night`),
+    [choice, currentTheme],
+  );
   const autoName = dict.common.themeAuto;
   const customName =
     (dict.common as Record<string, string>).themeCustom ?? "Custom";
@@ -194,7 +229,8 @@ export function ThemeToggle({
       ? "palette"
       : choice === "auto"
         ? "auto"
-        : THEMES[choice]?.scheme === "dark"
+        : // 实际生效档（暗色系统下淡彩手选落 -night 孪生）
+          (currentTheme && THEMES[currentTheme]?.scheme === "dark")
           ? "moon"
           : "sun";
 
@@ -250,6 +286,7 @@ export function ThemeToggle({
             nameOf={nameOf}
             groupName={groupName}
             customLabel={customName}
+            isActive={isFamilyActive}
             onPick={pick}
             onPickCustom={pickCustom}
           />

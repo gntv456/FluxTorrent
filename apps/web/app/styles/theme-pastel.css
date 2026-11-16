@@ -1249,3 +1249,1066 @@
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
+
+/* ===== 4. 夜间变体 13 款（2026-11-16）：色相同款暗色派生 =====
+   手选色卡跟随系统明暗族：暗色系统选 seablue → 落 seablue-night
+   （lib/themes.ts resolveTheme sibling 映射），夜款排注册表末尾，
+   auto 深色档仍落 brand-night 零回归。
+   派生口径（对齐 brand-night）：
+   · 表面系 = color-mix(--theme-hue X%, 暗底)——与日间共享块同构，
+     混白改混暗底，卡面/页面/纱层全线带同款色相
+   · 六色提亮（暗底对比度），文本反白系
+   · 状态语义色沿用 base.css 夜间 AA 值（13 款同值，不逐款重调）
+   ============================================================ */
+
+/* ---------- 4.0 夜间共享结构块 ---------- */
+[data-theme="seablue-night"],
+[data-theme="sakura-night"],
+[data-theme="sprout-night"],
+[data-theme="summer-night"],
+[data-theme="dragon-night"],
+[data-theme="gold-night"],
+[data-theme="lilac-night"],
+[data-theme="bean-green-night"],
+[data-theme="cinnabar-night"],
+[data-theme="orange-pop-night"],
+[data-theme="calm-green-night"],
+[data-theme="blue-mood-night"],
+[data-theme="purple-you-night"] {
+  color-scheme: dark;
+
+  /* 圆角/字体/玻璃下限：与日间共享块同值 */
+  --r-xl: 18px;
+  --r-lg: 14px;
+  --r-md: 10px;
+  --r-sm: 6px;
+  --font-display: "Bricolage Grotesque", "Noto Serif SC", "Songti SC",
+    "Source Han Serif SC", "SimSun", "Noto Sans SC", sans-serif;
+  --font-serif: "Noto Serif SC", "Songti SC", "Source Han Serif SC",
+    "SimSun", serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo,
+    Consolas, monospace;
+  --glass-floor: 0.94;
+
+  --text-sub: var(--text-muted);
+  --compat-coral: var(--danger-text);
+  --compat-sub: var(--text-muted);
+  --danger-text: var(--danger);
+
+  /* 表面派生：暗底混色相（与日间混白同构反转） */
+  --surface-page: color-mix(in srgb, var(--theme-hue) 14%, #0d1117);
+  --surface-cloud: color-mix(in srgb, var(--theme-hue) 18%, #0b0e13);
+  --surface-card: color-mix(in srgb, var(--theme-hue) 10%, #141922);
+  --surface-raised: color-mix(in srgb, var(--theme-hue) 14%, #1a2029);
+  --surface-hover: color-mix(in srgb, var(--theme-hue) 18%, #1e2530);
+  --surface-sunken: color-mix(in srgb, var(--theme-hue) 10%, #10141b);
+  --surface-cream: color-mix(in srgb, var(--theme-hue) 8%, #161a20);
+  --head-a: color-mix(in srgb, var(--theme-hue) 20%, #1a202b);
+  --head-b: color-mix(in srgb, var(--theme-hue) 10%, #141922);
+
+  /* 色相纱：暗面半透明（列表行/chip 跟染） */
+  --row-veil: color-mix(in srgb, var(--theme-hue) 12%,
+    rgba(16, 20, 28, 0.97));
+  --row-veil-soft: color-mix(in srgb, var(--theme-hue) 8%,
+    rgba(20, 25, 34, 0.9));
+  --row-veil-mist: color-mix(in srgb, var(--theme-hue) 10%,
+    rgba(22, 27, 37, 0.8));
+  --chip-veil: color-mix(in srgb, var(--theme-hue) 8%,
+    rgba(22, 27, 37, 0.93));
+  --chip-veil-thin: color-mix(in srgb, var(--theme-hue) 8%,
+    rgba(24, 30, 40, 0.72));
+  --hairline: rgba(190, 205, 230, 0.16);
+  --hairline-soft: rgba(190, 205, 230, 0.1);
+  --hairline-strong: rgba(190, 205, 230, 0.26);
+  --on-accent-glass: rgba(255, 255, 255, 0.14);
+
+  /* 边框/促销底：暗面派生 */
+  --border-soft: color-mix(in srgb, var(--theme-hue) 16%, #232b38);
+  --line-soft: color-mix(in srgb, var(--theme-hue) 12%, #1e2530);
+  --border-deep: color-mix(in srgb, var(--theme-hue) 34%, #2c3646);
+  --muted-soft: color-mix(in srgb, var(--theme-hue) 14%, #1e2530);
+  --promo-free-bg: color-mix(in srgb, var(--theme-hue) 14%, #14202e);
+  --promo-x2-bg: color-mix(in srgb, #ffd35f 12%, #241f0d);
+
+  /* 潮汐缓动（结构类，颜色无关） */
+  --tide-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --tide-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+  --focus-ring: var(--sky-surf);
+  --focus-ring-soft: color-mix(in srgb, var(--theme-hue) 22%, transparent);
+  --tide-haze: var(--surface-hover);
+  --tide-mist: var(--border-soft);
+  --tide-grid: color-mix(in srgb, var(--theme-hue) 10%, transparent);
+  /* 阴影：暗色加深（brand-night 口径） */
+  --shadow-card:
+    0 1px 2px color-mix(in srgb, var(--theme-hue) 10%, rgba(0, 0, 0, 0.4)),
+    0 10px 24px -12px rgba(0, 0, 0, 0.5);
+  --shadow-hover:
+    0 2px 4px color-mix(in srgb, var(--theme-hue) 14%, rgba(0, 0, 0, 0.4)),
+    0 16px 32px -14px rgba(0, 0, 0, 0.55);
+  /* 夜间遮罩更重 */
+  --overlay-scrim: rgba(2, 6, 14, 0.62);
+  --ilb-scrim: rgba(4, 8, 16, 0.92);
+  /* 兼容层（brand-night 口径） */
+  --compat-bg: var(--surface-page);
+  --compat-paper: var(--surface-card);
+  --compat-cream: var(--surface-cream);
+  --compat-line-soft: var(--line);
+  --compat-fill-a: color-mix(in srgb, var(--theme-hue) 46%, #0a1626);
+  --compat-fill-mid: color-mix(in srgb, var(--theme-hue) 36%, #0c1a2c);
+  --compat-fill-b: color-mix(in srgb, var(--theme-hue) 22%, #0a1420);
+  --compat-fill-glow: color-mix(in srgb, var(--theme-hue) 28%, #14213a);
+  --compat-green: var(--mint);
+  --compat-blue: var(--info);
+  --compat-ink: var(--ink);
+}
+
+/* ---------- 4.1-4.13 夜间逐款块 ---------- */
+/* seablue 夜款（hue #2e7fd4） */
+[data-theme="seablue-night"] {
+  /* 主色基：夜款全部派生的源头（表面见共享块） */
+  --theme-hue: #2e7fd4;
+  --sky: #d8e5f3; /* 提亮主交互（暗底 12.9） */
+  --sky-deep: #dee6ed; /* 深主色提亮→夜款文本品牌位 */
+  --sky-surf: #dbe8f5; /* 实心钮 hover/焦点环实色 */
+  --sky-soft: #172a40;
+  --sun: #ffd35f;
+  --sun-soft: #33290f;
+  --coral: #ff9072;
+  --coral-soft: #38160f;
+  --mint: #43cda8;
+  --mint-soft: #0d2a22;
+  --candy: #e4f0f1;
+  --candy-soft: #16242c;
+  --indigo: #dee6ed;
+  --indigo-soft: var(--sky-soft);
+  --cloud: var(--surface-page);
+  --cream: var(--surface-cream);
+  --ink: var(--text-strong);
+  --sub: var(--text-muted);
+  --line: var(--border-soft);
+  --grad-aurora: linear-gradient(135deg, #a8bdd1 0%, #c1d6eb 55%, #deecf8 100%);
+  --grad-rainbow: linear-gradient(
+    90deg,
+    #a8bdd1,
+    #c1d6eb,
+    #deecf8,
+    #e4f0f1,
+    #b3d7f4
+  );
+  --ribbon: var(--grad-rainbow);
+  --compat-glow: #dbe8f5;
+  --compat-soft: var(--sky-soft);
+  /* 文本反白系：标题近白、正文亮灰（暗底 AA） */
+  --text-strong: #dee6f1;
+  --text-heading: #ebf2fa;
+  --text-body: #778dac; /* 卡面 4.7 */
+  --text-body-deep: #768eac; /* 卡面 4.7 */
+  --text-brand: #578fc7; /* 卡面 4.6 */
+  --text-muted: #778eac; /* 卡面 4.7 */
+  --text-faint: #798ca5; /* 卡面 4.6 */
+  --text-fainter: #7b8da8; /* 卡面 4.7 */
+  --text-on-accent: #ffffff;
+  --border-strong: #dbe8f5;
+  --info: #d8e5f3;
+  --accent-purple: #dee6ed;
+  --tone-brand: #dee6ed;
+  --tone-brand-strong: #d8e5f3;
+  --tone-brand-soft: var(--sky-soft);
+  --accent-surface: #dee6ed;
+  --accent-surface-strong: #d8e5f3;
+  --hero-bg: var(--grad-aurora);
+  --compat-orange: var(--sky);
+  --compat-orange-bright: #dbe8f5;
+  --compat-orange-dark: #d8e5f3;
+  --accent-shadow: color-mix(in srgb, #2e7fd4 30%, transparent);
+  --accent-shadow-soft: color-mix(in srgb, #2e7fd4 20%, transparent);
+  --accent-rule: color-mix(in srgb, #dbe8f5 45%, transparent);
+  --compat-glow-veil: color-mix(in srgb, #2e7fd4 12%, transparent);
+  --compat-line: color-mix(in srgb, #2e7fd4 44%, #2c3646);
+  /* 潮汐桥接：全局结构类消费 */
+  --tide-abyss: #bbc5ce;
+  --tide-deep: #b6c7d8;
+  --tide-sea: #d4e3f2;
+  --tide-surf: #c0dbf1;
+  --tide-foam: #8fc4ef;
+  --tide-signal: #e4f0f1;
+  --tide-up: #ff8f82;
+  --tide-down: #43cda8;
+}
+
+/* sakura 夜款（hue #c2527a） */
+[data-theme="sakura-night"] {
+  /* 主色基：夜款全部派生的源头（表面见共享块） */
+  --theme-hue: #c2527a;
+  --sky: #de91ac; /* 提亮主交互（暗底 7.0） */
+  --sky-deep: #d1a3b6; /* 深主色提亮→夜款文本品牌位 */
+  --sky-surf: #e392af; /* 实心钮 hover/焦点环实色 */
+  --sky-soft: #2f2332;
+  --sun: #ffd35f;
+  --sun-soft: #33290f;
+  --coral: #ff9072;
+  --coral-soft: #38160f;
+  --mint: #43cda8;
+  --mint-soft: #0d2a22;
+  --candy: #d27fac;
+  --candy-soft: #2f1927;
+  --indigo: #d1a3b6;
+  --indigo-soft: var(--sky-soft);
+  --cloud: var(--surface-page);
+  --cream: var(--surface-cream);
+  --ink: var(--text-strong);
+  --sub: var(--text-muted);
+  --line: var(--border-soft);
+  --grad-aurora: linear-gradient(135deg, #b66d8b 0%, #d7799a 55%, #fadbe6 100%);
+  --grad-rainbow: linear-gradient(
+    90deg,
+    #b66d8b,
+    #d7799a,
+    #fadbe6,
+    #cf77a8,
+    #f78db5
+  );
+  --ribbon: var(--grad-rainbow);
+  --compat-glow: #e392af;
+  --compat-soft: var(--sky-soft);
+  /* 文本反白系：标题近白、正文亮灰（暗底 AA） */
+  --text-strong: #e7e4ec;
+  --text-heading: #f2f0f5;
+  --text-body: #8b88a0; /* 卡面 4.7 */
+  --text-body-deep: #8c88a0; /* 卡面 4.7 */
+  --text-brand: #bd7a7a; /* 卡面 4.8 */
+  --text-muted: #8c899f; /* 卡面 4.7 */
+  --text-faint: #8c8a9e; /* 卡面 4.8 */
+  --text-fainter: #8888a0; /* 卡面 4.6 */
+  --text-on-accent: #ffffff;
+  --border-strong: #e392af;
+  --info: #de91ac;
+  --accent-purple: #d1a3b6;
+  --tone-brand: #d1a3b6;
+  --tone-brand-strong: #de91ac;
+  --tone-brand-soft: var(--sky-soft);
+  --accent-surface: #d1a3b6;
+  --accent-surface-strong: #de91ac;
+  --hero-bg: var(--grad-aurora);
+  --compat-orange: var(--sky);
+  --compat-orange-bright: #e392af;
+  --compat-orange-dark: #de91ac;
+  --accent-shadow: color-mix(in srgb, #c2527a 30%, transparent);
+  --accent-shadow-soft: color-mix(in srgb, #c2527a 20%, transparent);
+  --accent-rule: color-mix(in srgb, #e392af 45%, transparent);
+  --compat-glow-veil: color-mix(in srgb, #c2527a 12%, transparent);
+  --compat-line: color-mix(in srgb, #c2527a 44%, #2c3646);
+  /* 潮汐桥接：全局结构类消费 */
+  --tide-abyss: #a57e8f;
+  --tide-deep: #bc7b96;
+  --tide-sea: #e189a9;
+  --tide-surf: #f093b5;
+  --tide-foam: #f4c6d8;
+  --tide-signal: #ca689e;
+  --tide-up: #ff8f82;
+  --tide-down: #43cda8;
+}
+
+/* sprout 夜款（hue #3d8f5f） */
+[data-theme="sprout-night"] {
+  /* 主色基：夜款全部派生的源头（表面见共享块） */
+  --theme-hue: #3d8f5f;
+  --sky: #7ec89d; /* 提亮主交互（暗底 8.2） */
+  --sky-deep: #9ac1aa; /* 深主色提亮→夜款文本品牌位 */
+  --sky-surf: #54c07f; /* 实心钮 hover/焦点环实色 */
+  --sky-soft: #1a2d2d;
+  --sun: #ffd35f;
+  --sun-soft: #33290f;
+  --coral: #ff9072;
+  --coral-soft: #38160f;
+  --mint: #43cda8;
+  --mint-soft: #0d2a22;
+  --candy: #e4f1f0;
+  --candy-soft: #182327;
+  --indigo: #9ac1aa;
+  --indigo-soft: var(--sky-soft);
+  --cloud: var(--surface-page);
+  --cream: var(--surface-cream);
+  --ink: var(--text-strong);
+  --sub: var(--text-muted);
+  --line: var(--border-soft);
+  --grad-aurora: linear-gradient(135deg, #67a280 0%, #69bf8d 55%, #62da8e 100%);
+  --grad-rainbow: linear-gradient(
+    90deg,
+    #67a280,
+    #69bf8d,
+    #62da8e,
+    #e4f1f0,
+    #1dcd58
+  );
+  --ribbon: var(--grad-rainbow);
+  --compat-glow: #54c07f;
+  --compat-soft: var(--sky-soft);
+  /* 文本反白系：标题近白、正文亮灰（暗底 AA） */
+  --text-strong: #dfe7ea;
+  --text-heading: #ecf3f4;
+  --text-body: #75909e; /* 卡面 4.7 */
+  --text-body-deep: #768f9d; /* 卡面 4.6 */
+  --text-brand: #4e9c4e; /* 卡面 4.6 */
+  --text-muted: #77909d; /* 卡面 4.7 */
+  --text-faint: #798f9b; /* 卡面 4.7 */
+  --text-fainter: #7b8e9d; /* 卡面 4.6 */
+  --text-on-accent: #ffffff;
+  --border-strong: #54c07f;
+  --info: #7ec89d;
+  --accent-purple: #9ac1aa;
+  --tone-brand: #9ac1aa;
+  --tone-brand-strong: #7ec89d;
+  --tone-brand-soft: var(--sky-soft);
+  --accent-surface: #9ac1aa;
+  --accent-surface-strong: #7ec89d;
+  --hero-bg: var(--grad-aurora);
+  --compat-orange: var(--sky);
+  --compat-orange-bright: #54c07f;
+  --compat-orange-dark: #7ec89d;
+  --accent-shadow: color-mix(in srgb, #3d8f5f 30%, transparent);
+  --accent-shadow-soft: color-mix(in srgb, #3d8f5f 20%, transparent);
+  --accent-rule: color-mix(in srgb, #54c07f 45%, transparent);
+  --compat-glow-veil: color-mix(in srgb, #3d8f5f 12%, transparent);
+  --compat-line: color-mix(in srgb, #3d8f5f 44%, #2c3646);
+  /* 潮汐桥接：全局结构类消费 */
+  --tide-abyss: #82a192;
+  --tide-deep: #74aa8a;
+  --tide-sea: #4cbd79;
+  --tide-surf: #2bb65e;
+  --tide-foam: #a8d8b8;
+  --tide-signal: #e4f1f0;
+  --tide-up: #ff8f82;
+  --tide-down: #43cda8;
+}
+
+/* summer 夜款（hue #4f9e2e） */
+[data-theme="summer-night"] {
+  /* 主色基：夜款全部派生的源头（表面见共享块） */
+  --theme-hue: #4f9e2e;
+  --sky: #c1dfb4; /* 提亮主交互（暗底 11.0） */
+  --sky-deep: #e6eee3; /* 深主色提亮→夜款文本品牌位 */
+  --sky-surf: #9ad284; /* 实心钮 hover/焦点环实色 */
+  --sky-soft: #1d2f26;
+  --sun: #ffd35f;
+  --sun-soft: #33290f;
+  --coral: #ff9072;
+  --coral-soft: #38160f;
+  --mint: #43cda8;
+  --mint-soft: #0d2a22;
+  --candy: #e4f1f0;
+  --candy-soft: #182327;
+  --indigo: #e6eee3;
+  --indigo-soft: var(--sky-soft);
+  --cloud: var(--surface-page);
+  --cream: var(--surface-cream);
+  --ink: var(--text-strong);
+  --sub: var(--text-muted);
+  --line: var(--border-soft);
+  --grad-aurora: linear-gradient(135deg, #bacfb0 0%, #afd69f 55%, #ace28d 100%);
+  --grad-rainbow: linear-gradient(
+    90deg,
+    #bacfb0,
+    #afd69f,
+    #ace28d,
+    #e4f1f0,
+    #76e444
+  );
+  --ribbon: var(--grad-rainbow);
+  --compat-glow: #9ad284;
+  --compat-soft: var(--sky-soft);
+  /* 文本反白系：标题近白、正文亮灰（暗底 AA） */
+  --text-strong: #e0e8e7;
+  --text-heading: #edf4f2;
+  --text-body: #789296; /* 卡面 4.7 */
+  --text-body-deep: #789396; /* 卡面 4.8 */
+  --text-brand: #4e9c4e; /* 卡面 4.6 */
+  --text-muted: #789396; /* 卡面 4.8 */
+  --text-faint: #7a9094; /* 卡面 4.6 */
+  --text-fainter: #7f919a; /* 卡面 4.8 */
+  --text-on-accent: #ffffff;
+  --border-strong: #9ad284;
+  --info: #c1dfb4;
+  --accent-purple: #e6eee3;
+  --tone-brand: #e6eee3;
+  --tone-brand-strong: #c1dfb4;
+  --tone-brand-soft: var(--sky-soft);
+  --accent-surface: #e6eee3;
+  --accent-surface-strong: #c1dfb4;
+  --hero-bg: var(--grad-aurora);
+  --compat-orange: var(--sky);
+  --compat-orange-bright: #9ad284;
+  --compat-orange-dark: #c1dfb4;
+  --accent-shadow: color-mix(in srgb, #4f9e2e 30%, transparent);
+  --accent-shadow-soft: color-mix(in srgb, #4f9e2e 20%, transparent);
+  --accent-rule: color-mix(in srgb, #9ad284 45%, transparent);
+  --compat-glow-veil: color-mix(in srgb, #4f9e2e 12%, transparent);
+  --compat-line: color-mix(in srgb, #4f9e2e 44%, #2c3646);
+  /* 潮汐桥接：全局结构类消费 */
+  --tide-abyss: #bcc8b6;
+  --tide-deep: #c5d6bd;
+  --tide-sea: #94cf7d;
+  --tide-surf: #77d043;
+  --tide-foam: #b4dfa0;
+  --tide-signal: #e4f1f0;
+  --tide-up: #ff8f82;
+  --tide-down: #43cda8;
+}
+
+/* dragon 夜款（hue #b8622e） */
+[data-theme="dragon-night"] {
+  /* 主色基：夜款全部派生的源头（表面见共享块） */
+  --theme-hue: #b8622e;
+  --sky: #e9d2c4; /* 提亮主交互（暗底 11.5） */
+  --sky-deep: #f0e9e5; /* 深主色提亮→夜款文本品牌位 */
+  --sky-surf: #dfb59b; /* 实心钮 hover/焦点环实色 */
+  --sky-soft: #2d2626;
+  --sun: #ffd35f;
+  --sun-soft: #33290f;
+  --coral: #ff9072;
+  --coral-soft: #38160f;
+  --mint: #43cda8;
+  --mint-soft: #0d2a22;
+  --candy: #c44a95;
+  --candy-soft: #2e1c28;
+  --indigo: #f0e9e5;
+  --indigo-soft: var(--sky-soft);
+  --cloud: var(--surface-page);
+  --cream: var(--surface-cream);
+  --ink: var(--text-strong);
+  --sub: var(--text-muted);
+  --line: var(--border-soft);
+  --grad-aurora: linear-gradient(135deg, #decec4 0%, #e0c1ae 55%, #f8ebdd 100%);
+  --grad-rainbow: linear-gradient(
+    90deg,
+    #decec4,
+    #e0c1ae,
+    #f8ebdd,
+    #c24291,
+    #f6d2b1
+  );
+  --ribbon: var(--grad-rainbow);
+  --compat-glow: #dfb59b;
+  --compat-soft: var(--sky-soft);
+  /* 文本反白系：标题近白、正文亮灰（暗底 AA） */
+  --text-strong: #e6e5e7;
+  --text-heading: #f2f0f2;
+  --text-body: #898995; /* 卡面 4.7 */
+  --text-body-deep: #898995; /* 卡面 4.7 */
+  --text-brand: #cf6e6e; /* 卡面 4.7 */
+  --text-muted: #898994; /* 卡面 4.6 */
+  --text-faint: #898a95; /* 卡面 4.7 */
+  --text-fainter: #868998; /* 卡面 4.6 */
+  --text-on-accent: #ffffff;
+  --border-strong: #dfb59b;
+  --info: #e9d2c4;
+  --accent-purple: #f0e9e5;
+  --tone-brand: #f0e9e5;
+  --tone-brand-strong: #e9d2c4;
+  --tone-brand-soft: var(--sky-soft);
+  --accent-surface: #f0e9e5;
+  --accent-surface-strong: #e9d2c4;
+  --hero-bg: var(--grad-aurora);
+  --compat-orange: var(--sky);
+  --compat-orange-bright: #dfb59b;
+  --compat-orange-dark: #e9d2c4;
+  --accent-shadow: color-mix(in srgb, #b8622e 30%, transparent);
+  --accent-shadow-soft: color-mix(in srgb, #b8622e 20%, transparent);
+  --accent-rule: color-mix(in srgb, #dfb59b 45%, transparent);
+  --compat-glow-veil: color-mix(in srgb, #b8622e 12%, transparent);
+  --compat-line: color-mix(in srgb, #b8622e 44%, #2c3646);
+  /* 潮汐桥接：全局结构类消费 */
+  --tide-abyss: #dcd5d0;
+  --tide-deep: #e5d9d1;
+  --tide-sea: #dcaf93;
+  --tide-surf: #efcfaf;
+  --tide-foam: #f2cba6;
+  --tide-signal: #b53b86;
+  --tide-up: #ff8f82;
+  --tide-down: #43cda8;
+}
+
+/* gold 夜款（hue #a07828） */
+[data-theme="gold-night"] {
+  /* 主色基：夜款全部派生的源头（表面见共享块） */
+  --theme-hue: #a07828;
+  --sky: #e6dcc6; /* 提亮主交互（暗底 12.1） */
+  --sky-deep: #f0ece6; /* 深主色提亮→夜款文本品牌位 */
+  --sky-surf: #d8c397; /* 实心钮 hover/焦点环实色 */
+  --sky-soft: #2a2925;
+  --sun: #ffd35f;
+  --sun-soft: #33290f;
+  --coral: #ff9072;
+  --coral-soft: #38160f;
+  --mint: #43cda8;
+  --mint-soft: #0d2a22;
+  --candy: #7c36ab;
+  --candy-soft: #2a1e2b;
+  --indigo: #f0ece6;
+  --indigo-soft: var(--sky-soft);
+  --cloud: var(--surface-page);
+  --cream: var(--surface-cream);
+  --ink: var(--text-strong);
+  --sub: var(--text-muted);
+  --line: var(--border-soft);
+  --grad-aurora: linear-gradient(135deg, #dbd3c2 0%, #ddceb1 55%, #edd8ab 100%);
+  --grad-rainbow: linear-gradient(
+    90deg,
+    #dbd3c2,
+    #ddceb1,
+    #edd8ab,
+    #7633a3,
+    #ecca65
+  );
+  --ribbon: var(--grad-rainbow);
+  --compat-glow: #d8c397;
+  --compat-soft: var(--sky-soft);
+  /* 文本反白系：标题近白、正文亮灰（暗底 AA） */
+  --text-strong: #e5e6e7;
+  --text-heading: #f1f2f1;
+  --text-body: #858b94; /* 卡面 4.6 */
+  --text-body-deep: #868c93; /* 卡面 4.7 */
+  --text-brand: #bb7d3e; /* 卡面 4.6 */
+  --text-muted: #858c94; /* 卡面 4.7 */
+  --text-faint: #858c93; /* 卡面 4.7 */
+  --text-fainter: #858c99; /* 卡面 4.7 */
+  --text-on-accent: #ffffff;
+  --border-strong: #d8c397;
+  --info: #e6dcc6;
+  --accent-purple: #f0ece6;
+  --tone-brand: #f0ece6;
+  --tone-brand-strong: #e6dcc6;
+  --tone-brand-soft: var(--sky-soft);
+  --accent-surface: #f0ece6;
+  --accent-surface-strong: #e6dcc6;
+  --hero-bg: var(--grad-aurora);
+  --compat-orange: var(--sky);
+  --compat-orange-bright: #d8c397;
+  --compat-orange-dark: #e6dcc6;
+  --accent-shadow: color-mix(in srgb, #a07828 30%, transparent);
+  --accent-shadow-soft: color-mix(in srgb, #a07828 20%, transparent);
+  --accent-rule: color-mix(in srgb, #d8c397 45%, transparent);
+  --compat-glow-veil: color-mix(in srgb, #a07828 12%, transparent);
+  --compat-line: color-mix(in srgb, #a07828 44%, #2c3646);
+  /* 潮汐桥接：全局结构类消费 */
+  --tide-abyss: #d3cec5;
+  --tide-deep: #e2dccf;
+  --tide-sea: #d5bf90;
+  --tide-surf: #dcb560;
+  --tide-foam: #e8d8a8;
+  --tide-signal: #6b2f93;
+  --tide-up: #ff8f82;
+  --tide-down: #43cda8;
+}
+
+/* lilac 夜款（hue #8a68c0） */
+[data-theme="lilac-night"] {
+  /* 主色基：夜款全部派生的源头（表面见共享块） */
+  --theme-hue: #8a68c0;
+  --sky: #9a72da; /* 提亮主交互（暗底 4.6） */
+  --sky-deep: #927dc5; /* 深主色提亮→夜款文本品牌位 */
+  --sky-surf: #9a6ddf; /* 实心钮 hover/焦点环实色 */
+  --sky-soft: #26263d;
+  --sun: #ffd35f;
+  --sun-soft: #33290f;
+  --coral: #ff9072;
+  --coral-soft: #38160f;
+  --mint: #43cda8;
+  --mint-soft: #0d2a22;
+  --candy: #d058a0;
+  --candy-soft: #301e2a;
+  --indigo: #927dc5;
+  --indigo-soft: var(--sky-soft);
+  --cloud: var(--surface-page);
+  --cream: var(--surface-cream);
+  --ink: var(--text-strong);
+  --sub: var(--text-muted);
+  --line: var(--border-soft);
+  --grad-aurora: linear-gradient(135deg, #664aa5 0%, #885ad3 55%, #c3a1f2 100%);
+  --grad-rainbow: linear-gradient(
+    90deg,
+    #664aa5,
+    #885ad3,
+    #c3a1f2,
+    #ce509b,
+    #853eef
+  );
+  --ribbon: var(--grad-rainbow);
+  --compat-glow: #9a6ddf;
+  --compat-soft: var(--sky-soft);
+  /* 文本反白系：标题近白、正文亮灰（暗底 AA） */
+  --text-strong: #e3e5f0;
+  --text-heading: #f0f1f9;
+  --text-body: #858aa8; /* 卡面 4.7 */
+  --text-body-deep: #868ba7; /* 卡面 4.7 */
+  --text-brand: #8585c2; /* 卡面 4.6 */
+  --text-muted: #838aa5; /* 卡面 4.6 */
+  --text-faint: #858ba3; /* 卡面 4.7 */
+  --text-fainter: #858ca8; /* 卡面 4.8 */
+  --text-on-accent: #ffffff;
+  --border-strong: #9a6ddf;
+  --info: #9a72da;
+  --accent-purple: #927dc5;
+  --tone-brand: #927dc5;
+  --tone-brand-strong: #9a72da;
+  --tone-brand-soft: var(--sky-soft);
+  --accent-surface: #927dc5;
+  --accent-surface-strong: #9a72da;
+  --hero-bg: var(--grad-aurora);
+  --compat-orange: var(--sky);
+  --compat-orange-bright: #9a6ddf;
+  --compat-orange-dark: #9a72da;
+  --accent-shadow: color-mix(in srgb, #8a68c0 30%, transparent);
+  --accent-shadow-soft: color-mix(in srgb, #8a68c0 20%, transparent);
+  --accent-rule: color-mix(in srgb, #9a6ddf 45%, transparent);
+  --compat-glow-veil: color-mix(in srgb, #8a68c0 12%, transparent);
+  --compat-line: color-mix(in srgb, #8a68c0 44%, #2c3646);
+  /* 潮汐桥接：全局结构类消费 */
+  --tide-abyss: #786ca3;
+  --tide-deep: #6f53b2;
+  --tide-sea: #9564dd;
+  --tide-surf: #8f50e7;
+  --tide-foam: #d4c4ec;
+  --tide-signal: #c94092;
+  --tide-up: #ff8f82;
+  --tide-down: #43cda8;
+}
+
+/* bean-green 夜款（hue #5f8a6e） */
+[data-theme="bean-green-night"] {
+  /* 主色基：夜款全部派生的源头（表面见共享块） */
+  --theme-hue: #5f8a6e;
+  --sky: #3a9c5c; /* 提亮主交互（暗底 4.7） */
+  --sky-deep: #60a478; /* 深主色提亮→夜款文本品牌位 */
+  --sky-surf: #2c8c4f; /* 实心钮 hover/焦点环实色 */
+  --sky-soft: #1f2c30;
+  --sun: #ffd35f;
+  --sun-soft: #33290f;
+  --coral: #ff9072;
+  --coral-soft: #38160f;
+  --mint: #43cda8;
+  --mint-soft: #0d2a22;
+  --candy: #32769a;
+  --candy-soft: #25232a;
+  --indigo: #60a478;
+  --indigo-soft: var(--sky-soft);
+  --cloud: var(--surface-page);
+  --cream: var(--surface-cream);
+  --ink: var(--text-strong);
+  --sub: var(--text-muted);
+  --line: var(--border-soft);
+  --grad-aurora: linear-gradient(135deg, #417152 0%, #32864f 55%, #2acf64 100%);
+  --grad-rainbow: linear-gradient(
+    90deg,
+    #417152,
+    #32864f,
+    #2acf64,
+    #2f7092,
+    #107f2d
+  );
+  --ribbon: var(--grad-rainbow);
+  --compat-glow: #2c8c4f;
+  --compat-soft: var(--sky-soft);
+  /* 文本反白系：标题近白、正文亮灰（暗底 AA） */
+  --text-strong: #e1e7eb;
+  --text-heading: #eef2f5;
+  --text-body: #7e8fa0; /* 卡面 4.7 */
+  --text-body-deep: #7b8f9e; /* 卡面 4.7 */
+  --text-brand: #4e9c4e; /* 卡面 4.6 */
+  --text-muted: #7b8e9d; /* 卡面 4.6 */
+  --text-faint: #7e8d9a; /* 卡面 4.6 */
+  --text-fainter: #7f8d9f; /* 卡面 4.7 */
+  --text-on-accent: #ffffff;
+  --border-strong: #2c8c4f;
+  --info: #3a9c5c;
+  --accent-purple: #60a478;
+  --tone-brand: #60a478;
+  --tone-brand-strong: #3a9c5c;
+  --tone-brand-soft: var(--sky-soft);
+  --accent-surface: #60a478;
+  --accent-surface-strong: #3a9c5c;
+  --hero-bg: var(--grad-aurora);
+  --compat-orange: var(--sky);
+  --compat-orange-bright: #2c8c4f;
+  --compat-orange-dark: #3a9c5c;
+  --accent-shadow: color-mix(in srgb, #5f8a6e 30%, transparent);
+  --accent-shadow-soft: color-mix(in srgb, #5f8a6e 20%, transparent);
+  --accent-rule: color-mix(in srgb, #2c8c4f 45%, transparent);
+  --compat-glow-veil: color-mix(in srgb, #5f8a6e 12%, transparent);
+  --compat-line: color-mix(in srgb, #5f8a6e 44%, #2c3646);
+  /* 潮汐桥接：全局结构类消费 */
+  --tide-abyss: #456350;
+  --tide-deep: #497e5b;
+  --tide-sea: #2a844b;
+  --tide-surf: #1b833f;
+  --tide-foam: #bcd2c2;
+  --tide-signal: #2a6483;
+  --tide-up: #ff8f82;
+  --tide-down: #43cda8;
+}
+
+/* cinnabar 夜款（hue #b5544a） */
+[data-theme="cinnabar-night"] {
+  /* 主色基：夜款全部派生的源头（表面见共享块） */
+  --theme-hue: #b5544a;
+  --sky: #d4867d; /* 提亮主交互（暗底 6.0） */
+  --sky-deep: #d7b5b2; /* 深主色提亮→夜款文本品牌位 */
+  --sky-surf: #d87e74; /* 实心钮 hover/焦点环实色 */
+  --sky-soft: #2d232a;
+  --sun: #ffd35f;
+  --sun-soft: #33290f;
+  --coral: #ff9072;
+  --coral-soft: #38160f;
+  --mint: #43cda8;
+  --mint-soft: #0d2a22;
+  --candy: #d058a0;
+  --candy-soft: #301e2a;
+  --indigo: #d7b5b2;
+  --indigo-soft: var(--sky-soft);
+  --cloud: var(--surface-page);
+  --cream: var(--surface-cream);
+  --ink: var(--text-strong);
+  --sub: var(--text-muted);
+  --line: var(--border-soft);
+  --grad-aurora: linear-gradient(135deg, #bb817c 0%, #cc7066 55%, #fadfdc 100%);
+  --grad-rainbow: linear-gradient(
+    90deg,
+    #bb817c,
+    #cc7066,
+    #fadfdc,
+    #ce509b,
+    #f59a8a
+  );
+  --ribbon: var(--grad-rainbow);
+  --compat-glow: #d87e74;
+  --compat-soft: var(--sky-soft);
+  /* 文本反白系：标题近白、正文亮灰（暗底 AA） */
+  --text-strong: #e6e4e9;
+  --text-heading: #f2f0f3;
+  --text-body: #8b889a; /* 卡面 4.7 */
+  --text-body-deep: #8b889a; /* 卡面 4.7 */
+  --text-brand: #bb7777; /* 卡面 4.6 */
+  --text-muted: #8a8a99; /* 卡面 4.8 */
+  --text-faint: #888896; /* 卡面 4.6 */
+  --text-fainter: #87899c; /* 卡面 4.7 */
+  --text-on-accent: #ffffff;
+  --border-strong: #d87e74;
+  --info: #d4867d;
+  --accent-purple: #d7b5b2;
+  --tone-brand: #d7b5b2;
+  --tone-brand-strong: #d4867d;
+  --tone-brand-soft: var(--sky-soft);
+  --accent-surface: #d7b5b2;
+  --accent-surface-strong: #d4867d;
+  --hero-bg: var(--grad-aurora);
+  --compat-orange: var(--sky);
+  --compat-orange-bright: #d87e74;
+  --compat-orange-dark: #d4867d;
+  --accent-shadow: color-mix(in srgb, #b5544a 30%, transparent);
+  --accent-shadow-soft: color-mix(in srgb, #b5544a 20%, transparent);
+  --accent-rule: color-mix(in srgb, #d87e74 45%, transparent);
+  --compat-glow-veil: color-mix(in srgb, #b5544a 12%, transparent);
+  --compat-line: color-mix(in srgb, #b5544a 44%, #2c3646);
+  /* 潮汐桥接：全局结构类消费 */
+  --tide-abyss: #a5827e;
+  --tide-deep: #c28e89;
+  --tide-sea: #d5766c;
+  --tide-surf: #ee978c;
+  --tide-foam: #f2c4bc;
+  --tide-signal: #c94092;
+  --tide-up: #ff8f82;
+  --tide-down: #43cda8;
+}
+
+/* orange-pop 夜款（hue #d47628） */
+[data-theme="orange-pop-night"] {
+  /* 主色基：夜款全部派生的源头（表面见共享块） */
+  --theme-hue: #d47628;
+  --sky: #f5eae1; /* 提亮主交互（暗底 13.6） */
+  --sky-deep: #f1eae4; /* 深主色提亮→夜款文本品牌位 */
+  --sky-surf: #f5e7db; /* 实心钮 hover/焦点环实色 */
+  --sky-soft: #322925;
+  --sun: #ffd35f;
+  --sun-soft: #33290f;
+  --coral: #ff9072;
+  --coral-soft: #38160f;
+  --mint: #43cda8;
+  --mint-soft: #0d2a22;
+  --candy: #d97da0;
+  --candy-soft: #311c27;
+  --indigo: #f1eae4;
+  --indigo-soft: var(--sky-soft);
+  --cloud: var(--surface-page);
+  --cream: var(--surface-cream);
+  --ink: var(--text-strong);
+  --sub: var(--text-muted);
+  --line: var(--border-soft);
+  --grad-aurora: linear-gradient(135deg, #ece2da 0%, #eddaca 55%, #f8eddd 100%);
+  --grad-rainbow: linear-gradient(
+    90deg,
+    #ece2da,
+    #eddaca,
+    #f8eddd,
+    #d7759a,
+    #fbeedb
+  );
+  --ribbon: var(--grad-rainbow);
+  --compat-glow: #f5e7db;
+  --compat-soft: var(--sky-soft);
+  /* 文本反白系：标题近白、正文亮灰（暗底 AA） */
+  --text-strong: #e8e6e7;
+  --text-heading: #f3f2f1;
+  --text-body: #8d8b93; /* 卡面 4.7 */
+  --text-body-deep: #8d8b92; /* 卡面 4.7 */
+  --text-brand: #d07171; /* 卡面 4.7 */
+  --text-muted: #8c8b92; /* 卡面 4.6 */
+  --text-faint: #8b8b92; /* 卡面 4.6 */
+  --text-fainter: #8a8c99; /* 卡面 4.7 */
+  --text-on-accent: #ffffff;
+  --border-strong: #f5e7db;
+  --info: #f5eae1;
+  --accent-purple: #f1eae4;
+  --tone-brand: #f1eae4;
+  --tone-brand-strong: #f5eae1;
+  --tone-brand-soft: var(--sky-soft);
+  --accent-surface: #f1eae4;
+  --accent-surface-strong: #f5eae1;
+  --hero-bg: var(--grad-aurora);
+  --compat-orange: var(--sky);
+  --compat-orange-bright: #f5e7db;
+  --compat-orange-dark: #f5eae1;
+  --accent-shadow: color-mix(in srgb, #d47628 30%, transparent);
+  --accent-shadow-soft: color-mix(in srgb, #d47628 20%, transparent);
+  --accent-rule: color-mix(in srgb, #f5e7db 45%, transparent);
+  --compat-glow-veil: color-mix(in srgb, #d47628 12%, transparent);
+  --compat-line: color-mix(in srgb, #d47628 44%, #2c3646);
+  /* 潮汐桥接：全局结构类消费 */
+  --tide-abyss: #e7e2de;
+  --tide-deep: #f1eae4;
+  --tide-sea: #f2e2d4;
+  --tide-surf: #f8eddd;
+  --tide-foam: #f8d194;
+  --tide-signal: #d2658f;
+  --tide-up: #ff8f82;
+  --tide-down: #43cda8;
+}
+
+/* calm-green 夜款（hue #559e6c） */
+[data-theme="calm-green-night"] {
+  /* 主色基：夜款全部派生的源头（表面见共享块） */
+  --theme-hue: #559e6c;
+  --sky: #51c275; /* 提亮主交互（暗底 7.0） */
+  --sky-deep: #84b895; /* 深主色提亮→夜款文本品牌位 */
+  --sky-surf: #3bc469; /* 实心钮 hover/焦点环实色 */
+  --sky-soft: #1e2f30;
+  --sun: #ffd35f;
+  --sun-soft: #33290f;
+  --coral: #ff9072;
+  --coral-soft: #38160f;
+  --mint: #43cda8;
+  --mint-soft: #0d2a22;
+  --candy: #4ea8c1;
+  --candy-soft: #22242b;
+  --indigo: #84b895;
+  --indigo-soft: var(--sky-soft);
+  --cloud: var(--surface-page);
+  --cream: var(--surface-cream);
+  --ink: var(--text-strong);
+  --sub: var(--text-muted);
+  --line: var(--border-soft);
+  --grad-aurora: linear-gradient(135deg, #56956a 0%, #40b565 55%, #60e1a5 100%);
+  --grad-rainbow: linear-gradient(
+    90deg,
+    #56956a,
+    #40b565,
+    #60e1a5,
+    #46a4be,
+    #16c063
+  );
+  --ribbon: var(--grad-rainbow);
+  --compat-glow: #3bc469;
+  --compat-soft: var(--sky-soft);
+  /* 文本反白系：标题近白、正文亮灰（暗底 AA） */
+  --text-strong: #e0e8eb;
+  --text-heading: #edf4f5;
+  --text-body: #77909d; /* 卡面 4.6 */
+  --text-body-deep: #77909c; /* 卡面 4.6 */
+  --text-brand: #50a050; /* 卡面 4.8 */
+  --text-muted: #78909c; /* 卡面 4.6 */
+  --text-faint: #7d919c; /* 卡面 4.7 */
+  --text-fainter: #7f909f; /* 卡面 4.7 */
+  --text-on-accent: #ffffff;
+  --border-strong: #3bc469;
+  --info: #51c275;
+  --accent-purple: #84b895;
+  --tone-brand: #84b895;
+  --tone-brand-strong: #51c275;
+  --tone-brand-soft: var(--sky-soft);
+  --accent-surface: #84b895;
+  --accent-surface-strong: #51c275;
+  --hero-bg: var(--grad-aurora);
+  --compat-orange: var(--sky);
+  --compat-orange-bright: #3bc469;
+  --compat-orange-dark: #51c275;
+  --accent-shadow: color-mix(in srgb, #559e6c 30%, transparent);
+  --accent-shadow-soft: color-mix(in srgb, #559e6c 20%, transparent);
+  --accent-rule: color-mix(in srgb, #3bc469 45%, transparent);
+  --compat-glow-veil: color-mix(in srgb, #559e6c 12%, transparent);
+  --compat-line: color-mix(in srgb, #559e6c 44%, #2c3646);
+  /* 潮汐桥接：全局结构类消费 */
+  --tide-abyss: #6a9083;
+  --tide-deep: #5da273;
+  --tide-sea: #38bc64;
+  --tide-surf: #25c178;
+  --tide-foam: #b8dcc8;
+  --tide-signal: #3e98b1;
+  --tide-up: #ff8f82;
+  --tide-down: #43cda8;
+}
+
+/* blue-mood 夜款（hue #4a86d8） */
+[data-theme="blue-mood-night"] {
+  /* 主色基：夜款全部派生的源头（表面见共享块） */
+  --theme-hue: #4a86d8;
+  --sky: #d3e0f3; /* 提亮主交互（暗底 12.1） */
+  --sky-deep: #bbc9dd; /* 深主色提亮→夜款文本品牌位 */
+  --sky-surf: #cddef3; /* 实心钮 hover/焦点环实色 */
+  --sky-soft: #1c2b41;
+  --sun: #ffd35f;
+  --sun-soft: #33290f;
+  --coral: #ff9072;
+  --coral-soft: #38160f;
+  --mint: #43cda8;
+  --mint-soft: #0d2a22;
+  --candy: #9b6ad7;
+  --candy-soft: #2b1e30;
+  --indigo: #bbc9dd;
+  --indigo-soft: var(--sky-soft);
+  --cloud: var(--surface-page);
+  --cream: var(--surface-cream);
+  --ink: var(--text-strong);
+  --sub: var(--text-muted);
+  --line: var(--border-soft);
+  --grad-aurora: linear-gradient(135deg, #849dc2 0%, #bbd0ec 55%, #d7e7f9 100%);
+  --grad-rainbow: linear-gradient(
+    90deg,
+    #849dc2,
+    #bbd0ec,
+    #d7e7f9,
+    #9662d5,
+    #6daef3
+  );
+  --ribbon: var(--grad-rainbow);
+  --compat-glow: #cddef3;
+  --compat-soft: var(--sky-soft);
+  /* 文本反白系：标题近白、正文亮灰（暗底 AA） */
+  --text-strong: #dfe7f1;
+  --text-heading: #ecf2fa;
+  --text-body: #7c8fac; /* 卡面 4.8 */
+  --text-body-deep: #7c8fac; /* 卡面 4.8 */
+  --text-brand: #8585d6; /* 卡面 4.7 */
+  --text-muted: #7a8ea9; /* 卡面 4.7 */
+  --text-faint: #7d8ea5; /* 卡面 4.7 */
+  --text-fainter: #7f8ea9; /* 卡面 4.7 */
+  --text-on-accent: #ffffff;
+  --border-strong: #cddef3;
+  --info: #d3e0f3;
+  --accent-purple: #bbc9dd;
+  --tone-brand: #bbc9dd;
+  --tone-brand-strong: #d3e0f3;
+  --tone-brand-soft: var(--sky-soft);
+  --accent-surface: #bbc9dd;
+  --accent-surface-strong: #d3e0f3;
+  --hero-bg: var(--grad-aurora);
+  --compat-orange: var(--sky);
+  --compat-orange-bright: #cddef3;
+  --compat-orange-dark: #d3e0f3;
+  --accent-shadow: color-mix(in srgb, #4a86d8 30%, transparent);
+  --accent-shadow-soft: color-mix(in srgb, #4a86d8 20%, transparent);
+  --accent-rule: color-mix(in srgb, #cddef3 45%, transparent);
+  --compat-glow-veil: color-mix(in srgb, #4a86d8 12%, transparent);
+  --compat-line: color-mix(in srgb, #4a86d8 44%, #2c3646);
+  /* 潮汐桥接：全局结构类消费 */
+  --tide-abyss: #a8b4c7;
+  --tide-deep: #92a8c9;
+  --tide-sea: #c5d8f1;
+  --tide-surf: #87b8ee;
+  --tide-foam: #c2d8f0;
+  --tide-signal: #8b52d1;
+  --tide-up: #ff8f82;
+  --tide-down: #43cda8;
+}
+
+/* purple-you 夜款（hue #a06cc8） */
+[data-theme="purple-you-night"] {
+  /* 主色基：夜款全部派生的源头（表面见共享块） */
+  --theme-hue: #a06cc8;
+  --sky: #b985e0; /* 提亮主交互（暗底 5.8） */
+  --sky-deep: #a68acc; /* 深主色提亮→夜款文本品牌位 */
+  --sky-surf: #b77ce4; /* 实心钮 hover/焦点环实色 */
+  --sky-soft: #2a273e;
+  --sun: #ffd35f;
+  --sun-soft: #33290f;
+  --coral: #ff9072;
+  --coral-soft: #38160f;
+  --mint: #43cda8;
+  --mint-soft: #0d2a22;
+  --candy: #df81b0;
+  --candy-soft: #321e2a;
+  --indigo: #a68acc;
+  --indigo-soft: var(--sky-soft);
+  --cloud: var(--surface-page);
+  --cream: var(--surface-cream);
+  --ink: var(--text-strong);
+  --sub: var(--text-muted);
+  --line: var(--border-soft);
+  --grad-aurora: linear-gradient(135deg, #7c51b3 0%, #ab6cda 55%, #e4bff8 100%);
+  --grad-rainbow: linear-gradient(
+    90deg,
+    #7c51b3,
+    #ab6cda,
+    #e4bff8,
+    #dd78ab,
+    #b762f4
+  );
+  --ribbon: var(--grad-rainbow);
+  --compat-glow: #b77ce4;
+  --compat-soft: var(--sky-soft);
+  /* 文本反白系：标题近白、正文亮灰（暗底 AA） */
+  --text-strong: #e5e5f0;
+  --text-heading: #f1f1f9;
+  --text-body: #868aa7; /* 卡面 4.7 */
+  --text-body-deep: #878ba6; /* 卡面 4.7 */
+  --text-brand: #b974b9; /* 卡面 4.7 */
+  --text-muted: #878ba6; /* 卡面 4.7 */
+  --text-faint: #858aa2; /* 卡面 4.6 */
+  --text-fainter: #858ca8; /* 卡面 4.7 */
+  --text-on-accent: #ffffff;
+  --border-strong: #b77ce4;
+  --info: #b985e0;
+  --accent-purple: #a68acc;
+  --tone-brand: #a68acc;
+  --tone-brand-strong: #b985e0;
+  --tone-brand-soft: var(--sky-soft);
+  --accent-surface: #a68acc;
+  --accent-surface-strong: #b985e0;
+  --hero-bg: var(--grad-aurora);
+  --compat-orange: var(--sky);
+  --compat-orange-bright: #b77ce4;
+  --compat-orange-dark: #b985e0;
+  --accent-shadow: color-mix(in srgb, #a06cc8 30%, transparent);
+  --accent-shadow-soft: color-mix(in srgb, #a06cc8 20%, transparent);
+  --accent-rule: color-mix(in srgb, #b77ce4 45%, transparent);
+  --compat-glow-veil: color-mix(in srgb, #a06cc8 12%, transparent);
+  --compat-line: color-mix(in srgb, #a06cc8 44%, #2c3646);
+  /* 潮汐桥接：全局结构类消费 */
+  --tide-abyss: #836dab;
+  --tide-deep: #865fb9;
+  --tide-sea: #b273e2;
+  --tide-surf: #c16dee;
+  --tide-foam: #e2ccf2;
+  --tide-signal: #d968a1;
+  --tide-up: #ff8f82;
+  --tide-down: #43cda8;
+}

@@ -10,9 +10,15 @@ import { deriveCustomVars, hexToHsl } from "@/lib/theme-custom";
 import { CUSTOM_DERIVE_ES5 } from "@/lib/theme-custom-es5";
 
 /** 在当前 Node 上下文构造 ES5 函数（源码只依赖 Math/parseInt/RegExp） */
-function buildEs5Derive(hex: string): Record<string, string> | null {
+function buildEs5Derive(
+  hex: string,
+  mode?: string,
+  light?: number,
+): Record<string, string> | null {
   const fn = new Function(
-    `${CUSTOM_DERIVE_ES5} return __cDerive(${JSON.stringify(hex)});`,
+    `${CUSTOM_DERIVE_ES5} return __cDerive(${JSON.stringify(hex)}` +
+      `${mode ? "," + JSON.stringify(mode) : ",undefined"}` +
+      `${light === undefined ? "" : "," + light});`,
   );
   return fn() as Record<string, string> | null;
 }
@@ -72,6 +78,21 @@ describe("双实现同构：ES5(no-flash) ≡ TS(运行时)", () => {
         expect(es5![k], `key ${k}`).toBe(ts![k]);
       }
     });
+
+    it(`hex=${hex} shj 模式（玄墨/宣纸）两版逐键相等`, () => {
+      for (const light of [false, true]) {
+        const ts = deriveCustomVars(hex, "shanhaijing", light);
+        const es5 = buildEs5Derive(hex, "shj", light ? 1 : 0);
+        expect(es5).not.toBeNull();
+        expect(ts).not.toBeNull();
+        const tsKeys = Object.keys(ts!).sort();
+        const es5Keys = Object.keys(es5!).sort();
+        expect(es5Keys).toEqual(tsKeys);
+        for (const k of tsKeys) {
+          expect(es5![k], `key ${k} light=${light}`).toBe(ts![k]);
+        }
+      }
+    });
   }
 
   it("非法 hex 两版同返 null", () => {
@@ -80,5 +101,38 @@ describe("双实现同构：ES5(no-flash) ≡ TS(运行时)", () => {
     );
     expect(fn()).toBeNull();
     expect(deriveCustomVars("nope")).toBeNull();
+  });
+
+  it("shj 键集与 brand 集同域交集（主干位共用键名）；身份位不被覆盖", () => {
+    const brand = deriveCustomVars("#3a8fe0")!;
+    const shj = deriveCustomVars("#3a8fe0", "shanhaijing")!;
+    // 主干品牌位：两边都产出（同键名，shj 值按山海经底色另算）
+    for (const k of [
+      "--sky",
+      "--sky-deep",
+      "--indigo",
+      "--text-brand",
+      "--info",
+      "--compat-glow",
+      "--tide-sea",
+    ]) {
+      expect(shj).toHaveProperty(k);
+      expect(brand).toHaveProperty(k);
+    }
+    // shj 专属（山海经的次品牌位；brand 族不产 candy 系）
+    expect(shj).toHaveProperty("--candy");
+    expect(brand).not.toHaveProperty("--candy");
+    // 身份位：shj 不产出（岩彩底/墨字/金环/金箔/纱层不被 inline 碰；
+    // brand 模式本来就整组换肤、产表面系是它的职责）
+    for (const k of [
+      "--surface-page",
+      "--text-strong",
+      "--focus-ring",
+      "--grad-aurora",
+      "--row-veil",
+      "--sun",
+    ]) {
+      expect(shj).not.toHaveProperty(k);
+    }
   });
 });

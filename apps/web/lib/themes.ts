@@ -64,12 +64,12 @@ export const THEMES: Record<string, ThemeDef> = {
   // 但排在 brand 之后 → auto 亮色档仍落 brand，宣纸只作手选档。
   "shanhaijing-light": { chrome: "#f7f3e8", scheme: "light" },
 
-  /* ---- QQ 调色盘对标 13 款（2026-11-14）：全部 scheme=light 且排在
-   * 末尾 → themeIdByScheme 取首项，auto 亮/暗档仍落 brand/brand-night，
-   * 新配色只作手选档，不改变既有 auto 行为。chrome 取各自页面底主调。
-   * 色值定义在 app/styles/theme-pastel.css（13-id 共享结构块 + 逐款色块），
-   * 分组面板 UI 由 ThemeDef.group 驱动。 ---- */
-  // design-cov-exempt: 同上
+  /* ---- QQ 调色盘对标 13 款（2026-11-14）：日间款排首（auto 亮色档仍落
+   * brand），夜间款 <id>-night 排末尾（auto 深色档仍落 brand-night）——
+   * 手选色卡跟随当前明暗族（resolveTheme 按 sibling 映射），新配色不再把
+   * 夜间用户拽到日间（2026-11-16 夜间变体批）。夜间 CSS 在
+   * theme-pastel.css 的 -night 块，色值同款色相暗色派生。 ---- */
+  // design-cov-exempt: meta theme-color 平台字面量（见文件头说明）
   seablue: { chrome: "#eaf3fd", scheme: "light", group: "fresh" },
   // design-cov-exempt: 同上
   sakura: { chrome: "#fdeef6", scheme: "light", group: "fresh" },
@@ -95,6 +95,35 @@ export const THEMES: Record<string, ThemeDef> = {
   "blue-mood": { chrome: "#e8f0fc", scheme: "light", group: "dream" },
   // design-cov-exempt: 同上
   "purple-you": { chrome: "#f0ebfa", scheme: "light", group: "dream" },
+  /* ---- 13 款夜间变体（2026-11-16）：色相同款，表面走暗色派生。排在
+   * 日间款之后 → themeIdByScheme("dark") 仍取 brand-night，auto 行为
+   * 不变；仅手选色卡在暗色系统下经 sibling 映射落到本段。 ---- */
+  // design-cov-exempt: 同上
+  "seablue-night": { chrome: "#10161f", scheme: "dark", group: "fresh" },
+  // design-cov-exempt: 同上
+  "sakura-night": { chrome: "#1d1418", scheme: "dark", group: "fresh" },
+  // design-cov-exempt: 同上
+  "sprout-night": { chrome: "#111813", scheme: "dark", group: "fresh" },
+  // design-cov-exempt: 同上
+  "summer-night": { chrome: "#131a10", scheme: "dark", group: "fresh" },
+  // design-cov-exempt: 同上
+  "dragon-night": { chrome: "#1a1410", scheme: "dark", group: "fresh" },
+  // design-cov-exempt: 同上
+  "gold-night": { chrome: "#191510", scheme: "dark", group: "ink" },
+  // design-cov-exempt: 同上
+  "lilac-night": { chrome: "#161321", scheme: "dark", group: "ink" },
+  // design-cov-exempt: 同上
+  "bean-green-night": { chrome: "#131814", scheme: "dark", group: "ink" },
+  // design-cov-exempt: 同上
+  "cinnabar-night": { chrome: "#1a1312", scheme: "dark", group: "ink" },
+  // design-cov-exempt: 同上
+  "orange-pop-night": { chrome: "#1a1410", scheme: "dark", group: "dream" },
+  // design-cov-exempt: 同上
+  "calm-green-night": { chrome: "#111812", scheme: "dark", group: "dream" },
+  // design-cov-exempt: 同上
+  "blue-mood-night": { chrome: "#10161d", scheme: "dark", group: "dream" },
+  // design-cov-exempt: 同上
+  "purple-you-night": { chrome: "#151220", scheme: "dark", group: "dream" },
 };
 
 /** 注册表主题 id 列表（顺序即 UI 选项顺序） */
@@ -128,20 +157,48 @@ export function themeIdByScheme(scheme: "light" | "dark"): ThemeId {
   return THEME_IDS.find((id) => THEMES[id].scheme === scheme) ?? THEME_IDS[0];
 }
 
-/** 主题 id → i18n 显示名键（dict.common 下）。
- *  brand → themeBrand；brand-night → themeBrandNight。 */
+/** 淡彩色卡的明暗孪生映射（2026-11-16）：`seablue` ⇄ `seablue-night`。
+ *  非淡彩族（brand/auto 档）无孪生，返回自身。 */
+export function themeSibling(id: ThemeId): ThemeId {
+  if (id.endsWith("-night")) {
+    const base = id.slice(0, -"-night".length) as ThemeId;
+    return base in THEMES ? base : id;
+  }
+  const night = `${id}-night` as ThemeId;
+  return night in THEMES ? night : id;
+}
+
+/** 主题 id → i18n 显示名键（dict.common 下）。淡彩夜款与日款同名——
+ *  剥 `-night` 后缀后推导（seablue-night → themeSeablue，同一张色卡）。
+ *  brand → themeBrand；brand-night → themeBrandNight（夜间是经典档，
+ *  有独立名，不剥）。 */
 export function themeNameKey(id: ThemeId): string {
-  const camel = id.replace(/(^|-)([a-z])/g, (_, _d, c: string) =>
+  const named = THEMES[id]?.group && id.endsWith("-night")
+    ? (id.slice(0, -"-night".length) as ThemeId)
+    : id;
+  const camel = named.replace(/(^|-)([a-z])/g, (_, _d, c: string) =>
     c.toUpperCase(),
   );
   return `theme${camel}`;
 }
 
 /** auto/custom 档解析为具体主题：auto 跟随系统深色偏好；custom 落 brand
- *  （日间亮色底）再由 theme-custom.ts 派生令牌 inline 覆盖。需在客户端调用 */
+ *  （日间亮色底）再由 theme-custom.ts 派生令牌 inline 覆盖。手选淡彩款
+ *  跟随系统明暗族落孪生档（暗色系统选 seablue → seablue-night）——
+ *  经典档（brand/brand-night/山海经两档）原样通过。需在客户端调用 */
 export function resolveTheme(choice: ThemeChoice): ThemeId {
   if (choice === "custom") return "brand";
-  if (choice !== "auto") return choice;
+  if (choice !== "auto") {
+    const def = THEMES[choice];
+    if (def?.group && def.scheme === "light") {
+      const dark =
+        typeof window !== "undefined" &&
+        window.matchMedia &&
+        window.matchMedia("(prefers-color-scheme: dark)").matches;
+      if (dark) return themeSibling(choice);
+    }
+    return choice;
+  }
   const dark =
     typeof window !== "undefined" &&
     window.matchMedia &&

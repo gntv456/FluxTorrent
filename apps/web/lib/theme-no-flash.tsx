@@ -39,8 +39,13 @@ export function ThemeNoFlash() {
     themeCssManifest.fonts,
     themeCssManifest.theme,
   ]);
+  // 淡彩 13 款日间 id（有 -night 孪生的族；内联脚本按它做暗色跟随，
+  // 与 lib/themes.ts resolveTheme 的 sibling 映射同口径）
+  const PASTEL = JSON.stringify(
+    THEME_IDS.filter((id) => THEMES[id].group && THEMES[id].scheme === "light"),
+  );
   const script =
-    `(function(){var CH=${CH},IDS=${ids},SC=${SC},SHJ=${SHJ};` +
+    `(function(){var CH=${CH},IDS=${ids},SC=${SC},SHJ=${SHJ},PL=${PASTEL};` +
     CUSTOM_DERIVE_ES5 +
     `var CK='${CUSTOM_COLOR_STORAGE_KEY}';var LAST=[];` +
     `function chrome(t){var m=document.querySelector(` +
@@ -64,23 +69,37 @@ export function ThemeNoFlash() {
     `if(!v)return;var r=document.documentElement;` +
     `for(var k in v){if(!Object.prototype.hasOwnProperty.call(v,k))continue;` +
     `r.style.setProperty(k,v[k]);LAST.push(k);}}` +
+    `function applyCustom2(hex,light){clearCustom();` +
+    `var v=__cDerive(hex,'shj',light?1:0);` +
+    `if(!v)return;var r=document.documentElement;` +
+    `for(var k in v){if(!Object.prototype.hasOwnProperty.call(v,k))continue;` +
+    `r.style.setProperty(k,v[k]);LAST.push(k);}}` +
     `function apply(t){document.documentElement.dataset.theme=t;` +
     `chrome(t);css(t);}` +
     `function sys(){return window.matchMedia&&` +
     `window.matchMedia('(prefers-color-scheme: dark)').matches` +
     `?SC.dark:SC.light;}` +
-    `function pick(v){return (v==='auto'||IDS.indexOf(v)<0)?sys():v;}` +
+    `function isDark(){return !!(window.matchMedia&&` +
+    `window.matchMedia('(prefers-color-scheme: dark)').matches);}` +
+    `function pick(v){` +
+    `if(v==='auto'||!v||IDS.indexOf(v)<0)return sys();` +
+    `if(isDark()&&PL.indexOf(v)>=0)return v+'-night';` +
+    `return v;}` +
     `try{var saved=localStorage.getItem('${THEME_STORAGE_KEY}');` +
     `var cc=null;` +
     `if(saved==='custom'){cc=localStorage.getItem(CK);}` +
     `if(saved==='custom'&&cc&&/^#[0-9a-fA-F]{6}$/.test(cc)){` +
-    `apply(pick('custom'));applyCustom(cc);}` +
+    `var curT=pick('custom');apply(curT);` +
+    `if(curT.indexOf('shanhaijing')===0){` +
+    `applyCustom2(cc,curT==='shanhaijing-light');}` +
+    `else{applyCustom(cc);}}` +
     `else{apply(pick(saved));}` +
     `if(!saved||saved==='auto'){` +
     `var mq=window.matchMedia('(prefers-color-scheme: dark)');` +
     `if(mq.addEventListener){mq.addEventListener('change',function(){` +
     `try{var cur=localStorage.getItem('${THEME_STORAGE_KEY}');` +
-    `if(!cur||cur==='auto'){apply(sys());clearCustom();}}catch(_){}});}}` +
+    `if(!cur||cur==='auto'){apply(sys());clearCustom();}` +
+    `else if(PL.indexOf(cur)>=0){apply(pick(cur));}}catch(_){}});}}` +
     `}catch(e){}})();`;
   return <script dangerouslySetInnerHTML={{ __html: script }} />;
 }
