@@ -92,7 +92,11 @@ def call(tok, method, path, body=None):
 def announce(passkey, up, down, left):
     q = urllib.parse.urlencode(
         {"info_hash": binascii.unhexlify(INFO_HASH),
-         "peer_id": b"AX52syhrops0000001", "port": "6881",
+         # peer_id 每轮随机：固定值会在上一轮探针的 swarm 残留 peer 行后
+         # 触发「peer_id 与本站其他账号冲突」顶号拒写（同 pt_econ 修法，
+         # 2026-11-17 K3 实炸：announce 静默被拒 → 永远等不到流水）。
+         "peer_id": b"AX52syhr" + str(int(time.time())).rjust(12, "0").encode(),
+         "port": "6881",
          "uploaded": str(up), "downloaded": str(down), "left": str(left),
          "event": "started", "numwant": "0"},
         quote_via=urllib.parse.quote)
@@ -238,8 +242,13 @@ def main():
         psql("DELETE FROM traffic_ledger WHERE user_id=%d AND torrent_id=%d"
              % (PROBE, TORRENT))
         psql("UPDATE snatches SET last_up=0, last_down=0, uploaded=0, "
-             "downloaded=0, last_seen_at=now(), seeded_seconds=0 "
+             "downloaded=0, last_seen_at=now() - interval '20 seconds', "
+             "seeded_seconds=0 "
              "WHERE user_id=%d AND torrent_id=%d" % (PROBE, TORRENT))
+        # last_seen_at 拉开 20s：速率钳 allowance=traffic_credit_max_bps×secs，
+        # 本地库 ceiling=128MiB/s（现网口径）时 secs=1 只有 128MiB 配额，
+        # 1GiB 上报吃不满、x2 断言必空（2026-11-17 环境漂移实炸：K2 的
+        # snatches INSERT 把 last_seen_at=now()，announce 紧随其后 secs≈0）。
         psql("INSERT INTO promotions (scope, torrent_id, kind, starts_at, "
              "ends_at, source) VALUES ('torrent', %d, 'x2', "
              "now() - interval '1 hour', now() + interval '1 hour', "

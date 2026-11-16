@@ -45,7 +45,10 @@ INFO_HASH = os.environ.get(
     "FLUX_INFO_HASH", "1acaa148ab6bd78d5a19d274836b8e97081da6ce"
 )
 BIG = 500_000_000_000
-PEER = b"AX52syinvariants01"
+# peer_id 每轮随机：固定值会在上一轮探针的 swarm 残留 peer 行后触发
+# 「peer_id 与本站其他账号冲突」顶号拒写（2026-11-16 实炸：I1 五发全拒
+# 且静默假绿）。BT peer_id 恰 20 字节，尾段用秒级随机补齐。
+PEER = b"AX52syE2E" + str(int(time.time())).rjust(11, "0").encode()
 GB = 1073741824
 results = []
 
@@ -111,9 +114,16 @@ def announce(passkey, up, down=0, left=0, event="started"):
     try:
         with urllib.request.urlopen(url, timeout=15) as r:
             body = r.read()
-        return "OK" if b"failure" not in body else body[:60].decode(
-            "utf-8", "replace")
+        ok = b"failure" not in body
+        if not ok:
+            # 静默失败会让 I1 系列靠上一轮残留「假绿」（2026-11-16 实炸：
+            # 探针号中途被匿名化为 deleted-*，passkey 失效，五发全拒，
+            # I1b rows=0 而 I1 仍 PASS）。失败必须显性化。
+            print("  !! announce 被拒: %s" % body[:120].decode(
+                "utf-8", "replace"))
+        return "OK" if ok else body[:60].decode("utf-8", "replace")
     except Exception as e:  # noqa: BLE001
+        print("  !! announce 异常: %s" % e)
         return "ERR %s" % e
 
 
@@ -196,9 +206,31 @@ def main():
         psql("DELETE FROM announce_seen WHERE user_id=%d" % PROBE)
         base_n, base_up = ledger(PROBE)
         print("[I1] 回放攻击：同一个 500GB 计数反复上报")
+
+        def wait_announces(uid, at_least, secs=90):
+            """等 worker 把已投事件消化到第 N 笔（total_announces 计数）。
+
+            五发若不串行化，worker 有界并发会乱序提交（2 发的近零重置
+            与 3 发的超限上报提交顺序颠倒 → 基线钉死、全程 raw=0，
+            I1b 永空）。逐发等上一发处理完再发下一发，强制顺序语义。
+            """
+            end = time.time() + secs
+            while time.time() < end:
+                n = psql("SELECT total_announces FROM snatches "
+                         "WHERE user_id=%d AND torrent_id=%d" % (uid, TORRENT))
+                if n.strip().isdigit() and int(n) >= at_least:
+                    return True
+                time.sleep(2)
+            return False
+
+        last_announce_ret = ""
+        seq = 0
         for up in (BIG, 0, BIG, 0, BIG):
-            announce(pk, up)
-            time.sleep(1.5)
+            last_announce_ret = announce(pk, up)
+            seq += 1
+            wait_announces(PROBE, seq)
+            time.sleep(0.5)
+        last_announce_ok = last_announce_ret == "OK"
         wait_ledger(PROBE, base_n + 1, 120)
         n1, up1 = ledger(PROBE)
         credited = up1 - base_up
@@ -207,12 +239,27 @@ def main():
                            " WHERE name='traffic_credit_max_bps'),"
                            " '2147483648')"))
         bound = 60 * ceiling
+        # 门闩（2026-11-16）：探针 passkey 若中途失效（匿名化/封禁），
+        # 五发 announce 全拒 → 本组断言全部基于空转，I1「PASS」是假绿。
+        # 先验最后一条 announce 的真实回执再断言。
+        check("I1 前置：announce 真实送达（探针 passkey 有效）",
+              last_announce_ok,
+              "last=%s" % last_announce_ret)
         check("I1 回放不再无限铸造（旧：1.5TB）",
               credited <= bound,
               "入账 %s B / 参照上限 %s B"
               % (format(credited, ","), format(bound, ",")))
-        hits = psql("SELECT count(*) FROM cheat_events WHERE agent LIKE"
-                    " 'speed:%d' AND reason LIKE 'over_ceiling%%'" % TORRENT)
+        # 留痕与流水同事务，但 wait_ledger 达成的可能是「第1发立基线」
+        # 之外的任何一发——五发与 worker tick 交错时 I1b 立查会抢跑
+        # （2026-11-16 实测抖动：同环境 PASS/FAIL 交替）。改轮询等行。
+        hits = "0"
+        for _ in range(12):
+            hits = psql(
+                "SELECT count(*) FROM cheat_events WHERE agent LIKE"
+                " 'speed:%d' AND reason LIKE 'over_ceiling%%'" % TORRENT)
+            if hits != "0":
+                break
+            time.sleep(5)
         check("I1b 超上限部分留痕 cheat_events", hits != "0", "rows=%s" % hits)
         seen = psql("SELECT count(*) FROM announce_seen")
         check("I2 announce_seen 有行（每事件一行）", int(seen) > 0,

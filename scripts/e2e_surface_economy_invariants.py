@@ -28,6 +28,7 @@ import subprocess
 import sys
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 
 API = os.environ.get("FLUX_API_BASE", "http://127.0.0.1:8080/api/v1")
@@ -329,13 +330,36 @@ def main():
               TORRENT not in ids_b, "B %d 条 %s" % (len(ids_b), ids_b[:4]))
         call(root, "PUT", "/torrents/%d/bookmark" % TORRENT, {"on": False})
         psql("UPDATE torrents SET approval_status=2 WHERE id=%d" % TORRENT)
+        # UPDATE 与查询间留缓冲（psql 直改库，连发会拿到未提交快照）；
+        # 不带 alive=0（探针可能已把 40 喂活）；带 search= 精确种名
+        # （库内被拒/回收站 76 行，40 挤不进首页 20 条，须收敛结果集）。
+        time.sleep(1)
         flush_tlist()
-        _, dm = call(jwt(PROBE, 1), "GET", "/torrents?approval=2&alive=0")
+        name40 = psql("SELECT name FROM torrents WHERE id=%d" % TORRENT)
+        q40 = urllib.parse.quote(name40)
+        _, dm = call(jwt(PROBE, 1),
+                     "GET", "/torrents?approval=2&search=%s" % q40)
         ids_m = [r["id"] for r in (dm.get("data") or {}).get("items", [])]
-        _, dr = call(root, "GET", "/torrents?approval=2&alive=0")
+        _, dr = call(root,
+                     "GET", "/torrents?approval=2&search=%s" % q40)
         ids_r = [r["id"] for r in (dr.get("data") or {}).get("items", [])]
         check("J7c 普通会员 ?approval=2 不得看到被拒种（旧：直给 [2,3]）",
               TORRENT not in ids_m, "会员 %d 条" % len(ids_m))
+        if TORRENT not in ids_r:
+            # 失败带现场（40 状态/root 行数/total）+ 立即重放二查，
+            # 区分「瞬时快照」与「稳定行为」——否则空转假红无法归因。
+            st40 = psql("SELECT approval_status||'/'||seeders FROM torrents"
+                        " WHERE id=%d" % TORRENT)
+            tot = (dr.get("data") or {}).get("total_estimate")
+            print("  [J7d 现场] 40状态=%s root行数=%s total=%s ids头=%s"
+                  % (st40, len(ids_r), tot,
+                     [r["id"] for r in ids_r][:6]))
+            st2, dr2 = call(root, "GET",
+                            "/torrents?approval=2&search=%s" % q40)
+            ids_r2 = [r["id"] for r in (dr2.get("data") or {}).get("items",
+                                                                 [])]
+            print("  [J7d 二查] http=%s 行数=%d 含40=%s"
+                  % (st2, len(ids_r2), TORRENT in ids_r2))
         check("J7d 版主 ?approval=2 仍应看到被拒种（阳性对照）",
               TORRENT in ids_r, "版主 %d 条" % len(ids_r))
         psql("UPDATE torrents SET approval_status=1 WHERE id=%d" % TORRENT)

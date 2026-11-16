@@ -14,7 +14,14 @@ const compat = new FlatCompat({ baseDirectory: import.meta.dirname });
 const config = [
   ...compat.extends("next/core-web-vitals"),
   {
-    ignores: [".next/**", "node_modules/**", "next-env.d.ts"],
+    ignores: [
+      ".next/**",
+      "node_modules/**",
+      "next-env.d.ts",
+      // vitest/c8 的 HTML 覆盖率产物：生成物不入 lint（历史跑覆盖后
+      // 残留的 coverage/ 会混进警告统计，且删了还会再生成）
+      "coverage/**",
+    ],
   },
 ];
 

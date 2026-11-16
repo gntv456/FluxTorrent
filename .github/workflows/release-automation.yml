@@ -113,8 +113,16 @@ jobs:
           # （2026-11-02 起真接收端双向对照实测）。
           BODY=$(printf '{"version": "%s", "ref": "%s"}' "${TAG#v}" "$TAG")
           SIG=$(printf '%s' "$BODY" | openssl dgst -sha256 -hmac "$SECRET" | awk '{print $2}')
-          curl -sS -m 30 --fail-with-body -X POST "$WEBHOOK" \
+          # 通知是尽力而为（notify-only）：镜像已发布、Release 已打，服务器
+          # 侧接收器超时/抖动不应把整条发布链染红（2026-11-16 起 dev.2~dev.6
+          # 五连红全是这一步 curl 28 超时——接收器 30s 内不回即超时）。
+          # 重试 2 次 × 15s 超时；仍失败只告警不失败，服务器仍可手动拉镜像。
+          if ! curl -sS -m 15 --retry 2 --retry-delay 3 --retry-connrefused \
+            --fail-with-body -X POST "$WEBHOOK" \
             -H "Content-Type: application/json" \
             -H "X-Hub-Signature-256: sha256=$SIG" \
-            -d "$BODY"
-          echo "部署端已通知"
+            -d "$BODY"; then
+            echo "::warning::部署 webhook 通知失败（超时/拒绝）——镜像已发布，服务器侧请手动更新"
+          else
+            echo "部署端已通知"
+          fi

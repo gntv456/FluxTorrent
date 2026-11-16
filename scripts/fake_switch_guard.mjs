@@ -188,6 +188,28 @@ function dynamicHit(corpus, key) {
     );
     if (re.test(corpus)) return true;
   }
+  // SQL 前缀拼接形态（2026-11-16 补）：`'前缀_' || $1`——键 = 固定前缀 +
+  // 运行时枚举字面量。判据两条件同时成立（宁可放过不误伤）：
+  //   1) corpus 里有前缀字面量紧跟 `||` 的拼接（'games_minclass_' || $1）；
+  //   2) 键剥掉前缀后的剩余段作为双/单引号字面量出现在 corpus
+  //     （调用点逐枚举传参，如 minclass_of(&state, "bigsmall")）。
+  // 实例：0490 的 games_minclass_<game> 九键——读方在
+  // games_http/minclass.rs 的 `'games_minclass_' || $1`，键尾枚举在
+  // overview.rs 等端点。此前 8 键全部误判假开关。
+  const SQL_PREFIX_RE = /'([a-z0-9_]+)_'\s*\|\|/g;
+  let pm;
+  SQL_PREFIX_RE.lastIndex = 0;
+  while ((pm = SQL_PREFIX_RE.exec(corpus))) {
+    const prefix = pm[1] + "_";
+    if (!key.startsWith(prefix)) continue;
+    const tail = key.slice(prefix.length);
+    if (
+      tail &&
+      new RegExp("['\"]" + tail + "['\"]").test(corpus)
+    ) {
+      return true;
+    }
+  }
   return false;
 }
 

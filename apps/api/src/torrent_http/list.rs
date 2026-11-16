@@ -116,6 +116,10 @@ pub(crate) async fn list(
         .include_dead
         .map(|d| if d { 0 } else { 1 })
         .or_else(|| super::list_prefs::alive_from_pref(incl_dead));
+    // include_dead 也须折入偏好：alive=None（偏好=显示断种）时 SQL 侧
+    // 兜底分支看的是这个字段——只认 URL 会让 approval=2 等显式视图
+    // 看不到断种被拒种，复核/恢复口失效（2026-11-17 e2e J7d 实测）。
+    let include_dead = q.include_dead.unwrap_or(false) || incl_dead == 1;
     let filter = torrents::TorrentFilter {
         // 多选分类：重复参数或逗号串（category_id=1&category_id=3 / category_id=1,3）均解析。
         // 旧键名 category_id 单值也在此合并（category_id_alias 旁路收集）。
@@ -162,7 +166,7 @@ pub(crate) async fn list(
         grade_id: q.grade_id,
         edition_id: q.edition_id,
         official: q.official,
-        include_dead: q.include_dead.unwrap_or(false),
+        include_dead,
         // 仅持 see_banned 权限者可查看未过审种子；无权限时参数被静默忽略
         include_unapproved: q.include_unapproved.unwrap_or(false)
             && can_see_unapproved,
@@ -190,7 +194,7 @@ pub(crate) async fn list(
         search_area: q.search_area,
         search_mode: q.search_mode,
         // 高级搜索增强（体积/时间/做种数/排除词/优惠/发布者/仅我发布）
-        // P-279：给了值却解析不出来 ⇒ 400（旧口径静默不筛 = 返回全站）
+        // P-279：给值解析不出 ⇒ 400（旧口径静默不筛 = 返回全站）
         size_min: size_or_err(q.size_min.clone())?,
         size_max: size_or_err(q.size_max.clone())?,
         date_from: date_or_err(q.date_from.clone())?,
