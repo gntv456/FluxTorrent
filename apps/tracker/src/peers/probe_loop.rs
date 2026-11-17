@@ -109,9 +109,25 @@ async fn probe_one(
     let piece_to = Duration::from_secs(cfg.piece_timeout_secs);
 
     // ① 纯 TCP 可达性（最便宜，先筛）
-    let tcp_ok =
+    // C1 修复（2026-11-17）：TCP 首次失败不再直接判 DEAD，重试一次。
+    // 旧行为「一次 TCP 超时即 CONN_DEAD」在 IDC→家用动态 IP 场景下误判率极高：
+    // 探测源在服务器、目标多为 NAT 后动态端口，运营商封 IN、客户端恰逢重连窗口、
+    // 探测抖动都会让单次 3s 连接失败——而该 peer 可能一直在主动连别人上传
+    // （实测单体累计上传 605GB 的账号被标 connectable=0）。DEAD 还具粘性
+    // （下次复测前 connectable 恒 0），seeding 旧口径据此长期挡收益。
+    // 重试一次可滤掉偶发超时；仍失败才 DEAD（保留真实不可达的执法力）。
+    let mut tcp_ok =
         super::bt_probe::probe_tcp_reachable(&probe_ip, probe_port, tcp_bt_to)
             .await;
+    if !tcp_ok {
+        tokio::time::sleep(Duration::from_millis(400)).await;
+        tcp_ok = super::bt_probe::probe_tcp_reachable(
+            &probe_ip,
+            probe_port,
+            tcp_bt_to,
+        )
+        .await;
+    }
     if !tcp_ok {
         write_back(st, &key, CONN_DEAD).await;
         return;
