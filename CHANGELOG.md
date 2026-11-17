@@ -3,6 +3,24 @@
 本文件记录面向部署者的显著变更。格式参照 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)；
 版本号在首个语义化 tag（v0.x）发布后启用。
 
+## [0.5.19-dev.10] - 2026-11-17
+
+定位：**账号保留策略落地**——公示口径（0135）与休眠机制对齐（方向 A）。
+
+### 变更
+- dormant_mark 对齐 0135 公示承诺（迁移 0492 三键，后台可热调）：
+  `inactivity_days`（缺省 150，对齐「连续 150 天未登录」）、
+  `inactivity_zero_traffic_days`（缺省 90，上传下载全 0 账号适用更短
+  阈值，对齐「回收期更短」）、`inactivity_warn_days`（缺省 14）
+- 新增**预提醒环节**：距阈值 14 天内未提醒者发邮件（mail_outbox，
+  dedupe_key 幂等）+ 站内信，兑现「回收前通过邮件与站内消息提醒」
+- 豁免族补齐：贵宾 20 / 养老组 21 明确豁免（0056 身份档=公示的
+  「高等级账号长期保留」；原条件 class<90 只豁职员档）；捐赠者/
+  在做种者/当月保种契约者豁免保持
+- dormant_mark 自 achv_dormant.rs 拆出独立 jobs/dormant.rs（300 行门禁）
+- 「回收」动作仍走 inactivity_policy 三档（mark/demote/archive，
+  线上现值 mark 仅打标拦截），不物理删号；archive 即公示「回收」语义
+
 ## [0.5.19-dev.9] - 2026-11-17
 
 定位：**做种积分释义**——副注 hover 说清「度量非货币」。
