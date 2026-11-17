@@ -292,45 +292,48 @@ def main():
     BS_SNAP.update({"ticket": bs.get("ticket"), "prizes": brows})
     check("猜大小三区档位来自行表",
           st == 200 and len(brows) == 3
-          and sorted(x.get("side") for x in brows) == ["lose", "tie", "win"],
+          and sorted(x.get("side") for x in brows) == ["lose", "triple", "win"],
           (st, [(x.get("label"), x.get("side")) for x in brows]))
     ev_bs = bs.get("expected_value") or 0
-    check("猜大小 EV 由行表现算且等于搬家前的 0.951",
-          abs(ev_bs - 0.951) < 1e-6, ev_bs)
+    check("猜大小 EV 由行表现算且等于现行三区口径的 0.9234",
+          abs(ev_bs - 0.9234) < 1e-6, ev_bs)
     st, r = call("POST", "/admin/arcade/pool", bs_body([
         bs_row("猜中", 490, "win", payout=1.9),
-        bs_row("平局", 20, "tie", payout=1.0)]), tok)
+        bs_row("豹子判负", 20, "triple", payout=1.0)]), tok)
     txt = json.dumps(r, ensure_ascii=False)
     # 缺一个区会被两道闸之一挡下（机制校验或 EV —— 少一区等于把 490‰ 的
     # 派彩摊到 510‰ 上，EV 直接冲破 1）。要钉的是「存不进去」这件事。
     check("缺输区的桌存不进去（机制或 EV 闸任一先响）",
           st == 400 and ("区" in txt or "增发" in txt), (st, txt[:140]))
     st, r = call("POST", "/admin/arcade/pool", bs_body([
-        bs_row("猜中", 500, "win", payout=1.9),
-        bs_row("平局", 20, "tie", payout=1.0),
-        bs_row("猜错", 480, "lose", payout=0)]), tok)
-    check("赢区多给 10 千分、破坏 49/2/49 被拒", st == 400, (st, str(r)[:140]))
+        bs_row("猜中", 496, "win", payout=1.9),
+        bs_row("豹子判负", 28, "triple", payout=1.0),
+        bs_row("猜错", 486, "lose", payout=0)]), tok)
+    # 机制闸（0265 后）：三区权重必须精确 486/28/486，多给 10‰ 也拒。
+    check("赢区多给 10 千分、破坏 486/28/486 被拒", st == 400,
+          (st, str(r)[:140]))
     gift = [bs_row("猜中派彩", 440, "win", payout=1.9),
             bs_row("猜中送券", 50, "win", item="ticket"),
-            bs_row("平局返本", 20, "tie", payout=1.0),
+            bs_row("豹子返本", 20, "triple", payout=1.0),
             bs_row("猜错归零", 490, "lose", payout=0)]
     st, r = call("POST", "/admin/arcade/pool", bs_body(gift), tok)
-    check("票档 1 时赢区送 900 券被 EV 闸拒", st == 400, (st, str(r)[:140]))
-    st, r = call("POST", "/admin/arcade/pool", bs_body(gift, ticket=500),
-                 tok)
-    check("抬票档到 500 后「猜中送券」这张桌过关", st == 200,
+    # 猜大小机制决定纯魔力（写侧先拦物品位），「配券抬票档」的老路已封死。
+    check("猜大小桌配物品位被机制闸拒（只输赢魔力）", st == 400
+          and "物品位" in json.dumps(r, ensure_ascii=False),
           (st, str(r)[:140]))
     st, r = call("POST", "/games/bigsmall",
                  {"bet": 100, "guess": "big",
                   "idempotency_key": "e2e-bs-1-" + RUN}, tok)
-    check("注额低于票档时猜大小拒开这一局",
-          st == 400 and "最低注额" in json.dumps(r, ensure_ascii=False),
+    # 票档恒 1（机制写死），正常注额直接开局——「低于票档拒开」只在
+    # 玩家乱传 bet<1 时由经济守卫拦，玩法本体不再有票档门槛。
+    check("正常注额直接开局（机制写死票档恒 1）", st == 200,
           (st, json.dumps(r, ensure_ascii=False)[:140]))
     st, r = call("POST", "/admin/arcade/pool", bs_body([
-        bs_row("猜中派彩", 490, "win", payout=1.9),
-        bs_row("平局返本", 20, "tie", payout=1.0),
-        bs_row("猜错归零", 490, "lose", payout=0)]), tok)
-    check("猜大小桌复原（票档回到 1）", st == 200, (st, str(r)[:140]))
+        bs_row("猜中派彩", 486, "win", payout=1.9),
+        bs_row("豹子判负", 28, "triple", payout=1.0),
+        bs_row("猜错归零", 486, "lose", payout=0)]), tok)
+    check("猜大小桌复原（486/28/486 机制标准表）", st == 200,
+          (st, str(r)[:140]))
     # 真打一局要用注过魔力的探针号：dev 库里 root 余额是负的（早期商店
     # 测试留的 -1142），拿它下注只会撞到经济守卫，测不出玩法本身
     uname = "e2ebs" + RUN[-6:]
@@ -349,7 +352,7 @@ def main():
                   "idempotency_key": "e2e-bs-2-" + RUN}, ptok)
     d = r.get("data") or {}
     check("探针号真打一局：回报带 side 与派彩",
-          st == 200 and d.get("side") in ("win", "tie", "lose"), (st, d))
+          st == 200 and d.get("side") in ("win", "triple", "lose"), (st, d))
     # 刮之前先把刮刮乐桌从探针态复原（上一段把票档抬到了 500，
     # 不复原的话这一注只会被「最低注额」挡下，测不到派彩路径）
     st, r = call("POST", "/admin/arcade/pool", {

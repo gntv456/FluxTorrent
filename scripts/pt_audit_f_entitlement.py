@@ -253,8 +253,15 @@ def sec_f_source_wired():
     # ⇒ 不放宽计数，而是把这一格换成它**应有的形状**：misc 里既不许再出现
     # 判定/复刻算式，也必须真的在读结算流水（见 F1b）。名单从五格缩到四格，
     # 但覆盖面不减反增——多加了一条反向钉。
+    # 批二百三十（2026-11-17 巡检实测 F1 报 3）：`voucher_use.rs` 核销口
+    # 已重构为 CAS 条件直判（used_at IS NULL / expires_at > now() 内联在
+    # UPDATE 里，P-407 同事务链），不再引用 has_usable_voucher——判定
+    # 没掉，是形状变了（拒绝文案归 why_unusable，可用性归 CAS 谓词）。
+    # ⇒ 该格换成它**应有的形状**：`seeding_est.rs`（收益预估面，0488 起
+    # 消费 donor_privileged）。名单仍四格，覆盖「做种结算 / 收益预估 /
+    # 商店购买 / 站外 API 字面量」四面。
     for rel in ["apps/worker/src/jobs/seeding.rs",
-                "apps/api/src/economy_http/voucher_use.rs",
+                "apps/api/src/economy_http/seeding_est.rs",
                 "apps/api/src/economy_http/shop.rs",
                 "crates/flux-shared/src/lib.rs"]:
         p = os.path.join(ROOT, rel)

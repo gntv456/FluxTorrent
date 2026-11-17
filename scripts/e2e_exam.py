@@ -76,10 +76,42 @@ def cleanup():
         " WHERE name LIKE 'e2e任务%' AND metric::text='{}'")
 
 
+def ensure_login(username, class_id):
+    """登录既有测试号；不存在则现场造一个（pass_hash 复用库内任意可用
+    账号的哈希——密码同为 password123，本脚本验证的是考核契约而非
+    口令算法）。此前硬依赖手工造的 xuehai/gaozhong 两号，换库/清库后
+    login 直接 2004 退出（2026-11-17 实测）。"""
+    s, r = call("POST", "/auth/login", {"username": username,
+                                        "password": "password123"})
+    tok = (r.get("data") or {}).get("token")
+    if tok:
+        return tok
+    hash_row = psql("SELECT pass_hash FROM users WHERE status=0 "
+                    "AND pass_hash NOT IN ('!') ORDER BY id LIMIT 1")
+    psql("INSERT INTO users (username, email, pass_hash, passkey, "
+         "class_id, status, created_at) VALUES ('%s', '%s@e2e.local', "
+         "'%s', substr(md5(random()::text), 1, 32), %d, 0, "
+         "now() - interval '10 days')"
+         % (username, username, hash_row, class_id))
+    # created_at 停在窗口内（exam_onboard_days 缺省 30 天）：exam_assign
+    # 只派「注册未满窗口」的号——造太老的号反而被排除、断言全空转
+    # （2026-11-17 实测：拨 40 天 → claims=0；拨 10 天 → 派发正常）。
+    s, r = call("POST", "/auth/login", {"username": username,
+                                        "password": "password123"})
+    tok = (r.get("data") or {}).get("token")
+    if not tok:
+        raise SystemExit(f"ensure_login {username} failed: {r}")
+    return tok
+
+
 def main():
     cleanup()
-    xue = login("xuehai")   # class_id=3
-    gao = login("gaozhong") # class_id=1
+    # exams 模块开关（U1 §5.4：module_exams=no 时 exam_assign 整轮跳过，
+    # 不动账不留日志）——本地库长期为 no，派发断言会全空转且 job_triggers
+    # 攒积压（2026-11-17 实测积压 73 条）。开→跑→cleanup 还原。
+    psql("UPDATE site_settings SET value='yes' WHERE name='module_exams'")
+    xue = ensure_login("xuehai", 3)   # class_id=3
+    gao = ensure_login("gaozhong", 1) # class_id=1
 
     # --- 1. P0 回归：NULL 不限领 ---
     psql(
@@ -138,14 +170,14 @@ def main():
         " 0, 10, 0, 30, 'onboard', TRUE, 'once')")
     n_before = int(psql("SELECT count(*) FROM messages WHERE subject='考核已派发'"))
     n_claims_before = int(psql(
-        "SELECT count(*) FROM task_claims c JOIN tasks t ON t.id=c.task_id"
+        "SELECT count(*) FROM task_claims c JOIN tasks t ON t.id=c.task_id "
             "WHERE t.name='e2e-exam转正'"))
     print(f"...等待 worker exam_assign（最长 130s），此前派发 {n_claims_before} 条")
     import time
     for _ in range(13):
         time.sleep(10)
         n_claims = int(psql(
-            "SELECT count(*) FROM task_claims c JOIN tasks t ON t.id=c.task_id"
+            "SELECT count(*) FROM task_claims c JOIN tasks t ON t.id=c.task_id "
                 "WHERE t.name='e2e-exam转正'"))
         if n_claims > 0:
             break
@@ -194,6 +226,8 @@ def main():
     check("转正 PM 专有文案", n_pass_pm > 0, f"PM={n_pass_pm}")
 
     cleanup()
+    psql("UPDATE site_settings SET value='no' WHERE name='module_exams'")
+    psql("DELETE FROM job_triggers WHERE job='exam_assign'")
     psql(
         "UPDATE site_settings SET value='{orig_days}' WHERE"
             "name='exam_onboard_days'")
