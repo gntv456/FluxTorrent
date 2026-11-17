@@ -4016,6 +4016,8 @@ const zhTwBase: Omit<
     seedSnatchCount: "做種/下載/完成",
     seedTime: "做種時間",
     seedPointsUnit: "積分",
+    seedPointsNote:
+      "做種積分 = 做種時長（1 積分 = 1 小時），是考核與升級用的度量，不能消費；每小時收益請看「我的魔力」頁",
     hrField: "H&R 未處理",
     connectInfo: "連線資訊",
     btClient: "BT 用戶端",

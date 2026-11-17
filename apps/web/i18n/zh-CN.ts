@@ -4046,6 +4046,8 @@ const zhCnBase = {
     seedSnatchCount: "做种/下载/完成",
     seedTime: "做种时间",
     seedPointsUnit: "积分",
+    seedPointsNote:
+      "做种积分 = 做种时长（1 积分 = 1 小时），是考核与升级用的度量，不能消费；每小时收益请看「我的魔力」页",
     hrField: "H&R 未处理",
     connectInfo: "连接信息",
     btClient: "BT 客户端",

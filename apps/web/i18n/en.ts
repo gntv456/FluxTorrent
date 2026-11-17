@@ -4133,6 +4133,8 @@ const enBase: Omit<
     seedSnatchCount: "Seeding/Leeching/Done",
     seedTime: "Seeding time",
     seedPointsUnit: "pts",
+    seedPointsNote:
+      "Seed points = seeding time (1 pt = 1 hour), a metric for exams and class upgrades — not spendable; see My Spark page for hourly earnings",
     hrField: "H&R unresolved",
     connectInfo: "Connection Info",
     btClient: "BT client",
