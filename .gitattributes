@@ -9,3 +9,9 @@ Dockerfile text eol=lf
 *.toml text eol=lf
 *.yml text eol=lf
 *.yaml text eol=lf
+# 主题 CSS 源件与生成资产（2026-11-18）：gen-theme-css.mjs 按字节 hash 命名
+# 生成件，autocrlf=true 的 Windows checkout 会把源件转 CRLF → 同内容产出
+# 不同 hash 文件名（d9d900f0 vs f34fb4d3 实证）。锁 LF 保证跨平台可复现。
+app/styles/*.css text eol=lf
+public/theme-css/*.css text eol=lf
+public/theme-css/manifest.json text eol=lf

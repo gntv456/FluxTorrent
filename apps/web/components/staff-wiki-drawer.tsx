@@ -4,6 +4,7 @@
  *  顶过 300 行门禁）：版本历史抽屉（只读，回滚不做）。
  *  类型 WikiRevision 从 staff-wiki-shared.ts 复用，不另立口径。 */
 
+import { EmptyState } from "@/components/ui/empty-state";
 import type { WikiRevision } from "@/components/staff-wiki-shared";
 
 export function WikiRevDrawer({
@@ -48,7 +49,13 @@ font-mono text-xs text-sub"
           </li>
         ))}
         {revs !== null && revs.length === 0 && (
-          <li className="text-sub">{dict.adminWiki.noRevisions}</li>
+          <li>
+            <EmptyState
+              icon="info"
+              compact
+              title={dict.adminWiki.noRevisions}
+            />
+          </li>
         )}
       </ul>
     </div>

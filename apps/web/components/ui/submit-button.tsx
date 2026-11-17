@@ -21,6 +21,8 @@ export function SubmitButton({
   failLabel,
   tone = "brand",
   className,
+  type = "submit",
+  onClick,
 }: {
   /** 提交中：禁用 + spinner + busyLabel */
   busy?: boolean;
@@ -34,15 +36,20 @@ export function SubmitButton({
   failLabel?: string;
   tone?: "brand" | "danger";
   className?: string;
+  /** 按钮类型，缺省 submit（表单内）；核销/工具行等非表单场景传 button */
+  type?: "submit" | "button" | "reset";
+  /** 点击回调（type=button 时的触发口）；busy 期间原语已禁用防双击 */
+  onClick?: () => void;
 }) {
   const state = busy ? "busy" : ok ? "ok" : fail ? "fail" : "idle";
   const cls = `ui-submit ui-submit--${tone}${className ? ` ${className}` : ""}`;
   return (
     <button
-      type="submit"
+      type={type}
       disabled={busy}
       aria-busy={busy || undefined}
       className={cls}
+      onClick={onClick}
     >
       {state === "idle" ? (
         label

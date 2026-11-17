@@ -17,9 +17,7 @@
 
 import { createHash } from "node:crypto";
 import {
-  copyFileSync,
   mkdirSync,
-  readdirSync,
   readFileSync,
   rmSync,
   writeFileSync,
@@ -44,10 +42,19 @@ mkdirSync(OUT_DIR, { recursive: true });
 
 const manifest = { fonts: "", theme: "" };
 for (const [srcRel, base] of SRC) {
+  // hash 与拷贝件都走 LF 规范化字节：core.autocrlf=true 的 Windows 工作区
+  // 源文件是 CRLF（git checkout 转的），若按原始字节 hash，同一份内容在
+  // Windows/Linux 会产出不同文件名（2026-11-18 d9d900f0 vs f34fb4d3 实证），
+  // 跨平台不可复现。仓库内 blob 恒为 LF（.gitattributes 锁定），拷贝件
+  // 统一写 LF 与提交侧对齐。
   const content = readFileSync(join(webRoot, srcRel));
-  const tag = createHash("sha256").update(content).digest("hex").slice(0, 8);
+  const normalized = Buffer.from(
+    content.toString("utf8").replace(/\r\n/g, "\n"),
+    "utf8",
+  );
+  const tag = createHash("sha256").update(normalized).digest("hex").slice(0, 8);
   const name = `${base}.${tag}.css`;
-  copyFileSync(join(webRoot, srcRel), join(OUT_DIR, name));
+  writeFileSync(join(OUT_DIR, name), normalized);
   manifest[base.includes("fonts") ? "fonts" : "theme"] = `/theme-css/${name}`;
   console.log(`[gen-theme-css] ${srcRel} -> public/theme-css/${name}`);
 }
