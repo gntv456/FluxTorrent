@@ -91,7 +91,17 @@ pub async fn preserve_settle(db: &PgPool) -> anyhow::Result<u64> {
               -- 不能让拼成 NULL 的 idempotency_key 绕过 trg_spark_idem 每小时重发
               AND sp.claimed_at IS NOT NULL
               -- 口径（0310）：仅 0(DEAD) 阻断；-2(SUSPECT)/-1(未测) 放行。
-              AND s.last_port > 0 AND NOT COALESCE(s.connectable = 0, false)
+              AND s.last_port > 0
+              -- A 对齐（2026-11-17）：与 seeding.rs 同口径——有真实上传即放行，
+              -- connectable=0 且零上传仅 gate=hard 时挡（旧写法一刀切误伤真做种者）。
+              AND (
+                  s.connectable IS DISTINCT FROM 0
+                  OR COALESCE(s.uploaded, 0) > 0
+                  OR COALESCE(
+                      (SELECT value FROM site_settings WHERE name = 'connectable_gate'),
+                      'off'
+                  ) <> 'hard'
+              )
         ),
         due AS (
             SELECT c.torrent_id, c.user_id, c.prefix,

@@ -54,7 +54,11 @@ pub(crate) async fn resurrection_settle(db: &PgPool) -> anyhow::Result<u64> {
                         -- 即证明手里有数据，与 process_event 豁免同口径）。
                         AND s.last_port > 0
                         -- 口径（0310）：仅 0(DEAD) 阻断；-2(SUSPECT)/-1(未测) 放行。
-                        AND NOT COALESCE(s.connectable = 0, false)
+                        -- A 对齐（2026-11-17）：有真实上传即放行（见 seeding.rs），
+                        -- connectable=0 且零上传仅 gate=hard 时挡。
+                        AND (s.connectable IS DISTINCT FROM 0
+                             OR COALESCE(s.uploaded, 0) > 0
+                             OR COALESCE((SELECT value FROM site_settings WHERE name = 'connectable_gate'), 'off') <> 'hard')
                         AND (s.downloaded > 0 OR EXISTS (
                             SELECT 1 FROM upload_corroborated uc
                             WHERE uc.uploader_id = s.user_id

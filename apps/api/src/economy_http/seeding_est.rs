@@ -66,7 +66,12 @@ const SPLIT_SQL: &str = r#"
         FROM (
             SELECT CASE
                 WHEN s.last_port IS NULL OR s.last_port <= 0 THEN 'port'
-                WHEN COALESCE(s.connectable = 0, false) THEN 'unreach'
+                -- A 对齐（2026-11-17）：connectable=0 但有真实上传 → 仍计收益
+                -- （worker seeding.rs 已放行 uploaded>0）。只有「不可达且零上传」
+                -- 才是真正的不计收益。旧写法把 connectable=0 一律归 unreach，
+                -- 与计费层脱节 ⇒ 面板报「未计收益」，实际钱已到账。
+                WHEN COALESCE(s.connectable = 0, false)
+                     AND COALESCE(s.uploaded, 0) <= 0 THEN 'unreach'
                 WHEN s.last_seen_at IS NULL
                   OR s.last_seen_at
                      <= now() - ($2::bigint * interval '1 second')
@@ -128,7 +133,16 @@ const EST_SQL: &str = r#"
             LEFT JOIN seedbox_effective sb ON sb.user_id = u.id
             JOIN torrents t ON t.id = s.torrent_id
               AND s.last_port > 0
-              AND NOT COALESCE(s.connectable = 0, false)
+              -- A 对齐（2026-11-17）：与 worker/seeding.rs 完全同构——
+              -- 有真实上传一律放行；connectable=0 且零上传仅 gate=hard 时挡。
+              AND (
+                  s.connectable IS DISTINCT FROM 0
+                  OR COALESCE(s.uploaded, 0) > 0
+                  OR COALESCE(
+                      (SELECT value FROM site_settings WHERE name = 'connectable_gate'),
+                      'off'
+                  ) <> 'hard'
+              )
             CROSS JOIN p
             WHERE u.id = $1
               AND u.status < 2
@@ -153,3 +167,28 @@ const EST_SQL: &str = r#"
                                         p.donor_mult, donor) END
         FROM s2 CROSS JOIN p
         "#;
+
+/// 预计时积分：接下来一小时内预计能累计的做种积分颗数口径。
+///
+/// 做种积分 = 做种小时数（1 积分 = 1 小时做种，task_jobs P1-6 口径），
+/// 由 tracker announce 事件实时累计（process_event.rs 的 seeded_seconds
+/// CASE），只要求「在做种 + 汇报新鲜」，**无**端口/回连/停权闸——积分是
+/// 时长账，收益才是经济账，两者闸门刻意不同。因此这里只镜像 process_event
+/// 的累计条件（seeding + last_seen_at 新鲜），与 hourly_estimate 的过滤
+/// 集合刻意不一致。
+pub async fn hourly_points_estimate(
+    db: &PgPool,
+    user_id: i64,
+    stale_secs: i64,
+) -> i64 {
+    sqlx::query_scalar(
+        "SELECT count(*)::bigint FROM snatches s \
+         WHERE s.user_id = $1 AND s.seeding \
+           AND s.last_seen_at > now() - ($2::bigint * interval '1 second')",
+    )
+    .bind(user_id)
+    .bind(stale_secs)
+    .fetch_one(db)
+    .await
+    .unwrap_or(0)
+}
