@@ -118,12 +118,17 @@ pub(crate) async fn cheat_enforce(db: &PgPool) -> anyhow::Result<u64> {
     // 类（reset/speed/corr 是累计读数证据，断流≠洗白，留人工结案；deal
     // 2026-11-16 并入——它的信号是共现观察，断流即嫌疑消失）。
     // false_positive 不置：「信号消失」≠「判定错误」，不污染准确率分母。
-    // bitthief/nearcap 走 agent 等值；ghost/deal 用 hash8 回链验证。
+    // bitthief 走 agent 等值；nearcap/deal/ghost 的 agent 带 :id 后缀
+    // （nearcap:{torrent_id} / deal:{hash8} / ghost:{hash8}），等值永不
+    // 命中——nearcap 首版就写成了等值，过期口对它是死代码（L2 过滤器
+    // 用的 LIKE 'nearcap:%' 才是对的）。deal 断流即过期；ghost 用 hash8
+    // 回链验证（有活跃下载者才保留）。
     let expired = sqlx::query(
         "UPDATE cheat_events c SET resolved_at = now() \
          WHERE c.resolved_at IS NULL AND c.false_positive IS NOT TRUE \
            AND c.last_seen < now() - interval '7 days' \
-           AND ( c.agent IN ('bitthief', 'nearcap') \
+           AND ( c.agent = 'bitthief' \
+             OR c.agent LIKE 'nearcap:%' \
              OR c.agent LIKE 'deal:%' \
              OR ( c.agent LIKE 'ghost:%' AND NOT EXISTS ( \
                   SELECT 1 FROM torrents t \

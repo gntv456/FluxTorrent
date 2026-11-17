@@ -44,23 +44,41 @@ pub(crate) async fn dormant_mark(db: &PgPool) -> anyhow::Result<u64> {
     .await
     .unwrap_or(14);
 
-    // 预提醒（公示「回收前提醒」承诺）：距阈值 warn_days 内未提醒过者。
-    // 豁免族同打标口径（身份档 20+ 不提醒）。邮件 dedupe 幂等（0404）。
+    // 预提醒（公示「回收前提醒」承诺）：距阈值 warn_days 天内未提醒过者。
+    // 窗口 = last_seen ∈ (now()-阈值, now()-(阈值-warn)]——一般档 $2 / 零
+    // 流量档 $3 各自套 $1 提前置，就近者先提（dedupe 按 user 幂等，先发
+    // 的赢）。不等式方向别写反：未登录越久 last_seen 越早（越小），窗口
+    // 在「更早」一侧。文案里的「已超过 N 天」按命中档位取（零流量档
+    // 用户只闲置了 80 天，不能给他看一般档的 136 天——首版修窗口时
+    // GREATEST 两档取大就犯了这个错，发信前实修）。也不是「未登录
+    // warn_days 天」：本任务每小时跑，绑 warn_days 当未登录天数会让
+    // 未登录两周就收到「即将休眠」，而实际阈值是 150 天（0492 原版就
+    // 这么写，两处一起实修）。豁免同打标口径（身份档 20+ 不提醒）。
+    // 邮件 dedupe（0404）。
     let _ = sqlx::query(
         r#"
         INSERT INTO mail_outbox (user_id, to_email, subject, body, dedupe_key)
         SELECT u.id, u.email,
                '账号休眠提醒：请保持登录与做种',
-               '您的账号已超过 ' || $1::bigint ||
+               '您的账号已超过 ' || (CASE WHEN u.uploaded = 0
+               AND u.downloaded = 0
+               THEN $3::bigint ELSE $2::bigint END - $1::bigint) ||
                ' 天未登录。按站点账号保留策略，长期不活跃的账号可能被休眠停用（登录将受限制）。保持定期登录或做种即可避免。',
                'inactivity_warn:' || u.id
         FROM users u
         WHERE u.class_id < 20 AND NOT u.donor AND u.dormant_at IS NULL
           AND u.status < 2
-          AND COALESCE(u.last_seen_at, u.created_at)
-            < now() - ($1::bigint * interval '1 day')
-          AND COALESCE(u.last_seen_at, u.created_at)
-            >= now() - (($1::bigint + 3) * interval '1 day')
+          AND (
+            COALESCE(u.last_seen_at, u.created_at)
+              <= now() - (($2::bigint - $1::bigint) * interval '1 day')
+            AND COALESCE(u.last_seen_at, u.created_at)
+              > now() - ($2::bigint * interval '1 day')
+            OR u.uploaded = 0 AND u.downloaded = 0
+            AND COALESCE(u.last_seen_at, u.created_at)
+              <= now() - (($3::bigint - $1::bigint) * interval '1 day')
+            AND COALESCE(u.last_seen_at, u.created_at)
+              > now() - ($3::bigint * interval '1 day')
+          )
           AND NOT EXISTS (SELECT 1 FROM snatches s
                            WHERE s.user_id = u.id AND s.seeding)
           AND NOT EXISTS (SELECT 1 FROM mail_outbox m
@@ -68,6 +86,8 @@ pub(crate) async fn dormant_mark(db: &PgPool) -> anyhow::Result<u64> {
         "#,
     )
     .bind(warn_days)
+    .bind(days)
+    .bind(zero_days)
     .execute(db)
     .await;
     let _ = sqlx::query(
@@ -75,15 +95,24 @@ pub(crate) async fn dormant_mark(db: &PgPool) -> anyhow::Result<u64> {
         INSERT INTO messages (sender_id, receiver_id, subject, body)
         SELECT NULL, u.id,
                '账号休眠提醒',
-               '您的账号已超过 ' || $1::bigint ||
+               '您的账号已超过 ' || (CASE WHEN u.uploaded = 0
+               AND u.downloaded = 0
+               THEN $3::bigint ELSE $2::bigint END - $1::bigint) ||
                ' 天未登录。按站点账号保留策略，长期不活跃的账号可能被休眠停用（登录将受限制）。保持定期登录或做种即可避免。'
         FROM users u
         WHERE u.class_id < 20 AND NOT u.donor AND u.dormant_at IS NULL
           AND u.status < 2
-          AND COALESCE(u.last_seen_at, u.created_at)
-            < now() - ($1::bigint * interval '1 day')
-          AND COALESCE(u.last_seen_at, u.created_at)
-            >= now() - (($1::bigint + 3) * interval '1 day')
+          AND (
+            COALESCE(u.last_seen_at, u.created_at)
+              <= now() - (($2::bigint - $1::bigint) * interval '1 day')
+            AND COALESCE(u.last_seen_at, u.created_at)
+              > now() - ($2::bigint * interval '1 day')
+            OR u.uploaded = 0 AND u.downloaded = 0
+            AND COALESCE(u.last_seen_at, u.created_at)
+              <= now() - (($3::bigint - $1::bigint) * interval '1 day')
+            AND COALESCE(u.last_seen_at, u.created_at)
+              > now() - ($3::bigint * interval '1 day')
+          )
           AND NOT EXISTS (SELECT 1 FROM snatches s
                            WHERE s.user_id = u.id AND s.seeding)
           AND NOT EXISTS (SELECT 1 FROM messages m
@@ -92,6 +121,8 @@ pub(crate) async fn dormant_mark(db: &PgPool) -> anyhow::Result<u64> {
         "#,
     )
     .bind(warn_days)
+    .bind(days)
+    .bind(zero_days)
     .execute(db)
     .await;
 

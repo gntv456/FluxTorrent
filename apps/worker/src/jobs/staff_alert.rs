@@ -142,7 +142,13 @@ pub(crate) async fn alerted_within_24h(
 /// 「同一 (permission, subject) 在窗口内是否已发过」。给 body 无统一
 /// 前缀锚点的发射口用（黑白名单/差额审计/Ratio Watch/邮件死信）——
 /// 这些口的事件键天然分散（每颗种子/每封信各一 key），按前缀去重
-/// 等于不去重，主题级窗口才是有效闸。hours=0 退化为「今天发过没」。
+/// 等于不去重，主题级窗口才是有效闸。
+///
+/// ⚠ `$3::int` 不能省：make_interval 的 hours 形参是 int4，Rust i64 绑成
+/// int8 无隐式转换——首版没强转，每调必报 42883（function make_interval
+/// (hours => bigint) does not exist），被下方 unwrap_or(false) 静默吞成
+/// 「没告警过」⇒ 闸恒开。同坑见 cheat_enforce.rs / audit.rs / class_adj.rs
+/// 的事故注释，那里都是因此补的强转。
 pub(crate) async fn alerted_subject_within(
     db: &PgPool,
     permission: &str,
@@ -152,14 +158,21 @@ pub(crate) async fn alerted_subject_within(
     let r = sqlx::query_scalar::<_, bool>(
         "SELECT EXISTS (SELECT 1 FROM staffmessages \
           WHERE permission = $1 AND subject = $2 \
-            AND created_at > now() - make_interval(hours => $3))",
+            AND created_at > now() - make_interval(hours => $3::int))",
     )
     .bind(permission)
     .bind(subject)
     .bind(hours)
     .fetch_one(db)
     .await;
-    r.unwrap_or(false)
+    match r {
+        Ok(v) => v,
+        // 查询失败要显性（warn），不能静默当「没发过」——那等于关闸。
+        Err(e) => {
+            tracing::warn!(error = %e, subject, "staff_alert: 主题窗闸查询失败（按未发处理）");
+            false
+        }
+    }
 }
 
 /// 组合件（2026-11-17 四口收编）：同主题窗口内未告警过才发，返回是否真发。

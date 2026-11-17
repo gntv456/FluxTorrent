@@ -90,6 +90,11 @@ pub(crate) async fn handle_entry(
             // ③ 发布者豁免：种子 owner 本人首发做种，「未下载却有完整
             //    数据」是发布形态（shmt86 案：0 下载 87TB 上传与 swarm
             //    真实消费量对账平衡，属批量发布者而非刷量）。
+            // ── ④ 成熟期（35c65f22 对齐）：seeding_gate::verdict 的 ghost
+            //    发射口已有 48 次 announce 宽限（刚辅种者的必经态不算
+            //    幽灵），本探测口是第二发射口且无宽限——port=0 的新辅种
+            //    在 t=0 就会记 ghost。同尺补上：本人该种 announce 次数
+            //    ≥ GHOST_MATURITY_ANNOUNCES（48，≈24h）才记。
             if ev.conn == Some(0)
                 && ev.port == 0
                 && ev.up == 0
@@ -97,6 +102,8 @@ pub(crate) async fn handle_entry(
             {
                 let ghost_key =
                     format!("ghost:{}", &ev.hash[..8.min(ev.hash.len())]);
+                let maturity = super::process_event::seeding_gate::
+                    GHOST_MATURITY_ANNOUNCES;
                 let _ = sqlx::query(
                     "INSERT INTO cheat_events (user_id, agent, \
                      peer_ip, reason) \
@@ -110,14 +117,19 @@ pub(crate) async fn handle_entry(
                        AND NOT EXISTS ( \
                          SELECT 1 FROM torrents t \
                          WHERE t.id = $4 AND t.owner_id = $1) \
+                       AND COALESCE(( \
+                         SELECT o2.total_announces FROM snatches o2 \
+                         WHERE o2.torrent_id = $4 AND o2.user_id = $1), 0) \
+                         >= $5 \
                      ON CONFLICT (user_id, agent, reason) DO UPDATE \
                        SET hits = cheat_events.hits + 1, \
                            last_seen = now()",
                 )
                 .bind(ev.user)
                 .bind(&ghost_key)
-                .bind(&ev.ip)
+                .bind(ev.ip)
                 .bind(torrent_id)
+                .bind(maturity)
                 .execute(db)
                 .await;
             }
