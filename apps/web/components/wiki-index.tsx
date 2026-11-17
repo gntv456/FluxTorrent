@@ -1,12 +1,8 @@
-"use client";
-
-/** Wiki 目录页客户端壳：检索框 + 分组卡片列表（即时过滤）。
+/** Wiki 目录页分组卡片（RSC 服务端直出——SEO/无 JS 可见；0495）。
  *
- *  全量目录由 RSC 页拿好传进来（服务端渲染首屏，SEO/无 JS 都有内容），
- *  这里只做交互层：击键过滤。分组顺序与组文案由 RSC 侧排好，
- *  过滤命中空时显示 searchEmpty 提示（不隐藏分组标题——用户改词时
- *  卡片框架还在，视觉不闪）。 */
-import { useState } from "react";
+ *  检索交互由 <WikiSearch>（client）按 data-wiki-card/data-title 做
+ *  DOM 过滤（渐进增强），这里只出结构：检索框 + 空态占位 + 分组卡。
+ *  data-wiki-section 挂在分组卡上，过滤命中空时整卡隐藏。 */
 
 import { WikiSearch } from "@/components/wiki-search";
 import { PANEL_BRAND, WIKI_CARD_LINK } from "@/lib/ui-classes";
@@ -40,30 +36,27 @@ export function WikiIndex({
   updatedAtLabel: string;
   pagesUnit: (n: number) => string;
 }) {
-  const [q, setQ] = useState("");
-  const needle = q.trim().toLowerCase();
-  const hit = (e: WikiIndexEntry) =>
-    !needle ||
-    e.title.toLowerCase().includes(needle) ||
-    e.slug.toLowerCase().includes(needle);
-  const visible = entries.filter(hit);
-  const total = visible.length;
-
   return (
     <div className="flex flex-col gap-4">
       <div className="max-w-xl">
-        <WikiSearch placeholder={searchPlaceholder} onFilter={setQ} />
+        <WikiSearch placeholder={searchPlaceholder} />
       </div>
-      {total === 0 && (
-        <div className={PANEL_BRAND}>
-          <p className="text-sm text-sub">{searchEmpty}</p>
-        </div>
-      )}
+      <p
+        id="wiki-filter-empty"
+        style={{ display: "none" }}
+        className="text-sm text-sub"
+      >
+        {searchEmpty}
+      </p>
       {sections.map((s) => {
-        const items = visible.filter((e) => e.section === s.key);
+        const items = entries.filter((e) => e.section === s.key);
         if (items.length === 0) return null;
         return (
-          <section key={s.key} className={PANEL_BRAND}>
+          <section
+            key={s.key}
+            data-wiki-section={s.key}
+            className={PANEL_BRAND}
+          >
             <header className="flex flex-wrap items-baseline gap-2">
               <h2 className="font-display text-lg font-bold text-ink">
                 {s.title}
@@ -78,6 +71,9 @@ export function WikiIndex({
                 <li key={p.id}>
                   <a
                     href={`/wiki/${p.slug}`}
+                    data-wiki-card={p.slug}
+                    data-title={p.title}
+                    data-slug={p.slug}
                     className={WIKI_CARD_LINK}
                   >
                     <span className="text-sm font-medium text-link">
