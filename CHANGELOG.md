@@ -3,6 +3,23 @@
 本文件记录面向部署者的显著变更。格式参照 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)；
 版本号在首个语义化 tag（v0.x）发布后启用。
 
+## [0.5.19-dev.13] - 2026-11-17
+
+定位：**dev.12 深查自纠**——主题面板回归热修 + 开放 API 文档 passkey 旧口径全面纠正。
+
+### 修复
+- **主题面板经典组暗色档误滤**（dev.12 回归，当天自纠）：isLightTheme
+  过滤把 classic 组也滤了——brand-night 与山海经暗色档是**独立主题档**
+  （非淡彩孪生），被抹出面板后用户无法手选暗色经典主题。过滤收窄到
+  淡彩三组（fresh/ink/dream），classic 组保持 4 档全列
+- **开放 API 文档 passkey 旧口径**（v0.5.11 收口后从未更新，照接必
+  404/401）：`docs/integrations/open-api.md` 八处对照代码实况纠正——
+  凭据表补 fxr_ RSS/下载 Token 行、RSS/下载/别名端点参数改 token=、
+  ptppUserInfo 与 user.json 响应示例删已不存在的 passkey 字段（补
+  0.5.19 新增 bonusPerHour/uploads）、Torznab enclosure 凭据实为
+  fxo_ Token、PT-Plugin-Plus 收录取值链（原指已删除的
+  data.passkey，拼空值必 401，改用户配置位手填 fxr_ token）
+
 ## [0.5.19-dev.12] - 2026-11-17
 
 定位：**两天批（dev.1–dev.11）深查清偿**——四 P1 + 三 P2 修复，含 dev.10 休眠预提醒误发链（发信前拦截）。
