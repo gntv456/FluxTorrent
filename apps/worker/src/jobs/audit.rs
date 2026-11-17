@@ -1,6 +1,6 @@
 //! 作弊检测（cheat_audit / multi_ip_check）+ Ratio Watch。
 
-use super::staff_alert::staff_alert;
+use super::staff_alert::{alerted_within_7d, staff_alert, staff_alert_gated};
 use sqlx::PgPool;
 
 /// 0228 运维 webhook 广播（worker 侧：直接查 site_settings + reqwest，
@@ -16,55 +16,62 @@ pub(crate) async fn webhook_broadcast(db: &PgPool, text: &str) {
     let kv: std::collections::HashMap<_, _> = keys.into_iter().collect();
     let client = reqwest::Client::new();
     if let Some(url) = kv.get("webhook_discord").filter(|u| !u.is_empty()) {
-        let _ = client
-            .post(url)
-            .json(&serde_json::json!({ "content": text }))
-            .send()
-            .await;
+        let body = serde_json::json!({ "content": text });
+        let _ = client.post(url).json(&body).send().await;
     }
-    if let (Some(token), Some(chat)) = (
+    let tg = (
         kv.get("tg_bot_token").filter(|t| !t.is_empty()),
         kv.get("tg_chat_id").filter(|c| !c.is_empty()),
-    ) {
+    );
+    if let (Some(token), Some(chat)) = tg {
+        let url = format!("https://api.telegram.org/bot{token}/sendMessage");
         let _ = client
-            .post(format!("https://api.telegram.org/bot{token}/sendMessage"))
-            .json(&serde_json::json!({
-                "chat_id": chat, "text": text,
-            }))
+            .post(url)
+            .json(&serde_json::json!({ "chat_id": chat, "text": text }))
             .send()
             .await;
     }
 }
 
-/// 种子级 up/down 差额对账（NP cheaterbox 口径）：
-/// 虚报上传者没有对应真实下载方，同种子 7 天窗口 Σ(delta_up) − Σ(delta_down) 长期为正且巨大。
-/// 免费促销（free/x2free）天然产生差额，豁免——按流水自身的 promotion_kind 豁免
-/// （2026-10-07 保种组审计 P2：旧版按**当前时刻**查促销表，促销结束后的 7 天窗口内
-/// 刷的量会被误豁免；且要求 COUNT(DISTINCT user_id)>=2，实测单账号刷 723GiB 零告警）。
-/// 命中 → cheat_events（agent='torrent_gap', agent 字段存 torrent:{id}）+ 首次进管理组信箱。
-pub async fn cheat_audit(db: &PgPool) -> anyhow::Result<u64> {
-    let threshold_gb: i64 = sqlx::query_scalar::<_, String>(
-        "SELECT value FROM site_settings WHERE name = 'cheat_gap_threshold_gb'",
+/// site_settings 数值键读取（缺省+钳制一体）：audit 内四处同构取参收口。
+async fn cfg_num<T: std::str::FromStr + PartialOrd + Copy>(
+    db: &sqlx::PgPool,
+    key: &str,
+    default: T,
+    lo: T,
+    hi: T,
+) -> T {
+    let v = sqlx::query_scalar::<_, String>(
+        "SELECT value FROM site_settings WHERE name = $1",
     )
+    .bind(key)
     .fetch_optional(db)
     .await
     .ok()
     .flatten()
-    .and_then(|v| v.parse::<i64>().ok())
-    .unwrap_or(50)
-    .clamp(1, 10240);
+    .and_then(|v| v.parse::<T>().ok())
+    .unwrap_or(default);
+    if v < lo {
+        lo
+    } else if v > hi {
+        hi
+    } else {
+        v
+    }
+}
+
+/// 种子级 up/down 差额对账（NP cheaterbox 口径）：虚报上传者没有对应真实
+/// 下载方，同种子 7 天窗口 Σup−Σdown 长期为正且巨大。免费促销（free/x2free）
+/// 天然产生差额，豁免——按流水自身的 promotion_kind 豁免（2026-10-07 保种组
+/// 审计 P2：旧版按当前时刻查促销表，促销结束后 7 天窗口内刷的量会被误豁免；
+/// 且要求 COUNT(DISTINCT user_id)>=2，实测单账号刷 723GiB 零告警）。
+/// 命中 → cheat_events（agent 存 torrent:{id}）+ 首次进管理组信箱。
+pub async fn cheat_audit(db: &PgPool) -> anyhow::Result<u64> {
+    let threshold_gb: i64 =
+        cfg_num(db, "cheat_gap_threshold_gb", 50, 1, 10240).await;
     let threshold = threshold_gb * 1024 * 1024 * 1024;
     // 相对比率（0311 site_settings 化）：开源后出厂值 5 人人可查，各站自调
-    let gap_ratio: i64 = sqlx::query_scalar::<_, String>(
-        "SELECT value FROM site_settings WHERE name = 'cheat_gap_ratio'",
-    )
-    .fetch_optional(db)
-    .await
-    .ok()
-    .flatten()
-    .and_then(|v| v.parse::<i64>().ok())
-    .unwrap_or(5)
-    .clamp(2, 100);
+    let gap_ratio: i64 = cfg_num(db, "cheat_gap_ratio", 5, 2, 100).await;
 
     // promotion_kind：free=1 x2free=3（promotion_kind_enum 标签序，见 promo_audit.rs）
     let rows: Vec<(i64, i64)> = sqlx::query_as(
@@ -107,19 +114,19 @@ pub async fn cheat_audit(db: &PgPool) -> anyhow::Result<u64> {
                 "种子 #{torrent_id} 近 7 天上传总量比下载总量高出约 {gap} 字节（阈值 {threshold_gb} GiB），\
                  存在虚报上传（假流量）嫌疑。明细见后台「作弊探测」，请人工核对做种者列表。"
             );
-            staff_alert(db, "流量差额审计告警", &body, "cheater").await;
+            // 2026-11-17 收编主题窗闸：每颗新嫌疑种子各发一条（线上积压 116 条
+            // 即此形态）；事件表已留档，信箱 24h 内一封汇总信号即可。
+            staff_alert_gated(db, "cheater", "流量差额审计告警", 24, &body)
+                .await;
         }
     }
     if first_hits > 0 {
         tracing::warn!(n = first_hits, "cheat_audit: new torrent-gap suspects");
         // 0228 运维 webhook：新嫌疑广播到 Discord/TG（尽力而为）
-        webhook_broadcast(
-            db,
-            &format!(
-                "🚨 cheat_audit 新增 {first_hits} 个流量差额嫌疑，详情见后台"
-            ),
-        )
-        .await;
+        let msg = format!(
+            "🚨 cheat_audit 新增 {first_hits} 个流量差额嫌疑，详情见后台"
+        );
+        webhook_broadcast(db, &msg).await;
     }
     Ok(first_hits)
 }
@@ -128,26 +135,9 @@ pub async fn cheat_audit(db: &PgPool) -> anyhow::Result<u64> {
 /// 分享率跌破阈值 → 一次性站内信警告 + 14 天观察期；期内恢复自动解除，到期仍跌破 → 停下载权并通知管理组。
 /// 阈值/期限走 site_settings：ratio_watch_threshold（默认 0.4）、ratio_watch_days（默认 14）。
 pub async fn ratio_watch(db: &PgPool) -> anyhow::Result<u64> {
-    let threshold_f: f64 = sqlx::query_scalar::<_, String>(
-        "SELECT value FROM site_settings WHERE name = 'ratio_watch_threshold'",
-    )
-    .fetch_optional(db)
-    .await
-    .ok()
-    .flatten()
-    .and_then(|v| v.parse::<f64>().ok())
-    .unwrap_or(0.4)
-    .clamp(0.01, 10.0);
-    let days: i64 = sqlx::query_scalar::<_, String>(
-        "SELECT value FROM site_settings WHERE name = 'ratio_watch_days'",
-    )
-    .fetch_optional(db)
-    .await
-    .ok()
-    .flatten()
-    .and_then(|v| v.parse::<i64>().ok())
-    .unwrap_or(14)
-    .clamp(1, 90);
+    let threshold_f: f64 =
+        cfg_num(db, "ratio_watch_threshold", 0.4, 0.01, 10.0).await;
+    let days: i64 = cfg_num(db, "ratio_watch_days", 14, 1, 90).await;
 
     // ① 新跌破者：进入观察期 + 一次性警告信
     let entered = sqlx::query(
@@ -184,7 +174,6 @@ pub async fn ratio_watch(db: &PgPool) -> anyhow::Result<u64> {
     .ok()
     .flatten()
     .unwrap_or_else(|| "limit_download".into());
-
     let (punished, notified) = if action == "warn" {
         let expired: Vec<(i64, String)> = sqlx::query_as(
             "SELECT id, username FROM users \
@@ -202,9 +191,8 @@ pub async fn ratio_watch(db: &PgPool) -> anyhow::Result<u64> {
                 "INSERT INTO messages (sender_id, receiver_id, subject, body) \
                  VALUES (NULL, $1, '分享率警告（观察期已满）', $2)",
             )
-            .bind(uid)
-            .bind(format!(
-                "您好 {uname}，您的观察期已结束但分享率仍未恢复至 {threshold_f:.2}。本次仅提醒；持续未恢复可能影响下载权限。"
+            .bind(uid)            .bind(format!(
+                "您好 {uname}，观察期已结束但分享率仍未恢复至 {threshold_f:.2}，本次仅提醒。"
             ))
             .execute(db).await;
             if let Err(e) = side {
@@ -226,8 +214,7 @@ pub async fn ratio_watch(db: &PgPool) -> anyhow::Result<u64> {
                  AND ratio_watch_until < now() \
                  AND downloaded > 0 \
                  AND uploaded::float8 / downloaded::float8 < $1 \
-               RETURNING id, username) \
-             SELECT id, username FROM expired",
+                 RETURNING id, username) SELECT id, username FROM expired",
         )
         .bind(threshold_f)
         .fetch_all(db)
@@ -237,7 +224,19 @@ pub async fn ratio_watch(db: &PgPool) -> anyhow::Result<u64> {
                 "用户 {uname}（#{uid}）观察期结束仍未恢复分享率，\
                  已按规则暂停下载权限，请人工复核。"
             );
-            staff_alert(db, "Ratio Watch 到期处置", &body, "cheater").await;
+            // 2026-11-17 收编前缀闸：职员人工复核放行（解锁下载）后，下轮
+            // tick 会再锁再发；同用户 7 天一封，处置动作在 audit log 可查。
+            let prefix = format!("用户 {uname}（#{uid}）");
+            if !alerted_within_7d(
+                db,
+                "cheater",
+                "Ratio Watch 到期处置",
+                &prefix,
+            )
+            .await
+            {
+                staff_alert(db, "Ratio Watch 到期处置", &body, "cheater").await;
+            }
         }
         (expired.len() as u64, expired.len() as u64)
     };

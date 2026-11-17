@@ -5,7 +5,7 @@
 //! 失败留 PEL 重试语义与旧「游标暂停」等价。
 
 use super::group::{self, AGENTBLOCK_GROUP};
-use super::staff_alert::staff_alert;
+use super::staff_alert::staff_alert_gated;
 use sqlx::PgPool;
 
 /// 消费 agent_rules 命中事件（tracker emit_agent_block 投递）→ cheat_events 落库。
@@ -97,8 +97,17 @@ pub async fn consume_agent_blocks(
                     // 旧写法绑被处置用户 ⇒ 工单列表把当事人显示成提交人，而
                     // 职员答复（staff_answer.rs:54）会把处置意图原话 PM 给
                     // 当事人。与 leak_bot.rs:93 修过的语义错位同族。
-                    staff_alert(db, "客户端黑白名单自动告警", &body, "cheater")
-                        .await;
+                    // 2026-11-17 收编主题窗闸：命中键是 (user,agent,reason)，
+                    // 客户端升级换串即新 key 重发一封；同主题 24h 一封，
+                    // 累计情况事件表里有，信箱只做「有新命中」信号。
+                    staff_alert_gated(
+                        db,
+                        "cheater",
+                        "客户端黑白名单自动告警",
+                        24,
+                        &body,
+                    )
+                    .await;
                     if action == "warn" {
                         let _: Result<_, _> = sqlx::query(
                             "INSERT INTO messages (sender_id, receiver_id, \

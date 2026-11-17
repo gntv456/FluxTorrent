@@ -7,6 +7,8 @@
 
 use sqlx::PgPool;
 
+use super::staff_alert::staff_alert_gated;
+
 /// 装配 SMTP 发信参数；未配置返回 None（调用方降级跳过）。
 async fn smtp_config(db: &PgPool) -> Option<(String, String)> {
     let rows: Vec<(String, String)> = sqlx::query_as(
@@ -254,7 +256,7 @@ pub(crate) async fn mail_outbox_drain(db: &PgPool) -> anyhow::Result<u64> {
         };
         let rt = contact_reply_to(db).await;
         let r = send_via_smtp(&url, &from, &to, &mail, rt.as_deref()).await;
-        let subject = mail.subject.clone();
+        // 851aedd2 重构遗留的死变量已清（send 改传 mail 对象后无人消费）。
         match r {
             Ok(()) => {
                 let _ = sqlx::query(
@@ -278,28 +280,24 @@ pub(crate) async fn mail_outbox_drain(db: &PgPool) -> anyhow::Result<u64> {
                 .await
                 .unwrap_or(0);
                 if attempts >= 5 {
-                    tracing::warn!(
-                        id,
-                        to,
-                        "mail_outbox: 达重试上限，落死信告警"
+                    // P-428：旧写法聚合当 EXISTS 用 + `let _ =` 吞错 ⇒ 邮件
+                    // 死信这种最该出声的告警既发不出也没人看见。收进唯一出口
+                    // （组合件：无在册职员可署名时 warn+0；2026-11-17 收编
+                    // 主题窗闸，SMTP 故障每封一条会灌满信箱，24h 一封）。
+                    let body = format!(
+                        "outbox #{id} 发送 5 次失败：{e}（收件已脱敏）"
                     );
-                    // P-428：这里原先自己写
-                    // `INSERT … SELECT MIN(id) … WHERE class_id >= 99`——
-                    // 把聚合当 EXISTS 用：命中 0 行时 `MIN(id)` 仍返回**一行
-                    // NULL**，于是 INSERT 真执行并撞 staffmessages.user_id 的
-                    // NOT NULL；外面又套 `let _ =` 把数据库错误吞成静默
-                    // ⇒ 邮件死信这种最该出声的告警，既发不出去也没人看得见。
-                    // 收进唯一出口 staff_alert（无在册职员可署名时 warn + 返回 0）。
-                    super::staff_alert::staff_alert(
+                    let went = staff_alert_gated(
                         db,
-                        "邮件死信告警",
-                        &format!(
-                            "outbox #{} 发送 5 次失败：{}（收件已脱敏）",
-                            id, e
-                        ),
                         "staff_panel",
+                        "邮件死信告警",
+                        24,
+                        &body,
                     )
                     .await;
+                    if went {
+                        tracing::warn!(id, to, "mail_outbox: 死信告警已发");
+                    }
                 }
             }
         }

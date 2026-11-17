@@ -137,3 +137,45 @@ pub(crate) async fn alerted_within_24h(
     .await;
     r.unwrap_or(false)
 }
+
+/// 同主题时间窗闸（2026-11-17 四口收编）：不解析 body 形态，只看
+/// 「同一 (permission, subject) 在窗口内是否已发过」。给 body 无统一
+/// 前缀锚点的发射口用（黑白名单/差额审计/Ratio Watch/邮件死信）——
+/// 这些口的事件键天然分散（每颗种子/每封信各一 key），按前缀去重
+/// 等于不去重，主题级窗口才是有效闸。hours=0 退化为「今天发过没」。
+pub(crate) async fn alerted_subject_within(
+    db: &PgPool,
+    permission: &str,
+    subject: &str,
+    hours: i64,
+) -> bool {
+    let r = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS (SELECT 1 FROM staffmessages \
+          WHERE permission = $1 AND subject = $2 \
+            AND created_at > now() - make_interval(hours => $3))",
+    )
+    .bind(permission)
+    .bind(subject)
+    .bind(hours)
+    .fetch_one(db)
+    .await;
+    r.unwrap_or(false)
+}
+
+/// 组合件（2026-11-17 四口收编）：同主题窗口内未告警过才发，返回是否真发。
+/// 与 alerted_subject_within 配套，调用点一行可写：
+/// `staff_alert_gated(db, "cheater", "主题", 24, &body).await;`
+pub(crate) async fn staff_alert_gated(
+    db: &PgPool,
+    permission: &str,
+    subject: &str,
+    hours: i64,
+    body: &str,
+) -> bool {
+    if alerted_subject_within(db, permission, subject, hours).await {
+        tracing::debug!(subject, hours, "staff_alert: 主题窗闸静默");
+        return false;
+    }
+    staff_alert(db, subject, body, permission).await;
+    true
+}
