@@ -130,6 +130,13 @@ export default function MySparkPage() {
             <span className="pill">
               {t.hourly} {info ? `+${info.hourly_estimate}` : "—"}
             </span>
+            {/* 预计时积分（1 积分 = 1 小时做种，考核/升级用）：旧响应
+                缺省 undefined 时不显示，避免升级窗口期出现空 pill */}
+            {info?.hourly_points_estimate !== undefined && (
+              <span className="pill">
+                {t.hourlyPoints} +{info.hourly_points_estimate}
+              </span>
+            )}
           </>
         }
       />
@@ -163,6 +170,14 @@ export default function MySparkPage() {
             {info ? `+${info.hourly_estimate}` : "…"}
           </div>
         </div>
+        {/* 时积分格：口径是做种小时数（考核/升级用），与收益格刻意并列
+            展示——两个数闸门不同（积分无端口/回连闸），见 spark-types 注释 */}
+        {info?.hourly_points_estimate !== undefined && (
+          <div>
+            <div className="k">{t.hourlyPoints}</div>
+            <div className="v">+{info.hourly_points_estimate}</div>
+          </div>
+        )}
       </div>
 
       {/* 四个去向都是站内真路由：/donate 充值、/invites 兑换邀请名额、
