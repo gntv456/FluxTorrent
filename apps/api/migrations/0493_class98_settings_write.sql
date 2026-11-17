@@ -1,0 +1,19 @@
+-- 0493：维护开发员（98）设置写权拉平——settings_meta.min_class 99→98。
+--
+-- 现象（2026-11-17 站长报）：维护开发员账号在管理后台「大多数不能配置」。
+--
+-- 排查结论（线上实查三层）：
+--   1. role_permissions 矩阵：98 与 99 零差集（0472/0483 两轮拉平后已
+--      全对齐，user_can(98, perm) 与站长逐键一致）；
+--   2. staff_panel_entries：56 个带 perm_key 的面板项 user_can(98) 全通过；
+--   3. settings_meta：351 键中 **338 键 min_class=99**——settings 写口
+--      的字段级闸（settings_http/meta.rs write_min）卡在这里：98 能打开
+--      设置页（读口 98 可过），但保存时逐键被 min_class=99 拒写。
+--      这是 0039 建表缺省 DEFAULT 99 + 历代迁移沿用、从未随 0472/0483
+--      的「98≈站长」拉平一起动的存量缺口。
+--
+-- 修法：min_class=99 → 98 全量拉平（write_min 语义=「可写该字段的最低
+-- 等级」；0472/0483 已确立 98 维护开发员≈站长的口径，设置写权应同标）。
+-- min_class=60/93 的 13 键不动（它们本就比 98 宽，是职能组长档的写位）。
+-- 只动 99 行：站长 99 不受影响（>=98 照写），93/60 档仍被拒。
+UPDATE settings_meta SET min_class = 98 WHERE min_class = 99;
