@@ -7678,6 +7678,7 @@ const zhCnBase = {
     subtitle: "做种收益 · 流水明细",
     balance: "当前余额",
     hourly: "预计时收益",
+    hourlyPoints: "预计时积分",
     seedingCount: "做种数",
     ruleTitle: "收益规则",
     rule: "每小时结算一次：底薪 + 加成。加成按种子体积、种龄、稀有度以及你挂它的时长折算——越稀有、越老、体积越大、挂得越久，加成越高；总量接近上限后增长放缓。下载消耗{magic}。",

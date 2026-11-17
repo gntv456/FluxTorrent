@@ -7889,6 +7889,7 @@ const enBase: Omit<
     subtitle: "Seeding income · ledger",
     balance: "Balance",
     hourly: "Est. hourly",
+    hourlyPoints: "Est. hourly pts",
     seedingCount: "Seeding",
     ruleTitle: "Earning rule",
     rule: "Settled hourly: base pay + bonus. The bonus scales with torrent size, age, rarity and how long you've been seeding it — rarer, older, larger and longer-seeded scores higher; growth tapers near the cap. Downloading costs {magic}.",

@@ -7630,6 +7630,7 @@ const zhTwBase: Omit<
     subtitle: "做種收益 · 流水明細",
     balance: "當前餘額",
     hourly: "預計時收益",
+    hourlyPoints: "預計時積分",
     seedingCount: "做種數",
     ruleTitle: "收益規則",
     rule: "每小時結算一次：底薪 + 加成。加成按種子體積、種齡、稀有度以及你掛它的時長折算——越稀有、越老、體積越大、掛得越久，加成越高；總量接近上限後增長放緩。下載消耗{magic}。",

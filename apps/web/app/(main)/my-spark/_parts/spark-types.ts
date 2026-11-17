@@ -35,6 +35,9 @@ export interface SparkInfo {
   official_seeding_count?: number;
   official_seeding_size?: number;
   hourly_estimate: number;
+  /** 预计时积分：1 积分 = 1 小时做种，≈每小时新增活跃做种颗数
+   *  （闸门比收益宽：无端口/回连/停权，纯时长账）；旧响应缺省 undefined */
+  hourly_points_estimate?: number;
   /** 收益构成：[档位名, 做种数]（worker 同源口径，两类档位分组） */
   reward_rules?: [string, number][];
   /** 做种计算公式与档位系数（后端 seeding_params() 真值，站长可调） */
