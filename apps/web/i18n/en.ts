@@ -7907,17 +7907,17 @@ const enBase: Omit<
     colCount: "Torrents",
     colTier: "Tier",
     earningSplit: "earning",
-    excludedTitle: "{n} seeding torrents not earning",
+    excludedTitle: "{n} seeding torrents with no upload yet",
     excludedPort: "port closed",
     excludedUnreach: "unreachable",
     excludedStale: "stale",
     excludedFix: "Why, and how to fix",
     excludedFixPort:
-      "Port closed: open the listen port in your client, or forward it on your router (UPnP or manual). If the port is shut, nobody can connect to you.",
+      "Port closed: open the listen port in your client, or forward it on your router (UPnP or manual). If the port is shut, nobody can connect to you. These torrents simply have no upload traffic — your seeding reward (sparks) is unaffected and still accrues hourly.",
     excludedFixUnreach:
-      "Unreachable: turn off “strict NAT / random port” in your client, pick a common port (e.g. 51413), and allow it through your firewall.",
+      "Unreachable: others can't connect to you right now, which mainly affects upload speed. As long as you are seeding, your seeding reward (sparks) is unaffected and keeps accruing. To improve, turn off “strict NAT / random port”, pick a common port (e.g. 51413), and allow it through your firewall.",
     excludedFixStale:
-      "Stale: the client must stay running and report to the site periodically. If you just restarted it, it recovers on the next report.",
+      "Stale: the client must stay running and report to the site periodically. If you just restarted it, it recovers on the next report. This does not affect seeding reward settlement.",
     payoutSuspended:
       "Your earnings are suspended and will resume automatically once the account issue is cleared.",
     paramBase: "Base pay (per hour)",
