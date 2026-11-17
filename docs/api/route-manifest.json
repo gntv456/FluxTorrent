@@ -2640,6 +2640,12 @@
   },
   {
    "method": "GET",
+   "path": "/me/spark",
+   "handler": "my_spark",
+   "file": "apps/api/src/economy_http/my_spark.rs"
+  },
+  {
+   "method": "GET",
    "path": "/magic-pool",
    "handler": "pool_status",
    "file": "apps/api/src/economy_http/pool.rs"
@@ -2702,12 +2708,6 @@
    "method": "POST",
    "path": "/me/vouchers/use",
    "handler": "voucher_use",
-   "file": "apps/api/src/economy_http/voucher_use.rs"
-  },
-  {
-   "method": "GET",
-   "path": "/me/spark",
-   "handler": "my_spark",
    "file": "apps/api/src/economy_http/voucher_use.rs"
   },
   {
