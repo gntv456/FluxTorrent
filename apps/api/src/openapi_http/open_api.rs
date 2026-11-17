@@ -284,15 +284,16 @@ mod tests {
             .values()
             .map(|v| v.as_object().map(|o| o.len()).unwrap_or(0))
             .sum();
-        // 开放域 17 操作（16 键，/me/tokens 双方法）+ 种子域 38 操作
+        // 开放域 19 操作（18 键，/me/tokens 双方法）+ 种子域 38 操作
         // + 社区域 85 操作（76 键，同键多方法；/torrents/{id} 三方法等
         // 故键数少于操作数）。
         // 沿革：144→146（forums/mine+side）→147（forums/recent）→
         // 149（shoutbox_clear+site_activity）→150（0417 bookmark 对称口）
         // →152（0491 +GET /me/badges）→153（1b80bfbc +POST /me/rename）
+        // →155（2026-11-17 +GET /open/me/classes +GET /open/me/spark）
         assert_eq!(
-            ops, 153,
-            "聚合应有 153 个操作（开放 17 + 种子 41 + 社区 95）"
+            ops, 155,
+            "聚合应有 155 个操作（开放 19 + 种子 41 + 社区 95）"
         );
     }
 }
