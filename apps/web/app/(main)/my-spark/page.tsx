@@ -204,7 +204,7 @@ export default function MySparkPage() {
         ]}
       />
 
-      <TabPanel idPrefix="ms" tabKey="ledger">
+      <TabPanel idPrefix="ms" tabKey="ledger" hidden={tab !== "ledger"}>
         <LedgerPanel
           rows={rows}
           total={total}

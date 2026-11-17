@@ -105,10 +105,13 @@ export function TabPanel({
   idPrefix,
   tabKey,
   children,
+  hidden,
 }: {
   idPrefix: string;
   tabKey: string;
   children: ReactNode;
+  /** 非当前标签须传 true 隐藏——原语不做状态管理，归调用方（panel 常挂载、切回不重拉时必备）。 */
+  hidden?: boolean;
 }) {
   return (
     <div
@@ -116,6 +119,7 @@ export function TabPanel({
       id={`panel-${idPrefix}-${tabKey}`}
       aria-labelledby={`tab-${idPrefix}-${tabKey}`}
       tabIndex={0}
+      hidden={hidden}
     >
       {children}
     </div>
