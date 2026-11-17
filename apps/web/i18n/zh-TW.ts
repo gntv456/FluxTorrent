@@ -4015,6 +4015,7 @@ const zhTwBase: Omit<
     realTraffic: "（實際流量）",
     seedSnatchCount: "做種/下載/完成",
     seedTime: "做種時間",
+    seedPointsUnit: "積分",
     hrField: "H&R 未處理",
     connectInfo: "連線資訊",
     btClient: "BT 用戶端",

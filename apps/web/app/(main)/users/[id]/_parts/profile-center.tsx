@@ -1,9 +1,5 @@
-/**
- * 用户公开主页·个人中心卡片网格（从 app/(main)/users/[id]/page.tsx 按域拆出）：
- * CenterGrid 账号信息 / 下一级进度 / 传输与做种 / 连接信息 / 更多资料 /
- * 佩戴勋章 / 简介签名 / 近期发布。无 hooks：server component，数据经 props 注入。
- */
-
+/** 用户公开主页·个人中心卡片网格（自 page.tsx 按域拆出）：CenterGrid
+ *  账号/进度/传输做种/连接/更多资料/勋章/简介/近期发布。无 hooks。 */
 import Link from "next/link";
 import { MedalIcon } from "@/components/medal-icon";
 import type { Locale } from "@/i18n/config";
@@ -169,7 +165,12 @@ export function CenterGrid({
           <span className="num">{gb(data.seeding_size)}</span>
         </Row>
         <Row label={t.seedTime} icon="◷">
-          <span className="num">{seedDur(data.seed_seconds)}</span>
+          <span className="num">
+            {seedDur(data.seed_seconds)}
+            {/* 做种积分直观化（2026-11-17）：1 积分 = 1 小时做种
+                （task_jobs P1-6 口径），时长行内直接给出换算值 */}
+            {seedPointsHint(data.seed_seconds, t.seedPointsUnit, locale)}
+          </span>
         </Row>
         <Row label={t.hrField} icon="▲">
           <span
@@ -286,4 +287,12 @@ export function CenterGrid({
       </Card>
     </div>
   );
+}
+
+/** 做种积分副注：1 积分 = 1 小时做种（task_jobs P1-6 口径）；
+ *  不满 1 小时不显示（避免「≈0 积分」挫败感）。 */
+function seedPointsHint(secs: number, unit: string, locale: Locale): string {
+  if (secs < 3600) return "";
+  const pts = Math.floor(secs / 3600).toLocaleString(dateLocale(locale));
+  return ` · ≈${pts} ${unit}`;
 }

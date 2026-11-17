@@ -4132,6 +4132,7 @@ const enBase: Omit<
     realTraffic: " (real traffic)",
     seedSnatchCount: "Seeding/Leeching/Done",
     seedTime: "Seeding time",
+    seedPointsUnit: "pts",
     hrField: "H&R unresolved",
     connectInfo: "Connection Info",
     btClient: "BT client",

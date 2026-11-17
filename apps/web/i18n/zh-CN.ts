@@ -4045,6 +4045,7 @@ const zhCnBase = {
     realTraffic: "（实际流量）",
     seedSnatchCount: "做种/下载/完成",
     seedTime: "做种时间",
+    seedPointsUnit: "积分",
     hrField: "H&R 未处理",
     connectInfo: "连接信息",
     btClient: "BT 客户端",
