@@ -1,5 +1,5 @@
-//! Wiki 最小落地（0359）：wiki_pages 后台 CRUD + 版本史。
-//! 公开读端点在 wiki_public.rs（300 行门禁拆分）。
+//! Wiki 后台 CRUD + 版本史（0359）。拆分账：公开读 wiki_public.rs、
+//! 请求体校验与单测 wiki_validate.rs（0495 section 字段第三次顶线）。
 //!
 //! 与 custom_pages 的关键差异：正文是 BBCode——前端 renderBBCode 渲染成
 //! React 节点，天然免疫 XSS，出站**不做** ammonia 消毒（custom_pages 是
@@ -8,61 +8,16 @@
 //! 先 INSERT 旧行进 wiki_revisions 再 UPDATE（rules_cats.rs 先例）。
 
 use actix_web::{get, post, put, web, HttpRequest, HttpResponse};
-use serde::Deserialize;
 
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::state::AppState;
 
+use super::wiki_validate::{validate_wiki_body, WikiBody};
+
 fn internal(e: sqlx::Error) -> DomainError {
     DomainError::Internal(e.into())
-}
-
-/// 与 custom_pages 同口径：小写字母/数字/连字符，非空且 ≤60 字节
-pub(crate) fn valid_wiki_slug(s: &str) -> bool {
-    !s.is_empty()
-        && s.len() <= 60
-        && s.bytes()
-            .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-')
-}
-
-/// 正文上限 200KB（与 custom_pages 同档）
-pub(crate) const WIKI_BODY_LIMIT: usize = 200_000;
-
-#[derive(Deserialize)]
-pub(crate) struct WikiBody {
-    slug: String,
-    title: String,
-    #[serde(default)]
-    body: String,
-    #[serde(default = "default_true")]
-    visible: bool,
-    #[serde(default = "default_sort")]
-    sort: i32,
-}
-fn default_true() -> bool {
-    true
-}
-fn default_sort() -> i32 {
-    100
-}
-
-pub(crate) fn validate_wiki_body(b: &WikiBody) -> DomainResult<()> {
-    if !valid_wiki_slug(&b.slug) {
-        return Err(DomainError::Validation(
-            "slug 需为小写字母/数字/连字符，≤60 字符".into(),
-        ));
-    }
-    // 按字符判长：wiki 页名是站长写的中文标题，按字节判会让 34 字的正常
-    // 页名被自拒（custom_pages 同族，见批五十三 P-200）
-    if b.title.trim().is_empty() || b.title.chars().count() > 100 {
-        return Err(DomainError::Validation("标题需 1-100 字符".into()));
-    }
-    if b.body.len() > WIKI_BODY_LIMIT {
-        return Err(DomainError::Validation("正文超过 200KB 上限".into()));
-    }
-    Ok(())
 }
 
 pub(super) async fn require_wiki_manage(
@@ -83,6 +38,7 @@ struct WikiPageRow {
     body: String,
     visible: bool,
     sort: i32,
+    section: String,
     updated_at: chrono::DateTime<chrono::Utc>,
 }
 
@@ -95,7 +51,7 @@ pub async fn wiki_list(
     let auth = require_auth(&req, &state).await?;
     require_wiki_manage(&state, &auth).await?;
     let rows: Vec<WikiPageRow> = sqlx::query_as(
-        "SELECT id, slug, title, body, visible, sort, updated_at \
+        "SELECT id, slug, title, body, visible, sort, section, updated_at \
          FROM wiki_pages ORDER BY sort, id",
     )
     .fetch_all(&state.repo.db)
@@ -116,13 +72,15 @@ pub async fn wiki_create(
     validate_wiki_body(&body)?;
     let id: i64 = sqlx::query_scalar(
         "INSERT INTO wiki_pages (slug, title, body, visible, sort, \
-         edited_by) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id",
+         section, edited_by) VALUES ($1, $2, $3, $4, $5, $6, $7) \
+         RETURNING id",
     )
     .bind(body.slug.trim())
     .bind(body.title.trim())
     .bind(&body.body)
     .bind(body.visible)
     .bind(body.sort)
+    .bind(body.section.trim())
     .bind(auth.id)
     .fetch_one(&state.repo.db)
     .await
@@ -172,8 +130,8 @@ pub async fn wiki_update(
     .map_err(internal)?;
     let n = sqlx::query(
         "UPDATE wiki_pages SET slug = $2, title = $3, body = $4, \
-         visible = $5, sort = $6, edited_by = $7, updated_at = now() \
-         WHERE id = $1",
+         visible = $5, sort = $6, section = $7, edited_by = $8, \
+         updated_at = now() WHERE id = $1",
     )
     .bind(*path)
     .bind(body.slug.trim())
@@ -181,6 +139,7 @@ pub async fn wiki_update(
     .bind(&body.body)
     .bind(body.visible)
     .bind(body.sort)
+    .bind(body.section.trim())
     .bind(auth.id)
     .execute(&mut *tx)
     .await
@@ -252,45 +211,4 @@ pub async fn wiki_delete(
         )
         .await;
     Ok(ok(serde_json::json!({ "deleted": true })))
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn wb(slug: &str, title: &str, body: &str) -> WikiBody {
-        WikiBody {
-            slug: slug.into(),
-            title: title.into(),
-            body: body.into(),
-            visible: true,
-            sort: 100,
-        }
-    }
-
-    #[test]
-    fn slug_rules_match_custom_pages() {
-        assert!(valid_wiki_slug("a"));
-        assert!(valid_wiki_slug("beginner-guide-2026"));
-        assert!(valid_wiki_slug(&"x".repeat(60)));
-        for bad in ["", "A", "Upper", "sp ace", "下划线_1", "dot.slug"] {
-            assert!(!valid_wiki_slug(bad), "{bad} 不应通过");
-        }
-        assert!(!valid_wiki_slug(&"x".repeat(61)), "超 60 应拒绝");
-    }
-
-    #[test]
-    fn body_over_200kb_rejected() {
-        let big = "x".repeat(WIKI_BODY_LIMIT + 1);
-        assert!(validate_wiki_body(&wb("ok", "t", &big)).is_err());
-        assert!(validate_wiki_body(&wb("ok", "t", "")).is_ok());
-    }
-
-    #[test]
-    fn title_bounds_enforced() {
-        assert!(validate_wiki_body(&wb("ok", "", "b")).is_err());
-        let long = "标".repeat(101); // 101 字符 > 100（按 chars 计，非字节）
-        assert!(validate_wiki_body(&wb("ok", &long, "b")).is_err());
-        assert!(validate_wiki_body(&wb("ok", "标题", "b")).is_ok());
-    }
 }

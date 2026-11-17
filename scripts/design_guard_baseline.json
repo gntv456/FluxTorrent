@@ -211,9 +211,10 @@
  },
  "app/(main)/wiki/[[...slug]]/page.tsx": {
   "h1": [
-   126
+   128,
+   197
   ],
-  "h1First": 98,
+  "h1First": 119,
   "palette": [],
   "color": []
  },
@@ -4555,8 +4556,8 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   138,
-   277
+   150,
+   260
   ],
   "color": []
  },

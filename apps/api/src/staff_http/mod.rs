@@ -42,6 +42,7 @@ mod warned;
 mod wiki;
 mod wiki_public;
 mod wiki_revisions;
+mod wiki_validate;
 
 /// setup 向导复用站型物化链路（pack_core）：跨 crate 边界的引用别名。
 /// setup_http 属 http 域，不在此 pub use 展开避免路由符号污染。

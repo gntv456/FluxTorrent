@@ -126,3 +126,26 @@ export const TERMS_BTN_PRIMARY =
 
 export const TERMS_BTN_GHOST =
   "rounded-full border border-line px-4 py-1.5 text-sm font-bold";
+
+// ---- Wiki（0495 分组目录升级；语义色类按护栏口径集中在本文件）----
+
+/** Wiki 目录检索框：44px 胶囊输入 */
+export const WIKI_SEARCH_INPUT =
+  "h-11 w-full rounded-full border border-line bg-cloud px-4 pr-10 " +
+  "text-sm outline-none focus:border-sky";
+
+/** Wiki 目录卡片行：hover 天蓝描边 + 浅天蓝底 */
+export const WIKI_CARD_LINK =
+  "flex h-full min-h-11 flex-col justify-between rounded-[var(--r-sm)] " +
+  "border border-line bg-cloud px-3 py-2 transition-colors " +
+  "hover:border-sky hover:bg-sky/5";
+
+/** Wiki 左栏同组页面行 */
+export const WIKI_SIDE_LINK =
+  "block rounded-[var(--r-sm)] px-2 py-1.5 text-sm text-link " +
+  "hover:bg-cloud hover:underline";
+
+/** Wiki 右栏 TOC 行（h3 缩进由调用处 pl-3 控制） */
+export const WIKI_TOC_LINK =
+  "block rounded-[var(--r-sm)] px-2 py-1 text-xs text-sub " +
+  "hover:bg-cloud hover:text-link";

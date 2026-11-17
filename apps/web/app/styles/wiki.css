@@ -1,0 +1,59 @@
+/* ============ Wiki 三栏（0495 分组目录升级） ============
+ *
+ * 布局骨架复用论坛三列的几何（220px / 自适应 / 250px + sticky 两翼），
+ * 但断点行为不同：论坛两翼在手机收进弹窗（display:none），wiki 的
+ * 「本组页面/本页目录」在窄屏是正文的前后置导航——直接落成一列，
+ * 不藏任何内容（文档站的移动口径：目录常驻，正文可滚）。
+ *
+ * 选择器独立成 .wiki-three（不复用 .pting-forums 类名）：后者挂在
+ * 手机断点里 display:none 的弹窗规则会连坐 wiki 两翼。同一文件两处
+ * 设 grid-template-columns 也是「后到者赢」的层叠坑（forums-home.css
+ * 头注教训），所以这里只写 .wiki-three 自己的列宽，别处不要碰。 */
+
+.wiki-three {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr) 250px;
+  align-items: start;
+}
+.wiki-three > * {
+  min-width: 0;
+}
+.wiki-three > .fh-left,
+.wiki-three > .fh-side {
+  position: sticky;
+  top: 12px;
+}
+/* TOC 长文档锚点列表：超高自身滚动，不把页面顶下去 */
+.wiki-three > .fh-side > * {
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+}
+
+/* ---------- 断点：右栏 TOC 先落底；再全收一列 ---------- */
+@media (max-width: 1024px) {
+  .wiki-three {
+    grid-template-columns: 200px minmax(0, 1fr);
+  }
+  .wiki-three > .fh-side {
+    grid-column: 1 / -1;
+    position: static;
+    order: 2; /* TOC 排到正文后面：平板上正文优先 */
+  }
+  .wiki-three > .fh-left {
+    order: 0;
+  }
+  .wiki-three > article {
+    order: 1;
+  }
+}
+@media (max-width: 768px) {
+  .wiki-three {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .wiki-three > .fh-left,
+  .wiki-three > .fh-side {
+    position: static;
+    max-height: none;
+    overflow: visible;
+  }
+}

@@ -8,6 +8,7 @@ export interface WikiPage {
   body: string;
   visible: boolean;
   sort: number;
+  section: string;
   updated_at: string;
 }
 
@@ -31,6 +32,8 @@ export interface Draft {
   body: string;
   visible: boolean;
   sort: number;
+  /** 0495 分组：start/site/rules/api，空串=未分组 */
+  section: string;
 }
 
 export const emptyDraft = (): Draft => ({
@@ -39,4 +42,5 @@ export const emptyDraft = (): Draft => ({
   body: "",
   visible: true,
   sort: 100,
+  section: "",
 });

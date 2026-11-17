@@ -11,6 +11,7 @@ import {
   emptyDraft,
   WIKI_FLD as FLD,
 } from "@/components/staff-wiki-shared";
+import { WikiRevDrawer } from "@/components/staff-wiki-drawer";
 
 /** Wiki 管理面板（0359）：列表 + 编辑表单 + 版本历史抽屉（只读，回滚不做）。
  *  正文是 BBCode——公开页 renderBBCode 渲染 React 节点，天然免疫 XSS；
@@ -132,6 +133,17 @@ export function StaffWikiPanel({ flash }: { flash: (m: string) => void }) {
             onChange={(e) => setDraft({ ...draft, sort: +e.target.value })}
           />
         </label>
+        <label className="flex items-center gap-2 text-xs text-sub">
+          {dict.adminWiki.sectionLabel}
+          <input
+            className={`${FLD} w-48`}
+            value={draft.section}
+            placeholder={dict.adminWiki.sectionPh}
+            onChange={(e) =>
+              setDraft({ ...draft, section: e.target.value })
+            }
+          />
+        </label>
         <div className="flex gap-2">
           <button
             type="button"
@@ -158,43 +170,11 @@ font-bold text-white disabled:opacity-50"
   );
 
   const revDrawer = revFor !== null && (
-    <div className="mb-4 rounded-[var(--r-md)] border border-line p-3">
-      <div className="mb-2 flex items-center justify-between">
-        <h3 className="text-sm font-bold">{dict.adminWiki.revisionsTitle}</h3>
-        <button
-          type="button"
-          className="text-xs underline"
-          onClick={() => setRevFor(null)}
-        >
-          {dict.common.cancel}
-        </button>
-      </div>
-      <ul className="flex max-h-72 flex-col gap-2 overflow-y-auto text-xs">
-        {(revs ?? []).map((r) => (
-          <li
-            key={r.id}
-            className="rounded-[var(--r-sm)] border border-line p-2"
-          >
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="font-bold">{r.title}</span>
-              <span className="text-sub">
-                {r.edited_by_name ?? "-"} ·{" "}
-                {r.created_at.slice(0, 16).replace("T", " ")}
-              </span>
-            </div>
-            <pre
-              className="mt-1 max-h-24 overflow-y-auto whitespace-pre-wrap \
-font-mono text-xs text-sub"
-            >
-              {r.body.slice(0, 500)}
-            </pre>
-          </li>
-        ))}
-        {revs !== null && revs.length === 0 && (
-          <li className="text-sub">{dict.adminWiki.noRevisions}</li>
-        )}
-      </ul>
-    </div>
+    <WikiRevDrawer
+      revs={revs}
+      dict={dict}
+      onClose={() => setRevFor(null)}
+    />
   );
 
   return (
@@ -225,6 +205,7 @@ py-1.5 text-sm font-bold"
               <th>{dict.adminWiki.titleLabel}</th>
               <th>{dict.adminWiki.visible}</th>
               <th>{dict.adminWiki.sortLabel}</th>
+              <th>{dict.adminWiki.sectionLabel}</th>
               <th />
             </tr>
           </thead>
@@ -248,6 +229,7 @@ py-1.5 text-sm font-bold"
                     : dict.adminWiki.visibleOff}
                 </td>
                 <td className="num text-xs">{p.sort}</td>
+                <td className="text-xs">{p.section || "—"}</td>
                 <td className="flex gap-2 text-xs">
                   <button
                     type="button"
@@ -260,6 +242,7 @@ py-1.5 text-sm font-bold"
                         body: p.body,
                         visible: p.visible,
                         sort: p.sort,
+                        section: p.section,
                       });
                     }}
                   >

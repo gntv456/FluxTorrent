@@ -26,7 +26,6 @@ mod reports_http;
 mod risk;
 mod throttle;
 pub mod view_layout;
-
 pub use auth_infra::*;
 pub use cheat_case::*;
 pub use cheat_http::*;
@@ -93,9 +92,10 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(crate::staff_http::custom_pages_add)
         .service(crate::staff_http::custom_pages_update)
         .service(crate::staff_http::custom_pages_delete)
-        // Wiki（0359）：公开读（网关按 /wiki 前缀挂模块开关）+ 后台 CRUD/版本史
+        // Wiki（0359）：公开读+搜索（网关按 /wiki 前缀挂模块开关）+ 后台 CRUD
         .service(crate::staff_http::wiki_public_index)
         .service(crate::staff_http::wiki_public_page)
+        .service(crate::staff_http::wiki_public_search)
         .service(crate::staff_http::wiki_list)
         .service(crate::staff_http::wiki_create)
         .service(crate::staff_http::wiki_update)
