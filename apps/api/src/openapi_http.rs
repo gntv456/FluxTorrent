@@ -7,6 +7,8 @@
 mod crossseed;
 mod detail_open;
 mod me;
+mod me_classes;
+mod me_spark;
 mod me_torrents;
 mod open;
 mod open_api;
@@ -38,6 +40,8 @@ pub fn mount_openapi(scope: actix_web::Scope) -> actix_web::Scope {
         .service(me::me_overview)
         .service(me::me_hr)
         .service(me::me_messages)
+        .service(me_classes::me_classes)
+        .service(me_spark::me_spark)
         .service(me_torrents::me_seeding)
         .service(me_torrents::me_history)
         .service(upload::open_upload)

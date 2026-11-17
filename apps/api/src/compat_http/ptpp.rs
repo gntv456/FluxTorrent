@@ -86,17 +86,27 @@ async fn ptpp_user_info(
         .fetch_one(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
+    // 时魔：插件用户卡的「时魔」列此前恒为 0 —— 端点只给余额（bonus），
+    // 没有每小时口径。取经济域的同一份预估（与 worker 结算、页面 /me/spark
+    // 同源），跨域调用而非在此另算，免得两处口径漂移。
+    let bonus_per_hour = crate::economy_http::bonus_per_hour(&state.repo, uid).await;
+    // 发布数（本人名下种子数）：SQL 住在 R 层。
+    let uploads = crate::repo::user_stats::upload_count(&state.repo, uid).await;
     Ok(no_store(with_rl(
         ok(serde_json::json!({
             // 插件契约字段（PT-Plugin-Plus TNode schema 口径）
             "id": id,
             "name": name,
             "bonus": bonus,
+            // 时魔（每小时火花）：与页面「我的魔力」同口径
+            "bonusPerHour": bonus_per_hour,
             "uploaded": uploaded,
             "downloaded": downloaded,
             "seeding": seeding,
             "leeching": leeching,
             "seedingSize": seeding_size,
+            // 发布数（本人名下种子数）
+            "uploads": uploads,
             "invites": invites,
             "levelName": class_name,
             "joinTime": join_time,

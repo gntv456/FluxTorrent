@@ -297,6 +297,7 @@ pub mod terms_gov;
 pub mod torrent_download;
 pub mod user_prefs;
 pub mod user_privacy;
+pub mod user_stats;
 pub mod webhook;
 pub mod works_meta;
 pub mod xseed;

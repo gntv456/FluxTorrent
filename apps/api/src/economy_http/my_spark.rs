@@ -32,18 +32,10 @@ async fn my_spark(
     let (official_seeding_count, official_seeding_size) =
         super::seeding_est::official_seeding(&state.repo.db, auth.id).await;
     // 与 worker 同口径的僵尸阈值：max(2h, 2×announce_interval)
-    // （详见 worker 的 stale_peer_threshold_secs）
-    let announce: i64 = sqlx::query_scalar::<_, String>(
-        "SELECT value FROM site_settings WHERE name = 'announce_interval'",
-    )
-    .fetch_optional(&state.repo.db)
-    .await
-    .ok()
-    .flatten()
-    .and_then(|v| v.parse::<i64>().ok())
-    .map(|v| v.clamp(60, 86400))
-    .unwrap_or(1800);
-    let stale_secs = (announce * 2).max(7200);
+    // （详见 worker 的 stale_peer_threshold_secs）。
+    // 口径抽到 seeding_public::stale_threshold_secs：开放 API 的
+    // /open/me/spark（插件用户卡的时魔）走同一份实现，两边不会漂移。
+    let stale_secs = super::seeding_public::stale_threshold_secs(&state.repo).await;
     // 收益构成：按规则名分组（种子档位 + 做种时长档位两类），与 worker 结算同源。
     // 0133 后新增「做种时长」维度 —— 玩家能看到"我为什么拿这么多"，这是相对 NP 的体验优势。
     let my_rules: Vec<(String, i64)> = sqlx::query_as(

@@ -6,8 +6,9 @@
 //! spec.rs::build() 合并进最终 openapi.json（双轨期：路径来自注解，
 //! schema 来自手写，路径段的手写 spec 已归零）。
 //!
-//! 聚合的 17 条 = mount_openapi 挂载的全部端点（openapi.json 自身除外，
-//! 它是文档端点不是数据契约；M36 起含 crossseed 三端点）。
+//! 聚合的 19 条 = mount_openapi 挂载的全部端点（openapi.json 自身除外，
+//! 它是文档端点不是数据契约；M36 起含 crossseed 三端点；2026-11-17 起含
+//! /open/me/classes 与 /open/me/spark 两个插件用户卡口径端点）。
 
 use utoipa::OpenApi;
 
@@ -23,6 +24,8 @@ use utoipa::OpenApi;
         crate::openapi_http::me::me_overview,
         crate::openapi_http::me::me_hr,
         crate::openapi_http::me::me_messages,
+        crate::openapi_http::me_classes::me_classes,
+        crate::openapi_http::me_spark::me_spark,
         crate::openapi_http::me_torrents::me_seeding,
         crate::openapi_http::me_torrents::me_history,
         crate::openapi_http::upload::open_upload,

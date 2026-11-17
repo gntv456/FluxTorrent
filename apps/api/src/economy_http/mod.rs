@@ -66,6 +66,7 @@ mod my_spark;
 mod pool;
 pub(crate) mod recon;
 mod seeding_est;
+mod seeding_public;
 mod shop;
 mod shop_effects;
 mod shop_gift;
@@ -94,6 +95,7 @@ pub use my_orders::*;
 pub use my_spark::*;
 pub use pool::*;
 pub use recon::*;
+pub use seeding_public::*;
 pub use shop::*;
 // 娱乐屋奖品的「使用」侧复用商店生效链：一件物品能干什么，只在这一个地方实现。
 // 三个 config 取值器同属「一把尺」：商店购买与管理端发放必须读同一组键，

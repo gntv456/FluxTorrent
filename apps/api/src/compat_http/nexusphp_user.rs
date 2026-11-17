@@ -73,12 +73,23 @@ pub(super) async fn np_user_json(
             .map_err(|e| DomainError::Internal(e.into()))?
             .unwrap_or_else(|| format!("LV{class_id}"));
     let join_str = join_at.to_rfc3339();
+    // 插件口径补充项：发布数与时魔。
+    // NP 兼容层原本只给「余额 + 种子数」，插件用户卡（PT-Plugin-Plus /
+    // PT-depiler）的「发布数」「时魔」两列因此恒为空 —— 页面看得到、插件
+    // 看不到，正是这一层缺字段。按同一口径补上：发布数走 R 层计数，
+    // 时魔走经济域预估（与 worker 结算同源，不另算近似值）。
+    let uploads = crate::repo::user_stats::upload_count(&state.repo, uid).await;
+    let bonus_per_hour = crate::economy_http::bonus_per_hour(&state.repo, uid).await;
     Ok(serde_json::json!({
         "id": id,
         "username": username,
         "uploaded": uploaded,
         "downloaded": downloaded,
         "seedbonus": seedbonus,
+        // 插件口径别名：余额之外的每小时口径（时魔）
+        "bonusPerHour": bonus_per_hour,
+        // 发布数（本人名下种子数）
+        "uploads": uploads,
         "class": class_id,
         "class_name": class_name,
         "ratio": ratio,
