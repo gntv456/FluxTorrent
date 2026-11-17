@@ -33,6 +33,12 @@ export function themeGroupOf(id: ThemeId): ThemeGroup {
   return THEMES[id].group ?? "classic";
 }
 
+/** 是否日款（scheme=light）——面板只列日款色卡，夜间孪生由暗色系统
+ *  经 sibling 映射自动生效（no-flash 的 PL 列表同款滤法）。 */
+export function isLightTheme(id: ThemeId): boolean {
+  return THEMES[id].scheme === "light";
+}
+
 /** 分组 → i18n 显示名键（dict.common 下）。
  *  fresh → themeGroupFresh；ink → themeGroupInk。 */
 export function themeGroupKey(g: ThemeGroup): string {

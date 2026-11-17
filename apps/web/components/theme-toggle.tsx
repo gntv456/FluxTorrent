@@ -8,6 +8,7 @@ import {
   THEME_IDS,
   THEME_STORAGE_KEY,
   THEME_GROUP_ORDER,
+  isLightTheme,
   parseChoice,
   resolveTheme,
   syncThemeCss,
@@ -187,10 +188,12 @@ export function ThemeToggle({
     [applyTheme],
   );
 
-  // 面板分组：classic（注册表原序）+ fresh/ink/dream（注册表顺序）
+  // 面板分组：只列日款（isLightTheme，夜间孪生由暗色系统经 sibling
+  // 映射自动生效——首版没滤 scheme，面板 26 卡同名并排且双亮勾）。
   const groups: ThemeGroup[] = THEME_GROUP_ORDER;
   const byGroup = useCallback(
-    (g: ThemeGroup) => THEME_IDS.filter((id) => themeGroupOf(id) === g),
+    (g: ThemeGroup) =>
+      THEME_IDS.filter((id) => themeGroupOf(id) === g && isLightTheme(id)),
     [],
   );
   const dictCommon = dict.common as Record<string, string>;
