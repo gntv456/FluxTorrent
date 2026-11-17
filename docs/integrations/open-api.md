@@ -14,10 +14,15 @@
 | 凭据 | 获取 | 用途 | 有效期 |
 |---|---|---|---|
 | **API Token**（`fxo_...`） | 网页端「我的 → API Token」自助签发 | 兼容层 / 开放 API / Torznab 全部端点；请求头 `Authorization: Token fxo_...`，**或** 查询参数 `?apikey=` | 180 天，每人 ≤3 枚，可吊销；`POST /me/tokens/refresh` 滚动续期 |
-| **passkey**（32 位） | 个人页查看；兼容层 `user.json` 亦可读到 | `download.php` 下载、`getrss.php`/`/rss/{passkey}` 订阅、tracker announce、`userdetails.php` | 长期（可在个人页重置） |
+| **RSS/下载 Token**（`fxr_...`） | 网页端「获取 RSS」页或 `POST /rss/tokens` 创建（会话登录），明文仅创建时可见 | `GET /rss/{token}` 订阅、`getrss.php?token=` 别名、`download.php?id=&token=` 直下、`userdetails.php?token=`；撤销即整条订阅链失效 | 长期（每人 ≤5 枚，可吊销/轮换 `POST /rss/tokens/{id}/rotate`） |
 | **临时下载凭证**（`fxk_...`） | `POST /downloads/keys` 用 API Token 换 | 单种子下载，免 Authorization | **30 分钟** |
 
-限流：Token 默认 60 req/min（签发时可调 1-600）；passkey 下载 30 次/min；
+> **passkey（32 位）已不作为 API 凭据**（v0.5.11 收口）：它只用于 tracker
+> announce。RSS / download.php / getrss.php / userdetails.php 的旧参数名
+> `passkey=` 仍可传，但**只接受 `fxr_` token 值**——传原始 32 位 passkey
+> 一律 401/404。老脚本把参数值从 passkey 换成 fxr_ token 即可零改造迁移。
+
+限流：Token 默认 60 req/min（签发时可调 1-600）；token 直下 30 次/min；
 凭证下载 20 次/min；凭证签发 10 次/min。
 
 **限流可观测**：所有 Token 鉴权响应都带
@@ -29,17 +34,19 @@
 ```
 GET /api/v1/plugins/ptppUserInfo          # PT-Plugin-Plus 字段口径聚合端点（推荐）
 Authorization: Token fxo_...
-→ data: { id, name, bonus, uploaded, downloaded, seeding, leeching,
-          seedingSize, invites, levelName, joinTime, messageCount, passkey, isLogged }
+→ data: { id, name, bonus, bonusPerHour, uploaded, downloaded, seeding, leeching,
+          seedingSize, uploads, invites, levelName, joinTime, messageCount, isLogged }
 ```
 
-`passkey` 于 0267 加入：插件拼 `download.php?id=$id$&passkey=$passkey$` 时必须有值，
-否则下载链会拼成空 passkey 而 401。语义与 NP 的 userdetails 页面内含本人 passkey 一致。
+`bonusPerHour`（时魔）与 `uploads`（发布数）于 0.5.19 加入：插件用户卡的
+「时魔」「发布数」两列此前恒为空，现与页面「我的魔力」/档案页同一口径。
+**passkey 字段已移除**（收口批）：下载改走 fxr_ token 直下或 fxk_ 临时凭证（§4）。
 
 ```
 GET /api/v1/compat/nexusphp/user.json     # NP userdetails 口径
-→ data: { id, username, uploaded, downloaded, seedbonus,
-          class, class_name, ratio, ratio_infinite, ratio_display, passkey }
+
+→ data: { id, username, uploaded, downloaded, seedbonus, bonusPerHour, uploads,
+          class, class_name, ratio, ratio_infinite, ratio_display }
 ```
 
 - `class` 为数字等级 id，`class_name` 为可读等级名（0267 新增）。
@@ -47,7 +54,7 @@ GET /api/v1/compat/nexusphp/user.json     # NP userdetails 口径
   `ratio_display="∞"`（旧实现回 `-1.0`，工具会当负数直接显示）。
 
 ```
-GET /api/v1/compat/nexusphp/userdetails.php?passkey={passkey}   # NP 别名（同上形状）
+GET /api/v1/compat/nexusphp/userdetails.php?token={fxr_token}   # NP 别名（同上形状）
 ```
 
 ## 3. 种子列表与搜索
@@ -79,8 +86,10 @@ GET /api/v1/compat/nexusphp/torrents.json?page=1&pagesize=50&keyword=高等数�
 
 ## 4. 下载（三种方式按需选择）
 
-1. **passkey 直下**（NP 工具习惯）：`GET /api/v1/compat/nexusphp/download.php?id={id}&passkey={passkey}`
-   → `.torrent`（内嵌个人 tracker 地址，免 cookie）。
+1. **token 直下**（NP 工具习惯）：`GET /api/v1/compat/nexusphp/download.php?id={id}&token={fxr_token}`
+   → `.torrent`（内嵌个人 tracker 地址，免 cookie）。旧参数名 `passkey=` 仍可传
+   token 值，但**原始 32 位 passkey 一律 401**；也可用 `apikey={fxo_}`（开放 API
+   Token，走 scope 闸）。
 2. **临时凭证**（推荐，泄露窗口 30 分钟）：
    `POST /api/v1/downloads/keys {"torrent_id": 123}` → `{key, download_url}`
    然后 `GET /api/v1/downloads/123?token=fxk_...`（免 Authorization）。
@@ -89,20 +98,24 @@ GET /api/v1/compat/nexusphp/torrents.json?page=1&pagesize=50&keyword=高等数�
 ## 5. RSS
 
 ```
-GET /api/v1/rss/{passkey}?categories=1,2&mediums=3&official=1&search=关键字&showrows=50
+GET /api/v1/rss/{fxr_token}?categories=1,2&mediums=3&official=1&search=关键字&showrows=50
 ```
 
+- **鉴权是 `fxr_` RSS Token**（见 §1 凭据表），不是 passkey——passkey 形状
+  （无前缀 32 位）在入口即被拒（404）。token 在网页「获取 RSS」页创建。
 - **item 含 `<enclosure>` 直链**（0267 修复）：`url` 指向
-  `download.php?id=…&passkey=…`，`type=application/x-bittorrent`。
+  `download.php?id=…&token=…`（跟随订阅用的同一枚 fxr_ token，撤销它即
+  整条订阅链失效），`type=application/x-bittorrent`。
   此前只有 `<link>` 指向网页、没有 enclosure，qBittorrent RSS 自动下载 /
   autobrr / Flexget 拿到的是 HTML 页面 → 整条刷流链路不可用。
 - 默认 `<link>` 也指向下载直链（NP 口径）；`linktype=page` 时 `<link>` 指详情页
   且标题仅名称。**注意 `linktype` 管的是标题格式，不是链接类型。**
 - 筛选参数：`categories`（逗号多选）/ `mediums` / `official` / `search` /
   `showrows`(1-200) / `paid`(1=仅免费) / `sec_{kind}` 六类型维度。
-- 论坛 RSS：`GET /api/v1/rss/forum/{passkey}?forums=1,2`
-- **NP 别名**：`GET /api/v1/compat/nexusphp/getrss.php?passkey={passkey}` → 302 到上面的地址
-  （其余参数原样透传），供硬编码 `/getrss.php?passkey=` 的老脚本零改造接入。
+- 论坛 RSS：`GET /api/v1/rss/forum/{fxr_token}?forums=1,2`
+- **NP 别名**：`GET /api/v1/compat/nexusphp/getrss.php?token={fxr_token}` → 302 到上面的地址
+  （其余参数原样透传），供硬编码 `/getrss.php` 的老脚本零改造接入；旧字段名
+  `passkey=` 仍可传 token 值，但不接受真实 passkey。
 
 ## 6. Torznab（Prowlarr / Jackett / Sonarr / Radarr / cross-seed）
 
@@ -120,7 +133,8 @@ GET /api/v1/torznab/search?apikey={token}&t=search&q=关键字&limit=50&offset=0
 - `t=movie` 支持 `imdbid` / `tmdbid`；`t=tvsearch` 支持 `season`/`ep`
   （按标题 `SxxExx` 收窄）；`cat` 传 Newznab 分类号（命不中时返回空 feed，不静默忽略）。
 - 存活口径同兼容层：**默认含零做种新种**。
-- enclosure/link 中已替换为**调用方本人的真实 passkey**。
+- enclosure/link 中的下载直链沿用**调用方自己的 API Token**（`fxo_`，
+  `download.php?id=…&token=fxo_…`），不换出 tracker passkey。
 
 ## 7. 增量新种流（autobrr / 自建推送器）
 
@@ -201,9 +215,9 @@ info_hash, pieces_hash, group_suggest }`。
 
 | 别名 | 行为 |
 |---|---|
-| `GET /compat/nexusphp/getrss.php?passkey=` | 302 → `/rss/{passkey}`（参数透传） |
+| `GET /compat/nexusphp/getrss.php?token=` | 302 → `/rss/{fxr_token}`（参数透传；旧字段名 `passkey=` 只接受 token 值） |
 | `POST /compat/nexusphp/takelogin.php`（表单） | 307 → `/auth/login`（保留 body） |
-| `GET /compat/nexusphp/userdetails.php?passkey=` | 200 JSON（userdetails 口径） |
+| `GET /compat/nexusphp/userdetails.php?token=` | 200 JSON（userdetails 口径，不含 passkey） |
 | `GET /compat/nexusphp/details.php?id=` | 302 → 站点详情页 |
 
 登录端点（`POST /api/v1/auth/login`）**同时接受 JSON 与
@@ -212,10 +226,9 @@ info_hash, pieces_hash, group_suggest }`。
 ## 11. PT-Plugin-Plus 收录
 
 站方已备好收录材料（`.research/ptpp-config-template/`：`config.json` +
-`fluxtorrent.js` 解析脚本），字段口径与 `ptppUserInfo` 一致，
-并已包含 `passkey` 提取字段（缺它下载链会拼成空 passkey）。
-工具用户可引用本页向 [pt-plugins/PT-Plugin-Plus](https://github.com/pt-plugins/PT-Plugin-Plus)
-提交站点收录 PR；PT-depiler 同理。
+`fluxtorrent.js` 解析脚本），字段口径与 `ptppUserInfo` 一致；下载链的
+`passkey=` 参数由用户在插件 PassKey 配置位填 `fxr_` RSS Token（服务端
+只认 token 值，原始 passkey 一律 401）。
 
 ---
 *维护：FluxTorrent 团队 · 2026-10-02 · 变更公告同步 `compat/meta.endpoints` 与 `capabilities`*

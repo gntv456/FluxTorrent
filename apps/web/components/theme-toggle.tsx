@@ -188,14 +188,14 @@ export function ThemeToggle({
     [applyTheme],
   );
 
-  // 面板分组：只列日款（isLightTheme，夜间孪生由暗色系统经 sibling
-  // 映射自动生效——首版没滤 scheme，面板 26 卡同名并排且双亮勾）。
+  // 面板分组：淡彩组只列日款（isLightTheme，夜间孪生由暗色系统经
+  // sibling 映射自动生效）；经典组不过滤——brand-night/山海经是独立
+  // 主题档非淡彩孪生，用户靠它们手选暗色（滤掉=抹出面板）。
   const groups: ThemeGroup[] = THEME_GROUP_ORDER;
-  const byGroup = useCallback(
-    (g: ThemeGroup) =>
-      THEME_IDS.filter((id) => themeGroupOf(id) === g && isLightTheme(id)),
-    [],
-  );
+  const byGroup = useCallback((g: ThemeGroup) => {
+    const ids = THEME_IDS.filter((id) => themeGroupOf(id) === g);
+    return g === "classic" ? ids : ids.filter(isLightTheme);
+  }, []);
   const dictCommon = dict.common as Record<string, string>;
   const nameOf = useCallback(
     (id: ThemeId) => dictCommon[themeNameKey(id)] ?? id,
