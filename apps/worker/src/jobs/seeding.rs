@@ -90,7 +90,22 @@ pub async fn seeding_reward(
                   -- 口径（0310）：只有 0(DEAD，实锤不可信) 阻断；
                   -- -2(SUSPECT，无法验证，如仅加密连接客户端)与 -1(未测)
                   -- 同等放行——通用站不可误伤加密客户端用户。
-                  AND NOT COALESCE(s.connectable = 0, false)
+                  --
+                  -- A 修复（2026-11-17）：旧写法 NOT COALESCE(connectable=0,false)
+                  -- 对 connectable=0 一刀切排除且不读 connectable_gate，与
+                  -- seeding_gate::verdict（默认 off 不否决在种）口径打架。实测全站
+                  -- 8.1 万条 connectable=0 做种被挡，其中 5.4 万条 uploaded>0（真做种
+                  -- 者，含单体上传 605GB 却被探测误判不可达），约 900 用户做种奖励为 0。
+                  -- 新口径：有真实上传一定放行；connectable=0 且 uploaded=0 的真幽灵
+                  -- 仅当站点显式 connectable_gate=hard 时才挡（默认 off 放行）。
+                  AND (
+                      s.connectable IS DISTINCT FROM 0
+                      OR s.uploaded > 0
+                      OR COALESCE(
+                          (SELECT value FROM site_settings WHERE name = 'connectable_gate'),
+                          'off'
+                      ) <> 'hard'
+                  )
                 CROSS JOIN p
                 WHERE u.status < 2
                   -- 0369 M3：作弊停权期间同挂起口径停发做种收益（到期由
