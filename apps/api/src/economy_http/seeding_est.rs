@@ -138,10 +138,10 @@ const EST_SQL: &str = r#"
               AND (
                   s.connectable IS DISTINCT FROM 0
                   OR COALESCE(s.uploaded, 0) > 0
-                  OR COALESCE(
-                      (SELECT value FROM site_settings WHERE name = 'connectable_gate'),
-                      'off'
-                  ) <> 'hard'
+                  OR COALESCE((
+                      SELECT value FROM site_settings
+                      WHERE name = 'connectable_gate'
+                  ), 'off') <> 'hard'
               )
             CROSS JOIN p
             WHERE u.id = $1

@@ -122,9 +122,7 @@ async fn probe_one(
     if !tcp_ok {
         tokio::time::sleep(Duration::from_millis(400)).await;
         tcp_ok = super::bt_probe::probe_tcp_reachable(
-            &probe_ip,
-            probe_port,
-            tcp_bt_to,
+            &probe_ip, probe_port, tcp_bt_to,
         )
         .await;
     }
