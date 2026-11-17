@@ -89,7 +89,8 @@ async fn ptpp_user_info(
     // 时魔：插件用户卡的「时魔」列此前恒为 0 —— 端点只给余额（bonus），
     // 没有每小时口径。取经济域的同一份预估（与 worker 结算、页面 /me/spark
     // 同源），跨域调用而非在此另算，免得两处口径漂移。
-    let bonus_per_hour = crate::economy_http::bonus_per_hour(&state.repo, uid).await;
+    let bonus_per_hour =
+        crate::economy_http::bonus_per_hour(&state.repo, uid).await;
     // 发布数（本人名下种子数）：SQL 住在 R 层。
     let uploads = crate::repo::user_stats::upload_count(&state.repo, uid).await;
     Ok(no_store(with_rl(

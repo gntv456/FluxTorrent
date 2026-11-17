@@ -23,7 +23,8 @@ use super::{require_scope, require_token, with_rl, SCOPE_READ};
     description = "我的魔力概览：balance 余额、hourly_estimate 时魔（每小时收益）、\
 hourly_points_estimate 时积分（每小时做种积分）。",
     responses(
-        (status = 200, description = "balance/hourly_estimate/hourly_points_estimate"),
+        (status = 200,
+         description = "balance/hourly_estimate/hourly_points_estimate"),
         (status = 401, description = "Token 无效/已撤销/未传（code 2001）"),
         (status = 403, description = "缺所需 scope（code 2003）"),
         (status = 429, description = "限流（code 1015），带 Retry-After: 60"),
@@ -38,7 +39,8 @@ pub(super) async fn me_spark(
     require_scope(&tk, SCOPE_READ)?;
     let uid = tk.uid;
     let balance = user_stats::spark_balance(&state.repo, uid).await;
-    let hourly_estimate = crate::economy_http::bonus_per_hour(&state.repo, uid).await;
+    let hourly_estimate =
+        crate::economy_http::bonus_per_hour(&state.repo, uid).await;
     let hourly_points_estimate =
         crate::economy_http::bonus_points_per_hour(&state.repo, uid).await;
     Ok(with_rl(

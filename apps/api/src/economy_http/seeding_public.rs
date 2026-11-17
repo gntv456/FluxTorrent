@@ -10,7 +10,8 @@ use crate::repo::Repo;
 
 use super::seeding_est::{hourly_estimate, hourly_points_estimate};
 
-/// 僵尸阈值：max(2h, 2×announce_interval) —— 与 worker 的 stale_peer_threshold_secs 同源。
+/// 僵尸阈值：max(2h, 2×announce_interval) —— 与 worker 的
+/// stale_peer_threshold_secs 同源。
 ///
 /// announce_interval 缺失/非法时回落 1800 秒（worker 缺省同值）。
 pub async fn stale_threshold_secs(repo: &Repo) -> i64 {

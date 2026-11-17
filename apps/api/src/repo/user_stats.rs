@@ -39,8 +39,9 @@ pub struct MeStats {
 
 /// 成长线等级门槛（class_id < 90 的职务级另走 staff_classes）。
 pub async fn level_rules(repo: &Repo) -> Vec<LevelRule> {
-    let rows: Vec<(i32, String, i64, i64, i64, i64, bool, bool)> = sqlx::query_as(
-        "SELECT uc.id, uc.name, \
+    let rows: Vec<(i32, String, i64, i64, i64, i64, bool, bool)> =
+        sqlx::query_as(
+            "SELECT uc.id, uc.name, \
                 COALESCE(cr.min_uploaded, 0)::bigint, \
                 COALESCE(cr.min_download_count, 0)::bigint, \
                 COALESCE(cr.min_seed_hours, 0)::bigint, \
@@ -51,13 +52,22 @@ pub async fn level_rules(repo: &Repo) -> Vec<LevelRule> {
          LEFT JOIN class_rules cr ON cr.class_id = uc.id \
          WHERE uc.id < 90 \
          ORDER BY uc.id",
-    )
-    .fetch_all(&repo.read_db)
-    .await
-    .unwrap_or_default();
+        )
+        .fetch_all(&repo.read_db)
+        .await
+        .unwrap_or_default();
     rows.into_iter()
         .map(
-            |(id, name, min_uploaded, min_download_count, min_seed_hours, min_account_age_days, demotable, has_rule)| {
+            |(
+                id,
+                name,
+                min_uploaded,
+                min_download_count,
+                min_seed_hours,
+                min_account_age_days,
+                demotable,
+                has_rule,
+            )| {
                 LevelRule {
                     id,
                     name,
@@ -114,11 +124,13 @@ pub async fn my_stats(repo: &Repo, uid: i64) -> Option<MeStats> {
     .await
     .ok()
     .flatten();
-    row.map(|(uploaded, download_count, seed_hours, account_age_days)| MeStats {
-        uploaded,
-        download_count,
-        seed_hours,
-        account_age_days,
+    row.map(|(uploaded, download_count, seed_hours, account_age_days)| {
+        MeStats {
+            uploaded,
+            download_count,
+            seed_hours,
+            account_age_days,
+        }
     })
 }
 
@@ -127,13 +139,15 @@ pub async fn my_stats(repo: &Repo, uid: i64) -> Option<MeStats> {
 /// 口径：torrents.owner_id = 本人，含未过审/被拒的 —— 与页面「发布数」
 /// 同口径（发布过就算数），与「做种数」那种只算在种的分开。
 pub async fn upload_count(repo: &Repo, uid: i64) -> i64 {
-    sqlx::query_scalar::<_, i64>("SELECT count(*)::bigint FROM torrents WHERE owner_id = $1")
-        .bind(uid)
-        .fetch_optional(&repo.read_db)
-        .await
-        .ok()
-        .flatten()
-        .unwrap_or(0)
+    sqlx::query_scalar::<_, i64>(
+        "SELECT count(*)::bigint FROM torrents WHERE owner_id = $1",
+    )
+    .bind(uid)
+    .fetch_optional(&repo.read_db)
+    .await
+    .ok()
+    .flatten()
+    .unwrap_or(0)
 }
 
 /// 本人魔力（火花）余额。

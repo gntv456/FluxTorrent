@@ -1,14 +1,9 @@
 //! 开放 API 域的 utoipa 聚合（F3/W-49，frame-plan §3 步③）。
 //!
-//! 本批目标口径：「路径 + 方法 + 一句描述 + 错误码列表」机器可读，
-//! schema 精度从简（responses 全部走描述文本，不生成 JSON Schema）。
-//! components 空起步；既有 spec_schemas.rs 的手写 schema 仍由
-//! spec.rs::build() 合并进最终 openapi.json（双轨期：路径来自注解，
-//! schema 来自手写，路径段的手写 spec 已归零）。
-//!
-//! 聚合的 19 条 = mount_openapi 挂载的全部端点（openapi.json 自身除外，
-//! 它是文档端点不是数据契约；M36 起含 crossseed 三端点；2026-11-17 起含
-//! /open/me/classes 与 /open/me/spark 两个插件用户卡口径端点）。
+//! 口径：「路径 + 方法 + 一句描述 + 错误码列表」机器可读；schema 精度从简
+//! （responses 走描述文本）。既有 spec_schemas.rs 的手写 schema 仍由
+//! spec.rs::build() 合并进最终 openapi.json（路径来自注解，schema 来自手写）。
+//! 聚合条目 = mount_openapi 挂载的全部端点（openapi.json 自身除外）。
 
 use utoipa::OpenApi;
 

@@ -79,7 +79,8 @@ pub(super) async fn np_user_json(
     // 看不到，正是这一层缺字段。按同一口径补上：发布数走 R 层计数，
     // 时魔走经济域预估（与 worker 结算同源，不另算近似值）。
     let uploads = crate::repo::user_stats::upload_count(&state.repo, uid).await;
-    let bonus_per_hour = crate::economy_http::bonus_per_hour(&state.repo, uid).await;
+    let bonus_per_hour =
+        crate::economy_http::bonus_per_hour(&state.repo, uid).await;
     Ok(serde_json::json!({
         "id": id,
         "username": username,
