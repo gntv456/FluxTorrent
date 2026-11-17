@@ -26,7 +26,8 @@ pub(super) async fn note_corr<'c>(
            'uncorroborated_upload（自报上传量超出 leecher 佐证上限，超出部分未入账）') \
          ON CONFLICT (user_id, agent, reason) DO UPDATE \
            SET hits = cheat_events.hits + 1, last_seen = now() \
-         WHERE cheat_events.last_seen < now() - interval '24 hours'",
+         WHERE cheat_events.last_seen < now() - interval '24 hours' \
+           AND cheat_events.false_positive IS NOT TRUE",
     )
     .bind(ev.user)
     .bind(format!("corr:{torrent_id}"))
@@ -55,7 +56,8 @@ pub(super) async fn note_speed<'c>(
          VALUES ($1, $2, $3, $4) \
          ON CONFLICT (user_id, agent, reason) DO UPDATE \
            SET hits = cheat_events.hits + 1, last_seen = now() \
-         WHERE cheat_events.last_seen < now() - interval '24 hours'",
+         WHERE cheat_events.last_seen < now() - interval '24 hours' \
+           AND cheat_events.false_positive IS NOT TRUE",
     )
     .bind(ev.user)
     .bind(format!("speed:{torrent_id}"))
@@ -91,12 +93,17 @@ pub(super) async fn note_ghost<'c>(
     // reason 必须是**固定文案**（本文件头注释的纪律）：变化的读数（自报
     // 上/下载字节）只进 tracing——拼进 reason 会让 ON CONFLICT 恒不命中，
     // hits 聚合与 L1/L2 累进处置在这条最高危画像上整体失效。
+    // false_positive 豁免（2026-11-18）：跨种/二传用户被站方批量定性 fp
+    // 后，判据仍会永远命中（数据来自外站是他们的常态），713 人 × 每 24h
+    // 一笔持续刷 hits/last_seen——已定性误报的行不再累计，新（user,torrent）
+    // 组合仍正常留痕。
     let _ = sqlx::query(
         "INSERT INTO cheat_events (user_id, agent, peer_ip, reason) \
          VALUES ($1, $2, $3, $4) \
          ON CONFLICT (user_id, agent, reason) DO UPDATE \
            SET hits = cheat_events.hits + 1, last_seen = now() \
-         WHERE cheat_events.last_seen < now() - interval '24 hours'",
+         WHERE cheat_events.last_seen < now() - interval '24 hours' \
+           AND cheat_events.false_positive IS NOT TRUE",
     )
     .bind(ev.user)
     .bind(format!("ghost:{}", &ev.hash[..8.min(ev.hash.len())]))
