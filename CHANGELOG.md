@@ -3,6 +3,16 @@
 本文件记录面向部署者的显著变更。格式参照 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)；
 版本号在首个语义化 tag（v0.x）发布后启用。
 
+## [0.5.19-dev.16] - 2026-11-18
+
+定位：**dev.14 自纠二连**——Wiki 目录卡片 SSR 直出。
+
+### 修复
+- 目录页分组卡片原为 client 组件，SSR 直出被 React 流式 defer
+  （flight data 只有懒引用），无 JS 环境（爬虫/禁 JS 用户）看不到任何
+  卡片：改为 RSC 服务端直出；检索框改按 data-wiki-card 数据属性做
+  DOM 渐进增强过滤——JS 失效时目录全量可见
+
 ## [0.5.19-dev.15] - 2026-11-17
 
 定位：**dev.14 自纠热修**——Wiki 搜索路由顺序。
