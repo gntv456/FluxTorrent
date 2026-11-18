@@ -41,9 +41,8 @@ pub(super) async fn contract_stats(
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
     // 2) 近六月结算走势（settled/breached/奖罚额）
-    let months: Vec<(chrono::NaiveDate, i64, i64, i64, i64)> =
-        sqlx::query_as(
-            "SELECT month, \
+    let months: Vec<(chrono::NaiveDate, i64, i64, i64, i64)> = sqlx::query_as(
+        "SELECT month, \
                  count(*) FILTER (WHERE status='settled')::bigint, \
                  count(*) FILTER (WHERE status='breached')::bigint, \
                  COALESCE(sum(reward),0)::bigint, \
@@ -53,10 +52,10 @@ pub(super) async fn contract_stats(
                AND month > date_trunc('month', now())::date \
                            - interval '6 months' \
              GROUP BY month ORDER BY month DESC",
-        )
-        .fetch_all(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    )
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     // 3) 档位分布（当月 open，按 tier 目标聚）
     let tiers: Vec<(String, i64, i64, i64)> = sqlx::query_as(
         "SELECT c.kind || ':' || c.target::text, c.target, \
