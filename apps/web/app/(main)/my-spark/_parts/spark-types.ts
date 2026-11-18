@@ -29,6 +29,12 @@ export interface SparkInfo {
     unreachable: number;
     stale: number;
   };
+  /** 未计收益明细（2026-11-18 工单诉求）：哪一颗、什么原因。封顶 200。 */
+  excluded_detail?: {
+    torrent_id: number;
+    name: string;
+    cat: "port" | "unreach" | "stale" | (string & {});
+  }[];
   /** 账号级停发（停权 / 作弊处置中）：为真时所有种子都不计 */
   payout_suspended?: boolean;
   /** 0488：本人当前做种的官种数与官种体积（字节） */

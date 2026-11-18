@@ -54,6 +54,59 @@ pub async fn earning_split(
     }
 }
 
+/// 未计收益明细行（哪一颗、为什么）——「回连不可达 34 颗」必须能点开看
+/// 是哪 34 颗，否则用户只能开工单问。分类 CASE 与 SPLIT_SQL 逐字一致。
+pub struct ExcludedRow {
+    pub torrent_id: i64,
+    pub name: String,
+    pub cat: String,
+}
+
+/// 未计收益种子明细（port/unreach/stale 三类，含种子名）。
+/// 分类口径与 [`earning_split`] 完全一致（同一段 CASE），封顶 200 条——
+/// 超出时前端只展示计数与原因（人不会逐颗看 200+，DB 也不该无界回行）。
+pub async fn excluded_detail(
+    db: &PgPool,
+    user_id: i64,
+    stale_secs: i64,
+) -> Vec<ExcludedRow> {
+    sqlx::query_as::<_, (i64, String, String)>(
+        "SELECT t.id, \
+           COALESCE(NULLIF(t.small_descr, ''), t.name) AS name, \
+           (CASE \
+              WHEN s.last_port IS NULL OR s.last_port <= 0 THEN 'port' \
+              WHEN COALESCE(s.connectable = 0, false) \
+                   AND COALESCE(s.uploaded, 0) <= 0 THEN 'unreach' \
+              WHEN s.last_seen_at IS NULL \
+                OR s.last_seen_at \
+                   <= now() - ($2::bigint * interval '1 second') \
+              THEN 'stale' \
+              ELSE 'earning' \
+            END) AS cat \
+         FROM snatches s JOIN torrents t ON t.id = s.torrent_id \
+         WHERE s.user_id = $1 AND s.seeding \
+           AND (s.last_port IS NULL OR s.last_port <= 0 \
+                OR (COALESCE(s.connectable = 0, false) \
+                    AND COALESCE(s.uploaded, 0) <= 0) \
+                OR s.last_seen_at IS NULL \
+                OR s.last_seen_at \
+                   <= now() - ($2::bigint * interval '1 second')) \
+         ORDER BY t.id LIMIT 200",
+    )
+    .bind(user_id)
+    .bind(stale_secs)
+    .fetch_all(db)
+    .await
+    .unwrap_or_default()
+    .into_iter()
+    .map(|(torrent_id, name, cat)| ExcludedRow {
+        torrent_id,
+        name,
+        cat,
+    })
+    .collect()
+}
+
 const SPLIT_SQL: &str = r#"
         SELECT
             count(*) FILTER (WHERE cat = 'earning') AS earning,

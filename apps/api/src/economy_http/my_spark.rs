@@ -97,6 +97,21 @@ async fn my_spark(
     let split: super::seeding_est::EarningSplit =
         super::seeding_est::earning_split(&state.repo.db, auth.id, stale_secs)
             .await;
+    // 明细清单（2026-11-18 工单诉求）：「不可达 34 颗」要能点开看是哪 34 颗。
+    let excluded_list: Vec<serde_json::Value> =
+        super::seeding_est::excluded_detail(
+            &state.repo.db,
+            auth.id,
+            stale_secs,
+        )
+        .await
+        .into_iter()
+        .map(|r| {
+            serde_json::json!({
+                "torrent_id": r.torrent_id, "name": r.name, "cat": r.cat,
+            })
+        })
+        .collect();
     // 0417 F6 / 0488：系数表构造按域拆到 spark_tiers.rs（300 行门禁）。
     // 参数仍从 seeding_params() + seeding_official_mult() 取真值，与结算同源。
     let tiers = super::spark_tiers::build_tiers(&state.repo.db).await;
@@ -109,6 +124,7 @@ async fn my_spark(
             "unreachable": split.unreachable,
             "stale": split.stale,
         },
+        "excluded_detail": excluded_list,
         "payout_suspended": split.suspended,
         "official_seeding_count": official_seeding_count,
         "official_seeding_size": official_seeding_size,

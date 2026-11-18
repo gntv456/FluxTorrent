@@ -7940,6 +7940,7 @@ const enBase: Omit<
       "Unreachable: others can't connect to you right now, which mainly affects upload speed. As long as you are seeding, your seeding reward (sparks) is unaffected and keeps accruing. To improve, turn off “strict NAT / random port”, pick a common port (e.g. 51413), and allow it through your firewall.",
     excludedFixStale:
       "Stale: the client must stay running and report to the site periodically. If you just restarted it, it recovers on the next report. This does not affect seeding reward settlement.",
+    excludedListTitle: "Show which torrents are excluded",
     payoutSuspended:
       "Your earnings are suspended and will resume automatically once the account issue is cleared.",
     paramBase: "Base pay (per hour)",
