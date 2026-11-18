@@ -3635,12 +3635,6 @@
    "file": "apps/api/src/http/view_layout.rs"
   },
   {
-   "method": "GET",
-   "path": "/invites/status",
-   "handler": "invites_status_handler",
-   "file": "apps/api/src/invite_http.rs"
-  },
-  {
    "method": "POST",
    "path": "/invites",
    "handler": "issue_invite_handler",
@@ -3675,6 +3669,12 @@
    "path": "/invites",
    "handler": "list_invites_handler",
    "file": "apps/api/src/invite_http/list.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/invites/status",
+   "handler": "invites_status_handler",
+   "file": "apps/api/src/invite_http/status.rs"
   },
   {
    "method": "GET",
