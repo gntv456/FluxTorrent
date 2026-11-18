@@ -1,6 +1,6 @@
 [package]
 name = "flux-worker"
-version = "0.5.19-dev.17"
+version = "0.5.19-dev.18"
 edition.workspace = true
 
 [dependencies]

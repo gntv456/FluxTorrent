@@ -3,6 +3,37 @@
 本文件记录面向部署者的显著变更。格式参照 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)；
 版本号在首个语义化 tag（v0.x）发布后启用。
 
+## [0.5.19-dev.18] - 2026-11-18
+
+定位：**dev.14-17 深查收口 + 未计收益明细可查**。
+
+### 新增
+- 「我的魔力」页未计收益提示框新增**种子明细折叠入口**：port/unreach/
+  stale 三类分组列出每颗种子名（链接直达种子页），封顶 200 条。
+  `/me/spark` 响应补 `excluded_detail: [{torrent_id, name, cat}]`；
+  SQL 居 repo 层 spark_ledger（FRAME §2 H 层棘轮不抬）；四语文案。
+  工单诉求：「回连不可达 65→34 颗」用户要能看到是哪 34 颗。
+
+### 修复
+- 反作弊留痕：已定性 `false_positive` 的行不再累计 hits——跨种/二传
+  用户被批量定性 fp 后判据仍永远命中（线上 713 人 × 每 24h 刷一笔，
+  1.1 万行化石持续膨胀）；三口 UPSERT（ghost/corr/speed）补
+  `AND false_positive IS NOT TRUE`，fp 行冻结、新组合照常留痕
+- theme-css 生成资产 CRLF 污染根治：生成器改 LF 规范化 hash（同内容
+  跨平台同名），`.gitattributes` 锁 styles/*.css 与 theme-css/* 恒 LF；
+  重生成资产补上 11-15 山海经修复（滚动条静止隐藏/图标居中——此前
+  源码改了 28 行但漏跑生成器，线上一直发旧资产）
+- dev.14 批四个新组件零 ui 原语 import 触发 design_cov 棘轮
+  （38.6→38.4%）：drawer 空态收编 EmptyState、核销起始钮收编
+  SubmitButton（补 type/onClick 透传），采用率回 38.7%
+- 路由清单两笔补登（/wiki/search、invite status 拆件）——build-test
+  曾因清单过期带病发版 dev.16
+
+### 运维
+- 升级路径与 dev.17 相同：改 `/opt/fluxtorrent/docker/.env` 的
+  `FLUX_VERSION=0.5.19-dev.18` 后 `docker compose up -d` 拉起；
+  升级后照例 curl 探针 + 扫 Created 僵尸容器
+
 ## [0.5.19-dev.17] - 2026-11-18
 
 定位：**邀请邮件「点了没反应」止血（B 方案）**——SMTP 不通时秒级明确报错。
