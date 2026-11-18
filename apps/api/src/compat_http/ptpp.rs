@@ -72,20 +72,27 @@ async fn ptpp_user_info(
     // P-545：未读只算「点进收件箱看得见的」——已删/移入文件夹的不计。
     // 旧写法吃 read_at IS NULL，插件据此把已删的信报成永久未读，而站内
     // 没有任何入口能清掉它（与 /me、message_stream::unread_inbox 同尺）。
-    let (seeding, leeching, invites, unread_messages): (i64, i64, i64, i64) =
-        sqlx::query_as(
-            "SELECT \
-            (SELECT count(*) FROM snatches WHERE user_id = $1 AND seeding), \
-            (SELECT count(*) FROM snatches WHERE user_id = $1 AND leeching), \
-            (SELECT count(*) FROM invites WHERE inviter_id = $1 AND status = 0 \
-                AND expires_at > now()), \
-            (SELECT count(*) FROM messages WHERE receiver_id = $1 \
-                AND unread AND location = 1 AND folder IS NULL)",
-        )
-        .bind(uid)
-        .fetch_one(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    let (seeding, leeching, invites, unread_messages, seed_points): (
+        i64,
+        i64,
+        i64,
+        i64,
+        i64,
+    ) = sqlx::query_as(
+        "SELECT \
+        (SELECT count(*) FROM snatches WHERE user_id = $1 AND seeding), \
+        (SELECT count(*) FROM snatches WHERE user_id = $1 AND leeching), \
+        (SELECT count(*) FROM invites WHERE inviter_id = $1 AND status = 0 \
+            AND expires_at > now()), \
+        (SELECT count(*) FROM messages WHERE receiver_id = $1 \
+            AND unread AND location = 1 AND folder IS NULL), \
+        (SELECT COALESCE(sum(seeded_seconds), 0) / 3600 FROM snatches \
+         WHERE user_id = $1)",
+    )
+    .bind(uid)
+    .fetch_one(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     // 时魔：插件用户卡的「时魔」列此前恒为 0 —— 端点只给余额（bonus），
     // 没有每小时口径。取经济域的同一份预估（与 worker 结算、页面 /me/spark
     // 同源），跨域调用而非在此另算，免得两处口径漂移。
@@ -99,6 +106,12 @@ async fn ptpp_user_info(
             "id": id,
             "name": name,
             "bonus": bonus,
+            // 做种积分（1 积分 = 1 小时做种，P1-6 口径）：PT-depiler /
+            // PT-Plugin-Plus 用户卡 IPtppUserInfo.seedingPoints 的同名
+            // 字段（2026-11-18 #反馈：插件「积分」列只显示余额一行，
+            // 做种积分一行恒空）。与档案页 seed_seconds 同源
+            // （sum(snatches.seeded_seconds)/3600）。
+            "seedingPoints": seed_points,
             // 时魔（每小时火花）：与页面「我的魔力」同口径
             "bonusPerHour": bonus_per_hour,
             "uploaded": uploaded,

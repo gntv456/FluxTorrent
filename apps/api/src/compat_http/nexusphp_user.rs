@@ -27,12 +27,15 @@ pub(super) async fn np_user_json(
         i64,
         chrono::DateTime<chrono::Utc>,
         i64,
+        i64,
     )> = sqlx::query_as(
         "SELECT u.id, u.username, u.uploaded, u.downloaded, \
          COALESCE(u.spark_balance,0), u.class_id, \
          COALESCE(u.seeding_size,0), u.created_at, \
          (SELECT count(*) FROM snatches s \
-           WHERE s.user_id = u.id AND s.seeding) \
+           WHERE s.user_id = u.id AND s.seeding), \
+         (SELECT COALESCE(sum(s.seeded_seconds), 0) / 3600 FROM snatches s \
+           WHERE s.user_id = u.id) \
          FROM users u WHERE u.id = $1 AND u.status < 2",
     )
     .bind(uid)
@@ -49,6 +52,7 @@ pub(super) async fn np_user_json(
         seeding_size,
         join_at,
         seeding,
+        seed_points,
     )) = row
     else {
         return Err(DomainError::Unauthorized);
@@ -87,6 +91,12 @@ pub(super) async fn np_user_json(
         "uploaded": uploaded,
         "downloaded": downloaded,
         "seedbonus": seedbonus,
+        // 做种积分（1 积分 = 1 小时做种）：PT-depiler 用户卡「做种积分」
+        // （seedingBonus）行的数据源。NP 生态既有叫法是 seedingPoints
+        // （MTeam/HDSky 等 userdetails 口径），驼峰别名给 PTPP 形工具。
+        // 与档案页 seed_seconds 同源，两个兼容端点口径一致。
+        "seedingPoints": seed_points,
+        "seed_points": seed_points,
         // 插件口径别名：余额之外的每小时口径（时魔）
         "bonusPerHour": bonus_per_hour,
         // 发布数（本人名下种子数）

@@ -34,18 +34,21 @@
 ```
 GET /api/v1/plugins/ptppUserInfo          # PT-Plugin-Plus 字段口径聚合端点（推荐）
 Authorization: Token fxo_...
-→ data: { id, name, bonus, bonusPerHour, uploaded, downloaded, seeding, leeching,
+→ data: { id, name, bonus, seedingPoints, bonusPerHour, uploaded, downloaded, seeding, leeching,
           seedingSize, uploads, invites, levelName, joinTime, messageCount, isLogged }
 ```
 
 `bonusPerHour`（时魔）与 `uploads`（发布数）于 0.5.19 加入：插件用户卡的
 「时魔」「发布数」两列此前恒为空，现与页面「我的魔力」/档案页同一口径。
+`seedingPoints`（做种积分，1 积分 = 1 小时做种，`sum(snatches.seeded_seconds)/3600`）
+于 0.5.19-dev.20 加入：PT-depiler 用户卡「积分」列的做种积分一行
+（IPtppUserInfo.seedingPoints / NP 口径 seedingBonus）此前恒空。
 **passkey 字段已移除**（收口批）：下载改走 fxr_ token 直下或 fxk_ 临时凭证（§4）。
 
 ```
 GET /api/v1/compat/nexusphp/user.json     # NP userdetails 口径
 
-→ data: { id, username, uploaded, downloaded, seedbonus, bonusPerHour, uploads,
+→ data: { id, username, uploaded, downloaded, seedbonus, seedingPoints, seed_points, bonusPerHour, uploads,
           class, class_name, ratio, ratio_infinite, ratio_display }
 ```
 
