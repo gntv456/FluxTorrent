@@ -186,7 +186,7 @@ pub async fn run_all(
                 expire_promotions(&db), &shard);
             // 邮件 outbox 消费（0404 §17-2）
             shard_lock!(&db, "job:mail_outbox",
-                mail_out::mail_outbox_drain(&db), &shard);
+                mail_outbox::mail_outbox_drain(&db), &shard);
             shard_lock!(&db, "job:magic_pool_promo",
                 magic_pool_promo(&db), &shard);
             shard_lock!(&db, "job:announce_site_promos", announce_site_promos(&db), &shard);
