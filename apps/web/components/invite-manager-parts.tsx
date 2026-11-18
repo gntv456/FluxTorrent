@@ -187,6 +187,7 @@ export function SendEmailDialog({
   sendEmail,
   setSendEmail,
   busy,
+  smtpReady,
   onClose,
   onSend,
 }: {
@@ -194,6 +195,8 @@ export function SendEmailDialog({
   sendEmail: string;
   setSendEmail: (v: string) => void;
   busy: boolean;
+  /** SMTP 可达（status 口 60s 缓存探测）：false=警示并禁发，引导复制 */
+  smtpReady: boolean;
   onClose: () => void;
   onSend: () => void;
 }) {
@@ -257,6 +260,14 @@ export function SendEmailDialog({
             {blockedHint}
           </p>
         )}
+        {!smtpReady && (
+          <p
+            className="mt-2 text-xs text-[var(--danger-text)]"
+            role="alert"
+          >
+            {t.smtpDown}
+          </p>
+        )}
         <div className="mt-4 flex justify-end gap-2">
           <button
             type="button"
@@ -268,7 +279,9 @@ export function SendEmailDialog({
           <button
             type="button"
             className="min-h-11 rounded-full bg-sky-deep px-5 text-sm text-[var(--text-on-accent)] disabled:opacity-50"
-            disabled={busy || !sendEmail.includes("@") || policyBlocked}
+            disabled={
+              busy || !smtpReady || !sendEmail.includes("@") || policyBlocked
+            }
             onClick={onSend}
           >
             {t.send}

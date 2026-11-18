@@ -3,7 +3,7 @@
 //! 比裸 TCP 探测更接近「这封信发得出去」。
 
 /// 4 秒超时防黑洞（DNS 失败/端口被封时不让请求线程一直等）。
-pub(super) async fn smtp_reachable(url: &str) -> bool {
+pub(crate) async fn smtp_reachable(url: &str) -> bool {
     let Ok(transport) = crate::gaps_http::build_smtp(url) else {
         tracing::warn!("SMTP 探测跳过：配置无法装配");
         return false;

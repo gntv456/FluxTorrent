@@ -2967,6 +2967,7 @@ const zhTwBase: Omit<
     emailPlaceholder: "對方信箱地址",
     suffixNotAllowed: "該信箱後綴不在本站允許清單內，對方無法用它註冊",
     suffixBanned: "該信箱後綴已被本站禁止註冊，換一個信箱吧",
+    smtpDown: "站點郵件服務當前不可用（SMTP 連不通），請直接複製下方邀請碼發給對方",
     send: "發送",
     cancel: "取消",
     sent: "✓ 邀請郵件已發送",

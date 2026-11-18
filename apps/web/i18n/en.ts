@@ -3062,6 +3062,8 @@ const enBase: Omit<
       "This email suffix is not on the site allowlist; the recipient cannot register with it",
     suffixBanned:
       "This email suffix is banned from registration; try another address",
+    smtpDown:
+      "Site mail service is unreachable right now — copy the invite code below and send it yourself",
     send: "Send",
     cancel: "Cancel",
     sent: "✓ Invite email sent",

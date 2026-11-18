@@ -2995,6 +2995,7 @@ const zhCnBase = {
     emailPlaceholder: "对方邮箱地址",
     suffixNotAllowed: "该邮箱后缀不在本站允许清单内，对方无法用它注册",
     suffixBanned: "该邮箱后缀已被本站禁止注册，换一个邮箱吧",
+    smtpDown: "站点邮件服务当前不可用（SMTP 连不通），请直接复制下方邀请码发给对方",
     send: "发送",
     cancel: "取消",
     sent: "✓ 邀请邮件已发送",

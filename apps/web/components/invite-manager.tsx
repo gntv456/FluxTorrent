@@ -42,6 +42,8 @@ export interface InviteStatus {
   unused: number;
   used: number;
   expired: number;
+  /** SMTP 探测结果（60s 缓存）：false=端口不通/未配置，弹层警示并禁发 */
+  smtp_ready: boolean;
 }
 
 /**
@@ -254,13 +256,14 @@ export function InviteManager() {
         />
       )}
 
-      {/* 发送邀请邮件弹层 */}
+      {/* 发送邀请邮件弹层（smtpReady=false 时弹层内警示并可禁发） */}
       {sendFor && (
         <SendEmailDialog
           sendFor={sendFor}
           sendEmail={sendEmail}
           setSendEmail={setSendEmail}
           busy={mailBusy}
+          smtpReady={status?.smtp_ready !== false}
           onClose={() => setSendFor(null)}
           onSend={sendMail}
         />

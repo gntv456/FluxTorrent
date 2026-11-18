@@ -9,7 +9,7 @@
 
 use sqlx::PgPool;
 
-mod probe;
+pub(crate) mod probe;
 use probe::smtp_reachable;
 
 /// 统一邮件投递（multipart/alternative）+ 渲染上下文（见 send.rs）。

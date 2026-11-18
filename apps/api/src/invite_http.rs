@@ -6,10 +6,12 @@ mod email;
 mod invitees;
 mod list;
 mod quota;
+mod status;
 
 pub use email::email_invite_handler;
 pub use invitees::list_invitees_handler;
 pub use list::list_invites_handler;
+pub use status::invites_status_handler;
 
 use actix_web::{delete, get, post, web, HttpRequest, HttpResponse};
 use serde::Deserialize;
@@ -57,57 +59,6 @@ pub async fn invite_quota_limit(
 
 /// 我的邀请概览（NP invite.php 顶部口径）：配额用量 + 魔力兑换现价 + 剩余额外配额。
 /// 前端据此禁用不可用按钮，而不是点了才吃 403。
-#[get("/invites/status")]
-pub async fn invites_status_handler(
-    req: HttpRequest,
-    state: web::Data<std::sync::Arc<AppState>>,
-) -> DomainResult<HttpResponse> {
-    let auth = require_auth(&req, &state).await?;
-    let limit = invite_quota_limit(&state, &auth).await;
-    let (used, extra): (i32, i32) = sqlx::query_as(&format!(
-        "SELECT \
-            COALESCE((SELECT used FROM invite_quota \
-                      WHERE user_id = $1 AND period = {}), 0), \
-            COALESCE(quota_extra, 0) \
-         FROM users WHERE id = $1",
-        quota::WEEK_PERIOD,
-    ))
-    .bind(auth.id)
-    .fetch_optional(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?
-    .unwrap_or((0, 0));
-    let price: Option<i64> = sqlx::query_scalar(
-        "SELECT price FROM shop_items WHERE kind = 'invite' AND active \
-         = true ORDER BY price LIMIT 1",
-    )
-    .fetch_optional(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-    // 三个计数与列表筛选同一口径：已过期同时认存储态 status=2
-    //（历史码/管理作废）与「未用且已过期」，否则角标数 ≠ 筛选结果数。
-    let inv_stats: (i64, i64, i64) = sqlx::query_as(
-        "SELECT count(*) FILTER (WHERE status = 0 AND expires_at > now()), \
-                count(*) FILTER (WHERE status = 1), \
-                count(*) FILTER (WHERE status = 2 \
-                    OR (status = 0 AND expires_at <= now())) \
-         FROM invites WHERE inviter_id = $1",
-    )
-    .bind(auth.id)
-    .fetch_one(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-    let (unused, used_count, expired) = inv_stats;
-    Ok(ok(serde_json::json!({
-        "class_id": auth.class_id,
-        "quota_limit": limit,
-        "quota_used": used,
-        "quota_extra": extra,
-        "redeem_price": price,
-        "unused": unused, "used": used_count, "expired": expired,
-    })))
-}
-
 #[derive(Deserialize)]
 struct ListQuery {
     page: Option<i64>,

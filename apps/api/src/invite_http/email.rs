@@ -7,6 +7,7 @@ use serde::Deserialize;
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
+use crate::mailer::probe;
 use crate::state::AppState;
 
 #[derive(Deserialize)]
@@ -84,6 +85,24 @@ pub(super) async fn email_invite_handler(
             "站点未配置邮件服务（SMTP），请复制邀请码手动发送给对方".into(),
         ));
     };
+    // B 方案（2026-11-18）：可达性预检——机房封 25/465/587 时配置看着
+    // 是齐的，旧实现直接放行进 lettre，TCP 黑洞挂满 120s 才吐 500，
+    // 用户侧症状就是「点了没反应」。mail_reachable 含 4s 超时 NOOP
+    // 探测（TLS/认证全链路），不通秒回明确错误并登记收件人（同未配
+    // 置分支的口径：码还在列表里，复制手动发是活路）。
+    if !probe::smtp_reachable(&smtp).await {
+        sqlx::query("UPDATE invites SET email = $2 WHERE id = $1")
+            .bind(body.invite_id)
+            .bind(&email)
+            .execute(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+        return Err(DomainError::Validation(
+            "邮件服务器无法连接（SMTP 端口不通或凭据被拒），\
+             请复制邀请码手动发送给对方"
+                .into(),
+        ));
+    }
     // 邮件外发场景的站点基址（硬编码审计 P1）：env 未配置且非开发态时
     // **拒发**——寄出 localhost 死链的邀请函比不发更糟（收件人点开必失败，
     // 还暴露部署形态）。开发态保留闭环。
