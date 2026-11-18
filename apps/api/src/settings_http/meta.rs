@@ -92,6 +92,8 @@ pub(super) fn group_label<'a>(key: &'a str) -> &'a str {
         "games" => "娱乐游戏",
         // 0435 起「注册与邀请」是 grp 值本身（中文直接可用）
         "注册与邀请" => "注册与邀请",
+        // 0497 首引的邮件频控分区（0499 补标签，此前显示英文原名）
+        "mail" => "邮件设定",
         other => other,
     }
 }
@@ -113,6 +115,7 @@ const DEFAULT_GROUP_ORDER: &[&str] = &[
     "authority",
     "security",
     "smtp",
+    "mail",
     "anticheat",
     "auto_review",
     "payment",

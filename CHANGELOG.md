@@ -3,6 +3,51 @@
 本文件记录面向部署者的显著变更。格式参照 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)；
 版本号在首个语义化 tag（v0.x）发布后启用。
 
+## [0.5.19-dev.23] - 2026-11-19
+
+定位：**体检二轮整改——资金静默清零 + dev.22 自造断档收口 + 新手旅程补链**。
+
+### 修复（资金静默——用户被扣钱必须知道）
+- 契约结算通知（P0，文件注释自证「投诉源」）：奖/罚两侧结算信——奖励侧
+  走 `contract_settle` 通知偏好（可关），罚侧必达（惩罚类不给关，同 H&R
+  超限口径）；带达成明细（月/类型/达成/目标/金额），幂等锚
+  `contract-notice:{uid}:{月}:{r|p}` 落 notice_marker 防手触重发。
+  余额不足罚金挂账场景也发（用户必须知道罚了、为何罚）。
+- 商城履约失败退款通知（P1）：worker release() 此前只写运维日志——
+  用户看到的是「扣了钱没到货」。退款信必达，带订单号/失败原因/退款额。
+- 通知白名单收编三处越界键（发送侧已用 u_notice_enabled 但不在白名单
+  = 用户关不掉也看不见）：`class_demote`/`request_bid`/`funding_closed`；
+  新增 `contract_settle`。DEFAULT_ON/KEYS 两数组 + 三语 noticePrefs 同步。
+
+### 修复（dev.22 自造断档——本批自查自纠）
+- massmail audience 管理控件：后端圈选五档上线即不可达（表单恒发 all）。
+  补人群下拉 + class:N 数字输入（非法回退 all），历史表加人群列；
+  后端 audience 落库（mass_mails 新列，0499 迁移）+ 预统计套圈选
+  （recipients 反映目标人群而非全员）。
+- economy-dashboard kind_mint_30d 渲染：产出结构分解表（按来源 TOP20 +
+  占比条 + 15 个高频 kind 人话标签）——「平衡表算不准」的看板半边。
+- 设置页 'mail' 分区标签：group_label/DEFAULT_GROUP_ORDER/三语
+  settingGroups 登记（此前显示英文原名排尾部）。
+- 可见性门禁补 admin 条目：kind_mint_30d/audience/contract-stats 三条
+  入登记表（门禁射程扩到本批触达的 admin 面——「门禁没防住自己批内
+  问题」的补课）。
+
+### 新增
+- 契约运营视图（B1）：`GET /admin/contract-stats` + 后台「契约运营」
+  面板（当月签约概览/签约率、近六月结算走势含达标率与奖罚额、档位
+  分布）——admin 此前零读口，站长只能直连 DB。staffpanel 导航行 +
+  adminNav 三语标签 + tool-map/switch 挂载。
+- 契约采样保留策略：`contract_samples_retain_months` 键（缺省 13 月），
+  contract_sample job 顺手清超窗旧采样（0496 建表后单调增长的卫生收口）。
+
+### 改进（新手旅程）
+- 注册落地从 `/torrents`（裸奔）改 `/account-health`——事实版新手清单
+  是新人第一周唯一护栏（10-26 P0-1 口径回归）。
+- 新手清单完成态进阶出口：契约/保种/考核三链接（四语文案）——此前
+  完成后只有一枚徽章，「生存」到「贡献」断链。
+- 后台新手运营模板页补 `newbie_grace_days` 参数行（后端已返回但
+  PARAM_LABELS 无键渲染不到）。
+
 ## [0.5.19-dev.22] - 2026-11-19
 
 定位：**产品体检「全部补齐」批——前端收口 + 契约计量升级 + 通道频控圈选**。

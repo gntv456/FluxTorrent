@@ -20,6 +20,18 @@
     {
       "endpoint": "GET /me/spark/ledger (hr_pardon_share)",
       "consumer": "kind=hr_pardon_share"
+    },
+    {
+      "endpoint": "GET /admin/economy-dashboard (kind_mint_30d)",
+      "consumer": "kind_mint_30d"
+    },
+    {
+      "endpoint": "POST /admin/massmail (audience)",
+      "consumer": "audience: aud"
+    },
+    {
+      "endpoint": "GET /admin/contract-stats",
+      "consumer": "contract-stats"
     }
   ]
 }

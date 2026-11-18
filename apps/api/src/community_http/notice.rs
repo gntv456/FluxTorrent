@@ -29,7 +29,7 @@ pub(crate) async fn notice_prefs_get(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    const DEFAULT_ON: [&str; 18] = [
+    const DEFAULT_ON: [&str; 22] = [
         "hr_prewarn",
         "hr_violation",
         "wishlist",
@@ -46,6 +46,13 @@ pub(crate) async fn notice_prefs_get(
         // 种子侧正反馈（0423 P0-3）：会发就要可关（notify.rs notify_comment/thanks）
         "torrent_comment",
         "torrent_thanks",
+        // 0499 资金通知面：契约结算奖励侧走偏好（罚侧必达不过滤）；
+        // class_demote/request_bid/funding_closed 此前发送侧已用
+        // u_notice_enabled 但不在白名单 = 用户关不掉也看不见——一并收编
+        "contract_settle",
+        "class_demote",
+        "request_bid",
+        "funding_closed",
         "push_hr",
         "push_promo",
         "push_message",
@@ -88,7 +95,7 @@ pub(crate) async fn notice_prefs_set(
     body: web::Json<NoticePrefsSetReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    const KEYS: [&str; 18] = [
+    const KEYS: [&str; 22] = [
         "hr_prewarn",
         "hr_violation",
         "wishlist",
@@ -105,6 +112,11 @@ pub(crate) async fn notice_prefs_set(
         // 种子侧正反馈（0423 P0-3）：会发就要可关
         "torrent_comment",
         "torrent_thanks",
+        // 0499：契约结算 + 三处越界键收编（与 DEFAULT_ON 同步）
+        "contract_settle",
+        "class_demote",
+        "request_bid",
+        "funding_closed",
         // Web Push 三 topic 的用户级开关（0283 P0-1；缺省 true）
         "push_hr",
         "push_promo",

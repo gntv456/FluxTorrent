@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Icon } from "@/components/icons";
 import type { PanelEntry } from "./admin-shell";
 
 /** 折叠分组渲染（从 admin-shell 按域拆出，300 行门禁）。
@@ -44,7 +45,7 @@ export const NAV_SUBGROUPS: Record<string, [string, string[]][]> = {
   ops: [
     ["opsSettings", ["settings"]],
     ["opsMessage", ["staffmess", "mail", "emailbans"]],
-    ["opsRun", ["freeleech", "p2tools", "onboarding", "economy", "arcade"]],
+    ["opsRun", ["freeleech", "p2tools", "onboarding", "economy", "contractstats", "arcade"]],
     ["opsExam", ["exams", "tasks", "jixiao"]],
     ["opsBiz", ["donateorders", "fundings", "props"]],
   ],
@@ -56,6 +57,41 @@ export const NAV_SUBGROUPS: Record<string, [string, string[]][]> = {
     ["sysPerm", ["perm", "plugins", "panelentries"]],
     ["sysCustom", ["homelayout", "viewlayout"]],
   ],
+};
+
+/**
+ * 分组 / 二级子类的线性 SVG 图标（统一走 @/components/icons，禁止 emoji）。
+ * 未登记的 key 回落通用图标，新工具进 DB 后不会因为没有图标而消失。
+ */
+const GROUP_ICON: Record<string, string> = {
+  dashboard: "gauge",
+  moderation: "shield",
+  users: "users",
+  content: "library",
+  ops: "chartBar",
+  system: "settings",
+};
+
+const SUB_ICON: Record<string, string> = {
+  contentSite: "library",
+  contentForum: "forums",
+  contentHonor: "medal",
+  contentDoc: "book",
+  usersAccount: "user",
+  usersSecurity: "shield",
+  usersReward: "gift",
+  usersConfig: "settings",
+  opsSettings: "settings",
+  opsMessage: "mail",
+  opsRun: "spark",
+  opsExam: "exam",
+  opsBiz: "bank",
+  sysStatus: "chartBar",
+  sysClean: "trash",
+  sysNet: "globe",
+  sysAccess: "lock",
+  sysPerm: "shield",
+  sysCustom: "palette",
 };
 
 export interface NavGroup {
@@ -129,25 +165,21 @@ export function AdminNavGroups({
         key={e.tab_key}
         onClick={() => onTool(e.tab_key)}
         title={tipOf(e)}
-        className={`flex min-h-11 items-center justify-between
+        aria-current={active ? "page" : undefined}
+        className={`ux-nav-item flex min-h-11 items-center justify-between
           gap-2 rounded-[var(--r-md)] text-left text-[13px] transition ${
             deep ? "pl-7 pr-2" : "px-2"
           } ${
             active
-              ? "bg-sky font-bold text-[var(--text-on-accent)]"
+              ? "is-active font-bold"
               : "text-sub hover:bg-[var(--surface-raised)]"
           }`}
       >
+        {active ? <span className="ux-nav-item__bar" aria-hidden /> : null}
         <span className="truncate">{labelOf(e)}</span>
+        {/* B4-10：徽标只在真实待办数 > 0 时渲染；无数据不造数 */}
         {n > 0 && (
-          <span
-            className={`shrink-0 rounded-full px-1.5
-              text-xs ${
-                active
-                  ? "bg-white/25 text-[var(--text-on-accent)]"
-                  : "bg-coral/20 text-[var(--danger-text)]"
-              }`}
-          >
+          <span className="ux-nav-badge shrink-0 rounded-full px-1.5 text-xs">
             {n}
           </span>
         )}
@@ -173,20 +205,29 @@ export function AdminNavGroups({
                 setManualOpen((f) => ({ ...f, [g.key]: !expanded }))
               }
               aria-expanded={expanded}
-              className="mb-1 flex w-full items-center justify-between px-2
-                text-xs font-bold text-sub hover:text-ink"
+              className="ux-nav-group mb-1"
             >
-              <span>{g.label}</span>
+              <span className="ux-nav-group__label">
+                <Icon
+                  name={GROUP_ICON[g.key] ?? "menu"}
+                  size={14}
+                  className="ux-nav-group__icon"
+                />
+                <span>{g.label}</span>
+              </span>
               <span className="flex items-center gap-1">
                 {!expanded && groupBadges > 0 && (
                   <span
-                    className={`shrink-0 rounded-full bg-coral/20 px-1.5
-                      text-xs text-[var(--danger-text)]`}
+                    className="ux-nav-badge shrink-0 rounded-full
+                      px-1.5 text-xs"
                   >
                     {groupBadges}
                   </span>
                 )}
-                <span className="text-xs">{expanded ? "▾" : "▸"}</span>
+                <Icon
+                  name={expanded ? "chevronDown" : "chevronRight"}
+                  size={14}
+                />
               </span>
             </button>
             {expanded && (
@@ -203,7 +244,14 @@ export function AdminNavGroups({
                         className="inline-block h-[11px] w-[3px]
                           rounded-[2px] bg-[var(--sky)]"
                       />
-                      {subLabels[s.key] ?? s.label}
+                      <span className="ux-nav-sub">
+                        <Icon
+                          name={SUB_ICON[s.key] ?? "folder"}
+                          size={12}
+                          className="ux-nav-sub__icon"
+                        />
+                        <span>{subLabels[s.key] ?? s.label}</span>
+                      </span>
                     </div>
                     <div className="flex flex-col gap-0.5">
                       {s.items.map((e) => itemRow(e, true))}

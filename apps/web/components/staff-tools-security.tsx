@@ -12,6 +12,7 @@ import type {
   EmailBan,
   MailItem,
 } from "./staff-tools-security-shared";
+import { audLabel } from "./staff-tools-security-shared";
 
 /** 安全域面板（从 staff-tools.tsx 按域拆出，300 行门禁）：
  *  封禁系统（bans）/ 批量邮件（mail）/ 邮箱黑白名单（emailbans）/ IP 测试（testip）
@@ -41,6 +42,10 @@ export function StaffSecurityPanel({
   const [banReason, setBanReason] = useState("");
   const [mailSubject, setMailSubject] = useState("");
   const [mailBody, setMailBody] = useState("");
+  // 0499 圈选人群（dev.22 后端加了 audience 前端没控件——功能上线即
+  // 不可达。class:N 里的 N 走单独数字输入，空=不按等级圈）
+  const [audience, setAudience] = useState("all");
+  const [audClassN, setAudClassN] = useState("");
 
   // 只拉当前 tab 需要的数据——本组件对全部 SECURITY_TABS 挂载，
   // 无条件三连拉会让「IP 测试」「域名库」这类无列表页白付 2-3 个请求。
@@ -200,14 +205,49 @@ export function StaffSecurityPanel({
                   onChange={(e) => setMailBody(e.target.value)}
                 />
               </label>
+              <label>
+                {t.fldAudience}
+                <select
+                  value={audience}
+                  onChange={(e) => setAudience(e.target.value)}
+                >
+                  <option value="all">{t.audAll}</option>
+                  <option value="active30">{t.audActive30}</option>
+                  <option value="dormant90">{t.audDormant90}</option>
+                  <option value="vip">{t.audVip}</option>
+                  <option value="class">{t.audClass}</option>
+                </select>
+              </label>
+              {audience === "class" && (
+                <label>
+                  {t.audClass.replace("{n}", "")}
+                  <input
+                    inputMode="numeric"
+                    placeholder="1-12"
+                    value={audClassN}
+                    onChange={(e) => setAudClassN(e.target.value)}
+                  />
+                </label>
+              )}
               <button
                 className="brand-button self-start"
                 disabled={busy || !mailSubject.trim() || !mailBody.trim()}
                 onClick={() =>
                   guard(async () => {
+                    // class:N 组装（非法输入回退 all，后端还会白名单校验）
+                    let aud = audience;
+                    if (audience === "class") {
+                      const n = Number(audClassN);
+                      if (!Number.isInteger(n) || n < 1 || n > 12) {
+                        aud = "all";
+                      } else {
+                        aud = `class:${n}`;
+                      }
+                    }
                     await api.post("/api/v1/admin/massmail", {
                       subject: mailSubject,
                       body: mailBody,
+                      audience: aud,
                     });
                     setMailSubject("");
                     setMailBody("");
@@ -225,6 +265,9 @@ export function StaffSecurityPanel({
                   {t.fldSubject}
                 </th>
                 <th scope="col" className="colhead">
+                  {t.fldAudience}
+                </th>
+                <th scope="col" className="colhead">
                   {t.mailRecipients}
                 </th>
                 <th scope="col" className="colhead">
@@ -237,6 +280,9 @@ export function StaffSecurityPanel({
               {mails.map((m) => (
                 <tr key={m.id}>
                   <td>{m.subject}</td>
+                  <td className="text-xs text-sub">
+                    {audLabel(m.audience, t)}
+                  </td>
                   <td className="num">{m.recipients}</td>
                   <td>{m.sender ?? "—"}</td>
                   <td className="text-xs text-sub">
@@ -246,7 +292,7 @@ export function StaffSecurityPanel({
               ))}
               {mails.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="py-6 text-center text-sub">
+                  <td colSpan={5} className="py-6 text-center text-sub">
                     {failed ? dict.common.loadFailed : t.mailEmpty}
                   </td>
                 </tr>

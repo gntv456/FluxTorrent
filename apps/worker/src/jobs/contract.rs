@@ -28,6 +28,28 @@ pub async fn contract_sample(db: &PgPool) -> anyhow::Result<u64> {
     if !enabled {
         return Ok(0);
     }
+    // 卫生半边（0499）：顺手清超过保留窗口的旧采样（键
+    // contract_samples_retain_months 缺省 13——结算只看上月，超窗零消费
+    // 者）。与采样同拍跑，成本一条 DELETE；失败不挡采样。
+    let retain: i64 = sqlx::query_scalar(
+        "SELECT COALESCE((SELECT value::bigint FROM site_settings \
+         WHERE name = 'contract_samples_retain_months'), 13)",
+    )
+    .fetch_one(db)
+    .await
+    .unwrap_or(13)
+    .clamp(2, 120);
+    if let Err(e) = sqlx::query(
+        "DELETE FROM seed_contract_samples \
+         WHERE day < (date_trunc('month', now()) \
+                      - make_interval(months => $1::int))::date",
+    )
+    .bind(retain as i32)
+    .execute(db)
+    .await
+    {
+        tracing::warn!(%e, "契约采样清理失败（不影响采样）");
+    }
     let r = sqlx::query(
         r#"
         INSERT INTO seed_contract_samples (user_id, day, bytes)
@@ -159,7 +181,8 @@ pub async fn contract_settle(db: &PgPool) -> anyhow::Result<u64> {
                                      THEN c.missed_streak + 1 ELSE 0 END
             WHERE c.month = $1 AND c.status = 'open'
             RETURNING c.id, c.user_id, c.reward, c.penalty, c.achieved,
-                      c.target, c.kind, c.auto_renew, c.missed_streak
+                      c.target, c.kind, c.month,
+                      c.auto_renew, c.missed_streak
         ),
         renew AS (
             -- 达标且开了自动续约 → 下月同档再签一行；
@@ -205,34 +228,173 @@ pub async fn contract_settle(db: &PgPool) -> anyhow::Result<u64> {
         let cid: i64 = r.get("id");
         let reward: i32 = r.get("reward");
         let penalty: i32 = r.get("penalty");
+        // 结算月与档位（信里给用户看「几月的什么契约」，不甩 contract_id）
+        let month: chrono::NaiveDate = r.get("month");
+        let kind: String = r.get("kind");
+        let target: i64 = r.get("target");
+        let achieved: i64 = r.get("achieved");
         if reward > 0 {
             let idem = format!("contract:{cid}:reward");
-            report(
+            let moved =
                 settle_spark(db, uid, reward as i64, "contract_reward", &idem)
-                    .await,
-                uid,
-                cid,
-                "奖励",
-            );
+                    .await;
+            // 结算信（0499 资金通知面）：钱动了账必须让用户看见——契约
+            // 奖罚此前完全静默。形态照 class_adj.rs 晋升祝贺：提交后发信
+            // （P-514：不在事务内）+ 幂等锚防手触补跑重发。奖励侧走
+            // u_notice_enabled（正向可关），罚侧必达（惩罚类不给关，
+            // 同 H&R 超限口径）。
+            let credited = matches!(moved, Ok(true));
+            report(moved, uid, cid, "奖励");
+            if credited {
+                notify_settle(
+                    db,
+                    uid,
+                    month,
+                    &kind,
+                    target,
+                    achieved,
+                    reward as i64,
+                    0,
+                    true,
+                )
+                .await;
+            }
         }
         if penalty > 0 {
             let idem = format!("contract:{cid}:penalty");
-            report(
-                settle_spark(
-                    db,
-                    uid,
-                    -(penalty as i64),
-                    "contract_penalty",
-                    &idem,
-                )
-                .await,
+            let moved = settle_spark(
+                db,
                 uid,
-                cid,
-                "罚金",
-            );
+                -(penalty as i64),
+                "contract_penalty",
+                &idem,
+            )
+            .await;
+            report(moved, uid, cid, "罚金");
+            // 罚金未入账（余额不足）也发——用户必须知道罚了、为何罚
+            notify_settle(
+                db,
+                uid,
+                month,
+                &kind,
+                target,
+                achieved,
+                0,
+                penalty as i64,
+                false,
+            )
+            .await;
         }
     }
     Ok(rows.len() as u64)
+}
+
+/// 契约结算信（0499）：达标致贺/未达标告知，带达成明细。
+/// 幂等锚 contract-notice:{uid}:{月}:{r|p} 落 notice_marker（amount=0
+/// 不动账，class_demote 同款）——status 已翻不会再进循环，锚挡手触重跑。
+#[allow(clippy::too_many_arguments)]
+async fn notify_settle(
+    db: &sqlx::PgPool,
+    uid: i64,
+    month: chrono::NaiveDate,
+    kind: &str,
+    target: i64,
+    achieved: i64,
+    reward: i64,
+    penalty: i64,
+    respect_prefs: bool,
+) {
+    let anchor = format!(
+        "contract-notice:{uid}:{}:{}",
+        month.format("%Y-%m"),
+        if reward > 0 { "r" } else { "p" }
+    );
+    let kind_name = if kind == "publish" {
+        "发布"
+    } else {
+        "做种"
+    };
+    let (subject, body) =
+        if reward > 0 {
+            (
+                "契约结算：达标奖励已入账".to_string(),
+                format!(
+                    "你在 {m} 的{kn}契约已达标（{ag} / 目标 {tg}），奖励 {rw} \
+             魔力已入账。感谢你为站点保种做的贡献——下月契约可在\
+             「做种契约」页继续签约。",
+                    m = month.format("%Y年%m月"),
+                    kn = kind_name,
+                    ag = fmt_metric(kind, achieved),
+                    tg = fmt_metric(kind, target),
+                    rw = reward,
+                ),
+            )
+        } else {
+            (
+                "契约结算：未达标扣罚告知".to_string(),
+                format!(
+            "你在 {m} 的{kn}契约未达标（{ag} / 目标 {tg}），按约定扣罚 \
+             {pn} 魔力。扣罚已执行（余额不足时该笔挂账，由管理组人工\
+             对账）；「做种契约」页可查看下月档位，达标奖励通常高于\
+             罚金。如有疑问请回复本信。",
+            m = month.format("%Y年%m月"), kn = kind_name,
+            ag = fmt_metric(kind, achieved), tg = fmt_metric(kind, target),
+            pn = penalty,
+        ),
+            )
+        };
+    // respect_prefs：奖励侧尊重 contract_settle 偏好（notice.rs 白名单
+    // 同批登记）；罚侧恒发。
+    let gate = if respect_prefs {
+        "AND u_notice_enabled($1, 'contract_settle')"
+    } else {
+        ""
+    };
+    let sql = format!(
+        "INSERT INTO messages (sender_id, receiver_id, subject, body) \
+         SELECT NULL, $1, $2, $3 \
+          WHERE NOT EXISTS (SELECT 1 FROM spark_ledger \
+                            WHERE idempotency_key = $4) {gate} \
+         RETURNING 1"
+    );
+    let went: i64 = sqlx::query_scalar(&sql)
+        .bind(uid)
+        .bind(&subject)
+        .bind(&body)
+        .bind(&anchor)
+        .fetch_optional(db)
+        .await
+        .unwrap_or(None)
+        .unwrap_or(0);
+    if went > 0 {
+        let _ = sqlx::query(
+            "INSERT INTO spark_ledger \
+                (id, user_id, amount, kind, idempotency_key) \
+             SELECT nextval('spark_ledger_id_seq'), $1, 0, \
+                    'notice_marker', $2 \
+              WHERE NOT EXISTS (SELECT 1 FROM spark_ledger \
+                                WHERE idempotency_key = $2)",
+        )
+        .bind(uid)
+        .bind(&anchor)
+        .execute(db)
+        .await;
+    }
+}
+
+/// 达成值的展示口径：publish 是颗数，seed 是体积（GB/TB）。
+fn fmt_metric(kind: &str, v: i64) -> String {
+    if kind == "publish" {
+        return format!("{v} 种");
+    }
+    const GB: i64 = 1024 * 1024 * 1024;
+    if v >= 1024 * GB {
+        format!("{:.1} TB", v as f64 / (1024.0 * GB as f64))
+    } else if v >= GB {
+        format!("{:.0} GB", v as f64 / GB as f64)
+    } else {
+        format!("{v} B")
+    }
 }
 
 /// 契约奖罚入账：流水与钱包必须同事务，返回「这一笔是否真的动了账」。

@@ -20,7 +20,8 @@ pub async fn massmail_list(
     crate::authz::require_perm(&state, &auth, crate::authz::perm::MASSMAIL)
         .await?;
     let rows: Vec<MassMailRow> = sqlx::query_as(
-        "SELECT m.id, m.subject, m.recipients, m.created_at, u.username AS sender \
+        "SELECT m.id, m.subject, m.recipients, m.created_at, \
+                 u.username AS sender, m.audience \
          FROM mass_mails m LEFT JOIN users u ON u.id = m.sent_by ORDER BY m.id DESC LIMIT 50",
     )
     .fetch_all(&state.repo.db)
@@ -57,21 +58,27 @@ pub async fn massmail_send(
         } else {
             (audience_pred(Some(aud)), aud.to_string())
         };
-    let users: i64 = sqlx::query_scalar(
-        "SELECT count(*) FROM users u \
-         WHERE u.status < 2 AND u.email IS NOT NULL",
-    )
-    .fetch_one(&state.repo.db)
-    .await
-    .unwrap_or(0);
+    let users: i64 = {
+        // 0499：预统计套圈选——recipients 反映目标人群而非全员
+        let sql = format!(
+            "SELECT count(*) FROM users u WHERE u.status < 2 \
+             AND u.email IS NOT NULL{pred}"
+        );
+        sqlx::query_scalar(&sql)
+            .fetch_one(&state.repo.db)
+            .await
+            .unwrap_or(0)
+    };
     let id: i32 = sqlx::query_scalar(
-        "INSERT INTO mass_mails (subject, body, sent_by, recipients) \
-         VALUES ($1,$2,$3,$4) RETURNING id",
+        "INSERT INTO mass_mails \
+             (subject, body, sent_by, recipients, audience) \
+         VALUES ($1,$2,$3,$4,$5) RETURNING id",
     )
     .bind(body.subject.trim())
     .bind(&body.body)
     .bind(auth.id)
     .bind(users as i32)
+    .bind(&aud_note)
     .fetch_one(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -206,4 +213,7 @@ pub(super) struct MassMailRow {
     pub(super) created_at: chrono::DateTime<chrono::Utc>,
     #[sqlx(default)]
     pub(super) sender: Option<String>,
+    /// 0499 圈选留痕（dev.22 前旧行为 NULL）
+    #[sqlx(default)]
+    pub(super) audience: Option<String>,
 }

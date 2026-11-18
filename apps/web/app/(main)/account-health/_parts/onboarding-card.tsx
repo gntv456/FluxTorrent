@@ -96,6 +96,25 @@ export function OnboardingCard({
             );
           })}
         </ol>
+        {/* 0499 新手旅程：清单完成的「然后呢」——从生存（装客户端/首下/
+            首做种）接到贡献（契约/保种/考核）。此前完成态只有一枚徽章，
+            新人第一周后断链。 */}
+        {data.completed && (
+          <div className="rounded border border-[var(--line)] p-3">
+            <p className="mb-2 text-sm font-bold">{t.nextTitle}</p>
+            <div className="flex flex-wrap gap-3 text-xs">
+              <Link href="/contracts" className="text-link">
+                {t.nextContracts}
+              </Link>
+              <Link href="/preserve" className="text-link">
+                {t.nextPreserve}
+              </Link>
+              <Link href="/me/exams" className="text-link">
+                {t.nextExams}
+              </Link>
+            </div>
+          </div>
+        )}
       </div>
     </section>
   );

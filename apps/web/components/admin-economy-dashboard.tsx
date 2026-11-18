@@ -16,6 +16,8 @@ interface Dashboard {
   per_active_capita: number;
   top_sku_30d: { name: string; orders: number; spent: number }[];
   purchase_cap_gb: number;
+  /** 0499 产出结构分解（近 30 天按 kind TOP20，dev.22 后端下发前端未渲染） */
+  kind_mint_30d?: { kind: string; minted: number }[] | null;
 }
 
 export function AdminEconomyDashboard() {
@@ -151,6 +153,71 @@ export function AdminEconomyDashboard() {
           </tbody>
         </table>
       </div>
+
+      {/* 0499 产出结构分解：总量数字看不见结构，平衡表就永远算不准
+          （体检 A6 的「看板」半边） */}
+      {d.kind_mint_30d && d.kind_mint_30d.length > 0 && (
+        <div className="brand-panel p-4">
+          <h2 className="mb-3 font-display text-lg">
+            产出结构分解（近 30 天 · 按来源）
+          </h2>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-line text-left text-xs text-sub">
+                <th className="py-2">来源</th>
+                <th className="py-2">产出火花</th>
+                <th className="py-2 w-1/3">占比条</th>
+              </tr>
+            </thead>
+            <tbody>
+              {d.kind_mint_30d.map((k) => (
+                <tr key={k.kind} className="border-b border-line/50">
+                  <td className="py-2 font-mono text-xs">
+                    {KIND_LABELS[k.kind] ?? k.kind}
+                  </td>
+                  <td className="py-2 font-mono">
+                    {k.minted.toLocaleString()}
+                  </td>
+                  <td className="py-2">
+                    <div
+                      className="h-2 rounded bg-up/70"
+                      style={{
+                        width: `${
+                          (k.minted /
+                            Math.max(
+                              1,
+                              ...d.kind_mint_30d!.map((x) => x.minted),
+                            )) *
+                          100
+                        }%`,
+                      }}
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </section>
   );
 }
+
+/** 高频产出 kind 的人话标签（未列出的显示原始枚举——kind 是自由 TEXT）。 */
+const KIND_LABELS: Record<string, string> = {
+  seeding_reward: "做种收益",
+  attendance: "签到",
+  contract_reward: "契约奖励",
+  hr_pardon_share: "免罪分成",
+  seeding_referral: "邀请分成",
+  class_promotion: "升级奖励",
+  preserve_reward: "保种奖励",
+  subtitle_award: "字幕奖励",
+  bank_interest: "银行利息",
+  funding_refund: "众筹退款",
+  shop: "商店",
+  gacha: "抽卡",
+  games: "娱乐屋",
+  request_bid: "求种加价",
+  gift_spark: "赠礼",
+};

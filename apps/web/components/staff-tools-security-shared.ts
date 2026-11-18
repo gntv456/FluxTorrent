@@ -17,6 +17,8 @@ export interface MailItem {
   recipients: number;
   created_at: string;
   sender: string | null;
+  /** 0499 圈选人群（dev.22 前的旧行无此列） */
+  audience?: string | null;
 }
 
 export interface EmailBan {
@@ -41,4 +43,35 @@ export interface EmailDomainRow {
   domain: string;
   source: string;
   created_at: string;
+}
+
+/** audience 存库值 → 展示文案（旧行 null 显示全员/—）。 */
+export function audLabel(
+  v: string | null | undefined,
+  t: {
+    audAll: string;
+    audActive30: string;
+    audDormant90: string;
+    audVip: string;
+    audClass: string;
+  },
+): string {
+  switch (v) {
+    case undefined:
+    case "":
+    case "all":
+      return t.audAll;
+    case null:
+      return "—";
+    case "active30":
+      return t.audActive30;
+    case "dormant90":
+      return t.audDormant90;
+    case "vip":
+      return t.audVip;
+    default:
+      return v.startsWith("class:")
+        ? t.audClass.replace("{n}", v.slice(6))
+        : v;
+  }
 }

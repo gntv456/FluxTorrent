@@ -47,12 +47,15 @@ pub fn mount_economy(scope: actix_web::Scope) -> actix_web::Scope {
         .service(admin_funding_cancel)
         // C5 经济反通胀运营面板（0226）
         .service(economy_dashboard)
+        // 0499 契约运营视图（体检二轮 B1：admin 此前零读口）
+        .service(contract_stats::contract_stats)
 }
 
 mod bank;
 mod bank_withdraw;
 mod checkin;
 mod clawback;
+mod contract_stats;
 mod dashboard;
 mod dressup;
 mod funding;

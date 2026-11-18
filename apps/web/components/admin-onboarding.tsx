@@ -21,6 +21,8 @@ const PARAM_LABELS: Record<string, string> = {
   hr_prewarn_hours: "H&R 到期预警提前（小时）",
   initial_upload_gb: "新用户初始上传量（GB）",
   exam_onboard_days: "考核派发窗口（天）",
+  // 0499：后端 keys 已返回但此前无 label 渲染不到（从严模板现写 7）
+  newbie_grace_days: "新手保护期（天，0=关）",
 };
 
 export function AdminOnboarding() {

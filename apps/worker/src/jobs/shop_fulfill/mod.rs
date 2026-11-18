@@ -251,5 +251,32 @@ async fn release(db: &PgPool, o: &Stuck, reason: &str) -> anyhow::Result<bool> {
         reason,
         "商城履约失败：已解冻"
     );
+    // 0499 资金通知面：钱退了用户必须知道（此前只写运维日志——用户看
+    // 到的是「扣了钱没到货」）。必达（资金类不过 notice_prefs），幂等锚
+    // order id + released 状态天然防重（本函数只在 frozen→refunded 成功
+    // 路径走到这里）。
+    let subject = "商城订单退款通知";
+    let body = format!(
+        "你的订单 #{id}（{kind}，{price} 魔力）因履约失败已退款：\
+         {reason}。冻结的 {amount} 魔力已全额退回余额，可重新下单或\
+         联系管理组。给你带来不便非常抱歉。",
+        id = o.id,
+        kind = o.kind,
+        price = o.price,
+        amount = o.frozen_amount,
+        reason = reason,
+    );
+    if let Err(e) = sqlx::query(
+        "INSERT INTO messages (sender_id, receiver_id, subject, body) \
+         VALUES (NULL, $1, $2, $3)",
+    )
+    .bind(o.user_id)
+    .bind(subject)
+    .bind(&body)
+    .execute(db)
+    .await
+    {
+        tracing::warn!(%e, order = o.id, "退款通知写入失败（退款已执行）");
+    }
     Ok(true)
 }

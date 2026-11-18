@@ -89,6 +89,10 @@ const zhCN = {
   onboardSub: "每一步都由站内真实记录判定，不需要手动勾选",
   onboardProgress: "已完成 {done}/{total}",
   onboardAllDone: "全部完成",
+      nextTitle: "下一步：从生存到贡献",
+      nextContracts: "做种契约 · 月度目标换奖励",
+      nextPreserve: "保种区 · 认领濒危种子",
+      nextExams: "我的考核 · 升级路径",
   stepDone: "已完成",
   stepTodo: "去完成",
   steps: {
@@ -212,6 +216,10 @@ const zhTW: AccountHealthCopy = {
   onboardSub: "每一步都由站內真實記錄判定，不需要手動勾選",
   onboardProgress: "已完成 {done}/{total}",
   onboardAllDone: "全部完成",
+  nextTitle: "下一步：從生存到貢獻",
+  nextContracts: "做種契約 · 月度目標換獎勵",
+  nextPreserve: "保種區 · 認領瀕危種子",
+  nextExams: "我的考核 · 升級路徑",
   stepDone: "已完成",
   stepTodo: "去完成",
   steps: {
@@ -337,6 +345,10 @@ const en: AccountHealthCopy = {
     "Every step is verified against real site records; nothing is self-reported",
   onboardProgress: "{done}/{total} complete",
   onboardAllDone: "All done",
+      nextTitle: "Next: from surviving to contributing",
+      nextContracts: "Seeding contracts · monthly goals, rewards",
+      nextPreserve: "Preserve zone · adopt endangered torrents",
+      nextExams: "My exams · the path to promotion",
   stepDone: "Done",
   stepTodo: "To do",
   steps: {
@@ -466,6 +478,10 @@ const ja: AccountHealthCopy = {
     "各ステップはサイトの実際の記録で判定されます。手動チェックはありません",
   onboardProgress: "{done}/{total} 完了",
   onboardAllDone: "すべて完了",
+      nextTitle: "次へ：生存から貢献へ",
+      nextContracts: "做種契約 · 月間目標で報酬",
+      nextPreserve: "保種ゾーン · 危険なTorrentの引き受け",
+      nextExams: "我的考核 · 昇級パス",
   stepDone: "完了",
   stepTodo: "未完了",
   steps: {

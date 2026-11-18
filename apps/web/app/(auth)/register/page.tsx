@@ -203,7 +203,9 @@ export default function RegisterPage() {
       });
       // 标记跟着票长，别停在 12h 把有效票的人当游客（lib/session-ttl）
       setSessionCookie(true, tokenSecondsLeft(resp.token));
-      router.push("/torrents");
+      // 0499 新手旅程：落地从 /torrents（裸奔）改 /account-health——
+      // 事实版新手清单是新人第一周唯一护栏（10-26 P0-1 口径回归）
+      router.push("/account-health");
     } catch (err) {
       setFieldErrs(mapRegisterError(dict, err));
       // 凭据一次性：验证码 token / 算术答案 / PoW 解与服务端 GETDEL 同寿命
@@ -240,8 +242,7 @@ export default function RegisterPage() {
       foot={<TermsFoot />}
     >
       <form onSubmit={submit} className="flex w-full flex-col gap-3">
-        {/* P-684 开放轮窗口条：生效中显示剩余额度与截止；预约窗口显示
-            开放预告（未开始仍按当前模式注册，邀请码照常可用）。 */}
+        {/* P-684 开放轮窗口条：剩余额度/截止；预约窗口显示开放预告 */}
         <RegWindowChip
           soon={windowSoon} win={regWindow} labels={dict.register}
         />
@@ -250,7 +251,8 @@ export default function RegisterPage() {
         <RegisterBasicFields
           values={{ inviteCode, username, email, password }}
           onChange={(patch) => {
-            if (patch.inviteCode !== undefined) setInviteCode(patch.inviteCode);
+            if (patch.inviteCode !== undefined)
+              setInviteCode(patch.inviteCode);
             if (patch.username !== undefined) setUsername(patch.username);
             if (patch.email !== undefined) setEmail(patch.email);
             if (patch.password !== undefined) setPassword(patch.password);
