@@ -3,6 +3,7 @@
 import type { Dict } from "./zh-CN";
 import { termsPanelTw } from "./terms-panel";
 import { auditLabelsTw } from "./audit-labels";
+import { uxOptTw } from "./ux-opt";
 
 const zhTwBase: Omit<
   Dict,
@@ -26,8 +27,12 @@ const zhTwBase: Omit<
   | "resPage"
   | "endangered"
   | "teams"
+  | "contracts"
+  | "pubboard"
+  | "checkin"
   | "termsPanel"
   | "auditLabels"
+  | "uxOpt"
 > = {
   meta: {
     titleSuffix: "PT",
@@ -209,6 +214,7 @@ const zhTwBase: Omit<
     top: "排行",
     magicPool: "站免池",
     myhr: "我的H&R",
+    contracts: "做種契約",
     contests: "大賽",
     medalWall: "勳章牆",
     frames: "頭像掛件",
@@ -503,6 +509,8 @@ const zhTwBase: Omit<
   works: {
     title: "作品庫",
     rating: "評分",
+    srcDouban: "豆瓣",
+    srcTmdb: "TMDB",
     viewGroup: "作品聚合",
     director: "導演",
     cast: "主演",
@@ -8002,6 +8010,7 @@ const groupsubTw: Dict["groupsub"] = {
 
 export const zhTW: Dict = {
   ...zhTwBase,
+  uxOpt: uxOptTw,
   termsPanel: termsPanelTw,
   auditLabels: auditLabelsTw,
   security2fa: {
@@ -8225,5 +8234,63 @@ export const zhTW: Dict = {
     createFailed: "發起失敗",
     disabled: "該功能暫未開放",
     leaderTag: "隊長",
+  },
+
+  contracts: {
+    title: "做種契約",
+    sub: "自願簽約月度目標，達標得獎、未達標扣罰；月中可隨時查看進度",
+    empty: "暫無契約",
+    boardTitle: "簽約台",
+    caliber: "計量口徑：做種=月內日均做種體積；發布=月內過審發種數",
+    disabled: "契約功能當前未開放",
+    notEligible: "註冊滿 30 天後可參與契約",
+    progressSeed: "當月做種進度（日均）",
+    progressPublish: "當月發布進度",
+    progressLabel: "當月契約進度",
+    seedTiers: "做種檔位",
+    publishTiers: "發布檔位",
+    reward: "達標獎",
+    penalty: "未達標罰",
+    sign: "簽約",
+    signAuto: "簽約並自動續約",
+    signing: "簽約中…",
+    signedOk: "簽約成功，次月初結算上月",
+    signFailed: "簽約失敗，請稍後再試",
+    historyTitle: "我的契約",
+    historyEmpty: "還沒有簽過契約——從上方檔位開始",
+    colMonth: "月份",
+    colKind: "類型",
+    colTarget: "目標",
+    colAchieved: "達成",
+    colStatus: "狀態",
+    colReward: "獎/罰",
+    colAutoRenew: "續約",
+    kindSeed: "做種",
+    kindPublish: "發布",
+    stOpen: "進行中",
+    stSettled: "已達標",
+    stBreached: "未達標",
+  },
+
+  pubboard: {
+    title: "發布者看板",
+    sub: "你的發布者收益全景：免罪分成與做種加成",
+    shareTotal: "免罪分成累計",
+    shareNote: "你發布的種子被他人自助免罪時，按比例分給你的火花",
+    decayTitle: "發布者做種加成",
+    decayNote: "自己發布的種子做種收益按種齡加成（天/月/年三檔係數）",
+    decayDay: "種齡 < 1 天",
+    decayMonth: "1 天 - 1 月",
+    decayYear: "1 月 - 1 年",
+    decayBase: "超過 1 年 / 非自發種",
+    empty: "暫無分成記錄——發布種子被他人免罪後這裡會有收入",
+    unit: "火花",
+  },
+
+  checkin: {
+    heat: {
+      title: "簽到足跡",
+      hint: "近 12 個月",
+    },
   },
 };

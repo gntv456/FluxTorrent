@@ -107,11 +107,19 @@ export default async function WorkDetailPage({
       // 补位失败不拖垮主体：详情口那 6 条照常显示
     }
   }
-  // 作品层缓存（work_meta）优先：TMDB 拉回的年份/海报/简介最完整
+  // 作品层缓存（work_meta）优先：TMDB 拉回的年份/海报/简介最完整。
+  // 评分来源徽标（0498 A5）：豆瓣/TMDB 同列互覆，来源必须可见
   const meta = w.meta?.source ? w.meta : null;
   const year = meta?.year ?? w.year;
   const poster = meta?.poster ?? w.poster ?? null;
   const rating = meta?.rating != null ? meta.rating.toFixed(1) : w.rating;
+  // source ∈ {tmdb, douban}；无 meta 时 rating 是遗留键，来源未知不标
+  const ratingSrc =
+    meta?.rating != null && meta.source === "douban"
+      ? dict.works.srcDouban
+      : meta?.rating != null && meta.source === "tmdb"
+        ? dict.works.srcTmdb
+        : "";
   const crew = [
     [dict.works.director, meta?.director],
     [dict.works.cast, meta?.cast_list],
@@ -218,7 +226,12 @@ export default async function WorkDetailPage({
             {rating ? (
               <div className="row">
                 <span>{dict.works.rating}</span>
-                <b>{rating}</b>
+                <b>
+                  {rating}
+                  {ratingSrc ? (
+                    <small className="opacity-60"> {ratingSrc}</small>
+                  ) : null}
+                </b>
               </div>
             ) : null}
             {year ? (

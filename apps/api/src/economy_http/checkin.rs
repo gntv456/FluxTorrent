@@ -259,9 +259,31 @@ async fn checkin_status(
         .map(|(d, _)| *d)
         .filter(|d| *d > pos)
         .min();
+    // 0498 签到热力足迹（近 12 个月逐月天数）：与 home 板块
+    // home_attendance.rs 同款分桶，但 GET /attendance 独立成端——签到页
+    // 挂热力图不必拉整页 home 数据（产品体检 A1：heatmap 已在 home 下发
+    // 却无 UI 消费；本端补齐后签到页成为消费方）。
+    let att_all: Vec<(chrono::NaiveDate,)> = sqlx::query_as(
+        "SELECT date FROM attendance WHERE user_id = $1 \
+         AND date >= current_date - interval '365 days' ORDER BY date",
+    )
+    .bind(auth.id)
+    .fetch_all(&state.repo.db)
+    .await
+    .unwrap_or_default();
+    let mut heat: std::collections::BTreeMap<String, i64> =
+        std::collections::BTreeMap::new();
+    for (d,) in &att_all {
+        *heat.entry(d.format("%Y-%m").to_string()).or_insert(0) += 1;
+    }
+    let heatmap: Vec<serde_json::Value> = heat
+        .into_iter()
+        .map(|(m, n)| serde_json::json!({ "month": m, "days": n }))
+        .collect();
     Ok(ok(serde_json::json!({
         "checked_today": checked_today, "streak": current_streak,
         "recent": rows, "makeup_cards": makeup_cards,
+        "heatmap": heatmap,
         "rules": {
             "first": params.first, "streak": params.streak,
             "daily_cap": params.daily_cap,

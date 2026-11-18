@@ -5,6 +5,10 @@ import dynamic from "next/dynamic";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { ResubButton } from "@/components/home-resub-button";
+import {
+  AttendanceHeatmap,
+  type HeatCell,
+} from "@/components/attendance-heatmap";
 
 /** 桌面签到页（带万年历）：主动作 + 连签/累计/补签卡概况 + 可翻月的万年历月历
  *  （与手机抽屉同一 AlmanacSection；lunar 包 300KB，按需 dynamic 加载）。
@@ -135,6 +139,8 @@ export function CheckinPage() {
   const [picked, setPicked] = useState(today);
   const [doneMap, setDoneMap] = useState<Record<string, number>>({});
   const [totalDays, setTotalDays] = useState(0);
+  // 签到足迹热力（0498）：与 status 同源端点（GET /attendance 的 heatmap）
+  const [heat, setHeat] = useState<HeatCell[]>([]);
   // 规则卡高亮「下一档里程碑」用：以已展示的连签数为基线（签到成功会随 status 刷新）
   const streakNow = status?.streak ?? 0;
 
@@ -144,7 +150,9 @@ export function CheckinPage() {
   // 用户看到的就是「已签到但日历未亮」（2026-11-10 线上报障）。
   const loadStatus = () => {
     api
-      .get<AttendanceStatus & { total_days?: number }>("/api/v1/attendance")
+      .get<AttendanceStatus & { total_days?: number; heatmap?: HeatCell[] }>(
+        "/api/v1/attendance",
+      )
       .then((s) => {
         setStatus(s);
         setTotalDays(
@@ -152,6 +160,7 @@ export function CheckinPage() {
             s.recent?.length ??
             0,
         );
+        setHeat(s.heatmap ?? []);
       })
       .catch(() => {});
   };
@@ -258,6 +267,7 @@ export function CheckinPage() {
       {status?.rules ? (
         <RulesCard rules={status.rules} streakNow={streakNow} />
       ) : null}
+      <AttendanceHeatmap cells={heat} />
       <div className="checkin-page__almanac">
         <div className="checkin-page__cal">
           <AlmanacCalendar

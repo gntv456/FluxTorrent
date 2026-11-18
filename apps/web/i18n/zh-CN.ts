@@ -2,6 +2,7 @@
 
 import { termsPanelZh } from "./terms-panel";
 import { auditLabelsZh } from "./audit-labels";
+import { uxOptZh } from "./ux-opt";
 
 const zhCnBase = {
   meta: {
@@ -194,6 +195,7 @@ const zhCnBase = {
     top: "排行",
     magicPool: "站免池",
     myhr: "我的H&R",
+    contracts: "做种契约",
     contests: "大赛",
     medalWall: "勋章墙",
     frames: "头像挂件",
@@ -1897,6 +1899,8 @@ const zhCnBase = {
   works: {
     title: "作品库",
     rating: "评分",
+    srcDouban: "豆瓣",
+    srcTmdb: "TMDB",
     viewGroup: "作品聚合",
     director: "导演",
     cast: "主演",
@@ -7869,6 +7873,7 @@ const security2fa: Security2faDict = {
 };
 export const zhCN = {
   ...zhCnBase,
+  uxOpt: uxOptZh,
   security2fa,
   termsPanel: termsPanelZh,
   auditLabels: auditLabelsZh,
@@ -8312,6 +8317,64 @@ export const zhCN = {
     createFailed: "发起失败",
     disabled: "该功能暂未开放",
     leaderTag: "队长",
+  },
+
+  contracts: {
+    title: "做种契约",
+    sub: "自愿签约月度目标，达标得奖、未达标扣罚；月中可随时查看进度",
+    empty: "暂无契约",
+    boardTitle: "签约台",
+    caliber: "计量口径：做种=月内日均做种体积；发布=月内过审发种数",
+    disabled: "契约功能当前未开放",
+    notEligible: "注册满 30 天后可参与契约",
+    progressSeed: "当月做种进度（日均）",
+    progressPublish: "当月发布进度",
+    progressLabel: "当月契约进度",
+    seedTiers: "做种档位",
+    publishTiers: "发布档位",
+    reward: "达标奖",
+    penalty: "未达标罚",
+    sign: "签约",
+    signAuto: "签约并自动续约",
+    signing: "签约中…",
+    signedOk: "签约成功，次月初结算上月",
+    signFailed: "签约失败，请稍后再试",
+    historyTitle: "我的契约",
+    historyEmpty: "还没有签过契约——从上方档位开始",
+    colMonth: "月份",
+    colKind: "类型",
+    colTarget: "目标",
+    colAchieved: "达成",
+    colStatus: "状态",
+    colReward: "奖/罚",
+    colAutoRenew: "续约",
+    kindSeed: "做种",
+    kindPublish: "发布",
+    stOpen: "进行中",
+    stSettled: "已达标",
+    stBreached: "未达标",
+  },
+
+  pubboard: {
+    title: "发布者看板",
+    sub: "你的发布者收益全景：免罪分成与做种加成",
+    shareTotal: "免罪分成累计",
+    shareNote: "你发布的种子被他人自助免罪时，按比例分给你的火花",
+    decayTitle: "发布者做种加成",
+    decayNote: "自己发布的种子做种收益按种龄加成（天/月/年三档系数）",
+    decayDay: "种龄 < 1 天",
+    decayMonth: "1 天 - 1 月",
+    decayYear: "1 月 - 1 年",
+    decayBase: "超过 1 年 / 非自发种",
+    empty: "暂无分成记录——发布种子被他人免罪后这里会有收入",
+    unit: "火花",
+  },
+
+  checkin: {
+    heat: {
+      title: "签到足迹",
+      hint: "近 12 个月",
+    },
   },
 };
 

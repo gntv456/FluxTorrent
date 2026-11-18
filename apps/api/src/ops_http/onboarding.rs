@@ -21,11 +21,15 @@ use crate::state::AppState;
 
 /// 两套模板的参数簇（值来自竞品源码级调研的典型口径，站长之后可逐项再调）
 const STRICT: &[(&str, &str)] = &[
-    // 考核淘汰制：H&R 从严 + 考核开 + 低保户可降级 + 无初始缓冲
+    // 考核淘汰制：H&R 从严 + 考核开 + 低保户可降级 + 无初始缓冲。
+    // 0498 前补：newbie_grace_days=7（0423 迁移注释声称「从严模板置 7」
+    // 但 setup_apply_onboarding 从未写入——从严≠不保护新人第一周，
+    // H&R 从严的前提恰是环境性误伤要先豁免）
     ("hr_hours", "96"),
     ("hr_violation_limit", "3"),
     ("hr_prewarn_hours", "24"),
     ("initial_upload_gb", "0"),
+    ("newbie_grace_days", "7"),
 ];
 const LENIENT: &[(&str, &str)] = &[
     // 缓冲宽进制：初始 50GB 缓冲 + H&R 宽松 + 预警前置 + 无强制考核
@@ -67,6 +71,7 @@ pub(super) async fn onboarding_status(
         "hr_violation_limit",
         "hr_prewarn_hours",
         "initial_upload_gb",
+        "newbie_grace_days",
         "exam_onboard_days",
     ];
     let rows: Vec<(String, String)> = sqlx::query_as(

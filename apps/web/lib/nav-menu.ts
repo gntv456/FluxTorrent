@@ -20,18 +20,15 @@ export type NavItem = {
 export type NavGroup = { group: string; items: NavItem[] };
 export type MenuItem = Awaited<ReturnType<typeof getMenuItems>>[number];
 
-/** 顶级分类（无 parent 的）：资源库下拉的三级叶子数据源。
- *  上限防长尾站型把下拉撑爆（超出走「全部分类」进列表页筛）。
- *  14 = 内置最大包（综合站 13 类，0455 加了短剧/有声书/教育资源）+ 1 余量：
- *  内置分类被自己的上限截掉、只能去列表页筛，是产品缺角不是降级设计。
- *  这条由 scripts/pt_audit_m_cat_key_audit.py 的 M5 判据钉住（包分类数
- *  超过上限即红），别再靠人记。 */
+/** 顶级分类（无 parent 的）：资源库下拉三级叶子源，上限防长尾站型撑爆。
+ *  14 = 内置最大包（综合站 13 类，0455 加短剧/有声书/教育资源）+ 1 余量：
+ *  内置分类被自己上限截掉只能去列表页筛，是产品缺角不是降级设计。
+ *  由 scripts/pt_audit_m_cat_key_audit.py 的 M5 判据钉住（超上限即红），别靠人记。 */
 export type LibraryCat = { id: number; name: string };
 export const LIB_CAT_CAP = 14;
 
-/** 资源库下拉（站长定调 2026-10-31）：二级=全部/资源/官种，
- *  三级=全部 + 站型顶级分类。资源=非官种（official=0），官种=official=1，
- *  全部=不过滤——与列表 API 的 official 三态谓词一一对应。 */
+/** 资源库下拉：二级=全部/资源/官种，三级=全部 + 站型顶级分类。
+ *  与列表 API 的 official 三态谓词一一对应。 */
 export function librarySub(
   nav: Record<string, string>,
   cats: LibraryCat[],
@@ -94,6 +91,8 @@ export type NavConfigInput = {
   customItems: MenuItem[];
   /** 顶级分类（可选，2026-10-31 资源库下拉）：传了才给资源库挂子菜单 */
   libraryCats?: LibraryCat[];
+  /** dict.uxOpt（C1）：funHub 作分组标题；缺省回落 nav.fun，兼容既有调用方 */
+  uxOpt?: Record<string, string>;
 };
 
 /** 自定义菜单归一：一级项 + 分组（带子项的一级项其子项收独立分组，
@@ -121,11 +120,9 @@ export function customNav(items: MenuItem[]): {
   return { active, primary, groups };
 }
 
-/** 默认导航（customNav 不生效时的全站口径）。
- *  分组顺序：资源发现 / 字幕与保种 / 魔力经济 / 成长荣誉 / 娱乐 / 更多。
- *  条目按 module 开关过滤；forums 关闭一级入口消失（三审 C-3 与 footer 同口径）。
- *  IA-1（W-30）：发现组 12 项拆两组降一层；/top 让位给顶栏搜索。
- *  2026-11-16 站长定稿一级六项：首页/论坛/资源库/[教育]/保种区/发布。 */
+/** 默认导航（customNav 不生效时的全站口径）。分组：资源发现/字幕与保种/
+ *  魔力经济/成长荣誉/娱乐屋/更多；条目按 module 开关过滤（forums 关则入口消失）。
+ *  IA-1（W-30）：发现组拆两组降一层；2026-11-16 定稿一级六项。 */
 export function defaultNav({
   nav,
   tabbar,
@@ -133,11 +130,14 @@ export function defaultNav({
   modules,
   dims,
   libraryCats,
+  uxOpt,
 }: NavConfigInput): {
   primary: NavItem[];
   groups: NavGroup[];
 } {
   const t = (tpl: string) => tpl.replace("{magic}", currency);
+  // C1：标题取 dict.uxOpt.funHub，原入口/URL 全留
+  const funHub = uxOpt?.funHub || nav.fun;
   const socialOn = modules("social");
   // 维度开关缺省全闭：调用方漏传 dims 时条目消失（宁可少一条，不可空页）
   const dimOn = (k: string) => dims?.(k) ?? false;
@@ -245,7 +245,7 @@ export function defaultNav({
       ],
     },
     {
-      group: nav.fun,
+      group: funHub,
       items: [
         ...(modules("games") ? [{ href: "/games", label: nav.games }] : []),
         ...(modules("gacha") ? [{ href: "/gacha", label: nav.gacha }] : []),
@@ -270,13 +270,12 @@ export function defaultNav({
         // H&R 入口恒可见：hr_enforce 执法独立于 exams 模块，入口随 exams
         // 关闭会形成「执法在跑、记录不可见」断链（见 /me/hr 网关注释）
         { href: "/myhr", label: nav.myhr },
-        // 追更中心（0328 前端补齐）：我在追的剧集进度 + 更新日历。
-        // 无订阅时是空态，不算「假成熟」——与 /me/achievements 同类。
+        // 做种契约（0498 前端收口）：后端 0424 起零 UI，挂成长荣誉组
+        { href: "/contracts", label: nav.contracts },
+        // 追更中心（0328）：我在追的剧集进度 + 更新日历（空态非假成熟）
         { href: "/me/subscriptions", label: nav.subsCenter },
         { href: "/faq", label: nav.faq },
-        // 客户端指南（0423 P0-1）：此前全站唯一入口在 /help 底部——新手
-        // 「装好 qB 默认开 DHT → 私站泄漏/触发作弊判定」是注册三天被封的
-        // 头号路径，防御知识不能藏在第四层。恒可见（核心做种纪律非模块）
+        // 客户端指南（0423 P0-1）：DHT 泄漏是新人被封头号路径，恒可见
         { href: "/clients", label: nav.clients },
         // Wiki（0359）：多页文档（BBCode + 版本史），module_wiki 开关控制显隐
         ...(modules("wiki") ? [{ href: "/wiki", label: nav.wiki }] : []),

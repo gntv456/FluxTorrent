@@ -66,9 +66,51 @@ pub async fn contract_tiers(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?
     .unwrap_or(false);
+    // 0496 当月实时进度（有 open 契约才回，否则 null 不占版面）：
+    // seed=采样日均（与结算同源），publish=月内已过审发种数。
+    // 「月内随时可见 x/目标」是消灭「近似口径罚款」投诉的展示半边。
+    let progress: Option<serde_json::Value> =
+        match sqlx::query_as::<_, (String, i64, i64, i64)>(
+            "SELECT kind, target, achieved, COALESCE((
+             SELECT avg(s.bytes)::bigint FROM seed_contract_samples s
+              WHERE s.user_id = sc.user_id
+                AND s.day >= sc.month
+                AND s.day < (now() AT TIME ZONE 'UTC')::date + 1
+         ), 0) AS cur
+         FROM seed_contracts sc
+         WHERE sc.user_id = $1 AND sc.month = $2 AND sc.status = 'open'
+         LIMIT 1",
+        )
+        .bind(auth.id)
+        .bind(current_month())
+        .fetch_optional(&state.repo.db)
+        .await
+        {
+            Err(e) => return Err(DomainError::Internal(e.into())),
+            Ok(None) => None,
+            Ok(Some((kind, target, achieved, cur))) => {
+                let current = if kind == "publish" {
+                    sqlx::query_scalar::<_, i64>(
+                        "SELECT count(*) FROM torrents \
+                     WHERE owner_id = $1 AND approval_status = 1 \
+                       AND created_at >= date_trunc('month', \
+                           (now() AT TIME ZONE 'UTC')::date)::date",
+                    )
+                    .bind(auth.id)
+                    .fetch_one(&state.repo.db)
+                    .await
+                    .unwrap_or(0)
+                } else {
+                    cur
+                };
+                Some(serde_json::json!({ "kind": kind, "target": target,
+                "current": current, "recorded": achieved }))
+            }
+        };
     Ok(ok(serde_json::json!({
         "enabled": enabled,
         "eligible": eligible,
+        "progress": progress,
         "tiers": tiers
             .iter()
             .map(|(kind, label, target, reward, penalty, sort)| {

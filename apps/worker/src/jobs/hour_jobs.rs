@@ -38,6 +38,9 @@ pub(super) async fn hour_jobs(
     run_sharded(&db, &shard, "job:ratio_watch", ratio_watch(&db)).await;
     run_sharded(&db, &shard, "job:dormant_mark", dormant_mark(&db)).await;
     run_sharded(&db, &shard, "job:request_expire", request_expire(&db)).await;
+    // 0496 契约计量采样：月内 open seed 契约用户的在种体积日快照
+    // （体内按站点日幂等，结算吃真均值）
+    run_sharded(&db, &shard, "job:contract_sample", contract_sample(&db)).await;
     run_sharded(&db, &shard, "job:wishlist_notify", wishlist_notify(&db)).await;
     run_sharded(&db, &shard, "job:highspeed_tag", highspeed_tag(&db)).await;
     run_sharded(

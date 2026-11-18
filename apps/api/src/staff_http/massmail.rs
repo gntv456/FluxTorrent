@@ -41,11 +41,29 @@ pub async fn massmail_send(
     if body.subject.trim().is_empty() || body.body.trim().is_empty() {
         return Err(DomainError::Validation("主题和正文不能为空".into()));
     }
-    let users: i64 =
-        sqlx::query_scalar("SELECT count(*) FROM users WHERE status < 2")
-            .fetch_one(&state.repo.db)
-            .await
-            .unwrap_or(0);
+    // 0497 圈选：class:N 特殊解析（N 白名单 1-12），其余走枚举片段
+    let aud = body.audience.as_deref().unwrap_or("all");
+    let (pred, aud_note): (String, String) =
+        if let Some(n) = aud.strip_prefix("class:") {
+            let n: i32 = n.parse().map_err(|_| {
+                DomainError::Validation("audience class:N 的 N 须为数字".into())
+            })?;
+            if !(1..=12).contains(&n) {
+                return Err(DomainError::Validation(
+                    "audience class:N 的 N 须在 1-12".into(),
+                ));
+            }
+            (format!(" AND u.class_id >= {n}"), aud.to_string())
+        } else {
+            (audience_pred(Some(aud)), aud.to_string())
+        };
+    let users: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM users u \
+         WHERE u.status < 2 AND u.email IS NOT NULL",
+    )
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(0);
     let id: i32 = sqlx::query_scalar(
         "INSERT INTO mass_mails (subject, body, sent_by, recipients) \
          VALUES ($1,$2,$3,$4) RETURNING id",
@@ -87,14 +105,17 @@ pub async fn massmail_send(
                     // 0461：群发同批带上 Reply-To（contact_email 空=不设）
                     let reply_to =
                         crate::mailer::send::reply_to(&state.repo.db).await;
-                    let rows: Vec<(i64, String, Option<String>)> =
-                        sqlx::query_as(
-                            "SELECT id, email, site_language FROM users \
-                             WHERE status < 2 AND email IS NOT NULL",
-                        )
-                        .fetch_all(&state.repo.db)
-                        .await
-                        .map_err(|e| DomainError::Internal(e.into()))?;
+                    let rows: Vec<(i64, String, Option<String>)> = {
+                        let sql = format!(
+                            "SELECT u.id, u.email, u.site_language \
+                             FROM users u WHERE u.status < 2 \
+                             AND u.email IS NOT NULL{pred} ORDER BY u.id"
+                        );
+                        sqlx::query_as(&sql)
+                            .fetch_all(&state.repo.db)
+                            .await
+                            .map_err(|e| DomainError::Internal(e.into()))?
+                    };
                     for (uid, to, lang) in &rows {
                         let ctx = flux_shared::mailtpl::Ctx {
                             site: &scope.site,
@@ -145,6 +166,7 @@ pub async fn massmail_send(
     Ok(ok(serde_json::json!({
         "id": id, "delivered": delivered,
         "queued": 0,
+        "audience": aud_note,
         "note": note,
     })))
 }
@@ -153,6 +175,27 @@ pub async fn massmail_send(
 pub(super) struct MassMailBody {
     pub(super) subject: String,
     pub(super) body: String,
+    /// 0497 圈选人群（缺省 all 保持旧行为）：
+    /// all=全员 | active30=30天内活跃 | dormant90=90天未活跃（召回）
+    /// | vip=捐赠/VIP | class:N=指定等级及以上（N 1-12）
+    #[serde(default)]
+    pub(super) audience: Option<String>,
+}
+
+/// audience → SQL WHERE 片段（只拼白名单枚举，无自由文本进 SQL）。
+fn audience_pred(audience: Option<&str>) -> String {
+    match audience.unwrap_or("all") {
+        "active30" => " AND COALESCE(u.last_seen_at, u.created_at) \
+             > now() - interval '30 days'"
+            .into(),
+        "dormant90" => " AND COALESCE(u.last_seen_at, u.created_at) \
+             <= now() - interval '90 days'"
+            .into(),
+        "vip" => " AND (u.donor OR u.vip_until > now() \
+                 OR u.donor_until > now())"
+            .into(),
+        _ => String::new(),
+    }
 }
 
 #[derive(serde::Serialize, sqlx::FromRow)]

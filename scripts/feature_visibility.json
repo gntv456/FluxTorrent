@@ -1,0 +1,25 @@
+{
+  "_doc": "功能可见性登记表（feature_visibility_guard.mjs 消费）。每条 = 用户面后端端点 + 前端消费证据（api 调用串子串）。新用户面端点上线时登记：有 UI 写 consumer，刻意无 UI（如纯 API 生态口）写 consumer:null + reason。",
+  "required": [
+    {
+      "endpoint": "GET /contracts/tiers",
+      "consumer": "/api/v1/contracts/tiers"
+    },
+    {
+      "endpoint": "POST /contracts/sign",
+      "consumer": "/api/v1/contracts/sign"
+    },
+    {
+      "endpoint": "GET /contracts/mine",
+      "consumer": "/api/v1/contracts/mine"
+    },
+    {
+      "endpoint": "GET /attendance (heatmap)",
+      "consumer": "heatmap"
+    },
+    {
+      "endpoint": "GET /me/spark/ledger (hr_pardon_share)",
+      "consumer": "kind=hr_pardon_share"
+    }
+  ]
+}

@@ -28,6 +28,7 @@ step "仓库门禁脚本（行数/宽度、i18n 基线、模块键/首页板块/
 node scripts/line_limit_guard.mjs
 node scripts/i18n_guard.mjs
 node scripts/zh_cn_variant_guard.mjs
+node scripts/feature_visibility_guard.mjs
 node scripts/home_sections_guard.mjs
 node scripts/module_keys_guard.mjs
 node scripts/prop_wiring_guard.mjs

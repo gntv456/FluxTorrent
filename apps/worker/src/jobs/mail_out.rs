@@ -10,7 +10,7 @@ use sqlx::PgPool;
 use super::staff_alert::staff_alert_gated;
 
 /// 装配 SMTP 发信参数；未配置返回 None（调用方降级跳过）。
-async fn smtp_config(db: &PgPool) -> Option<(String, String)> {
+pub(crate) async fn smtp_config(db: &PgPool) -> Option<(String, String)> {
     let rows: Vec<(String, String)> = sqlx::query_as(
         "SELECT name, value FROM site_settings \
          WHERE name IN ('smtp_host','smtp_port','smtp_from', \
@@ -119,7 +119,7 @@ pub(crate) async fn send_user_mail(
 
 /// 0461：Reply-To（contact_email 空/非法 = 不设；与 api send::reply_to
 /// 同口径，worker 侧本地一份避免跨 crate 依赖 actix 栈）。
-async fn contact_reply_to(db: &PgPool) -> Option<String> {
+pub(crate) async fn contact_reply_to(db: &PgPool) -> Option<String> {
     let v = sqlx::query_scalar::<_, String>(
         "SELECT value FROM site_settings WHERE name = 'contact_email'",
     )
@@ -146,7 +146,7 @@ fn display_name(site: &str) -> Option<String> {
     (!clean.is_empty()).then(|| clean.to_string())
 }
 
-async fn send_via_smtp(
+pub(crate) async fn send_via_smtp(
     smtp_url: &str,
     from: &str,
     to: &str,
@@ -198,109 +198,4 @@ async fn send_via_smtp(
     };
     mailer.send(msg).await?;
     Ok(())
-}
-
-/// mail_outbox 消费轮（0404，§17-2）：捞未发送行退避重试。
-/// 幂等：sent_at 置位即完成；失败 attempts+1，attempts≥5 停试并在
-/// staffmessages 落死信告警（一次）。由 run.rs 挂 60s 档。
-pub(crate) async fn mail_outbox_drain(db: &PgPool) -> anyhow::Result<u64> {
-    // 认领一批（FOR UPDATE SKIP LOCKED 防双 worker 重发；行内 attempts
-    // 即重试计数，退避 = 60s * 2^attempts，由 WHERE 谓词表达）
-    let rows: Vec<(i64, String, String, String, Option<String>)> =
-        sqlx::query_as(
-            "SELECT id, to_email, subject, body, html_part FROM mail_outbox \
-         WHERE sent_at IS NULL AND attempts < 5 \
-           AND (last_attempt_at IS NULL OR last_attempt_at < \
-                now() - make_interval(secs => 60 * power(2, attempts)::int8)) \
-         ORDER BY id LIMIT 20 FOR UPDATE SKIP LOCKED",
-        )
-        .fetch_all(db)
-        .await?;
-    if rows.is_empty() {
-        return Ok(0);
-    }
-    let mut sent = 0u64;
-    let (site, _base) = site_scope(db).await;
-    for (id, to, subject, body, html_part) in rows {
-        let Some((url, from)) = smtp_config(db).await else {
-            // SMTP 未配置：不算失败也不死信（配置问题，配置好了下一轮自然发）
-            tracing::info!("mail_outbox: SMTP 未配置，待命");
-            return Ok(sent);
-        };
-        // 三态（0461）：html_part 有=新行；空但 body 带 FLUXMAIL2 前缀
-        // =过渡行（解包回写拆列）；无前缀=纯文本老行。
-        let (text, html) = match &html_part {
-            Some(h) if !h.is_empty() => (body, h.clone()),
-            _ => {
-                let (t, h) = flux_shared::mailtpl::open_envelope(&body);
-                if !h.is_empty() {
-                    let _ = sqlx::query(
-                        "UPDATE mail_outbox \
-                         SET body = $2, html_part = $3 \
-                         WHERE id = $1 AND html_part IS NULL",
-                    )
-                    .bind(id)
-                    .bind(&t)
-                    .bind(&h)
-                    .execute(db)
-                    .await;
-                }
-                (t, h)
-            }
-        };
-        let mail = flux_shared::mailtpl::Mail {
-            subject,
-            text,
-            html,
-            site: site.clone(),
-        };
-        let rt = contact_reply_to(db).await;
-        let r = send_via_smtp(&url, &from, &to, &mail, rt.as_deref()).await;
-        // 851aedd2 重构遗留的死变量已清（send 改传 mail 对象后无人消费）。
-        match r {
-            Ok(()) => {
-                let _ = sqlx::query(
-                    "UPDATE mail_outbox SET sent_at = now(), attempts = \
-                     attempts + 1 WHERE id = $1",
-                )
-                .bind(id)
-                .execute(db)
-                .await;
-                sent += 1;
-            }
-            Err(e) => {
-                let attempts: i32 = sqlx::query_scalar(
-                    "UPDATE mail_outbox SET attempts = attempts + 1, \
-                     last_error = $2, last_attempt_at = now() \
-                     WHERE id = $1 RETURNING attempts",
-                )
-                .bind(id)
-                .bind(e.to_string())
-                .fetch_one(db)
-                .await
-                .unwrap_or(0);
-                if attempts >= 5 {
-                    // P-428：旧写法聚合当 EXISTS 用 + `let _ =` 吞错 ⇒ 邮件
-                    // 死信这种最该出声的告警既发不出也没人看见。收进唯一出口
-                    // （组合件：无在册职员可署名时 warn+0；2026-11-17 收编
-                    // 主题窗闸，SMTP 故障每封一条会灌满信箱，24h 一封）。
-                    let body = format!(
-                        "outbox #{id} 发送 5 次失败：{e}（收件已脱敏）"
-                    );
-                    let went = staff_alert_gated(
-                        db,
-                        "staff_panel",
-                        "邮件死信告警",
-                        24,
-                        &body,
-                    )
-                    .await;
-                    if went {
-                        tracing::warn!(id, to, "mail_outbox: 死信告警已发");
-                    }
-                }
-            }
-        }
-    }
-    Ok(sent)
 }

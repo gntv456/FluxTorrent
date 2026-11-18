@@ -195,3 +195,9 @@ jobs:
       # 边界后再转 fail——现在 fail 会误伤 admin 的头像框 css 预置值。
       - name: design guard
         run: node ../../scripts/design_guard.mjs
+      # 功能可见性门禁（0498，产品体检 A1 根治）：登记制——用户面后端端点
+      # 必须能在前端找到消费证据（scripts/feature_visibility.json）。
+      # 「有后端无前端」断档（契约 0424→0498 零 UI、heatmap 下发无人读、
+      # 分成只有流水标签）三次发生，CI 层此前无任何拦截。
+      - name: Feature visibility guard
+        run: node ../../scripts/feature_visibility_guard.mjs

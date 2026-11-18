@@ -217,6 +217,17 @@ pub(crate) async fn process_event(
           -- 记录的真实 UA（取证口径以 HTTP announce 为准）
           agent = COALESCE(NULLIF(EXCLUDED.agent, ''), snatches.agent),
           progress = EXCLUDED.progress,
+          -- P0 端口单调回填（2026-11-18）：last_port 原只在 INSERT 首行写入，
+          -- ON CONFLICT 从不更新。首报 port=0（stopped 首报 / 客户端首包未带端
+          -- 口，BEP3 允许）后该行端口永久锁死 0——即便之后每轮 announce 都带
+          -- 真实端口。后果两条：① 展示层把活跃做种者报成「端口未开放」；
+          -- ② 结算链（seeding.rs/settle_periodic/preserve/collusion 的
+          -- `AND s.last_port > 0`）把上传 45TB 的真做种者挡在收益外——实测
+          -- 9.3k 行 / 209 用户被误停发。修法：仅当本次事件带非 0 端口才覆盖
+          -- （EXCLUDED.last_port > 0），0 永不回写，保持「有则更新、无则保留」。
+          last_port = CASE WHEN EXCLUDED.last_port > 0
+                           THEN EXCLUDED.last_port
+                           ELSE snatches.last_port END,
           last_seen_at = now()
         "#,
     )

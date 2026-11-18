@@ -123,10 +123,17 @@ pub(crate) async fn search_pred_with_syn(
              OR t.small_descr ILIKE $6{esc}){syn_pred}"
         ),
         _ => format!(
+            // 0497 tag 入搜索（产品体检 A5：tag 不参与命中——用户打的知识
+            // 维度标签搜不到）。EXISTS 半连接而非 JOIN：一行种子多标签时
+            // 不会重复计数；tag_dict.name 精确 ILIKE 与筛选器同口径。
             "AND ($6::text IS NULL OR t.name ILIKE $6{esc} \
              OR t.small_descr ILIKE $6{esc} OR t.descr ILIKE $6{esc} \
              OR t.id IN (SELECT torrent_id FROM files \
-             WHERE path ILIKE $6{esc})){syn_pred}"
+                 WHERE path ILIKE $6{esc}) \
+             OR EXISTS (SELECT 1 FROM tags tg \
+                 JOIN tag_dict td ON td.id = tg.tag_id \
+                 WHERE tg.torrent_id = t.id AND td.name ILIKE $6{esc}))\
+             {syn_pred}"
         ),
     };
     (pred, short)

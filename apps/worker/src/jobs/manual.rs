@@ -80,6 +80,8 @@ pub(crate) async fn run_named(
         // 月度契约结算（0424）：tick1d 早已在跑（job:contract_settle 同一把锁），
         // 手触缺臂——面板「执行」下去只得到「未知任务」。
         "contract_settle" => n(contract_settle(db).await?),
+        // 0496 每日在种采样：hour_jobs 在跑，手触供站长即时补一拍。
+        "contract_sample" => n(contract_sample(db).await?),
         "preserve_settle" => n(preserve_settle(db).await?),
         "funding_settle" => n(funding_settle(db).await?),
         "refundable_settle" => n(refundable_settle(db).await?),
@@ -116,7 +118,7 @@ pub(crate) async fn run_named(
         "auto_review" => n(auto_review::auto_review_tick(db).await?),
         "auto_review_digest" => d(auto_review::auto_review_digest(db).await?),
         "spark_merkle" => n(spark_merkle_daily(db).await?),
-        "mail_outbox" => n(mail_out::mail_outbox_drain(db).await?),
+        "mail_outbox" => n(mail_outbox::mail_outbox_drain(db).await?),
         // 0487：IYUU 辅种查重此前只在 hour_jobs 定时里，手触缺臂——站长
         // 配好凭据后没法立即跑一轮（要等下一个整点），首次冷启动尤其憋。
         "iyuu_refresh" => n(iyuu_refresh(db, redis.clone()).await?),

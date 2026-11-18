@@ -3,6 +3,7 @@
 import type { Dict } from "./zh-CN";
 import { termsPanelEn } from "./terms-panel";
 import { auditLabelsEn } from "./audit-labels";
+import { uxOptEn } from "./ux-opt";
 
 const enBase: Omit<
   Dict,
@@ -26,8 +27,12 @@ const enBase: Omit<
   | "resPage"
   | "endangered"
   | "teams"
+  | "contracts"
+  | "pubboard"
+  | "checkin"
   | "termsPanel"
   | "auditLabels"
+  | "uxOpt"
 > = {
   meta: {
     titleSuffix: "FluxTorrent",
@@ -212,6 +217,7 @@ const enBase: Omit<
     top: "Top",
     magicPool: "Free Pool",
     myhr: "My H&R",
+    contracts: "Seeding Contracts",
     contests: "Contests",
     medalWall: "Medal Wall",
     frames: "Avatar Frames",
@@ -518,6 +524,8 @@ const enBase: Omit<
   works: {
     title: "Works",
     rating: "Rating",
+    srcDouban: "Douban",
+    srcTmdb: "TMDB",
     viewGroup: "By work",
     director: "Director",
     cast: "Cast",
@@ -8274,6 +8282,7 @@ const groupsubEn: Dict["groupsub"] = {
 
 export const en: Dict = {
   ...enBase,
+  uxOpt: uxOptEn,
   termsPanel: termsPanelEn,
   auditLabels: auditLabelsEn,
   security2fa: {
@@ -8497,5 +8506,66 @@ export const en: Dict = {
     createFailed: "Could not create",
     disabled: "This feature is not enabled",
     leaderTag: "Leader",
+  },
+
+  contracts: {
+    title: "Seeding Contracts",
+    sub: "Sign up for a monthly goal — meet it for a reward, miss it for a penalty; track progress any time",
+    empty: "No contracts yet",
+    boardTitle: "Sign-up Board",
+    caliber:
+      "How it counts: seeding = average seeded volume this month; publishing = approved uploads this month",
+    disabled: "Contracts are currently closed",
+    notEligible: "Available 30 days after registration",
+    progressSeed: "Seeding progress (daily avg)",
+    progressPublish: "Publishing progress",
+    progressLabel: "Current contract progress",
+    seedTiers: "Seeding tiers",
+    publishTiers: "Publishing tiers",
+    reward: "Reward",
+    penalty: "Penalty",
+    sign: "Sign",
+    signAuto: "Sign + auto-renew",
+    signing: "Signing…",
+    signedOk: "Signed — settled in early next month",
+    signFailed: "Could not sign, please retry later",
+    historyTitle: "My Contracts",
+    historyEmpty: "No contracts yet — start from a tier above",
+    colMonth: "Month",
+    colKind: "Type",
+    colTarget: "Target",
+    colAchieved: "Achieved",
+    colStatus: "Status",
+    colReward: "R/P",
+    colAutoRenew: "Renew",
+    kindSeed: "Seeding",
+    kindPublish: "Publishing",
+    stOpen: "Open",
+    stSettled: "Met",
+    stBreached: "Missed",
+  },
+
+  pubboard: {
+    title: "Publisher Board",
+    sub: "Your publisher earnings: pardon shares and seeding boosts",
+    shareTotal: "Pardon share total",
+    shareNote:
+      "Sparks shared to you when others self-pardon H&R on torrents you published",
+    decayTitle: "Publisher seeding boost",
+    decayNote:
+      "Seeding your own uploads earns a multiplier by torrent age (day/month/year tiers)",
+    decayDay: "Age < 1 day",
+    decayMonth: "1 day – 1 month",
+    decayYear: "1 month – 1 year",
+    decayBase: "Over 1 year / not your upload",
+    empty: "No share records yet — income appears after your uploads get pardoned",
+    unit: "sparks",
+  },
+
+  checkin: {
+    heat: {
+      title: "Check-in Footprint",
+      hint: "Last 12 months",
+    },
   },
 };

@@ -1,24 +1,61 @@
-//! 月度契约（0424，同类站对标 A2）。
+//! 月度契约（0424，同类站对标 A2；0496 计量升级）。
 //!
-//! 口径（对标报告 §2.4）：注册满 30 天的用户月初自愿签约做种体积/发种数，
-//! 次月 3-4 号结算上月：达标发奖、未达标扣罚（spark_ledger 幂等键锚
-//! contract:{contract_id}）。契约期间的豁免不在结算里给——读侧
-//! （活跃考核/盒子限制）按「当月存在 open/settled 契约」判定。
+//! 注册满 30 天的用户月初自愿签约做种体积/发种数，次月 3-4 号结算上月：
+//! 达标发奖、未达标扣罚（幂等键锚 contract:{id}）；未达标自动续约保留
+//! 一次（missed_streak=1），连续第二次不再续。豁免在读侧（当月存在
+//! open/settled 契约）。
 //!
-//! 同类站 续约语义：本月未达标 → 自动续约保留一次（missed_streak=1），
-//! 连续第二次未达标 → 不再自动续约。人工续约不受限。
+//! 0496：seed 契约弃用「结算时刻快照 × 活跃占比」近似——hourly 每日
+//! 快照在种体积（seed_contract_samples），结算取月内日均真均值。近似
+//! 口径对月中下架/月末冲刺都失真，且契约会扣罚（体检 A1 投诉源）。
 
 use chrono::Datelike;
 use sqlx::PgPool;
 
+/// 每日在种体积采样（0496）：open seed 契约用户快照当日 bytes。
+/// 站点日口径（UTC+8，与签到/趋势图同源）；ON CONFLICT 覆盖 = 当日重跑幂等。
+/// 排进 hour_jobs（1h 档）——跨时区/重启漏拍最多丢当日一拍，结算取日均
+/// 可容忍（≤1/28 误差，远小于旧近似口径的系统性偏差）。
+pub async fn contract_sample(db: &PgPool) -> anyhow::Result<u64> {
+    // 总开关关了不采样（省一轮 JOIN；无 open 契约时子查询自然空）
+    let enabled: bool = sqlx::query_scalar(
+        "SELECT COALESCE((SELECT value FROM site_settings \
+         WHERE name = 'seed_contract_enabled') = 'yes', true)",
+    )
+    .fetch_one(db)
+    .await
+    .unwrap_or(true);
+    if !enabled {
+        return Ok(0);
+    }
+    let r = sqlx::query(
+        r#"
+        INSERT INTO seed_contract_samples (user_id, day, bytes)
+        SELECT DISTINCT sc.user_id,
+               ((now() AT TIME ZONE 'UTC') + interval '8 hours')::date,
+               COALESCE((
+                   SELECT sum(t.size) FROM snatches s
+                   JOIN torrents t ON t.id = s.torrent_id
+                        AND t.approval_status = 1
+                   WHERE s.user_id = sc.user_id AND s.seeding
+               ), 0)
+        FROM seed_contracts sc
+        WHERE sc.kind = 'seed' AND sc.status = 'open'
+          AND sc.month = date_trunc('month', ((now() AT TIME ZONE 'UTC')
+                          + interval '8 hours')::date)::date
+        ON CONFLICT (user_id, day) DO UPDATE SET bytes = EXCLUDED.bytes
+        "#,
+    )
+    .execute(db)
+    .await?;
+    Ok(r.rows_affected())
+}
+
 /// 月结：结算上个月全部 open 契约。
 ///
 /// 「上月」= 结算时刻所在月的上一个月（月首日）。达成口径：
-///   * seed 契约：月内做种体积按天采样平均（同类站「做种 3TB 只挂 10 天
-///     = 平均 1TB」口径）——snatches 无历史快照，用 seed_preserve 之外的
-///     现值近似：avg = 当前在种体积 × (月内在种天数/月天数)。为可审计，
-///     直接用 peer 时长表不可行，这里取「结算时刻做种体积 × 月内活跃天数
-///     占比」，与 同类站 的平均语义同向。
+///   * seed 契约：月内做种体积日均值（0496 采样表真均值；采样缺失的
+///     旧契约行回落旧近似式，见 SQL 注释）。
 ///   * publish 契约：月内 created_at 落在该月、owner=本人、approval_status=1
 ///     的种子数（做种时长达标口径简化为过审即可计——严判在 H&R 侧已有）。
 pub async fn contract_settle(db: &PgPool) -> anyhow::Result<u64> {
@@ -39,21 +76,35 @@ pub async fn contract_settle(db: &PgPool) -> anyhow::Result<u64> {
         first_of_this.pred_opt().expect("pred of month start")
     };
     // 1) 回填达成值
-    // seed：平均做种体积（字节）＝ 当前在种体积 × 月内在种天数/月天数。
-    // 月内天数以该月实际天数计（28-31）。
+    // seed（0496 真均值）：优先采样表日均——COALESCE 里旧近似式只对
+    // 「采样表无该用户当月任何一行」的存量契约生效（0496 上线前的旧月）。
+    // 日均窗口截至「结算时刻与月末的较早者」：月中结算（手触）不把
+    // 未到的日子计成 0 拉低均值。
     sqlx::query(
         r#"
         UPDATE seed_contracts c SET achieved = sub.avg_bytes
         FROM (
             SELECT sc.id,
-                   COALESCE(sum(t.size), 0)::bigint
-                   * (LEAST(
-                        date_part('day',
-                          LEAST(now(), (sc.month + interval '1 month')::date)),
-                        28) / 28.0)::bigint AS avg_bytes
+                   COALESCE(
+                       (SELECT avg(s.bytes)::bigint
+                          FROM seed_contract_samples s
+                         WHERE s.user_id = sc.user_id
+                           AND s.day >= sc.month
+                           AND s.day < LEAST(
+                               (sc.month + interval '1 month')::date,
+                               (now() AT TIME ZONE 'UTC')::date + 1)
+                       ),
+                       -- 旧近似回落（0496 前的存量月）：结算日快照 × 活跃占比
+                       COALESCE(sum(t.size), 0)::bigint
+                       * (LEAST(date_part('day',
+                           LEAST(now(),
+                             (sc.month + interval '1 month')::date)),
+                           28) / 28.0)::bigint
+                   ) AS avg_bytes
             FROM seed_contracts sc
-            JOIN snatches s ON s.user_id = sc.user_id AND s.seeding
-            JOIN torrents t ON t.id = s.torrent_id AND t.approval_status = 1
+            LEFT JOIN snatches s ON s.user_id = sc.user_id AND s.seeding
+            LEFT JOIN torrents t ON t.id = s.torrent_id
+                AND t.approval_status = 1
             WHERE sc.month = $1 AND sc.kind = 'seed' AND sc.status = 'open'
             GROUP BY sc.id
         ) sub

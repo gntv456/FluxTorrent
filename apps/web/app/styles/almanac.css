@@ -290,3 +290,25 @@
   font-weight: 700;
   color: var(--text-strong);
 }
+
+/* ===== 签到足迹热力（0498 前端收口）：四级色阶全走 tone 令牌 ===== */
+.heat-cell {
+  width: 18px;
+  border-radius: 3px;
+  background: var(--surface-sunken);
+  transition: height 0.3s ease;
+}
+.heat-cell--l1 {
+  background: color-mix(in srgb, var(--accent) 25%, var(--surface-sunken));
+}
+.heat-cell--l2 {
+  background: color-mix(in srgb, var(--accent) 55%, var(--surface-sunken));
+}
+.heat-cell--l3 {
+  background: var(--accent);
+}
+@media (prefers-reduced-motion: reduce) {
+  .heat-cell {
+    transition: none;
+  }
+}

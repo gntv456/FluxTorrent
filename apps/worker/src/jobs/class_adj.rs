@@ -1,5 +1,6 @@
 //! 保种种子/等级自动调整。
 //! 从 jobs.rs 按域拆出。
+use super::class_demote::demote_with_notice;
 use sqlx::{PgPool, Row};
 
 /// 死种入保种区（审计修复：保种区此前无数据源，页面恒空）。
@@ -256,45 +257,6 @@ pub(crate) async fn class_auto_adjust(db: &PgPool) -> anyhow::Result<()> {
             tx.rollback().await?;
         }
     }
-    let demoted = sqlx::query(
-        r#"
-        WITH agg AS (
-            SELECT user_id,
-                   count(*) FILTER (WHERE completed_at IS NOT NULL) AS dl,
-                   COALESCE(sum(seeded_seconds), 0) / 3600 AS sh
-            FROM snatches GROUP BY user_id
-        ),
-        stats AS (
-            SELECT u.id, u.class_id, u.uploaded,
-                   COALESCE(a.dl, 0)::bigint AS dl,
-                   COALESCE(a.sh, 0) AS sh,
-                   EXTRACT(DAY FROM now() - u.created_at)::bigint AS age
-            FROM users u JOIN class_rules cr ON cr.class_id = u.class_id
-            LEFT JOIN agg a ON a.user_id = u.id
-            WHERE u.class_id < 90 AND cr.demotable
-        ),
-        target AS (
-            -- P-325：降级地板。字典里 LV0 门槛全零 ⇒「恒被满足」，旧版的
-            -- INNER JOIN 让 COALESCE(…, 1) 永远走不到，失责的 LV5 成员会被
-            -- 一路降到 class 0（Peasant）——而站内地板是 1：achv_dormant
-            --  dormant 降级写 1、subtitles_govern 判 class_id >= 1、
-            -- onboarding 的 demotable 开关挂的也是 class 1。
-            -- 改 LEFT JOIN 后「只剩 0 档」= 空组 → NULL → 保底落到 1。
-            SELECT s.id, COALESCE(max(r.class_id), 1) AS new_class
-            FROM stats s LEFT JOIN class_rules r ON
-                s.uploaded >= r.min_uploaded AND s.dl >= r.min_download_count AND
-                s.sh >= r.min_seed_hours AND s.age >= r.min_account_age_days AND
-                r.class_id >= 1
-            GROUP BY s.id
-        )
-        UPDATE users u SET class_id = t.new_class
-        FROM target t WHERE u.id = t.id AND t.new_class < u.class_id
-        "#,
-    )
-    .execute(db)
-    .await?;
-    if demoted.rows_affected() > 0 {
-        tracing::info!(n = demoted.rows_affected(), "users demoted");
-    }
+    demote_with_notice(db).await?;
     Ok(())
 }

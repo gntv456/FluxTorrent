@@ -17,11 +17,15 @@ pub const JOBS: &[JobDef] = &[
         name: "announce_site_promos",
         cadence: "60s",
     },
-    // P-471 同族：tick1d 早已调度 job:contract_settle（0424 月结），
-    // 但 catalog 未登记 ⇒ 运维面板看不见这个任务。
+    // P-471 同族：tick1d 在跑但目录未登记 ⇒ 面板看不见（0424 月结）
     JobDef {
         name: "contract_settle",
         cadence: "24h",
+    },
+    // 0496 契约采样：hour_jobs 在跑，目录+手触同步登记
+    JobDef {
+        name: "contract_sample",
+        cadence: "1h",
     },
     JobDef {
         name: "magic_pool_promo",
@@ -39,8 +43,7 @@ pub const JOBS: &[JobDef] = &[
         name: "consume_agent_blocks",
         cadence: "60s",
     },
-    // 2026-10-29：run.rs 的 60s tick 一直在跑它，但目录没登记 ⇒ 面板看不见、
-    // 手触被拒；补登记（与 announce_site_promos/contract_settle 同族）。
+    // 2026-10-29：60s tick 在跑但目录没登记 ⇒ 补登记（P-471 同族）
     JobDef {
         name: "consume_xreport",
         cadence: "60s",
@@ -98,8 +101,7 @@ pub const JOBS: &[JobDef] = &[
         cadence: "60s",
     },
     JobDef {
-        // 0404 §17-2：run.rs 的 60s tick 一直在跑它，但目录里没有，
-        // 于是后台面板看不见、也不能手触——补登记。
+        // 0404 §17-2：60s tick 在跑但目录没有 ⇒ 补登记
         name: "mail_outbox",
         cadence: "60s",
     },
@@ -120,8 +122,7 @@ pub const JOBS: &[JobDef] = &[
         cadence: "1h",
     },
     JobDef {
-        // 0295（运营轮 P1-6）：run.rs 的 1h tick 一直在跑它，但目录里没有，
-        // 于是后台面板看不见、也不能手触——补登记。
+        // 0295 P1-6：1h tick 在跑但目录没有 ⇒ 补登记
         name: "request_expire",
         cadence: "1h",
     },
@@ -234,8 +235,7 @@ pub const JOBS: &[JobDef] = &[
         cadence: "10m",
     },
     JobDef {
-        // 0400 自动审种引擎轮：run.rs 的 10m tick 一直在跑它，但目录里没有，
-        // 于是后台面板看不见、也不能手触——补登记。
+        // 0400：10m tick 在跑但目录没有 ⇒ 补登记
         name: "auto_review",
         cadence: "10m",
     },

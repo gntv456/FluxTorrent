@@ -13,6 +13,7 @@ import { MerklePanel } from "./_parts/merkle-panel";
 import { SeedingCalc } from "./_parts/seeding-calc";
 import { ExcludedNote } from "./_parts/excluded-note";
 import { LedgerPanel } from "./_parts/ledger-panel";
+import { PublisherBoard } from "./_parts/publisher-board";
 import {
   LEDGER_PER,
   sums,
@@ -216,6 +217,8 @@ export default function MySparkPage() {
           { key: "ledger", label: t.ledger.replace("{magic}", currency) },
           { key: "calc", label: t.calcTitle },
           { key: "merkle", label: t.merkleTitle },
+          // 0498 发布者看板（前端收口）：分成流水 + 三档加成说明
+          { key: "pub", label: dict.pubboard.title },
         ]}
       />
 
@@ -242,6 +245,11 @@ export default function MySparkPage() {
       {/* 每日凭证：挂载即拉 manifest——激活才挂载 */}
       <div id="panel-ms-merkle" role="tabpanel" hidden={tab !== "merkle"}>
         {(tab === "merkle" || visited.has("merkle")) && <MerklePanel />}
+      </div>
+
+      {/* 发布者看板（0498）：分成收入 + 加成口径——激活才挂载 */}
+      <div id="panel-ms-pub" role="tabpanel" hidden={tab !== "pub"}>
+        {(tab === "pub" || visited.has("pub")) && <PublisherBoard />}
       </div>
     </div>
   );

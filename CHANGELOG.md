@@ -3,6 +3,51 @@
 本文件记录面向部署者的显著变更。格式参照 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)；
 版本号在首个语义化 tag（v0.x）发布后启用。
 
+## [0.5.19-dev.22] - 2026-11-19
+
+定位：**产品体检「全部补齐」批——前端收口 + 契约计量升级 + 通道频控圈选**。
+
+### 新增
+- 月度做种契约前端收口（体检 A1 头号断档）：`/contracts` 页三件
+  （签约台/当月进度条/我的契约历史表），后端三端点 0424 起存在、此前
+  零 UI。进度口 `GET /contracts/tiers` 响应新增 `progress`（seed=采样
+  日均、publish=月内过审数），计量口径随卡公示。导航「成长荣誉」组
+  新入口，三语字典同批。
+- 契约计量升级（0496）：弃用「结算时刻快照 × 活跃占比」近似——新增
+  `seed_contract_samples` 日采样表 + `contract_sample` 小时任务（站点日
+  幂等，catalog/手触同步登记），结算改月内日均真均值（旧契约行自动
+  回落旧式，无迁移负担）。
+- 发布者看板（A1）：my-spark 新「发布者看板」标签——免罪分成累计
+  （消费 `/me/spark/ledger?kind=hr_pardon_share`，0424 起有口无 UI）
+  + 三档种龄加成口径卡。
+- 签到足迹热力图（A1）：`GET /attendance` 补 `heatmap` 字段（近 12 月
+  逐月天数，home 板块同款分桶独立下发），签到页挂四级色阶条形图
+  （tone 令牌 + reduced-motion 降级）。
+- 作品页评分来源徽标（A5）：豆瓣/TMDB 同列互覆必须可见——
+  `work_meta.source` 已有，本批补 UI 消费（「9.2 豆瓣」）。
+- 功能可见性 CI 门禁（A1 根治）：`scripts/feature_visibility_guard.mjs`
+  + 登记表——用户面后端端点必须能在前端找到消费证据，防「有后端无
+  前端」断档第四次发生。CI（build-test web job）与 ci_local.sh 同接。
+- 等级降级预告信（A6）：升级有祝贺信、降级零通知的历史收口——
+  demote 带回执值，事后告知 + 恢复路径，幂等锚防重发（拆
+  class_demote.rs）。
+- 身份型 sink SKU（A6）：商店上「发布者之光」限定头衔（200,000 火花，
+  custom_title 效果臂直设，NOT EXISTS 幂等）——高净值火花消耗口。
+- 经济仪表盘产出面分解（A6）：`/admin/economy-dashboard` 新增
+  `kind_mint_30d`（按 kind 聚产出侧 TOP20）——重算平衡表的数据基础。
+- massmail 圈选（A4）：`POST /admin/massmail` 新增 `audience` 字段
+  （all/active30/dormant90/vip/class:N，白名单枚举拼 SQL，缺省 all
+  保持旧行为），响应回显 `audience`。召回闭环最后一段接通。
+- mail_outbox 单用户频控（A2）：`mail_user_daily_cap` 键（缺省 5、
+  0=不限），发送轮 24h 滚动窗内超限行推迟不重试（拆 mail_outbox.rs）。
+- 从严新手模板真落地 `newbie_grace_days=7`（A3）：0423 注释声称「从严
+  模板置 7」但 `setup_apply_onboarding` 从未写入——本批补上（宽进模板
+  不写=关，保持原设计）。
+
+### 改进
+- tag 参与默认搜索（A5）：`syn_search` 默认范围补 `tag_dict.name`
+  EXISTS 匹配（EXISTS 不重复计数；短词分层与 IMDb 分支不受影响）。
+
 ## [0.5.19-dev.20] - 2026-11-18
 
 定位：**「回连不可达 213 颗」误报收口 + PTD「积分」列数据源补齐**。

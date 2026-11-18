@@ -31,6 +31,7 @@ mod hr_snapshot;
 mod hr_warn_ladder;
 mod hr_warn_mail;
 // 0487：IYUU 辅种查重定时批量刷新
+mod class_demote;
 mod iyuu_orphan_sweep;
 mod iyuu_refresh;
 mod jixiao;
@@ -40,6 +41,7 @@ mod ledger_guard;
 mod locks;
 mod lottery;
 pub(crate) mod mail_out;
+pub(crate) mod mail_outbox;
 mod maintain;
 mod manual;
 mod medal_achv;
