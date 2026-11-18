@@ -1,0 +1,368 @@
+/**
+ * B3 个人中心健康度 + B4 后台效率专项样式。
+ * 路由级加载：users/[id]/page.tsx 与 admin/layout.tsx 各 import 一次。
+ * 纪律：只读 var() 令牌，禁止裸 hex / Tailwind 色类。 */
+
+/* ========== B3 · 健康度优先统计卡 ========== */
+.ux-health {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.ux-health__head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  color: var(--text-brand);
+}
+
+.ux-health__head h2 {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.ux-health__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-3);
+}
+
+@media (min-width: 768px) {
+  .ux-health__grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.ux-health-card {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-4);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-card);
+}
+
+.ux-health-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+
+.ux-health-card__icon {
+  display: inline-flex;
+  color: var(--sky-deep);
+}
+
+.ux-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0 var(--sp-2);
+  font-size: 0.6875rem;
+  font-weight: 800;
+  line-height: 1.8;
+  white-space: nowrap;
+}
+
+.ux-chip--safe {
+  background: var(--mint-soft);
+  color: var(--mint);
+}
+
+.ux-chip--watch {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
+.ux-health-card__value {
+  overflow-wrap: anywhere;
+  font-family: var(--font-display, inherit);
+  font-size: 1.5rem;
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--text-strong);
+}
+
+.ux-health-card__label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.ux-health__secondary {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin: 0;
+  padding-inline: var(--sp-1);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* Hero 无头像：保留占位，但不再套头像框，去掉空挂件观感 */
+.ux-hero__avatar--empty {
+  background: var(--surface-sunken);
+  border-color: transparent;
+}
+
+/* ========== B3 · 四组收纳页签 ========== */
+.ux-tabgroups {
+  display: grid;
+  gap: var(--sp-3);
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (min-width: 1024px) {
+  .ux-tabgroups {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.ux-tabgroup {
+  min-width: 0;
+  padding: var(--sp-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-card);
+}
+
+.ux-tabgroup__label {
+  margin: 0 0 var(--sp-2);
+  padding-left: var(--sp-2);
+  border-left: 3px solid var(--sky);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--text-brand);
+}
+
+.ux-tabgroup__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+.ux-tablink {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap-min);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0 var(--sp-3);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-body);
+  background: var(--surface-raised);
+  text-decoration: none;
+  transition:
+    background-color var(--motion-fast) var(--motion-ease),
+    color var(--motion-fast) var(--motion-ease);
+}
+
+.ux-tablink:hover {
+  background: var(--surface-hover);
+  color: var(--text-strong);
+}
+
+.ux-tablink.is-active {
+  border-color: transparent;
+  background: var(--sky-soft);
+  color: var(--sky-text);
+  font-weight: 800;
+}
+
+.ux-tablink:focus-visible,
+.ux-medal-cta:focus-visible,
+.ux-admin-denied__home:focus-visible,
+.ux-nav-item:focus-visible,
+.ux-nav-group:focus-visible,
+.ux-tap:focus-visible {
+  outline: 2px solid var(--sky);
+  outline-offset: 2px;
+}
+
+/* ========== B3 · 勋章空态入口 / 近期发布 ========== */
+.ux-medal-empty {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+
+.ux-medal-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: var(--tap-min);
+  border-radius: var(--r-sm);
+  padding: 0 var(--sp-3);
+  background: var(--sky-soft);
+  color: var(--sky-text);
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.ux-medal-cta:hover {
+  background: var(--surface-hover);
+}
+
+.ux-recent th:last-child,
+.ux-recent td:last-child {
+  white-space: nowrap;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* ========== B4 · 后台导航分组与图标 ========== */
+.ux-nav-group {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  min-height: var(--tap-min);
+  border-radius: var(--r-sm);
+  padding-inline: var(--sp-2);
+  color: var(--text-muted);
+  background: transparent;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.ux-nav-group:hover {
+  background: var(--surface-hover);
+  color: var(--text-strong);
+}
+
+.ux-nav-group__label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.ux-nav-group__icon {
+  color: var(--sky-deep);
+}
+
+.ux-nav-sub {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  color: var(--text-brand);
+}
+
+.ux-nav-sub__icon {
+  color: var(--sky-deep);
+}
+
+.ux-nav-item {
+  position: relative;
+  overflow: hidden;
+}
+
+.ux-nav-item__bar {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 3px;
+  border-radius: var(--r-sm);
+  background: var(--sky);
+}
+
+/* 当前项：语义色浅底，不用裸色值 */
+.ux-nav-item.is-active {
+  background: var(--sky-soft);
+  color: var(--sky-text);
+  font-weight: 800;
+}
+
+.ux-nav-badge {
+  background: var(--danger-soft);
+  color: var(--danger-text);
+}
+
+.ux-nav-item.is-active .ux-nav-badge {
+  background: var(--surface-card);
+  color: var(--danger-text);
+}
+
+/* ========== B4 · 审核操作行移动端防溢出 ========== */
+.ux-review-actions {
+  display: flex;
+  width: 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.ux-tap {
+  min-height: var(--tap-min);
+}
+
+@media (min-width: 640px) {
+  .ux-review-actions {
+    width: auto;
+  }
+}
+
+/* ========== B4 · 无权限专用空态 ========== */
+.ux-admin-denied {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-3);
+  margin: var(--sp-6) auto;
+  max-width: 28rem;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: var(--sp-6) var(--sp-4);
+  background: var(--surface-card);
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.ux-admin-denied__icon {
+  color: var(--sky-deep);
+}
+
+.ux-admin-denied__title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 800;
+  color: var(--text-strong);
+}
+
+.ux-admin-denied__hint {
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ux-tablink {
+    transition: none;
+  }
+}
+
+.ux-admin-denied__home {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: var(--tap-min);
+  border-radius: 999px;
+  padding: 0 var(--sp-4);
+  background: var(--sky-soft);
+  color: var(--sky-text);
+  font-size: 0.875rem;
+  font-weight: 800;
+  text-decoration: none;
+}

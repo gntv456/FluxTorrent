@@ -1,0 +1,137 @@
+/* ===== 产品化整改专项样式（PM-1/4/5）=====
+   路由级加载：help / admin / invites 各 import 一次。
+   纪律：只读 var() 令牌，禁止裸 hex、Tailwind 色类；统一 .ux- 前缀。 */
+
+.ux-guide {
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-md);
+  background: var(--surface-card);
+  padding: var(--sp-4);
+}
+.ux-guide__title {
+  margin: 0 0 var(--sp-3);
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--text-strong);
+}
+.ux-guide-grid {
+  display: grid;
+  gap: var(--sp-3);
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (min-width: 768px) {
+  .ux-guide-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.ux-guide-card {
+  min-width: 0;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-sm);
+  background: var(--surface-raised);
+  padding: var(--sp-3);
+}
+.ux-guide-card h3 {
+  margin: 0 0 var(--sp-2);
+  font-size: 0.9375rem;
+  font-weight: 800;
+  color: var(--text-brand);
+}
+.ux-guide-card p {
+  margin: 0 0 var(--sp-2);
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  color: var(--text-body);
+}
+.ux-guide-link {
+  display: inline-flex;
+  min-height: var(--tap-min);
+  align-items: center;
+  gap: var(--sp-1);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--tone-brand);
+  text-decoration: none;
+}
+.ux-guide-link:hover { text-decoration: underline; }
+
+.ux-coldstart {
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-md);
+  background: var(--surface-card);
+  padding: var(--sp-4);
+}
+.ux-coldstart__head { margin-bottom: var(--sp-3); }
+.ux-coldstart__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--text-strong);
+}
+.ux-coldstart__hint {
+  margin: var(--sp-1) 0 0;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+.ux-coldstart__list {
+  display: grid;
+  gap: var(--sp-2);
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (min-width: 1024px) {
+  .ux-coldstart__list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.ux-coldstart__item {
+  display: flex;
+  min-height: var(--tap-min);
+  align-items: center;
+  gap: var(--sp-2);
+  border-radius: var(--r-sm);
+  background: var(--surface-raised);
+  padding: var(--sp-2) var(--sp-3);
+  font-size: 0.8125rem;
+}
+.ux-coldstart__mark {
+  flex: none;
+  font-weight: 800;
+  color: var(--success);
+}
+.ux-coldstart__item.is-todo .ux-coldstart__mark { color: var(--warning); }
+.ux-coldstart__label { flex: 1; min-width: 0; color: var(--text-body); }
+.ux-coldstart__item.is-done .ux-coldstart__label { color: var(--text-muted); }
+.ux-coldstart__link {
+  flex: none;
+  min-height: var(--tap-min);
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--sp-2);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--tone-brand);
+  text-decoration: none;
+}
+
+.ux-invite-impact {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-md);
+  background: var(--surface-card);
+}
+.ux-invite-impact__title {
+  font-size: 0.8125rem;
+  font-weight: 800;
+  color: var(--text-strong);
+}
+.ux-invite-impact__item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--sp-1);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+.ux-invite-impact__item b {
+  font-size: 1rem;
+  color: var(--text-strong);
+}

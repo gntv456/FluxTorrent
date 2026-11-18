@@ -1,0 +1,169 @@
+/* ===== 资源库分面发现 + 空态（A2 / A4）=====
+   路由级加载：只在 /torrents import，不回灌 globals。
+   色值只走语义令牌；触控底线只用 --tap-min。 */
+
+.ux-facets {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-md);
+  background: var(--surface-card);
+}
+.ux-facets__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+}
+.ux-facets__label {
+  flex: none;
+  min-width: 44px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+.ux-facets__chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.ux-facets__chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--tap-min);
+  padding: 0 12px;
+  border: 1px solid var(--border-soft);
+  border-radius: 99px;
+  background: var(--surface-sunken);
+  color: var(--text-strong);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast) var(--motion-ease),
+    border-color var(--motion-fast) var(--motion-ease),
+    color var(--motion-fast) var(--motion-ease),
+    transform var(--motion-fast) var(--motion-ease);
+}
+.ux-facets__chip:hover {
+  border-color: var(--tone-brand-border);
+  background: var(--tone-brand-soft);
+}
+.ux-facets__chip:active {
+  transform: scale(0.97);
+  background: var(--tone-brand-soft);
+}
+.ux-facets__chip[aria-pressed="true"] {
+  border-color: var(--tone-brand-border);
+  background: var(--tone-brand-soft);
+  color: var(--tone-brand);
+  font-weight: 800;
+}
+.ux-facets__chip:focus-visible,
+.ux-facets__save-btn:focus-visible,
+.ux-empty__cta:focus-visible {
+  outline: 2px solid var(--tone-brand);
+  outline-offset: 2px;
+}
+.ux-facets__save {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-soft);
+}
+.ux-facets__save-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--tap-min);
+  padding: 0 14px;
+  border: 1px solid var(--tone-brand-border);
+  border-radius: 99px;
+  background: var(--tone-brand-soft);
+  color: var(--tone-brand);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    transform var(--motion-fast) var(--motion-ease),
+    background-color var(--motion-fast) var(--motion-ease);
+}
+.ux-facets__save-btn:active {
+  transform: scale(0.97);
+  background: var(--accent-surface);
+  color: var(--accent-on);
+}
+.ux-facets__msg {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--tone-brand);
+}
+.ux-total__sync {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ===== A4 四态空态：主 CTA 一律 brand，禁止危险色 ===== */
+.ux-empty__desc {
+  max-width: 34rem;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+.ux-empty__cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--tap-min);
+  padding: 0 20px;
+  border: 1px solid transparent;
+  border-radius: 99px;
+  background: var(--accent-surface);
+  color: var(--accent-on);
+  font-size: 13px;
+  font-weight: 800;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    transform var(--motion-fast) var(--motion-ease),
+    filter var(--motion-fast) var(--motion-ease);
+}
+.ux-empty__cta:active {
+  transform: scale(0.97);
+  filter: brightness(0.95);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ux-facets__chip,
+  .ux-facets__save-btn,
+  .ux-empty__cta {
+    transition: none;
+  }
+  .ux-facets__chip:active,
+  .ux-facets__save-btn:active,
+  .ux-empty__cta:active {
+    transform: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .ux-facets {
+    padding: 8px 10px;
+  }
+  .ux-facets__label {
+    width: 100%;
+  }
+}
