@@ -123,10 +123,9 @@ export default async function HomePage() {
       {/* 置顶促销公告条：管理后台「置顶促销」配置的生效条目（标题可带链接/徽标） */}
       {promos.length > 0 && (
         <ul
-      className={
-        "flex flex-col gap-1 rounded-[var(--r-md)] border " +
-        "border-sun/40 bg-sun/10 px-3 py-2"
-      }
+      className="flex flex-col gap-1 rounded-[var(--r-md)] border
+                 border-[var(--tone-line)] bg-[var(--surface-sunken)]
+                 px-3 py-2"
     >
           {promos.map((p) => (
             <li key={p.id} className="flex items-center gap-2 text-sm">
@@ -134,7 +133,7 @@ export default async function HomePage() {
               {p.url ? (
                 <a
                   href={p.url}
-                  className="font-bold text-sky hover:underline"
+                  className="font-bold text-link hover:underline"
                   target={p.url.startsWith("http") ? "_blank" : undefined}
                   rel="noreferrer"
                 >

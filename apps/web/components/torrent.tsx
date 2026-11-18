@@ -74,10 +74,10 @@ export async function TorrentRow({ t }: { t: TorrentListItem }) {
       {/* 右：数据列（tabular-nums；做种绿/下载橙/完成灰） */}
       <div className="num flex shrink-0 flex-col items-end gap-0.5 text-xs">
         <span className="text-sub">{formatBytes(t.size)}</span>
-        <span className="text-mint">
+        <span className="text-up">
           {dict.torrent.seeding} {t.seeders}
         </span>
-        <span className="text-coral">
+        <span className="text-down">
           {dict.torrent.leeching} {t.leechers}
         </span>
         <span className="text-sub">
