@@ -296,7 +296,7 @@
   width: 18px;
   border-radius: 3px;
   background: var(--surface-sunken);
-  transition: height 0.3s ease;
+  transition: height var(--motion-normal, 0.3s) var(--tide-ease, ease);
 }
 .heat-cell--l1 {
   background: color-mix(in srgb, var(--accent) 25%, var(--surface-sunken));
