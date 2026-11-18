@@ -1,6 +1,6 @@
 [package]
 name = "flux-api"
-version = "0.5.19-dev.19"
+version = "0.5.19-dev.20"
 edition.workspace = true
 
 [dependencies]
