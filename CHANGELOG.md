@@ -34,6 +34,24 @@
   `FLUX_VERSION=0.5.19-dev.18` 后 `docker compose up -d` 拉起；
   升级后照例 curl 探针 + 扫 Created 僵尸容器
 
+## [0.5.19-dev.18] - 2026-11-18
+
+定位：**邮件中继通道上线（A 方案落地）**——机房封 25/465/587 时走
+2525 STARTTLS 中继（Brevo relay 已实测投递成功）。
+
+### 新增
+- `build_smtp` 三方言：`smtps`=隐式 TLS 465；`smtp`=**STARTTLS**
+  （587/2525 中继必需，旧实现明文连不上）；`smtp-plain`=明文中继
+- `encryption=tls` 映射 STARTTLS（端口缺省仍 587）；`plain` 方言缺省
+  2525；Brevo 类中继配置=host `smtp-relay.brevo.com` + port 2525 +
+  encryption tls + accountname 用中继专属 login（如
+  `xxx@smtp-brevo.com`）+ accountpassword 用 xkeysib/xsmtpsib key
+- `smtp_config` 装配移居 `mailer/probe.rs`（配置与探测同域，
+  mod.rs 行数门禁）
+
+### 运维（好学站已配置）
+- SMTP 全链实测：2525/STARTTLS/认证/投递 QQ 邮箱收件全通
+
 ## [0.5.19-dev.17] - 2026-11-18
 
 定位：**邀请邮件「点了没反应」止血（B 方案）**——SMTP 不通时秒级明确报错。
