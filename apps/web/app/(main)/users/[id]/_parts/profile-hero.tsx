@@ -1,7 +1,7 @@
 /**
  * 用户公开主页 Hero 与磁贴（从 app/(main)/users/[id]/page.tsx 按域拆出）：
  * ProfileHero 头像 + 用户名/勋章 + 等级头衔 + 在线 + 注册/最近活动（所有 tab 共用）；
- * StatTiles 首屏核心指标磁贴（5 个关键数）。无 hooks：server component。
+ * StatTiles 首屏健康度四卡（分享率/H&R/做种/魔力）+ 上传总量次级信息。无 hooks：server component。
  */
 
 import { avatarFrameStyle, FrameImageOverlay } from "@/lib/format";
@@ -41,19 +41,13 @@ export function ProfileHero({
             <FrameImageOverlay url={data.avatar_frame_image} />
           </span>
         ) : (
+          /* B3-3：无真实头像时保留人形占位，但不叠头像框（去掉空挂件观感） */
           <span
             aria-hidden
-            className={
-              "relative flex h-full w-full items-center justify-center text-sub"
-            }
-            style={
-              data.avatar_frame_image
-                ? undefined
-                : avatarFrameStyle(data.avatar_frame_css)
-            }
+            className="ux-hero__avatar--empty relative flex h-full w-full
+              items-center justify-center text-sub"
           >
             <Icon name="user" size={34} />
-            <FrameImageOverlay url={data.avatar_frame_image} />
           </span>
         )}
       </div>
@@ -104,33 +98,49 @@ export function ProfileHero({
   );
 }
 
+/** B3-2：健康度优先磁贴——四张带语义状态 chip 的卡 + 上传总量次级信息。 */
 export function StatTiles({
-  statTiles,
+  tiles,
+  heading,
+  secondary,
 }: {
-  statTiles: {
+  tiles: {
     key: string;
     icon: string;
-    mod?: string;
     label: string;
     value: string;
+    status: "safe" | "watch";
+    statusLabel: string;
   }[];
+  heading: string;
+  secondary: string;
 }) {
   return (
-    <section className="up-stats">
-      {statTiles.map((s) => (
-        <div key={s.key} className="up-stat">
-          <span
-            className={`up-stat__icon${s.mod ? ` up-stat__icon--${s.mod}` : ""}`}
-            aria-hidden
-          >
-            {s.icon}
-          </span>
-          <div className="min-w-0">
-            <div className="up-stat__value">{s.value}</div>
-            <div className="up-stat__label">{s.label}</div>
-          </div>
-        </div>
-      ))}
+    <section className="ux-health" aria-label={heading}>
+      <div className="ux-health__head">
+        <Icon name="gauge" size={16} />
+        <h2>{heading}</h2>
+      </div>
+      <div className="ux-health__grid">
+        {tiles.map((tile) => (
+          <article key={tile.key} className="ux-health-card">
+            <div className="ux-health-card__top">
+              <span className="ux-health-card__icon">
+                <Icon name={tile.icon} size={18} />
+              </span>
+              <span className={`ux-chip ux-chip--${tile.status}`}>
+                {tile.statusLabel}
+              </span>
+            </div>
+            <div className="ux-health-card__value">{tile.value}</div>
+            <div className="ux-health-card__label">{tile.label}</div>
+          </article>
+        ))}
+      </div>
+      <p className="ux-health__secondary">
+        <Icon name="upload" size={14} />
+        {secondary}
+      </p>
     </section>
   );
 }

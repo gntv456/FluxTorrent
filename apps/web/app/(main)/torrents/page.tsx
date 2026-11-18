@@ -1,4 +1,5 @@
 import "@/app/styles/works.css";
+import "@/app/styles/ux-library.css";
 import { EmptyTorrents } from "@/components/torrent";
 import { ErrorPanel } from "@/components/ui/error-panel";
 import { normalizeError } from "@/lib/render-error";
@@ -19,6 +20,12 @@ import { TorrentsColSettings } from "./_parts/torrents-col-settings";
 import { TorrentListViews } from "./_parts/torrents-list-views";
 import { TorrentWorks } from "./_parts/torrents-works";
 import { TorrentsHotkeys } from "./_parts/torrents-hotkeys";
+import { TorrentsFacets } from "./_parts/torrents-facets";
+import {
+  emptyClearHref,
+  inferEmptyContext,
+} from "./_parts/torrents-empty-context";
+import { TorrentOpenMetric } from "@/components/ux-metric-beacon";
 import { TorrentHoverMount } from "@/components/torrent-hover-mount";
 import { buildTorrentChips } from "./_parts/torrents-chips";
 import {
@@ -89,6 +96,7 @@ export default async function TorrentsPage({
         name: string;
         icon_key?: string;
         bg_color?: string | null;
+        parent_id?: number | null;
       }[];
       metadata_sources?: string[];
       view_hidden?: {
@@ -206,6 +214,14 @@ export default async function TorrentsPage({
   // 否则选项 id 会指到不存在的分类上。
   const cats = profile?.categories ?? [];
   const categories = cats.map((c) => ({ id: c.id, label: catPath(cats, c) }));
+  // A2 分面分类：只取顶级（parent_id 为空），复用同一次 site-profile 请求
+  const topCats = cats.filter((c) => !c.parent_id);
+  const facetCategories = (topCats.length ? topCats : cats).map((c) => ({
+    id: c.id,
+    label: c.name,
+  }));
+  const emptyCtx = inferEmptyContext(sp);
+  const clearEmptyHref = emptyClearHref(sp);
   // 分类图标键（0166）：{category_id: icon_key}；站长后台可替换，空键回落首字
   const catIcons = Object.fromEntries(
     (profile?.categories ?? [])
@@ -264,12 +280,27 @@ export default async function TorrentsPage({
         />
       </MobileSearch>
 
+      {/* A2 分面发现：分类 / 分辨率 / 体积 / 更多；状态全在 URL，可分享可后退 */}
+      <TorrentsFacets
+        dict={dict}
+        sp={sp}
+        categories={facetCategories}
+        tags={tags}
+        secDict={secDict}
+        dimKinds={dimKinds}
+      />
+
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="num text-xs text-sub">
-          {grouped
-            ? null
-            : fmt(dict.torrents.total, { n: page.total_estimate })}
-        </span>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="num text-xs text-sub">
+            {grouped
+              ? null
+              : fmt(dict.torrents.total, { n: page.total_estimate })}
+          </span>
+          {!grouped && (
+            <span className="ux-total__sync">{dict.uxOpt.urlSynced}</span>
+          )}
+        </div>
         {/* 0102 存活三态的可见性补齐：默认视图只给活种，不说清楚的话
             新会员会把「列表只有 N 条」当成「本站只有 N 个种」。提示只在
             服务端真的藏了断种时出现，点了直接切到「全部」。RSC 里用链接
@@ -305,6 +336,8 @@ export default async function TorrentsPage({
       </div>
       {/* 键盘快捷键（/ 搜索、j/k 移动、Enter 打开）：挂载后短暂提示，8s 自动消失 */}
       <TorrentsHotkeys />
+      {/* C4：资源行链接点击埋点（客户端委托，不改行组件） */}
+      <TorrentOpenMetric />
       {/* 列表 hover 预览卡（阶段三）：事件委托整页生效 */}
       <TorrentHoverMount />
 
@@ -331,9 +364,14 @@ export default async function TorrentsPage({
           />
         ) : (
           <EmptyTorrents
+            context={emptyCtx}
             aliveFiltered={sp.alive !== "0" && sp.alive !== "2"}
             search={sp.search}
-            clearHref={withParam(withoutCursor(sp), "search", undefined)}
+            clearHref={
+              emptyCtx === "search"
+                ? withParam(withoutCursor(sp), "search", undefined)
+                : clearEmptyHref
+            }
           />
         )
       ) : (

@@ -65,8 +65,10 @@ export function ReviewsPanel({
   const pageIds = reviews.map((t) => t.id);
   const postponed = status === 4;
   // 恢复按钮类名拆两行拼：单行会超 80 列门禁（行宽按 UTF-16 码元）
+  // B4-11：操作按钮统一用 ux-tap（min-height: var(--tap-min)），
+  // 按钮区 ux-review-actions 在窄屏占满一行并 flex-wrap，防横向溢出。
   const resumeCls =
-    "min-h-11 rounded-full border border-sun px-4 " +
+    "ux-tap rounded-full border border-sun px-4 " +
     "text-xs font-bold text-ink";
   return (
     <section className={PANEL_LG}>
@@ -141,7 +143,7 @@ export function ReviewsPanel({
                 </p>
               ) : null}
             </div>
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="ux-review-actions">
             <a
               href={`/torrent/${t.id}`}
               target="_blank"
@@ -161,20 +163,23 @@ export function ReviewsPanel({
               <>
                 <button
                   onClick={() => onDecide(t.id, true)}
-                  className="min-h-11 rounded-full bg-mint px-4 text-xs font-bold text-[var(--text-on-accent)]"
+                  className="ux-tap rounded-full bg-mint px-4 text-xs
+                    font-bold text-[var(--text-on-accent)]"
                 >
                   {a.approve}
                 </button>
                 <button
                   onClick={() => onDecide(t.id, false)}
-                  className="min-h-11 rounded-full bg-coral px-4 text-xs font-bold text-[var(--text-on-accent)]"
+                  className="ux-tap rounded-full bg-coral px-4 text-xs
+                    font-bold text-[var(--text-on-accent)]"
                 >
                   {a.reject}
                 </button>
                 {/* 0306：暂缓口（证据不足挂起），后端 v4_http 早已就绪 */}
                 <button
                   onClick={() => onPostpone(t.id)}
-                  className="min-h-11 rounded-full border border-line px-3 text-xs font-bold text-sub"
+                  className="ux-tap rounded-full border border-line px-3 text-xs
+                    font-bold text-sub"
                 >
                   {a.postpone}
                 </button>
@@ -245,16 +250,18 @@ export function AppealsPanel({
               </p>
             </div>
             {ap.status === "open" && (
-              <span className="flex gap-2">
+              <span className="ux-review-actions">
                 <button
                   onClick={() => onHandle(ap.id, true)}
-                  className="min-h-11 rounded-full bg-mint px-4 text-xs font-bold text-[var(--text-on-accent)]"
+                  className="ux-tap rounded-full bg-mint px-4 text-xs
+                    font-bold text-[var(--text-on-accent)]"
                 >
                   {a.appealAccept}
                 </button>
                 <button
                   onClick={() => onHandle(ap.id, false)}
-                  className="min-h-11 rounded-full border border-line px-4 text-xs font-bold text-[var(--danger-text)]"
+                  className="ux-tap rounded-full border border-line px-4 text-xs
+                    font-bold text-[var(--danger-text)]"
                 >
                   {a.appealReject}
                 </button>

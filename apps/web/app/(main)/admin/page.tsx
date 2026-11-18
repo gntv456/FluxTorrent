@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import { Icon } from "@/components/icons";
 import { api, ApiError } from "@/lib/api-client";
 import { apiErrorMessage, useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
@@ -430,18 +432,18 @@ export default function AdminPage() {
     >
       {/* 页头 h1 由 AdminShell 的 PageHeader 自持（= 当前工具名），
           此处不再挂 sr-only 标题，避免同一页两个 h1。 */}
+      {/* B4-12：403/无权限专用空态——图标 + needStaff + backHome 链接。
+          防回潮注释：历史实现已在 blocked 时跳过 renderTool()，数据面板与
+          空态必须二选一；后续改动不得把 renderTool() 移到条件之外。 */}
       {blocked ? (
-        <div className="mx-auto mt-10 max-w-md rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] p-8 text-center">
-          <p role="alert" className="text-base font-bold text-ink">
-            {msg ?? dict.common.loadFailed}
-          </p>
-          <p className="mt-2 text-sm text-sub">{a.needAdminHint}</p>
-          <button
-            onClick={() => load()}
-            className="mt-4 min-h-11 rounded-full bg-[var(--accent-surface)] px-5 text-sm font-bold text-[var(--accent-on)]"
-          >
-            {dict.common.retry}
-          </button>
+        <div className="ux-admin-denied" role="alert">
+          <Icon name="shield" size={36} className="ux-admin-denied__icon" />
+          <p className="ux-admin-denied__title">{dict.uxOpt.needStaff}</p>
+          <p className="ux-admin-denied__hint">{msg ?? a.needAdminHint}</p>
+          <Link href="/" className="ux-admin-denied__home">
+            <Icon name="home" size={16} />
+            {dict.uxOpt.backHome}
+          </Link>
         </div>
       ) : (
         <>
