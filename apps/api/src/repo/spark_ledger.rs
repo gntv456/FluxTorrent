@@ -109,3 +109,59 @@ pub async fn count_ledger(
         .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(n)
 }
+
+// ============ 未计收益明细（2026-11-18 自 economy_http 下沉） ============
+
+/// 一行明细：哪一颗、什么原因。
+pub struct ExcludedRow {
+    pub torrent_id: i64,
+    /// 种子展示名（small_descr 优先，空则回落 name）
+    pub name: String,
+    /// port / unreach / stale（与 earning_split 的分类同名）
+    pub cat: String,
+}
+
+impl Repo {
+    /// 未计收益种子明细（封顶 200 条防无界回行；用户不会逐颗看 200+）。
+    pub async fn seed_exclusion_detail(
+        &self,
+        user_id: i64,
+        stale_secs: i64,
+    ) -> Vec<ExcludedRow> {
+        sqlx::query_as::<_, (i64, String, String)>(
+            "SELECT t.id, \
+             COALESCE(NULLIF(t.small_descr, ''), t.name) AS name, \
+             (CASE \
+                WHEN s.last_port IS NULL OR s.last_port <= 0 THEN 'port' \
+                WHEN COALESCE(s.connectable = 0, false) \
+                     AND COALESCE(s.uploaded, 0) <= 0 THEN 'unreach' \
+                WHEN s.last_seen_at IS NULL \
+                  OR s.last_seen_at \
+                     <= now() - ($2::bigint * interval '1 second') \
+                THEN 'stale' \
+                ELSE 'earning' \
+              END) AS cat \
+             FROM snatches s JOIN torrents t ON t.id = s.torrent_id \
+             WHERE s.user_id = $1 AND s.seeding \
+               AND (s.last_port IS NULL OR s.last_port <= 0 \
+                    OR (COALESCE(s.connectable = 0, false) \
+                        AND COALESCE(s.uploaded, 0) <= 0) \
+                    OR s.last_seen_at IS NULL \
+                    OR s.last_seen_at \
+                       <= now() - ($2::bigint * interval '1 second')) \
+             ORDER BY t.id LIMIT 200",
+        )
+        .bind(user_id)
+        .bind(stale_secs)
+        .fetch_all(&self.db)
+        .await
+        .unwrap_or_default()
+        .into_iter()
+        .map(|(torrent_id, name, cat)| ExcludedRow {
+            torrent_id,
+            name,
+            cat,
+        })
+        .collect()
+    }
+}

@@ -98,12 +98,11 @@ async fn my_spark(
         super::seeding_est::earning_split(&state.repo.db, auth.id, stale_secs)
             .await;
     // 明细清单（2026-11-18 工单诉求）：「不可达 34 颗」要能点开看是哪 34 颗。
-    let excluded_list: Vec<serde_json::Value> =
-        super::seeding_est::excluded_detail(
-            &state.repo.db,
-            auth.id,
-            stale_secs,
-        )
+    // SQL 在 repo 层 seed_exclusion（FRAME §2 棘轮），分类 CASE 与
+    // seeding_est::SPLIT_SQL 逐字一致。
+    let excluded_list: Vec<serde_json::Value> = state
+        .repo
+        .seed_exclusion_detail(auth.id, stale_secs)
         .await
         .into_iter()
         .map(|r| {
