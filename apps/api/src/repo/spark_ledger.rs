@@ -134,7 +134,12 @@ impl Repo {
              (CASE \
                 WHEN s.last_port IS NULL OR s.last_port <= 0 THEN 'port' \
                 WHEN COALESCE(s.connectable = 0, false) \
-                     AND COALESCE(s.uploaded, 0) <= 0 THEN 'unreach' \
+                     AND COALESCE(s.uploaded, 0) <= 0 \
+                     AND COALESCE( \
+                         (SELECT value FROM site_settings \
+                          WHERE name = 'connectable_gate'), \
+                         'off' \
+                     ) = 'hard' THEN 'unreach' \
                 WHEN s.last_seen_at IS NULL \
                   OR s.last_seen_at \
                      <= now() - ($2::bigint * interval '1 second') \
@@ -145,7 +150,12 @@ impl Repo {
              WHERE s.user_id = $1 AND s.seeding \
                AND (s.last_port IS NULL OR s.last_port <= 0 \
                     OR (COALESCE(s.connectable = 0, false) \
-                        AND COALESCE(s.uploaded, 0) <= 0) \
+                        AND COALESCE(s.uploaded, 0) <= 0 \
+                        AND COALESCE( \
+                            (SELECT value FROM site_settings \
+                             WHERE name = 'connectable_gate'), \
+                            'off' \
+                        ) = 'hard') \
                     OR s.last_seen_at IS NULL \
                     OR s.last_seen_at \
                        <= now() - ($2::bigint * interval '1 second')) \

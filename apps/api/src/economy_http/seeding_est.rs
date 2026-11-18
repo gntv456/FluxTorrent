@@ -72,12 +72,20 @@ const SPLIT_SQL: &str = r#"
         FROM (
             SELECT CASE
                 WHEN s.last_port IS NULL OR s.last_port <= 0 THEN 'port'
-                -- A 对齐（2026-11-17）：connectable=0 但有真实上传 → 仍计收益
-                -- （worker seeding.rs 已放行 uploaded>0）。只有「不可达且零上传」
-                -- 才是真正的不计收益。旧写法把 connectable=0 一律归 unreach，
-                -- 与计费层脱节 ⇒ 面板报「未计收益」，实际钱已到账。
+                -- A 对齐第二轮（2026-11-18）：worker 的闸是三支或——
+                -- connectable≠0 OR uploaded>0 OR gate<>'hard'。站点默认
+                -- connectable_gate=off ⇒ 第三支恒真 ⇒ DEAD 也在计收益。
+                -- 旧展示口径漏了第三支，把 CGNAT 冷种（uploaded=0 的
+                -- 不可达行）报成「未计收益」——实际钱在到账，用户拿
+                -- 流水一对就认为站点算错。只有站点显式开 hard 时
+                -- DEAD 且零上传才真停发（与 worker seeding.rs 逐字）。
                 WHEN COALESCE(s.connectable = 0, false)
-                     AND COALESCE(s.uploaded, 0) <= 0 THEN 'unreach'
+                     AND COALESCE(s.uploaded, 0) <= 0
+                     AND COALESCE(
+                         (SELECT value FROM site_settings
+                          WHERE name = 'connectable_gate'),
+                         'off'
+                     ) = 'hard' THEN 'unreach'
                 WHEN s.last_seen_at IS NULL
                   OR s.last_seen_at
                      <= now() - ($2::bigint * interval '1 second')
