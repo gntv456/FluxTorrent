@@ -2,6 +2,7 @@ import Link from "next/link";
 /* 首页移动端样式（2026-11-02 重设计）：路由级加载，只服务首页这一条路由
    （同 arcade.css 的纪律：不挂 globals.css 根链让全站 90+ 页都下载）。 */
 import "@/app/styles/home-mobile.css";
+import "@/app/styles/ux-home.css";
 import { api, paged } from "@/lib/api-client";
 import { getDict } from "@/i18n/server";
 import { dateLocale } from "@/i18n/config";
@@ -16,7 +17,7 @@ import {
   PosterRibbon,
   type PosterItem,
 } from "@/components/latest-posters";
-import { Icon } from "@/components/icons";
+import { HomeCategoryGuide } from "@/components/home-category-guide";
 import { Badge } from "@/components/ui/badge";
 import {
   parseHomeLayout,
@@ -52,6 +53,21 @@ export default async function HomePage() {
   const ov = await api.get<HomeMeRaw>("/api/v1/me/overview").catch(() => null);
   const meSummary = homeMeSummary(ov, dateLocale(locale));
   const brandName = profile?.brand || dict.common.brand;
+  // 驾驶舱多读 username / seeding：沿用同一份已取到的 overview，不新增请求
+  const ovx = ov as (HomeMeRaw & {
+    username?: string;
+    seeding?: number;
+    hr?: number;
+  }) | null;
+  const meView =
+    meSummary && ovx
+      ? {
+          ...meSummary,
+          username: ovx.username ?? "",
+          seeding: ovx.seeding ?? 0,
+          hr: ovx.hr,
+        }
+      : meSummary;
 
   // 首页数据（SSR 直出，P1 修复）：一次取回完整 HomeData 传给 HomeSections，
   // 首屏即渲染真内容，不再退化到"加载中…"客户端壳（伤首屏与 SEO）。
@@ -96,12 +112,22 @@ export default async function HomePage() {
         poster: t.poster ?? null,
       }))
     : [];
+  /** 空态主视觉：站点顶级分类（来自已取的档案，无新增请求） */
+  const topCategories = (profile?.categories ?? [])
+    .filter((c) => !c.parent_id)
+    .slice(0, 8)
+    .map((c) => ({ id: c.id, name: c.name }));
 
   return (
     <div className="home-shell--mobile flex flex-col gap-4">
       {/* 置顶促销公告条：管理后台「置顶促销」配置的生效条目（标题可带链接/徽标） */}
       {promos.length > 0 && (
-        <ul className="flex flex-col gap-1 rounded-[var(--r-md)] border border-sun/40 bg-sun/10 px-3 py-2">
+        <ul
+      className={
+        "flex flex-col gap-1 rounded-[var(--r-md)] border " +
+        "border-sun/40 bg-sun/10 px-3 py-2"
+      }
+    >
           {promos.map((p) => (
             <li key={p.id} className="flex items-center gap-2 text-sm">
               {p.badge && <Badge tone="warn">{p.badge}</Badge>}
@@ -156,12 +182,16 @@ export default async function HomePage() {
             : []
         }
       />
-      {/* 首屏视觉带（决定三）：真实封面优先，无数据时主题化生成海报占位 */}
-      <PosterRibbon items={posterItems} />
+      {/* 首屏视觉带：有真实封面铺封面；空数据改分类引导卡，不再摆生成式假海报 */}
+      {posterItems.length > 0 ? (
+        <PosterRibbon items={posterItems} />
+      ) : (
+        <HomeCategoryGuide categories={topCategories} />
+      )}
       <HomeSections
         initialData={homeData}
         initialMods={profile?.modules ?? {}}
-        me={meSummary}
+        me={meView}
         brand={brandName}
         latest={
           latest === null ? null : latest.items.length > 0 ? (
@@ -175,57 +205,30 @@ export default async function HomePage() {
               <LatestPosters items={posterItems} />
             </section>
           ) : (
-            <table className="nexus-table">
-              <thead>
-                <tr>
-                  <th scope="col" className="colhead">
-                    {dict.home.latest}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  {/* G14：空态给行动链接（与资源库空态同口径）。站点有已通过
-                          资源却显示空 → 默认视图只放活种，不能再说「还没有资源」，
-                          否则与同屏「站点数据·种子 N」打架。 */}
-                  <td className="p-6">
-                    <div
-                      className="flex flex-col items-center gap-3 py-4
-                            text-center"
-                    >
-                      <Icon
-                        name="seed"
-                        size={56}
-                        className="text-[var(--sky)]"
-                      />
-                      <p className="text-sub">
-                        {hasApproved
-                          ? dict.torrent.emptyAliveTitle
-                          : dict.home.empty}
-                      </p>
-                      {hasApproved ? (
-                        <a
-                          href="/torrents?alive=0"
-                          className="rounded-full border border-line px-5
-                                py-2 text-sm font-bold text-sky-deep
-                                hover:bg-[var(--surface-card)]"
-                        >
-                          {dict.torrent.emptyAliveAction}
-                        </a>
-                      ) : (
-                        <Link
-                          href="/upload"
-                          className="rounded-full bg-[var(--accent-surface)] px-5 py-2
-                                text-sm font-bold text-[var(--accent-on)]"
-                        >
-                          {dict.home.emptyAction}
-                        </Link>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+            <section className="ux-latest-empty">
+              <h2 className="ux-latest-empty__head">{dict.home.latest}</h2>
+              {/* 主视觉=分类引导（不误导搜索用户）；发布/看活种降为次要动作 */}
+              <HomeCategoryGuide categories={topCategories} compact />
+              <p className="ux-latest-empty__note">
+                {hasApproved
+                  ? dict.torrent.emptyAliveTitle
+                  : dict.home.empty}
+              </p>
+              <div className="ux-latest-empty__actions">
+                {hasApproved ? (
+                  <Link
+                    href="/torrents?alive=0"
+                    className="ux-btn ux-btn--ghost"
+                  >
+                    {dict.torrent.emptyAliveAction}
+                  </Link>
+                ) : (
+                  <Link href="/upload" className="ux-btn ux-btn--ghost">
+                    {dict.home.emptyAction}
+                  </Link>
+                )}
+              </div>
+            </section>
           )
         }
       />

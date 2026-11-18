@@ -1,15 +1,19 @@
 /* 用户主页窄屏样式（路由级加载，不回灌 pages.css） */
 import "@/app/styles/users-mobile.css";
+/* B3 UX 专项样式（路由级：与 admin 布局各自 import） */
+import "@/app/styles/ux-profile-admin.css";
 import { notFound } from "next/navigation";
-import Link from "next/link";
 import { api, ApiError } from "@/lib/api-client";
 import { getDict } from "@/i18n/server";
 import { dateLocale } from "@/i18n/config";
-import { petLineOf, PET_SPECIES_KEY } from "@/lib/pet-lines";
-import type { PetSpecies } from "@/lib/pet-lines";
 import { ProfileHero, StatTiles } from "./_parts/profile-hero";
 import { CenterGrid } from "./_parts/profile-center";
-import { CommentsTab, PostsTab, TorrentListTable } from "./_parts/profile-tabs";
+import {
+  CommentsTab,
+  PostsTab,
+  ProfileTabGroups,
+  TorrentListTable,
+} from "./_parts/profile-tabs";
 import { UserAuditLogPanel } from "@/components/admin-user-audit-log";
 import type { AuditEntryRow } from "@/components/admin-user-detail-shared";
 import {
@@ -71,15 +75,8 @@ export default async function UserProfilePage({
   const t = dict.userProfile2;
   // 词表按键取值（空态文案由 LIST_VIEWS 指定键名）
   const tt = t as unknown as Record<string, string>;
-  // 宠物展示位（只读快照；没养过 / games 模块关闭 → 接口失败，不渲染）
-  const pet = await api
-    .get<{
-      exists: boolean;
-      species?: string;
-      name?: string;
-      level?: number;
-    }>(`/api/v1/games/pet/of?user_id=${encodeURIComponent(uid)}`)
-    .catch(() => null);
+  // B3-4：宠物空挂件（「宠物 Lv.1」占位）已移除。ProfileData 无
+  // modules.pet 开关，按任务约定「没有开关就直接隐藏该空块」——不额外请求。
   const p = data.profile;
   const ratio = p.downloaded > 0 ? (p.uploaded / p.downloaded).toFixed(2) : "∞";
   const realRatio =
@@ -101,43 +98,41 @@ export default async function UserProfilePage({
     const pct = need <= 0 ? 100 : Math.min(100, Math.round((cur / need) * 100));
     return { pct, text: `${fmt(cur)} / ${fmt(need)}` };
   };
-  // 首屏核心指标磁贴（5 个：上传/下载/分享率/魔力/本月做种收益）
-  const statTiles: {
-    key: string;
-    icon: string;
-    mod?: string;
-    label: string;
-    value: string;
-  }[] = [
+  // B3-2：健康度优先——四张带语义状态 chip 的卡；上传总量降为次级信息。
+  // 判定口径全部取本页已有 overview 数据，不新增请求：
+  // 分享率≥1 安全 / H&R 待办=0 安全 / 在做种>0 安全 / 本月有做种收益=魔力安全。
+  const ux = dict.uxOpt;
+  const ratioNum = p.downloaded > 0 ? p.uploaded / p.downloaded : Infinity;
+  const healthTiles = [
     {
-      key: "up",
-      icon: "↑",
-      mod: "up",
-      label: t.uploaded,
-      value: gb(p.uploaded),
+      key: "ratio",
+      icon: "ratio",
+      label: ux.statRatio,
+      value: ratio,
+      status: ratioNum >= 1 ? "safe" : "watch",
     },
     {
-      key: "down",
-      icon: "↓",
-      mod: "down",
-      label: t.downloaded,
-      value: gb(p.downloaded),
+      key: "hr",
+      icon: "warning",
+      label: ux.statHr,
+      value: `${data.hr_unresolved} / ${data.hr_limit}`,
+      status: data.hr_unresolved === 0 ? "safe" : "watch",
     },
-    { key: "ratio", icon: "≈", label: t.ratio, value: ratio },
     {
-      key: "spark",
-      icon: "✦",
-      mod: "spark",
-      label: t.sparkField,
+      key: "seeding",
+      icon: "seed",
+      label: ux.statSeeding,
+      value: String(p.seeding),
+      status: p.seeding > 0 ? "safe" : "watch",
+    },
+    {
+      key: "magic",
+      icon: "spark",
+      label: ux.statMagic,
       value: Number(data.spark_balance).toLocaleString(dateLocale(locale)),
+      status: data.month_seed_earn > 0 ? "safe" : "watch",
     },
-    {
-      key: "earn",
-      icon: "★",
-      label: t.seedEarnField,
-      value: Number(data.month_seed_earn).toLocaleString(dateLocale(locale)),
-    },
-  ];
+  ] as const;
   // 标签页文案 + 计数徽标
   const tabMeta: { key: Tab; label: string; count?: number }[] = [
     { key: "center", label: t.tabCenter },
@@ -165,60 +160,30 @@ export default async function UserProfilePage({
         t={t as unknown as Record<string, string>}
       />
 
-      {/* 核心指标磁贴（首屏只给 5 个关键数，明细下放到卡片） */}
-      <StatTiles statTiles={statTiles} />
+      {/* B3-2：健康度四卡 + 上传总量次级信息 */}
+      <StatTiles
+        tiles={healthTiles.map((tile) => ({
+          ...tile,
+          statusLabel: tile.status === "safe" ? ux.stateSafe : ux.stateWatch,
+        }))}
+        heading={ux.profileHealth}
+        secondary={`${t.uploaded} · ${gb(p.uploaded)}`}
+      />
 
-      {/* 宠物展示位：养成成果社交化（种类只改外观，零数值差） */}
-      {pet?.exists && (
-        <section className="up-pet">
-          <span className="up-pet-face" aria-hidden>
-            {
-              petLineOf(pet.species ?? "slime")[
-                Math.min((pet.level ?? 1) - 1, 9)
-              ]
-            }
-          </span>
-          <div className="up-pet-meta">
-            <b>{pet.name || dict.games.cards.pet.title}</b>
-            <span className="text-xs text-sub">
-              {`Lv.${pet.level ?? 1} · ${
-                (dict.games.pet as Record<string, string>)[
-                  PET_SPECIES_KEY[(pet.species ?? "slime") as PetSpecies] ??
-                    "spSlime"
-                ]
-              }`}
-            </span>
-          </div>
-          <Link
-            href="/games/pet"
-            className="text-xs font-bold text-[var(--sky-deep)]"
-          >
-            {dict.games.cards.pet.title} →
-          </Link>
-        </section>
-      )}
 
-      {/* 标签页导航（憨憨式：链接切换 ?tab=，SSR 渲染对应内容，无客户端状态） */}
-      <div className="up-tabs flex flex-wrap items-center gap-1.5">
-        {tabMeta.map((m) => (
-          <Link
-            key={m.key}
-            href={
-              m.key === "center"
-                ? `/users/${uid}`
-                : `/users/${uid}?tab=${m.key}`
-            }
-            className={`rounded-full border px-3 py-1 text-xs font-bold transition-colors ${
-              active === m.key
-                ? "border-sky bg-sky text-[var(--text-on-accent)]"
-                : "border-line bg-[var(--surface-card)] text-sub hover:text-ink"
-            }`}
-          >
-            {/* 计数徽标拼进单字符串（水合安全） */}
-            {`${m.label}${typeof m.count === "number" ? ` (${m.count})` : ""}`}
-          </Link>
-        ))}
-      </div>
+      {/* B3-6：9 个页签按四组收纳；全部链接仍可达，默认展示中心（概览） */}
+      <ProfileTabGroups
+        tabMeta={tabMeta}
+        active={active}
+        uid={uid}
+        groupLabels={[
+          dict.usercp.tabs.overview,
+          t.torrentHistory,
+          t.tabPosts,
+          ux.profileProgress,
+        ]}
+        ariaLabel={t.title}
+      />
 
       {active === "center" && (
         <CenterGrid

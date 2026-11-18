@@ -9,6 +9,7 @@ import {
 import { Icon } from "@/components/icons";
 import { dateLocale, fmt } from "@/i18n/config";
 import { Badge } from "@/components/ui/badge";
+import { EmptyStateMetric } from "@/components/ux-metric-beacon";
 
 /**
  * 种子行卡片（设计稿 B3 桌面 .tor-card / C2 移动 .m-tor 的统一组件）。
@@ -21,7 +22,12 @@ export async function TorrentRow({ t }: { t: TorrentListItem }) {
   return (
     <Link
       href={`/torrent/${t.id}`}
-      className="flex items-center gap-3 rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] p-3 shadow-[var(--shadow-card)] transition-transform hover:-translate-y-0.5 active:scale-[0.99]"
+      className={
+        "flex items-center gap-3 rounded-[var(--r-md)] border " +
+        "border-line bg-[var(--surface-card)] p-3 " +
+        "shadow-[var(--shadow-card)] transition-transform " +
+        "hover:-translate-y-0.5 active:scale-[0.99]"
+      }
     >
       {/* 左：分类色块（34px 圆角 9px） */}
       <span
@@ -82,66 +88,71 @@ export async function TorrentRow({ t }: { t: TorrentListItem }) {
   );
 }
 
-/** 空态（设计稿：吉祥物 80px + 蜡笔字标题 + 行动按钮）。
- *  aliveFiltered：当前列表按「仅活种」口径过滤（默认视图）——空了不等于站里没种子，
- *  可能只是全部断种；文案改写并给出切「全部」的入口，否则与侧栏「发布种子 N」矛盾
- *  （评审 P0-2：同屏「共 0 个种子」+「发布种子 1」的口径打架）。 */
+/** 空态四态（A4）：allEmpty / filter / search / dead。
+ *  context 缺省时按旧 props 推断，兼容既有调用：search → search、
+ *  aliveFiltered（仅活种视图）→ dead、其余 → allEmpty。
+ *  四态主 CTA 统一走 .ux-empty__cta（brand 令牌），不使用危险色。 */
+export type EmptyTorrentsContext = "allEmpty" | "filter" | "search" | "dead";
+
 export async function EmptyTorrents({
   aliveFiltered = false,
   search,
   clearHref = "/torrents",
+  context,
 }: {
   aliveFiltered?: boolean;
   /** P1-8：搜索无结果要独立文案，不能复用「站里没种子」的空态。 */
   search?: string;
   clearHref?: string;
+  /** A4：页面按 URL 推断后显式传入；不传则按旧口径推断。 */
+  context?: EmptyTorrentsContext;
 }) {
   const { dict } = await getDict();
-  if (search) {
-    return (
-      <div className="torrents-empty flex flex-col items-center gap-3 py-16 text-center">
-        <Icon name="search" size={64} className="text-[var(--text-faint)]" />
-        <h2 className="font-display text-xl text-ink">
-          {fmt(dict.torrent.emptySearchTitle, { q: search })}
-        </h2>
-        <p className="max-w-md text-sm text-sub">
-          {dict.torrent.emptySearchHint}
-        </p>
-        <a
-          href={clearHref}
-          className="rounded-full border border-line px-5 py-2 text-sm font-bold text-sky-deep hover:bg-[var(--surface-card)]"
-        >
-          {dict.torrents.clearSearch}
-        </a>
-      </div>
-    );
-  }
+  const ctx: EmptyTorrentsContext =
+    context ?? (search ? "search" : aliveFiltered ? "dead" : "allEmpty");
+
+  const title =
+    ctx === "filter"
+      ? dict.uxOpt.emptyFilterTitle
+      : ctx === "search"
+        ? fmt(dict.torrent.emptySearchTitle, { q: search ?? "" })
+        : ctx === "dead"
+          ? dict.torrent.emptyAliveTitle
+          : dict.torrent.emptyTitle;
+  // 只有 filter / search 有对应 i18n 描述键；其余两态不写死文案（四语纪律）
+  const desc =
+    ctx === "filter"
+      ? dict.uxOpt.emptyFilterDesc
+      : ctx === "search"
+        ? dict.torrent.emptySearchHint
+        : null;
+  const cta =
+    ctx === "allEmpty"
+      ? { text: dict.common.publish, href: "/upload" }
+      : ctx === "dead"
+        ? { text: dict.torrent.emptyAliveAction, href: "/torrents?alive=0" }
+        : { text: dict.uxOpt.clearFilters, href: clearHref };
+
   return (
     <div
-      className="torrents-empty flex flex-col items-center gap-3 py-16
-        text-center"
+      className="torrents-empty ux-empty flex flex-col items-center gap-3
+        py-16 text-center"
     >
-      <Icon name="seed" size={72} className="text-[var(--sky)]" />
-      <h2 className="font-display text-xl text-ink">
-        {aliveFiltered
-          ? dict.torrent.emptyAliveTitle
-          : dict.torrent.emptyTitle}
-      </h2>
-      {aliveFiltered ? (
-        <a
-          href="/torrents?alive=0"
-          className="rounded-full border border-line px-5 py-2 text-sm font-bold text-sky-deep hover:bg-[var(--surface-card)]"
-        >
-          {dict.torrent.emptyAliveAction}
-        </a>
-      ) : (
-        <Link
-          href="/upload"
-          className="rounded-full bg-[var(--accent-surface)] px-5 py-2 text-sm font-bold text-[var(--accent-on)]"
-        >
-          {dict.common.publish}
-        </Link>
-      )}
+      <EmptyStateMetric context={ctx} />
+      <Icon
+        name={ctx === "search" ? "search" : "seed"}
+        size={ctx === "search" ? 64 : 72}
+        className={
+          ctx === "search"
+            ? "text-[var(--text-faint)]"
+            : "text-[var(--sky)]"
+        }
+      />
+      <h2 className="font-display text-xl text-ink">{title}</h2>
+      {desc && <p className="ux-empty__desc">{desc}</p>}
+      <a href={cta.href} className="ux-empty__cta">
+        {cta.text}
+      </a>
     </div>
   );
 }
