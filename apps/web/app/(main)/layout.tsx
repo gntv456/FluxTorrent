@@ -36,6 +36,7 @@ export default async function MainLayout({
   const shjNav = buildNav({
     nav: dict.nav,
     tabbar: dict.tabbar,
+    uxOpt: dict.uxOpt,
     currency,
     modules: (k) => (profile?.modules?.[k] ?? true) !== false,
     dims: (k) => dims.includes(k),

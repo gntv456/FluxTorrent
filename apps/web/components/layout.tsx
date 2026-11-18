@@ -5,6 +5,7 @@ import { getSiteProfile, getSiteDims } from "@/lib/site-profile";
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import { ExamCapsule } from "@/components/exam-capsule";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { DensityToggle } from "@/components/density-toggle";
 import { UserMenu } from "@/components/user-menu";
 import { MainMenu } from "@/components/main-menu";
 import { CustomMenu } from "@/components/custom-menu";
@@ -53,6 +54,7 @@ export async function Header() {
   const { primary, groups } = buildNav({
     nav: dict.nav,
     tabbar: dict.tabbar,
+    uxOpt: dict.uxOpt,
     currency,
     modules: mod,
     dims: (k) => dims.includes(k),
@@ -128,8 +130,9 @@ export async function Header() {
             </div>
             {/* 主题切换 <md 收进汉堡抽屉：280px 折叠屏外屏态右工具区
                 （汉堡+主题+头像）会挤出横向滚动 */}
-            <div className="hidden md:block">
+            <div className="hidden md:flex items-center gap-2">
               <ThemeToggle label={dict.common.themeToggle} />
+              <DensityToggle />
             </div>
             {/* 语言切换器（0209 P2-17）：site_settings.locale_switcher_enabled=no 隐藏（单语站）。
                 M2：<md 隐藏——右工具区在 375px 超宽 ~39px，

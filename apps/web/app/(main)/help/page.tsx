@@ -5,6 +5,7 @@ import { api } from "@/lib/api-client";
 import { getDict } from "@/i18n/server";
 import { fmt } from "@/i18n/config";
 import { PANEL_BRAND } from "@/lib/ui-classes";
+import "@/app/styles/ux-product.css";
 
 /** 帮助中心目录（0274）：读 GET /api/v1/help-docs（doc_group 非空的可见页）。
  *  单篇正文复用 /p/{slug}——正文渲染、消毒、深色适配全走那条既有链路，
@@ -35,6 +36,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function HelpPage() {
   const { dict } = await getDict();
   const docs = await loadDocs();
+  const u = dict.uxOpt;
 
   // 按 group 聚合，组内保持后端给定的 doc_sort 顺序
   const groups = new Map<string, HelpDoc[]>();
@@ -61,6 +63,37 @@ export default async function HelpPage() {
           </span>
         </div>
       </div>
+
+      {/* PM-1：新手生存速览——不依赖 DB 导入，空站也有可执行的三红线解释。
+          锚点 #survival 供首页驾驶舱与新手卡直达。 */}
+      <section id="survival" className="ux-guide">
+        <h2 className="ux-guide__title">{u.guideSurvivalTitle}</h2>
+        <div className="ux-guide-grid">
+          {[
+            { k: "ratio", t: u.guideRatioTitle, d: u.guideRatioDesc,
+              href: "/rules", l: u.guideRuleLink },
+            { k: "hr", t: u.guideHrTitle, d: u.guideHrDesc,
+              href: "/myhr", l: u.guideHrLink },
+            { k: "exam", t: u.guideExamTitle, d: u.guideExamDesc,
+              href: "/classes", l: u.guideClassLink },
+            { k: "first", t: u.guideFirstTitle, d: u.guideFirstDesc,
+              href: "/clients", l: u.guideClientLink },
+          ].map((c) => (
+            <article key={c.k} className="ux-guide-card">
+              <h3>{c.t}</h3>
+              <p>{c.d}</p>
+              <Link
+                href={c.href}
+                className="ux-guide-link"
+                data-ux-event="guide_open"
+                data-ux-label="survival"
+              >
+                {c.l} <span aria-hidden="true">›</span>
+              </Link>
+            </article>
+          ))}
+        </div>
+      </section>
 
       {docs.length === 0 ? (
         <div className={PANEL_BRAND}>

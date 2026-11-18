@@ -1,11 +1,13 @@
 /** 用户公开主页·个人中心卡片网格（自 page.tsx 拆出）：CenterGrid 账号/
  *  进度/传输做种/连接/资料/勋章/简介/发布。无 hooks。 */
 import Link from "next/link";
+import { Icon } from "@/components/icons";
 import { MedalIcon } from "@/components/medal-icon";
 import type { Locale } from "@/i18n/config";
 import { dateLocale } from "@/i18n/config";
 import { Card, Row } from "./profile-card";
 import { MoreInfoCard } from "./profile-moreinfo";
+import { RecentUploadsCard } from "./profile-recent-uploads";
 import type { ProfileData } from "./profile-types";
 
 export function CenterGrid({
@@ -231,7 +233,14 @@ export function CenterGrid({
             ))}
           </div>
         ) : (
-          <p className="up-note">{t.noMedals}</p>
+          <div className="ux-medal-empty">
+            <p className="up-note">{t.noMedals}</p>
+            <Link href="/medal-wall" className="ux-medal-cta">
+              <Icon name="medal" size={16} />
+              <span>{t.wornMedals}</span>
+              <Icon name="chevronRight" size={14} />
+            </Link>
+          </div>
         )}
       </Card>
 
@@ -249,45 +258,8 @@ export function CenterGrid({
         </Card>
       )}
 
-      {/* —— 近期发布（个人中心保留最近 10 条入口） —— */}
-      <Card title={t.recentUploads} icon="☰" full>
-        <table className="nexus-table up-recent">
-          <thead>
-            <tr>
-              <th scope="col" className="colhead">
-                {t.recentUploads}
-              </th>
-              <th scope="col" className="colhead w-28 text-right">
-                {t.colSize}
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.recent_uploads.map((u) => (
-              <tr key={u.id}>
-                <td>
-                  <Link href={`/torrent/${u.id}`} className="font-bold">
-                    {u.name}
-                  </Link>
-                  {u.small_descr && (
-                    <p className="text-xs text-sub">{u.small_descr}</p>
-                  )}
-                </td>
-                <td className="num shrink-0 text-right text-sub">
-                  {gb(u.size)}
-                </td>
-              </tr>
-            ))}
-            {data.recent_uploads.length === 0 && (
-              <tr>
-                <td colSpan={2} className="py-6 text-center text-sub">
-                  {t.noUploads}
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </Card>
+      {/* B3-7：近期发布（补更新时间列，见 _parts/profile-recent-uploads.tsx） */}
+      <RecentUploadsCard data={data} t={t} gb={gb} locale={locale} />
     </div>
   );
 }

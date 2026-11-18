@@ -8,6 +8,7 @@
 import { useI18n } from "@/i18n/client";
 import { dateLocale, fmt } from "@/i18n/config";
 import { EmptyState } from "@/components/ui/empty-state";
+import { AdminColdstart } from "./admin-coldstart";
 const CARD =
   "rounded-[var(--r-md)] border border-line bg-[var(--surface-card)]";
 const DOT = "inline-block h-2 w-2 rounded-sm";
@@ -77,6 +78,7 @@ export function AdminOverviewPanel({
     : [];
   return (
     <section className="flex flex-col gap-4">
+      <AdminColdstart ov={ov} stats={stats} onOpen={onOpen} />
       <div>
         <h2 className="mb-2 text-sm font-bold text-[var(--text-brand)]">
           {a.queueTitle}

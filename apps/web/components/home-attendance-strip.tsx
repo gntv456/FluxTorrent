@@ -12,12 +12,17 @@ export function AttendanceStrip({
   checkin,
   checkinBusy,
   onOpenCalendar,
+  variant = "mobile",
+  calendarLabel,
 }: {
   home: HomeData;
   t: Home2T;
   checkin: () => Promise<void>;
   checkinBusy: boolean;
   onOpenCalendar: () => void;
+  /** desktop = 首页排版板块里的紧凑带（桌面显示）；mobile = 首屏带（md:hidden） */
+  variant?: "mobile" | "desktop";
+  calendarLabel?: string;
 }) {
   const att = attOf(home);
   if (!att) return null;
@@ -33,7 +38,13 @@ export function AttendanceStrip({
   // 已签是 is-done 态不标——按钮上的数字必须是「点了能拿到」的
   const firstReward = att.checked_today ? null : (att.first_reward ?? null);
   return (
-    <div className="mhome-strip md:hidden">
+    <div
+      className={
+        variant === "desktop"
+          ? "mhome-strip ux-strip--desktop"
+          : "mhome-strip md:hidden"
+      }
+    >
       <span className="mhome-strip__ico" aria-hidden="true">
         <Icon name="clock" size={19} />
       </span>
@@ -81,6 +92,15 @@ export function AttendanceStrip({
           ) : null}
         </button>
       )}
+      {variant === "desktop" && calendarLabel ? (
+        <button
+          type="button"
+          className="ux-strip__cal"
+          onClick={onOpenCalendar}
+        >
+          {calendarLabel}
+        </button>
+      ) : null}
     </div>
   );
 }

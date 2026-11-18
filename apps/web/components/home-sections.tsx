@@ -9,34 +9,23 @@ import { HomeNewsPanel } from "@/components/home-news-panel";
 import { ShoutBox } from "@/components/shout-box";
 import { FunBox } from "@/components/fun-box";
 import { BottomSheet } from "@/components/bottom-sheet";
-import {
-  AttendanceCard,
-  AttendanceSheet,
-  AttendanceStrip,
-} from "@/components/home-attendance";
+import { AttendanceSheet, AttendanceStrip } from "@/components/home-attendance";
+import { HomeCockpit, type CockpitMe } from "@/components/home-cockpit";
+import { OnboardingCard } from "@/components/onboarding-card";
 import { SiteDataCard } from "@/components/home-site-data";
 import { ResourceStatsPanel } from "@/components/home-resource-stats";
 import { LuckyDrawPanel, LinksPanel } from "@/components/home-panels";
-import {
-  MobileHomeHeader,
-  type HomeMeView,
-} from "@/components/mobile-home-header";
+import { MobileHomeHeader } from "@/components/mobile-home-header";
 import { MobileNewsTop } from "@/components/mobile-home-news-top";
 import { MobileQuickGrid } from "@/components/mobile-home-quick-grid";
 import { effectiveSpan, parseHomeLayout } from "@/components/home-layout";
 import type { HomeData } from "@/components/home-data";
 
-/** 首页板块（复刻参考站 index.php）：
- *  社区新鲜事（头条+列表+公告弹窗）· 签到得魔力日历 · 新增资源统计（30 天堆叠柱状图）
- *  · 站点数据三列 · 幸运大转盘流水 · 免责条款 + 友情链接。
- *  拆出（300 门禁）：排版解析 home-layout.tsx、数据契约 home-data.ts、
- *  签到日历 home-attendance.tsx、站点数据 home-site-data.tsx、
- *  资源统计 home-resource-stats.tsx、补签弹层 home-resub-button.tsx、
- *  转盘/友链 home-panels.tsx、公告面板 home-news-panel.tsx。
- *
- *  2026-11-02 手机端重设计：单一 DOM + CSS order 重排（不用 SSR 分支，避免
- *  水合不一致）。桌面那几块（公告面板/签到卡/聊天室）在窄屏由 CSS 隐去，
- *  换成首屏的仪表盘 / 公告头条卡 / 签到条 / 快捷宫格；聊天与日历走抽屉。 */
+/** 首页板块（复刻参考站 index.php）：新鲜事 · 签到 · 资源统计 · 站点数据 · 转盘 · 友链。
+ *  拆出（300 门禁）：排版解析 home-layout.tsx、数据契约 home-data.ts、签到三件套
+ *  home-attendance*.tsx、站点数据、资源统计、转盘/友链、公告面板。
+ *  2026-11-18：桌面签到改紧凑带 + 日历抽屉；新增驾驶舱与新手引导（均在排版前）。
+ *  手机端单一 DOM + CSS order 重排；桌面板块窄屏由 CSS 隐去，水合不分支。 */
 
 export function HomeSections({
   latest,
@@ -45,28 +34,21 @@ export function HomeSections({
   me = null,
   brand = "",
 }: {
-  /** 海报墙节点：数据由首页 RSC 取（服务端渲染不退化），
-   *  但**位置与占宽由排版清单决定**——四审 L6 前它没有渲染分支，
-   *  站长的排序/span 对它完全无效，只在页面末尾硬渲染。 */
+  /** 海报墙节点：RSC 取好数据，位置/占宽由排版清单决定 */
   latest?: React.ReactNode;
-  /** 首页数据（SSR 直出）：由首页 RSC 预取并传入，首屏即渲染真内容，
-   *  不再退化到"加载中…"壳（伤首屏与 SEO）。客户端 useEffect 仍会
-   *  重新拉一次以保证签到/公告等交互后的新鲜度。 */
+  /** 首页数据（SSR 直出）：RSC 预取避免"加载中"壳；客户端仍刷新交互态 */
   initialData?: HomeData | null;
   /** 模块开关（SSR 直出）：同样由 RSC 预取，避免首屏板块可见性抖动 */
   initialMods?: Record<string, boolean>;
-  /** 手机端仪表盘的个人数据（/me/overview 摘要，由 RSC 注入） */
-  me?: HomeMeView | null;
+  /** 个人数据（/me/overview 摘要，由 RSC 注入；驾驶舱多读 username/seeding/hr） */
+  me?: CockpitMe | null;
   /** 品牌名（问候语用） */
   brand?: string;
 } = {}) {
   const { dict, currency } = useI18n();
   const t = dict.home2;
   const compact = useIsCompact();
-  // 模块开关（二审 G2-1 修复）：attendance/shoutbox/funbox/lucky_draw 板块
-  // 按对应模块过滤——games/attendance/shoutbox 关闭的站首页不再出现对应板块。
-  // 缺键视为开（与 requireModule/Header mod() 同口径）。
-  // SSR：初始值由 RSC 传入；无初值（客户端独用时）再回落到 fetch。
+  // 模块开关：按 games/attendance/shoutbox 过滤，缺键视为开；SSR 初值由 RSC 传入。
   const [mods, setMods] = useState<Record<string, boolean>>(initialMods);
   useEffect(() => {
     if (Object.keys(initialMods).length > 0) return;
@@ -87,6 +69,7 @@ export function HomeSections({
   const [checkinMsg, setCheckinMsg] = useState<string | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
   const [calOpen, setCalOpen] = useState(false);
+  const [onboardingSignal, setOnboardingSignal] = useState(0);
 
   const load = () => {
     api
@@ -111,9 +94,7 @@ export function HomeSections({
           .replace("{magic}", currency),
       );
       // 余额同步不在这里做：所有写口过 api-client 的统一广播（见 lib/spark-event）
-      // 乐观更新（2026-11-10）：签到行落库即成功，本地点亮日历与徽标——
-      // 弱网（CF↔源站间歇 stall）下 load() 挂起会让按钮回弹成「未签到」、
-      // 日历当日格不亮，用户以为签到失败重蹈今日已签仍显示未签的误报。
+      // 乐观更新：弱网下 load() 挂起不能让按钮回弹成「未签到」误报。
       const today = new Date(Date.now() + 8 * 3600 * 1000)
         .toISOString()
         .slice(0, 10);
@@ -173,16 +154,19 @@ export function HomeSections({
           />
         );
       case "attendance":
+        // 桌面与手机共用同一条紧凑签到带；整月日历统一收进 AttendanceSheet
         return (
           <div id="attendance" key="attendance-anchor">
-            <AttendanceCard
+            <AttendanceStrip
               home={home}
               t={t}
-              dict={dict}
               checkin={checkin}
               checkinBusy={checkinBusy}
-              checkinMsg={checkinMsg}
+              onOpenCalendar={() => setCalOpen(true)}
+              variant="desktop"
+              calendarLabel={dict.uxOpt.viewCalendar}
             />
+            {checkinMsg ? <p className="attendance-msg">{checkinMsg}</p> : null}
           </div>
         );
       case "shoutbox":
@@ -249,6 +233,21 @@ export function HomeSections({
         onOpenCalendar={() => setCalOpen(true)}
       />
       <MobileQuickGrid onChat={() => setChatOpen(true)} />
+
+      {/* ==== 个人驾驶舱 + 新手引导：恒在排版板块之前 ==== */}
+      <HomeCockpit
+        me={me}
+        home={home}
+        threshold={home.ratio_watch_threshold}
+        currency={currency}
+        brand={brand}
+        checkin={checkin}
+        checkinBusy={checkinBusy}
+        checkinMsg={checkinMsg}
+        onOpenCalendar={() => setCalOpen(true)}
+        onReopenOnboarding={() => setOnboardingSignal((n) => n + 1)}
+      />
+      <OnboardingCard me={me} openSignal={onboardingSignal} />
 
       {/* ==== 排版驱动（0089）：按站长配置顺序/宽度渲染；空配置 = 默认布局 ==== */}
       {layout.map((item) => {

@@ -122,7 +122,11 @@ export function TorrentsSearchBox(props: TorrentsSearchBoxProps) {
             <option value="2">{t2.modeExact}</option>
           </select>
         </label>
-        <button type="submit" className="brand-button tsb-submit">
+        <button
+          type="submit"
+          className="brand-button tsb-submit"
+          data-ux-event="search_submit"
+        >
           {t2.searchBtn}
         </button>
         {/* 高级搜索触发器：紧跟「给我搜」之后的小齿轮按钮（同类站口径），

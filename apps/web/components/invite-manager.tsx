@@ -13,6 +13,7 @@ import { toast } from "@/components/ui/toast";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Pager } from "@/components/ui/pager";
 import { ErrorPanel } from "@/components/ui/error-panel";
+import { InviteImpact } from "@/components/invite-impact";
 
 export interface InviteItem {
   id: number;
@@ -208,6 +209,8 @@ export function InviteManager() {
         onRedeem={issueAct.redeem}
         onFilter={(f) => setFilter((cur) => (cur === f ? null : f))}
       />
+
+      <InviteImpact status={status} />
 
       {/* 邀请码列表（空态与加载态由 InviteList 内部处理，面板外壳始终在） */}
       {invites === null ? null : (

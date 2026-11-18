@@ -104,7 +104,9 @@ export function InviteQuotaPanel({
           }
           className={BTN_MD_SKY}
         >
-          {issueLabelWith(t.issue, levelOk, quotaLeft)}
+          <span data-ux-event="invite_issue">
+            {issueLabelWith(t.issue, levelOk, quotaLeft)}
+          </span>
         </button>
         {status?.redeem_price != null && (
           <button

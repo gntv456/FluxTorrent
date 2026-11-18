@@ -12,6 +12,8 @@ import { SkipLink } from "@/components/ui/skip-link";
 import { SparkBridge } from "@/components/spark-bridge";
 import { readDictChunk } from "@/lib/dict-chunks";
 import { ThemeNoFlash } from "@/lib/theme-no-flash";
+import { DensityNoFlash } from "@/lib/density-no-flash";
+import { UxMetricsProbe } from "@/components/ux-metrics-probe";
 
 /** 移动端方案 M1：viewport-fit=cover 让 env(safe-area-inset-*) 生效——
  *  layout.tsx 底 Tab/操作条的 safe-area 内边距此前在 iOS 全面屏完全不工作。 */
@@ -212,6 +214,7 @@ export default async function RootLayout({
         {/* 旧内核 polyfill 必须最先执行（先于 next 的路由器水合；见组件注释） */}
         <LegacyRuntimePolyfill />
         <ThemeNoFlash />
+        <DensityNoFlash />
         <Suspense fallback={null}>
           <LocaleProvider locale={locale} currency={currency} terms={terms}>
             {/* 设计系统 W-01/W-04：SkipLink 是 Tab 第一站；ToastProvider
@@ -220,6 +223,7 @@ export default async function RootLayout({
             {/* 余额广播的 SSR 侧消费者（写魔力后广播一次，重取直出的数字） */}
             <SparkBridge />
             <ToastProvider>
+              <UxMetricsProbe />
               <PwaInstallBar />
               {children}
               <ServiceWorkerRegister />

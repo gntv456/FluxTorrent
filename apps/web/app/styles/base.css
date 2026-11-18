@@ -604,6 +604,37 @@
   --motion-normal: 200ms;
   --motion-slow: 320ms;
   --motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* ===== UX 优化 2026-11-18：密度 / 层级 / 成对语义令牌 =====
+     密度令牌只收缩留白与行距；--tap-min 恒定 44px，触控底线不随密度降级。 */
+  --space-row: 16px;
+  --card-pad: 20px;
+  --section-gap: 24px;
+  --font-min: 12px;
+  /* 表面层级：0=页面 1=卡片 2=悬浮 3=弹层（暗色 elevation 基座，
+     亮暗各自继承既有 surface 令牌，主题无需重复声明）。 */
+  --surface-0: var(--surface-page);
+  --surface-1: var(--surface-card);
+  --surface-2: var(--surface-raised);
+  --surface-3: var(--surface-cloud);
+  --border-0: var(--border-soft);
+  --border-1: var(--border-deep);
+  /* 实心主操作三态：与 --accent-surface / --accent-on 成对消费。 */
+  --accent-surface-hover: var(--sky-deep);
+  --accent-surface-active: var(--sky-text);
+  /* 状态 soft 底上的文字色：禁止 soft 底直接配白字。 */
+  --success-on-soft: var(--success);
+  --warning-on-soft: var(--warning);
+  --danger-on-soft: var(--danger);
+  --info-on-soft: var(--info);
+}
+
+/* 紧凑密度：只收缩留白与行距，触控目标与最小字号守住底线。 */
+html[data-density="compact"] {
+  --space-row: 8px;
+  --card-pad: 12px;
+  --section-gap: 12px;
+  --font-min: 11px;
 }
 
 html {

@@ -1,6 +1,7 @@
 import { getDict } from "@/i18n/server";
 import { PageHeader } from "@/components/ui/page-header";
 import { InviteManager } from "@/components/invite-manager";
+import "@/app/styles/ux-product.css";
 import { requireModule } from "@/components/module-gate";
 import { getSiteProfile } from "@/lib/site-profile";
 

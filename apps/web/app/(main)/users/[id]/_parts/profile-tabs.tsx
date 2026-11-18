@@ -8,7 +8,7 @@
 import Link from "next/link";
 import type { Locale } from "@/i18n/config";
 import { dateLocale } from "@/i18n/config";
-import type { ProfileData, TorrentHistRow } from "./profile-types";
+import type { ProfileData, TorrentHistRow, Tab } from "./profile-types";
 
 /** 种子列表 tab 渲染（每 tab 复用同一张表：名称/大小 + S/L；uploads 标注仅公开）
  *  M6.2：表格本体加 .profilet——<768 时 thead 隐藏、行转块状行卡片
@@ -211,5 +211,77 @@ export function CommentsTab({
         </tbody>
       </table>
     </section>
+  );
+}
+
+/** B3-6：四组收纳页签导航（概览 / 我的资源 / 社区 / 成长）。
+ *  分组标题由调用方从 i18n 注入（不写中文字面量）；原页签全部保留可达，
+ *  默认中心页即「概览」组。SSR 链接切换 ?tab=，无客户端状态。 */
+export interface TabMeta {
+  key: Tab;
+  label: string;
+  count?: number;
+}
+
+/** 页签 → 分组序号：0 概览 / 1 我的资源 / 2 社区 / 3 成长 */
+const TAB_GROUP: Record<Tab, number> = {
+  center: 0,
+  uploads: 1,
+  seeding: 1,
+  leeching: 1,
+  completed: 1,
+  incomplete: 1,
+  preserved: 1,
+  posts: 2,
+  comments: 2,
+  changes: 3,
+};
+
+export function ProfileTabGroups({
+  tabMeta,
+  active,
+  uid,
+  groupLabels,
+  ariaLabel,
+}: {
+  tabMeta: TabMeta[];
+  active: Tab;
+  uid: number;
+  groupLabels: string[];
+  ariaLabel: string;
+}) {
+  return (
+    <nav className="ux-tabgroups" aria-label={ariaLabel}>
+      {groupLabels.map((label, gi) => {
+        const items = tabMeta.filter((m) => TAB_GROUP[m.key] === gi);
+        if (items.length === 0) return null;
+        return (
+          <section key={label} className="ux-tabgroup">
+            <h2 className="ux-tabgroup__label">{label}</h2>
+            <div className="ux-tabgroup__links">
+              {items.map((m) => (
+                <Link
+                  key={m.key}
+                  href={
+                    m.key === "center"
+                      ? `/users/${uid}`
+                      : `/users/${uid}?tab=${m.key}`
+                  }
+                  className={`ux-tablink${
+                    active === m.key ? " is-active" : ""
+                  }`}
+                  aria-current={active === m.key ? "page" : undefined}
+                >
+                  {/* 计数拼进单字符串，保持 SSR 与水合文本节点一致 */}
+                  {`${m.label}${
+                    typeof m.count === "number" ? ` (${m.count})` : ""
+                  }`}
+                </Link>
+              ))}
+            </div>
+          </section>
+        );
+      })}
+    </nav>
   );
 }
