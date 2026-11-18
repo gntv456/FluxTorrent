@@ -69,7 +69,13 @@ GET /api/v1/compat/nexusphp/torrents.json?page=1&pagesize=50&keyword=高等数�
       info_hash, pieces_hash, free, official, sticky } ] }
 ```
 
-- `pagesize` ≤50；`has_more=false` 即最后一页（无精确总数——主动牺牲 count 换性能）。
+- `pagesize` ≤50（`page` 1-400）；`has_more=false` 即最后一页（无精确总数——
+  主动牺牲 count 换性能，别拿 `total_estimate` 算总页数）。全量同步的姿势：
+  循环 page=1,2,3… 直到 `has_more=false`，配 `sort=created_desc` 保证遍历稳定。
+- **翻页口径速查**：兼容层 `page/pagesize`（深翻页可用）；Torznab
+  `limit`(1-100)/`offset`（**offset+limit ≤ 1000**，更深按 Torznab 惯例拒绝，
+  要拉深换兼容层）；增量同步用 `/open/announces` 游标（`since_id`→
+  `next_since_id`，只拉新种不用翻页）。
 - **存活口径（0267 变更）**：默认返回**全部**过审种（含零做种新种）——
   新种在有人做种前也必须能被搜到，否则冷启动期工具搜索恒空。
   只要活种：`alive=1`；只要断种：`alive=2`；旧习惯 `include_dead=0` 等价 `alive=1`。
