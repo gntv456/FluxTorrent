@@ -39,10 +39,17 @@ pub fn build_smtp(
     let port =
         url.port()
             .unwrap_or(if url.scheme() == "smtps" { 465 } else { 25 });
-    let builder = if url.scheme() == "smtps" {
-        AsyncSmtpTransport::<Tokio1Executor>::relay(&host)?
-    } else {
-        AsyncSmtpTransport::<Tokio1Executor>::builder_dangerous(&host)
+    // 三口径：smtps=465 隐式 TLS；smtp=STARTTLS（A 方案 2026-11-18：此前
+    // smtp:// 落 builder_dangerous 明文——机房封 465/587 只开 2525 的
+    // 中继（Brevo 等）要求 STARTTLS，明文连不上）。内网明文中继的旧形态
+    // 用显式 :25 以外的 smtp-plain:// 方言，避免误伤。
+    let builder = match url.scheme() {
+        "smtps" => AsyncSmtpTransport::<Tokio1Executor>::relay(&host)?,
+        "smtp" => AsyncSmtpTransport::<Tokio1Executor>::starttls_relay(&host)?,
+        "smtp-plain" => {
+            AsyncSmtpTransport::<Tokio1Executor>::builder_dangerous(&host)
+        }
+        other => anyhow::bail!("不支持的 SMTP scheme：{other}"),
     }
     .port(port);
     let builder = if !url.username().is_empty() {
