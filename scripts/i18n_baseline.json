@@ -478,10 +478,10 @@
  "components/layout.tsx": [],
  "components/link-apply.tsx": [],
  "components/locale-switcher.tsx": [
-  13,
   14,
-  16,
-  55
+  15,
+  17,
+  57
  ],
  "components/login-history.tsx": [],
  "components/main-menu.tsx": [
