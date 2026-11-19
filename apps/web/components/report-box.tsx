@@ -14,7 +14,13 @@ interface ReportRow {
 }
 
 /** 举报信箱（同类站 reports.php 口径）：管理组处理队列 + 全员可提交新举报 */
-export function ReportBox() {
+export function ReportBox({
+  initialType = "torrent",
+  initialId = "",
+}: {
+  initialType?: string;
+  initialId?: string;
+}) {
   const { dict, locale } = useI18n();
   const t = dict.reportbox;
   const u = dict.usertools;
@@ -24,8 +30,13 @@ export function ReportBox() {
   const [failed, setFailed] = useState(false);
 
   // 提交表单（原 userbar 弹层表单迁入本页）
-  const [refType, setRefType] = useState("torrent");
-  const [refId, setRefId] = useState("");
+  // PM2-2：支持从种子详情/用户主页深链预填，减少「举报入口藏得深」的流失。
+  // 只接受已知类型，避免 URL 注入出无意义选项。
+  const allowed = ["torrent", "comment", "user", "subtitle", "forum"];
+  const [refType, setRefType] = useState(
+    allowed.includes(initialType) ? initialType : "torrent",
+  );
+  const [refId, setRefId] = useState(/^\d+$/.test(initialId) ? initialId : "");
   const [reason, setReason] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);

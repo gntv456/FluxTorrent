@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { api, ApiError } from "@/lib/api-client";
-import { formatBytes } from "@/lib/format";
+import { formatBytes, promotionBadge } from "@/lib/format";
 import { siteBase } from "@/lib/site-url";
 import {
   byId,
@@ -41,6 +41,8 @@ import type {
   TorrentListItem,
 } from "@fluxtorrent/domain-types";
 import { isStaffClass } from "@/lib/domain/user-class";
+import { TorrentDutyNotice } from "@/components/torrent-duty-notice";
+import "@/app/styles/ux-product.css";
 
 export const dynamic = "force-dynamic";
 
@@ -212,6 +214,11 @@ export default async function TorrentDetailPage({
     ]),
   );
   const d = dict.tdetail;
+  // PM2-1：下载前告知用同一份促销口径（列表/卡片/详情共用 promotionBadge）
+  const promo = promotionBadge(t.promotion);
+  const promoLabel = promo
+    ? dict.promotion[promo.key]
+    : dict.uxOpt.dutyPromoNone;
   // 分类名映射（可序列化，供 Client 组件 TorrentRelated 用；函数 prop 过不了
   // RSC 边界——「Functions cannot be passed directly to Client Components」）
   const catMap = byId(editCats);
@@ -329,6 +336,13 @@ export default async function TorrentDetailPage({
         </p>
       )}
       </div>
+
+      {/* PM2-1：下载前风险告知 + 举报直达（决策点前置，零新增请求） */}
+      <TorrentDutyNotice
+        dict={dict}
+        torrentId={t.id}
+        promotionLabel={promoLabel}
+      />
 
       {/* ===== 右信息栏上段（状态/文件/元信息，随页面滚动） ===== */}
       <TorrentDetailSide

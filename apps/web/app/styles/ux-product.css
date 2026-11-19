@@ -135,3 +135,126 @@
   font-size: 1rem;
   color: var(--text-strong);
 }
+
+/* ===== PM2-1：下载前风险告知（种子详情右栏） ===== */
+.ux-duty {
+  margin-bottom: var(--sp-3);
+  padding: var(--sp-3);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-md);
+  background: var(--surface-card);
+}
+.ux-duty__title {
+  margin: 0 0 var(--sp-2);
+  font-size: 0.875rem;
+  font-weight: 800;
+  color: var(--text-strong);
+}
+.ux-duty__list {
+  margin: 0 0 var(--sp-2);
+  padding-left: 1.1rem;
+  font-size: 0.75rem;
+  line-height: 1.65;
+  color: var(--text-body);
+}
+.ux-duty__list li + li { margin-top: var(--sp-1); }
+.ux-duty__promo {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin: 0 0 var(--sp-2);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+.ux-duty__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2) var(--sp-3);
+}
+.ux-duty__links a,
+.ux-pcheck__link,
+.ux-updates__link {
+  display: inline-flex;
+  min-height: var(--tap-min);
+  align-items: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--tone-brand);
+  text-decoration: none;
+}
+.ux-duty__links a:hover,
+.ux-pcheck__link:hover,
+.ux-updates__link:hover { text-decoration: underline; }
+
+/* ===== PM2-3：发布前自查（发布页） ===== */
+.ux-pcheck {
+  padding: var(--sp-3);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-md);
+  background: var(--surface-card);
+}
+.ux-pcheck__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-2);
+}
+.ux-pcheck__title {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 800;
+  color: var(--text-strong);
+}
+.ux-pcheck__list {
+  display: grid;
+  gap: var(--sp-2);
+  grid-template-columns: minmax(0, 1fr);
+  margin: 0 0 var(--sp-2);
+  padding: 0;
+  list-style: none;
+}
+@media (min-width: 768px) {
+  .ux-pcheck__list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.ux-pcheck__item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  color: var(--text-body);
+}
+.ux-pcheck__num {
+  flex: none;
+  display: inline-grid;
+  width: 1.25rem;
+  height: 1.25rem;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--tone-brand-soft);
+  color: var(--tone-brand);
+  font-size: 0.6875rem;
+  font-weight: 800;
+}
+
+/* ===== PM2-4：帮助中心「最近更新」 ===== */
+.ux-updates {
+  padding: var(--sp-3);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-md);
+  background: var(--surface-raised);
+}
+.ux-updates__title {
+  margin: 0 0 var(--sp-2);
+  font-size: 0.875rem;
+  font-weight: 800;
+  color: var(--text-strong);
+}
+.ux-updates__list {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.8125rem;
+  line-height: 1.7;
+  color: var(--text-body);
+}

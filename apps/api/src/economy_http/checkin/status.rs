@@ -17,7 +17,7 @@ pub(super) async fn checkin_status(
     let rows: Vec<(chrono::NaiveDate, i32, i64)> = sqlx::query_as(
         // recent 列表含补签行（日历要展示）；streak 基线另查最后一条记录（补签也参与
         // 续签，§9.3 修订），见下方 last_live。
-                "SELECT date, streak, \
+        "SELECT date, streak, \
          reward FROM attendance WHERE user_id = $1 \
             AND date >= current_date - interval '30 days' ORDER BY date",
     )
@@ -26,8 +26,7 @@ pub(super) async fn checkin_status(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     // 站点时区 UTC+8
-    let today =
-        (chrono::Utc::now() + chrono::Duration::hours(8)).date_naive();
+    let today = (chrono::Utc::now() + chrono::Duration::hours(8)).date_naive();
     let checked_today = rows.iter().any(|(d, _, _)| *d == today);
     // streak 基线取「最后一条记录」——补签行也参与续签（§9.3 修订，与签到主流程
     // 同口径）。补签行 streak 已由历史重算填成真实连续值，不再作废。

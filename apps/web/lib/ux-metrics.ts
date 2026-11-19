@@ -14,12 +14,14 @@ export type UxMetricName =
   | "invite_issue"
   | "filter_save"
   | "search_submit"
-  | "coldstart_task_open";
+  | "coldstart_task_open"
+  | "report_open";
 
 const UX_EVENTS = new Set<UxMetricName>([
   "app_ready", "lcp", "empty_state", "first_torrent_open",
   "guide_open", "checkin", "publish_start", "invite_issue",
   "filter_save", "search_submit", "coldstart_task_open",
+  "report_open",
 ]);
 
 export function isUxMetricName(v: string): v is UxMetricName {
