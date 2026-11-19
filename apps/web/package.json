@@ -1,6 +1,6 @@
 {
   "name": "@fluxtorrent/web",
-  "version": "0.5.19-dev.20",
+  "version": "0.5.19-dev.23",
   "private": true,
   "scripts": {
     "dev": "next dev -p 3000",
