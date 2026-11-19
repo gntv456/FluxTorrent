@@ -6,6 +6,8 @@ import { Fragment, useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
+import { ImpactPreviewCard } from "./admin-classes-preview";
+import type { ImpactPreview } from "./admin-classes-preview";
 
 /** P-19：等级规则管理页（一审 R4.2 落的读写口，此前只有 API 没有界面）。
  *  worker `class_auto_adjust` 每分钟按这里的阈值升降级，并按
@@ -33,15 +35,6 @@ interface ClassRow {
   /** 万分比（125 = 1.25） */
   min_ratio_bp: number | null;
   users: number;
-}
-
-/** POST impact-preview 的返回（按草稿阈值预览升降集合） */
-interface ImpactPreview {
-  promote: number;
-  demote: number;
-  sample_promote: string[];
-  sample_demote: string[];
-  current_users: number;
 }
 
 /** 草稿只存被改动的档位；字节门槛在界面上按 GB 编辑。
@@ -320,30 +313,7 @@ export function AdminClasses() {
                     )}
                   </td>
                 </tr>
-                {pv && (
-                  <tr className="border-t border-line">
-                    <td colSpan={14}>
-                      <div
-                        className="rounded-[var(--r-md)] bg-sky-soft p-3
-                          text-xs text-ink"
-                      >
-                        <p>
-                          {fmt(at.pvPromote, { n: pv.promote })} ·{" "}
-                          {fmt(at.pvDemote, { n: pv.demote })} ·{" "}
-                          {fmt(at.pvCurrent, { n: pv.current_users })}
-                        </p>
-                        {pv.sample_promote.length > 0 && (
-                          <p className="mt-1">{at.pvSampleUp}: {
-                            pv.sample_promote.join(", ")}</p>
-                        )}
-                        {pv.sample_demote.length > 0 && (
-                          <p className="mt-1">{at.pvSampleDown}: {
-                            pv.sample_demote.join(", ")}</p>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                )}
+                {pv && <ImpactPreviewCard pv={pv} at={at} />}
                 </Fragment>
               );
             })}
