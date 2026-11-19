@@ -637,6 +637,40 @@ html[data-density="compact"] {
   --font-min: 11px;
 }
 
+/* 紧凑档的实际作用面（站长反馈「切换看不到变化」根因收口）：
+ * 全站间距是 Tailwind 类（gap-3/p-4…）而非上面四个令牌——令牌定义
+ * 了但零消费，切换等于空转。此处按属性选择器把高频间距类在紧凑档
+ * 下降一档（Tailwind 档位 8/12/16/24/32 → 各退一级），一处全局
+ * 生效，不必改几百个组件。触控目标（--tap-min）与 a11y 类不碰。
+ * ⚠ 仅覆盖统计过的高频 11 类；冷门间距维持原样，视觉主体已收。 */
+html[data-density="compact"] .gap-4 { gap: 0.75rem; }
+html[data-density="compact"] .gap-3 { gap: 0.5rem; }
+html[data-density="compact"] .gap-2 { gap: 0.375rem; }
+html[data-density="compact"] .p-4 { padding: 0.75rem; }
+html[data-density="compact"] .p-3 { padding: 0.5rem; }
+html[data-density="compact"] .py-8 {
+  padding-top: 1.25rem;
+  padding-bottom: 1.25rem;
+}
+html[data-density="compact"] .py-6 {
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+}
+html[data-density="compact"] .py-4 {
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+}
+html[data-density="compact"] .py-3 {
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+html[data-density="compact"] .space-y-4 > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 0.75rem;
+}
+html[data-density="compact"] .space-y-3 > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 0.5rem;
+}
+
 html {
   background: var(--cloud);
   /* 站内锚点/返回顶部平滑滚动；reduced-motion 用户由下方媒体查询关掉 */
