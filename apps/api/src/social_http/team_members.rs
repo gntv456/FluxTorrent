@@ -164,6 +164,29 @@ async fn team_leave(
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
 
+    // 0500 退出留痕信：扣信誉虽在同步响应可见（reputation_delta），但
+    // 退出是低频重决策动作，一封「扣了多少/为什么」的信是后续申诉与
+    // 自查凭据。失败不回滚（主流程已成功）。
+    if delta < 0 {
+        if let Err(e) = sqlx::query(
+            "INSERT INTO messages (sender_id, receiver_id, subject, body) \
+             VALUES (NULL, $1, $2, $3)",
+        )
+        .bind(auth.id)
+        .bind("保种协作退出确认")
+        .bind(format!(
+            "你已退出保种协作队伍 #{team}。按规则扣减信誉 {delta} 分\
+             （已做出的做种贡献不受影响）。信誉分影响后续组队资格，\
+             参与其他队伍并守约可恢复。",
+            team = body.team_id,
+        ))
+        .execute(&state.repo.db)
+        .await
+        {
+            tracing::warn!(%e, uid = auth.id, "退出确认信写入失败");
+        }
+    }
+
     state
         .repo
         .audit(Some(auth.id), "social.team_leave", Some(body.team_id))

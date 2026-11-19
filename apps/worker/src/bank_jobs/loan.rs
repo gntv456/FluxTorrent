@@ -75,11 +75,24 @@ pub async fn bank_overdue_penalty(db: &PgPool) -> anyhow::Result<u64> {
             SELECT c.user_id, 'loan_penalty', c.id, -c.penalty, c.penalty_rate_bp
             FROM calc c JOIN upd ON upd.id = c.id
             RETURNING reference_id
+        ),
+        defaulted AS (
+            -- 0500 资金通知面：defaulted 翻转必须告知——欠款在涨的静默
+            -- 最危险（有 3 天到期预提醒，但翻转后用户以为没事了）。
+            -- 必达（资金风险类不过 notice_prefs）。
+            UPDATE bank_loans l
+            SET status = 'defaulted'
+            WHERE l.status = 'active'
+              AND l.due_at < now() - make_interval(days => l.term_days / 2)
+            RETURNING l.id, l.user_id, l.remaining
         )
-        UPDATE bank_loans l
-        SET status = 'defaulted'
-        WHERE l.status = 'active'
-          AND l.due_at < now() - make_interval(days => l.term_days / 2)
+        INSERT INTO messages (sender_id, receiver_id, subject, body)
+        SELECT NULL, d.user_id, '贷款逾期警示',
+               '你的贷款已严重逾期（超过期限一半未结清），状态转为\
+                「违约」：剩余欠款 ' || d.remaining || ' 魔力将继续按日计\
+                罚息并入本金。请尽快在「银行」页还款止损；长期违约将\
+                影响后续贷款额度。'
+        FROM defaulted d
         "#,
     )
     .execute(db)

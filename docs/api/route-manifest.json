@@ -2520,15 +2520,15 @@
   },
   {
    "method": "GET",
-   "path": "/attendance",
-   "handler": "checkin_status",
-   "file": "apps/api/src/economy_http/checkin.rs"
-  },
-  {
-   "method": "GET",
    "path": "/attendance/calendar",
    "handler": "checkin_calendar",
    "file": "apps/api/src/economy_http/checkin/calendar.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/attendance",
+   "handler": "checkin_status",
+   "file": "apps/api/src/economy_http/checkin/status.rs"
   },
   {
    "method": "GET",

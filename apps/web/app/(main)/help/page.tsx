@@ -78,6 +78,10 @@ export default async function HelpPage() {
               href: "/classes", l: u.guideClassLink },
             { k: "first", t: u.guideFirstTitle, d: u.guideFirstDesc,
               href: "/clients", l: u.guideClientLink },
+            // 0500 契约卡：进阶玩法从生存卡直达（此前 help 面零提及）
+            { k: "contract", t: u.guideContractTitle,
+              d: u.guideContractDesc,
+              href: "/contracts", l: u.guideContractLink },
           ].map((c) => (
             <article key={c.k} className="ux-guide-card">
               <h3>{c.t}</h3>
@@ -93,6 +97,17 @@ export default async function HelpPage() {
             </article>
           ))}
         </div>
+      </section>
+
+      {/* PM2-4：产品更新可见性——用户与站长能看到最近改了什么，
+          避免「功能悄悄上线、没人知道」。纯静态三段，不新增请求。 */}
+      <section className="ux-updates" aria-label={u.recentUpdatesTitle}>
+        <h2 className="ux-updates__title">{u.recentUpdatesTitle}</h2>
+        <ul className="ux-updates__list">
+          <li>{u.recentUpdate1}</li>
+          <li>{u.recentUpdate2}</li>
+          <li>{u.recentUpdate3}</li>
+        </ul>
       </section>
 
       {docs.length === 0 ? (

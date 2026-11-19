@@ -98,6 +98,17 @@ pub(super) async fn economy_dashboard(
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
+    // 0500 消耗侧 kind 分解：产出有结构、消耗只有 SKU 榜——回收口
+    // （游戏/契约罚金/商店）同权重要看得见，平衡表两侧对齐。
+    let kind_burn: Vec<(String, i64)> = sqlx::query_as(
+        "SELECT kind, COALESCE(SUM(-amount), 0)::bigint \
+         FROM spark_ledger \
+         WHERE created_at > now() - interval '30 days' AND amount < 0 \
+         GROUP BY kind ORDER BY SUM(-amount) DESC LIMIT 20",
+    )
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(serde_json::json!({
         "weeks": weeks.iter().map(|(w, m, b, n)| serde_json::json!({
             "week": w, "minted": m, "burned": b, "net": n,
@@ -116,6 +127,10 @@ pub(super) async fn economy_dashboard(
         // 0498 产出面 kind 分解：总量数字看不见结构，平衡表就永远算不准
         "kind_mint_30d": kind_mint.iter().map(|(k, s)| serde_json::json!({
             "kind": k, "minted": s,
+        })).collect::<Vec<_>>(),
+        // 0500 消耗侧 kind 分解（同上口径，方向相反）
+        "kind_burn_30d": kind_burn.iter().map(|(k, s)| serde_json::json!({
+            "kind": k, "burned": s,
         })).collect::<Vec<_>>(),
     })))
 }

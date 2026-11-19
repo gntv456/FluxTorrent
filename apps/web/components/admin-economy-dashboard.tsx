@@ -16,8 +16,10 @@ interface Dashboard {
   per_active_capita: number;
   top_sku_30d: { name: string; orders: number; spent: number }[];
   purchase_cap_gb: number;
-  /** 0499 产出结构分解（近 30 天按 kind TOP20，dev.22 后端下发前端未渲染） */
+  /** 0499 产出结构分解（近 30 天按 kind TOP20） */
   kind_mint_30d?: { kind: string; minted: number }[] | null;
+  /** 0500 消耗侧分解（同口径，方向相反） */
+  kind_burn_30d?: { kind: string; burned: number }[] | null;
 }
 
 export function AdminEconomyDashboard() {
@@ -187,6 +189,52 @@ export function AdminEconomyDashboard() {
                             Math.max(
                               1,
                               ...d.kind_mint_30d!.map((x) => x.minted),
+                            )) *
+                          100
+                        }%`,
+                      }}
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* 0500 消耗侧 kind 分解：产出有结构、消耗只有 SKU 榜——回收口
+          （游戏/契约罚金/商店）同权重要看得见 */}
+      {d.kind_burn_30d && d.kind_burn_30d.length > 0 && (
+        <div className="brand-panel p-4">
+          <h2 className="mb-3 font-display text-lg">
+            消耗结构分解（近 30 天 · 按去向）
+          </h2>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-line text-left text-xs text-sub">
+                <th className="py-2">去向</th>
+                <th className="py-2">消耗火花</th>
+                <th className="py-2 w-1/3">占比条</th>
+              </tr>
+            </thead>
+            <tbody>
+              {d.kind_burn_30d.map((k) => (
+                <tr key={k.kind} className="border-b border-line/50">
+                  <td className="py-2 font-mono text-xs">
+                    {KIND_LABELS[k.kind] ?? k.kind}
+                  </td>
+                  <td className="py-2 font-mono">
+                    {k.burned.toLocaleString()}
+                  </td>
+                  <td className="py-2">
+                    <div
+                      className="h-2 rounded bg-down/70"
+                      style={{
+                        width: `${
+                          (k.burned /
+                            Math.max(
+                              1,
+                              ...d.kind_burn_30d!.map((x) => x.burned),
                             )) *
                           100
                         }%`,
