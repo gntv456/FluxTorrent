@@ -94,7 +94,12 @@ export function FreeleechPanel() {
       <h2 className="mb-2 text-base font-bold">{t.title}</h2>
       <p className="mb-3 text-xs text-sub">{t.intro}</p>
       {msg && (
-        <p className="mb-3 rounded-[var(--r-md)] bg-[var(--surface-sunken)] p-2 text-xs">
+        <p
+          className={
+            "mb-3 rounded-[var(--r-md)] bg-[var(--surface-sunken)] " +
+            "p-2 text-xs"
+          }
+        >
           {msg}
         </p>
       )}
@@ -129,7 +134,10 @@ export function FreeleechPanel() {
                   <button
                     disabled={busy}
                     onClick={() => remove(r.id)}
-                    className="min-h-11 rounded-full border border-line px-3 font-bold text-[var(--danger-text)] disabled:opacity-50"
+                    className={
+                      "min-h-11 rounded-full border border-line px-3 " +
+                      "font-bold text-[var(--danger-text)] disabled:opacity-50"
+                    }
                   >
                     {t.removeBtn}
                   </button>
@@ -252,7 +260,12 @@ export function ClearCachePanel() {
       <h2 className="mb-2 text-base font-bold">{t.cacheTitle}</h2>
       <p className="mb-3 text-xs text-sub">{t.cacheIntro}</p>
       {msg && (
-        <p className="mb-3 rounded-[var(--r-md)] bg-[var(--surface-sunken)] p-2 text-xs">
+        <p
+          className={
+            "mb-3 rounded-[var(--r-md)] bg-[var(--surface-sunken)] " +
+            "p-2 text-xs"
+          }
+        >
           {msg}
         </p>
       )}
