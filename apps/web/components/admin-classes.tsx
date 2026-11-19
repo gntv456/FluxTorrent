@@ -7,13 +7,12 @@ import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
 import { ImpactPreviewCard } from "./admin-classes-preview";
+import { ClassNumCell, ClassOptNumCell } from "./admin-classes-fields";
 import type { ImpactPreview } from "./admin-classes-preview";
 
-/** P-19：等级规则管理页（一审 R4.2 落的读写口，此前只有 API 没有界面）。
- *  worker `class_auto_adjust` 每分钟按这里的阈值升降级，并按
- *  `promo_sparks` 发放晋升奖励（0072）；档位全集来自 user_classes：
- *  只有成长档 1-12 在 class_rules 里有规则行，贵宾（20）与职务档
- *  （90+）没有规则，六列为 null，整行只读。 */
+/** P-19：等级规则管理页（读写口此前只有 API 没有界面）。
+ *  worker 每分钟按阈值升降级并发 promo_sparks；成长档 1-12 有规则行，
+ *  贵宾/职务档无规则整行只读。编辑原语在 admin-classes-fields.tsx。 */
 
 const GB = 1024 ** 3;
 /** 后端锁死的 staff 线（classes_admin.rs STAFF_CLASS_FLOOR） */
@@ -110,12 +109,11 @@ export function AdminClasses() {
       ...prev,
       [r.class_id]: { ...draftOf(r), [k]: v },
     }));
-    // 草稿一改，旧预览立即失效（计数对不上新阈值，留着只会误导）
+    // 草稿一改旧预览即失效（计数对不上新阈值）
     setPreview((p) => ({ ...p, [r.class_id]: null }));
   };
 
-  /** 预览影响（后端只读端点）：按当前草稿的四维 + demotable
-   *  假设值问 worker「改完会升降多少人」，名单最多回 10 个样例 */
+  /** 预览影响：按草稿阈值问后端「改完升降多少人」，名单最多 10 个样例 */
   async function runPreview(r: ClassRow) {
     const d = drafts[r.class_id] ?? draftOf(r);
     setPreviewBusy(r.class_id);
@@ -153,53 +151,22 @@ export function AdminClasses() {
     }
   }
 
-  /** 无规则行（贵宾/职务档）或后端 staff 线以下才允许编辑 */
+  /** 无规则行/职务档只读 */
   const locked = (r: ClassRow) =>
     r.min_uploaded === null || r.class_id >= STAFF_FLOOR;
 
-  const num = (r: ClassRow, k: keyof Draft, scale = 1) => (
-    <input
-      type="number"
-      className={`${INPUT_MD} w-24`}
-      value={Number(draftOf(r)[k]) / scale}
-      onChange={(e) =>
-        patch(r, k, Math.round(Number(e.target.value) * scale))}
-    />
-  );
-
-  /** 只读档的四维/奖励显示「—」而不是 0：0 会被读成「门槛为零」 */
-  const cell = (r: ClassRow, k: keyof Draft, scale = 1) =>
-    locked(r) ? <span className="text-xs text-sub">—</span> : num(r, k, scale);
-
-  /** 0501 可空维度编辑器：空输入 = null（该维度不参与判定），
-   *  有值按 scale 换算（字节维度界面 GB、分享率界面按实际值如 1.25） */
-  const numOrNull = (
+  /** 表格编辑原语的上下文（绑定行 + 草稿键；原语件只管渲染与量纲） */
+  const ctx = (
     r: ClassRow,
-    k: "min_downloaded" | "min_seed_volume" | "min_seed_count"
-      | "min_ratio_bp",
-    scale = 1,
-  ) => {
-    if (locked(r)) return <span className="text-xs text-sub">—</span>;
-    const raw = draftOf(r)[k];
-    return (
-      <input
-        type="number"
-        className={`${INPUT_MD} w-24`}
-        placeholder="—"
-        value={raw === null ? "" : Number(raw) / scale}
-        onChange={(e) => {
-          const t = e.target.value.trim();
-          patch(
-            r,
-            k,
-            t === ""
-              ? null
-              : Math.round(Number(t) * scale),
-          );
-        }}
-      />
-    );
-  };
+    k: keyof Draft,
+  ) => ({
+    locked: locked(r),
+    get: () => draftOf(r)[k] as number | null,
+    set: (v: number | null) => patch(r, k, v),
+    setLegacy: (v: number) => patch(r, k, v),
+  });
+
+
 
   return (
     <div className="flex flex-col gap-3">
@@ -256,21 +223,22 @@ export function AdminClasses() {
                       />
                     )}
                   </td>
-                  <td>
-                    {cell(r, "min_uploaded", GB)}
-                    {!locked(r) && (
-                      <span className="ml-1 text-xs text-sub">
-                        {at.upHint}
-                      </span>
-                    )}
-                  </td>
-                  <td>{cell(r, "min_download_count")}</td>
-                  <td>{cell(r, "min_seed_hours")}</td>
-                  <td>{cell(r, "min_account_age_days")}</td>
-                  <td>{numOrNull(r, "min_downloaded", GB)}</td>
-                  <td>{numOrNull(r, "min_seed_volume", GB)}</td>
-                  <td>{numOrNull(r, "min_seed_count")}</td>
-                  <td>{numOrNull(r, "min_ratio_bp", 10000)}</td>
+                  <td>{<ClassNumCell ctx={ctx(r, "min_uploaded")} scale={GB}
+                      unit={at.unitGB} />}</td>
+                  <td>{<ClassNumCell ctx={ctx(r, "min_download_count")}
+                      unit={at.unitCount} />}</td>
+                  <td>{<ClassNumCell ctx={ctx(r, "min_seed_hours")}
+                      unit={at.unitHours} />}</td>
+                  <td>{<ClassNumCell ctx={ctx(r, "min_account_age_days")}
+                      unit={at.unitDays} />}</td>
+                  <td>{<ClassOptNumCell ctx={ctx(r, "min_downloaded")}
+                      scale={GB} unit={at.unitGB} />}</td>
+                  <td>{<ClassOptNumCell ctx={ctx(r, "min_seed_volume")}
+                      scale={GB} unit={at.unitGB} />}</td>
+                  <td>{<ClassOptNumCell ctx={ctx(r, "min_seed_count")}
+                      unit={at.unitCount} />}</td>
+                  <td>{<ClassOptNumCell ctx={ctx(r, "min_ratio_bp")}
+                      scale={10000} unit={at.unitRatio} />}</td>
                   <td>
                     {locked(r) ? (
                       <span className="text-xs text-sub">—</span>
@@ -285,7 +253,7 @@ export function AdminClasses() {
                     )}
                   </td>
                   <td>
-                    {cell(r, "promo_sparks")}
+                    <ClassNumCell ctx={ctx(r, "promo_sparks")} />
                     {!locked(r) && (
                       <div className="text-xs text-sub">{at.sparksHint}</div>
                     )}

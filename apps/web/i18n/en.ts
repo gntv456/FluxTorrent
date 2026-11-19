@@ -6507,6 +6507,11 @@ const enBase: Omit<
       "60s, pays the difference across tiers and is idempotent per tier.",
     demoteHint: "When off, members in this tier are never demoted.",
     upHint: "GB",
+    unitGB: "GB",
+    unitCount: "count",
+    unitHours: "hours",
+    unitDays: "days",
+    unitRatio: "e.g. 1.25",
     preview: "Preview impact",
     previewBusy: "Counting…",
     previewFail:
