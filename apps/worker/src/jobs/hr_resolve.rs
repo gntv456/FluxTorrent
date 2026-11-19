@@ -43,14 +43,33 @@ pub(crate) async fn restore_hr_locks(
               WHERE u2.id = u.id AND u2.ratio_watch_until IS NOT NULL
                 AND u2.ratio_watch_until < now()
           )
+        RETURNING u.id
         "#,
     )
     .bind(limit)
-    .execute(db)
+    .fetch_all(db)
     .await?;
-    let n = restored.rows_affected();
+    use sqlx::Row;
+    let n = restored.len() as u64;
     if n > 0 {
         tracing::info!(n, limit, "H&R 违规降回阈值以下，已恢复下载权限");
+        // 0503 运营触达：恢复是正反馈黄金窗口——「权限回来了」此前静默，
+        // 用户不知道可以继续下载。必达（权限类不过 notice_prefs），
+        // 天然幂等（UPDATE 只在锁定态命中一次）。
+        for row in &restored {
+            let uid: i64 = row.get("id");
+            if let Err(e) = sqlx::query(
+                "INSERT INTO messages (sender_id, receiver_id, subject, body)                  VALUES (NULL, $1, $2, $3)",
+            )
+            .bind(uid)
+            .bind("下载权限已恢复")
+            .bind("你的 H&R 违规已整改达标，下载权限已恢复。继续保持做种，                   预警邮件会在下次风险出现前提前送达——达标消除即恢复，                   不留记录。")
+            .execute(db)
+            .await
+            {
+                tracing::warn!(%e, uid, "恢复通知写入失败");
+            }
+        }
     }
     Ok(n)
 }

@@ -95,3 +95,22 @@ pub(super) async fn transfer(
     }
     Ok(amount)
 }
+
+/// 0503 死奖励卡接线：NP 行为奖励（saythanks/receivethanks）的入账腿。
+/// 同事务、同 SpendOutcome 判定口径——幂等键冲突（重放）返回 0 不报错，
+/// 调用方对 0 不通知（奖励静默去重）。
+pub(super) async fn earn_in_tx(
+    tx: &mut Transaction<'_, sqlx::Postgres>,
+    uid: i64,
+    amount: i64,
+    kind: &str,
+    idem: &str,
+) -> DomainResult<i64> {
+    if !matches!(
+        earn_spark_tx(tx, uid, amount, kind, idem).await?,
+        SpendOutcome::Spent
+    ) {
+        return Ok(0);
+    }
+    Ok(amount)
+}

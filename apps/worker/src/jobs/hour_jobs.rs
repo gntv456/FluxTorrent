@@ -41,6 +41,14 @@ pub(super) async fn hour_jobs(
     // 0496 契约计量采样：月内 open seed 契约用户的在种体积日快照
     // （体内按站点日幂等，结算吃真均值）
     run_sharded(&db, &shard, "job:contract_sample", contract_sample(&db)).await;
+    // 0503 新人生命周期跟进（day-3 挽留 + 首做种祝贺）
+    run_sharded(
+        &db,
+        &shard,
+        "job:onboarding_followup",
+        onboarding_followup(&db),
+    )
+    .await;
     run_sharded(&db, &shard, "job:wishlist_notify", wishlist_notify(&db)).await;
     run_sharded(&db, &shard, "job:highspeed_tag", highspeed_tag(&db)).await;
     run_sharded(

@@ -5152,6 +5152,8 @@ const zhCnBase = {
     fldScope: "范围",
     fldCategory: "分类 ID",
     fldHours: "时长（小时）",
+    fldStartsAt: "开始时间（留空=立即）",
+    fldStartsHint: "预约到点自动生效，到期自动结束",
     applyBtn: "生效",
     cacheTitle: "清除缓存",
     cacheIntro:

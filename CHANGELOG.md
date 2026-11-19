@@ -3,7 +3,37 @@
 本文件记录面向部署者的显著变更。格式参照 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)；
 版本号在首个语义化 tag（v0.x）发布后启用。
 
-## [0.5.19-dev.33] - 2026-11-19
+## [0.5.19-dev.35] - 2026-11-20
+
+定位：**运营能力批——生命周期触达链 + 行为奖励接线 + 促销规划化**。
+
+### 新增（生命周期触达——体检六轮触点图三大缺口）
+- **新人跟进 job**（`onboarding_followup`，hourly）：day-3 未首下提醒
+  （新手流失集中首周，事实判定复用 onboarding_facts 口径）+ 首做种
+  达成祝贺（引导契约）；锚 notice_marker 与站内信同语句 CTE 原子落，
+  重跑天然去重。
+- **恢复正反馈两件**：H&R 下载权限恢复（restore_hr_locks 改
+  RETURNING）与作弊停权到期解除（sanction_sweep）此前全静默——
+  恢复是召回黄金窗口，现各发必达 PM。
+- **升级信权益提示**随既有 class_promo 文案（/classes 引导）。
+
+### 新增（行为奖励接线——0034 播种的 NP 死卡开始生效）
+- **saythanks / receivethanks**：感谢行为双方奖励（thanks POST 事务内，
+  重放不发、自谢不发，幂等锚 thanks 行时间戳；thanks_spark 增
+  earn_in_tx 入账腿）。后台「行为奖励」面板改值即生效。
+- **addcomment**：种子评论奖励（幂等锚评论 id，删评不追回）。
+- **首种奖励**：`upload_first_bonus_pct`（0=关）——作者首个过审种按
+  常规发种奖励百分比加发，兑现迎新 PM 的「上传第一颗种子」承诺。
+
+### 改进（促销规划化）
+- **admin 促销表单补预约**：FreeleechPanel 加 datetime 开始时间字段
+  （API 的 starts_at 一直支持、UI 从未暴露——「可规划」升级单点）。
+- **促销播报扩面**：announce_site_promos 从只播 global 扩到
+  official/non_official/category 四类站点级（对齐 10-26 设计口径）。
+- **复活奖励键化**：`resurrection_reward`（缺省 5000 保持现网）——
+  认领价目与落库两处此前硬编码，运营无法调档。
+
+## [0.5.19-dev.33] - 2026-11-19## [0.5.19-dev.33] - 2026-11-19
 
 定位：**体验盲区批——空结果引导链 + 公告触达断裂 + push 展示链补齐**。
 

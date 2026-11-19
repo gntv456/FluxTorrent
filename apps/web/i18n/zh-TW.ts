@@ -5120,6 +5120,8 @@ const zhTwBase: Omit<
     fldScope: "範圍",
     fldCategory: "分類 ID",
     fldHours: "時長（小時）",
+    fldStartsAt: "開始時間（留空=立即）",
+    fldStartsHint: "預約到點自動生效，到期自動結束",
     applyBtn: "生效",
     cacheTitle: "清除快取",
     cacheIntro:

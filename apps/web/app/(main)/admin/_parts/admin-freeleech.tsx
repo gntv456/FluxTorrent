@@ -27,6 +27,9 @@ export function FreeleechPanel() {
   const [kind, setKind] = useState("free");
   const [scope, setScope] = useState("global");
   const [hours, setHours] = useState(24);
+  // 0503 预约 UI：API 一直支持 starts_at/ends_at（RFC3339，缺省=now）——
+  // 表单此前只暴露 hours，站长想规划活动只能调 API
+  const [startsAt, setStartsAt] = useState("");
   const [categoryId, setCategoryId] = useState("1");
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -50,6 +53,7 @@ export function FreeleechPanel() {
         kind,
         scope,
         hours,
+        ...(startsAt ? { starts_at: new Date(startsAt).toISOString() } : {}),
         ...(scope === "category" ? { category_id: Number(categoryId) } : {}),
       });
       setMsg(t.applied);
@@ -193,6 +197,16 @@ export function FreeleechPanel() {
             onChange={(e) => setHours(Number(e.target.value))}
             className={`${inputCls} w-28`}
           />
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="text-xs text-sub">{t.fldStartsAt}</span>
+          <input
+            type="datetime-local"
+            value={startsAt}
+            onChange={(e) => setStartsAt(e.target.value)}
+            className={`${inputCls} w-56`}
+          />
+          <span className="text-[10px] opacity-60">{t.fldStartsHint}</span>
         </label>
         <button
           disabled={busy}

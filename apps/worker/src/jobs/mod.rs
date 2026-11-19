@@ -31,6 +31,8 @@ mod hr_resolve;
 mod hr_snapshot;
 mod hr_warn_ladder;
 mod hr_warn_mail;
+mod onboarding_followup;
+pub(crate) use onboarding_followup::onboarding_followup;
 // 0487：IYUU 辅种查重定时批量刷新
 mod class_demote;
 mod iyuu_orphan_sweep;

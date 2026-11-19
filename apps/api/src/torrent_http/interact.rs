@@ -49,6 +49,29 @@ pub(crate) async fn create_comment(
         body.parent_id,
     )
     .await?;
+    // 0503 死奖励卡接线：addcomment（NP 行为奖励，后台可调，0=关）——
+    // 每条评论一笔，幂等锚评论 id（删评不追回，NP 同口径）
+    let cmt_r: i64 = sqlx::query_scalar(
+        "SELECT COALESCE((SELECT value::bigint FROM site_settings \
+         WHERE name = 'addcomment'), 0)",
+    )
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(0);
+    if cmt_r > 0 {
+        let idem = format!("addcomment:{}", id);
+        if let Err(e) = crate::economy_http::earn_spark(
+            &state.repo.db,
+            auth.id,
+            cmt_r,
+            "addcomment",
+            &idem,
+        )
+        .await
+        {
+            tracing::warn!(%e, cid = id, "评论奖励入账失败");
+        }
+    }
     // 0423 发布者正反馈：通知种主（详见 notify.rs）
     super::notify::notify_comment(&state.repo.db, tid, auth.id).await;
     // 详情页聚合缓存（2.5）：评论数/评论列表是 aggregate 的一部分，
@@ -248,6 +271,51 @@ pub(crate) async fn do_thank(
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
     let row_ts = torrents::thank(&mut *tx, tid, auth.id).await?;
+    // 0503 死奖励卡接线（NP 行为奖励表 0034 播种、后台可调、此前零读者）：
+    // saythanks=感谢者、receivethanks=发布者——只在新感谢行成立时发
+    // （重复感谢 row_ts=None 不发），幂等靠唯一行 + 锚感谢时间戳。
+    let mut say_r = 0i64;
+    let mut recv_r = 0i64;
+    {
+        let say: i64 = sqlx::query_scalar(
+            "SELECT COALESCE((SELECT value::bigint FROM site_settings \
+         WHERE name = 'saythanks'), 0)",
+        )
+        .fetch_one(&mut *tx)
+        .await
+        .unwrap_or(0);
+        let recv: i64 = sqlx::query_scalar(
+            "SELECT COALESCE((SELECT value::bigint FROM site_settings \
+         WHERE name = 'receivethanks'), 0)",
+        )
+        .fetch_one(&mut *tx)
+        .await
+        .unwrap_or(0);
+        if say > 0 {
+            let idem = format!("saythanks:{tid}:{}", auth.id);
+            say_r = super::thanks_spark::earn_in_tx(
+                &mut tx,
+                auth.id,
+                say,
+                "saythanks",
+                &idem,
+            )
+            .await
+            .unwrap_or(0);
+        }
+        if recv > 0 && owner != auth.id {
+            let idem = format!("receivethanks:{tid}:{}", auth.id);
+            recv_r = super::thanks_spark::earn_in_tx(
+                &mut tx,
+                owner,
+                recv,
+                "receivethanks",
+                &idem,
+            )
+            .await
+            .unwrap_or(0);
+        }
+    }
     let given = if amount > 0 {
         super::thanks_spark::transfer(
             &mut tx, auth.id, owner, amount, tid, row_ts,

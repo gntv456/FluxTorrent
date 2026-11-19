@@ -27,6 +27,11 @@ pub const JOBS: &[JobDef] = &[
         name: "contract_sample",
         cadence: "1h",
     },
+    // 0503 新人生命周期跟进（day-3 挽留 + 首做种祝贺）
+    JobDef {
+        name: "onboarding_followup",
+        cadence: "1h",
+    },
     JobDef {
         name: "magic_pool_promo",
         cadence: "60s",

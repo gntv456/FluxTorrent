@@ -146,4 +146,45 @@ pub(crate) async fn pay_upload_reward(db: &sqlx::PgPool, torrent_id: i64) {
     {
         tracing::warn!(?e, torrent_id, owner, "发种奖励入账失败");
     }
+    // 0503 首种激励：迎新 PM 承诺「上传你的第一颗种子」——配套奖励兑现。
+    // 首种判定 = 作者此前无任何过审种（本种过审时刻 COUNT=0）；倍数走
+    // site_settings（0=关），幂等键独立于常规奖励。
+    let mult: i64 = sqlx::query_scalar(
+        "SELECT COALESCE((SELECT value::bigint FROM site_settings \
+         WHERE name = 'upload_first_bonus_pct'), 0)",
+    )
+    .fetch_one(db)
+    .await
+    .unwrap_or(0);
+    if mult <= 0 {
+        return;
+    }
+    let is_first: bool = sqlx::query_scalar(
+        "SELECT NOT EXISTS (SELECT 1 FROM torrents \
+            WHERE owner_id = $1 AND approval_status = 1 AND id <> $2)",
+    )
+    .bind(owner)
+    .bind(torrent_id)
+    .fetch_one(db)
+    .await
+    .unwrap_or(false);
+    if !is_first {
+        return;
+    }
+    let bonus = amount * mult / 100;
+    if bonus <= 0 {
+        return;
+    }
+    let fidem = format!("upload-first-bonus:{torrent_id}");
+    if let Err(e) = crate::economy_http::earn_spark(
+        db,
+        owner,
+        bonus,
+        "upload_first",
+        &fidem,
+    )
+    .await
+    {
+        tracing::warn!(?e, torrent_id, owner, "首种奖励入账失败");
+    }
 }

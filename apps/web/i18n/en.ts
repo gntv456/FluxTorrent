@@ -5309,6 +5309,8 @@ const enBase: Omit<
     fldScope: "Scope",
     fldCategory: "Category ID",
     fldHours: "Duration (hours)",
+    fldStartsAt: "Starts at (empty = now)",
+    fldStartsHint: "Auto-starts at the scheduled time",
     applyBtn: "Apply",
     cacheTitle: "Clear Cache",
     cacheIntro:

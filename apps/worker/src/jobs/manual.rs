@@ -82,6 +82,8 @@ pub(crate) async fn run_named(
         "contract_settle" => n(contract_settle(db).await?),
         // 0496 每日在种采样：hour_jobs 在跑，手触供站长即时补一拍。
         "contract_sample" => n(contract_sample(db).await?),
+        // 0503 新人生命周期跟进
+        "onboarding_followup" => n(onboarding_followup(db).await?),
         "preserve_settle" => n(preserve_settle(db).await?),
         "funding_settle" => n(funding_settle(db).await?),
         "refundable_settle" => n(refundable_settle(db).await?),

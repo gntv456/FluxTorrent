@@ -35,7 +35,9 @@ pub(super) async fn resurrection_list(
         "SELECT t.id AS torrent_id, t.name, t.size, \
                 COALESCE((SELECT value::int FROM site_settings WHERE \
                  name = 'resurrection_hours'), 240) AS required_hours, \
-                5000::bigint AS reward_sparks \
+                -- 0503 key: reward now admin-tunable (default 5000 = current) \
+                COALESCE((SELECT value::bigint FROM site_settings WHERE \
+                 name = 'resurrection_reward'), 5000) AS reward_sparks \
          FROM torrents t \
          WHERE t.approval_status = 1 AND {dead} \
            AND NOT EXISTS (SELECT 1 FROM resurrections r WHERE r.torrent_id = t.id) \
@@ -111,7 +113,10 @@ pub(super) async fn resurrection_claim(
     let inserted = sqlx::query(
         "INSERT INTO resurrections (torrent_id, user_id, required_hours, \
          reward_sparks, seed_base_seconds) \
-         VALUES ($1, $2, $3, 5000, $4) ON CONFLICT (torrent_id) DO NOTHING",
+         VALUES ($1, $2, $3,
+           COALESCE((SELECT value::bigint FROM site_settings WHERE \
+            name = 'resurrection_reward'), 5000), $4)
+         ON CONFLICT (torrent_id) DO NOTHING",
     )
     .bind(body.torrent_id)
     .bind(auth.id)
