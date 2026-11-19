@@ -313,6 +313,7 @@
  "apps/api/src/auth_http/profile.rs": 18,
  "apps/api/src/auth_http/profile_changes.rs": 2,
  "apps/api/src/auth_http/profile_helpers.rs": 6,
+ "apps/api/src/auth_http/profile_stats.rs": 4,
  "apps/api/src/auth_http/profile_types.rs": 3,
  "apps/api/src/auth_http/register.rs": 4,
  "apps/api/src/auth_http/register_fields_store.rs": 2,

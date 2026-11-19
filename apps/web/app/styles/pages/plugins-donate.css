@@ -1,0 +1,650 @@
+/* pages/plugins-donate.css —— 自 pages.css 按段拆分（0503），段界与内容零改动，见 git 历史 */
+/* ============ 插件移植：勋章墙 / 大赛 / 头像挂件 / 五子棋 ============ */
+
+.medalwall-medal {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--warning-soft), var(--warning-soft));
+  border: 1px solid var(--compat-orange-dark);
+  font-size: 22px;
+  flex: none;
+}
+
+/* 佩戴中：金环高亮 + 微抬——单佩戴位语义的视觉锚点（title 里另有「佩戴中」文案） */
+.medalwall-worn {
+  border-color: var(--sun);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--sun) 45%, transparent);
+  transform: translateY(-2px);
+}
+
+/* 墙内稀有度角标的紧凑档：墙位小，用类而非 Tailwind !important 覆写
+ * （.medal-rarity 的 padding/字号是 unlayered 自定义 CSS，utility ! 前缀能压但语义脆） */
+.medalwall-rarity.medal-rarity {
+  padding: 1px 6px;
+  font-size: 12px;
+}
+
+.contest-live {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--success-bright);
+  color: var(--text-on-accent);
+  font-size: 12px;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
+.avatar-frame-demo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 3px solid #d7dee8;
+  background: var(--compat-paper);
+  font-size: 30px;
+}
+
+.avatar-frame-demo.frame-on {
+  border-color: var(--compat-orange-dark);
+  box-shadow: 0 0 0 3px var(--focus-ring-soft);
+}
+
+.gomoku-board {
+  display: grid;
+  grid-template-columns: repeat(15, minmax(0, 1fr));
+  width: min(100%, 540px);
+  aspect-ratio: 1;
+  border: 2px solid #b9832f;
+  background: linear-gradient(135deg, #f0cf94, #e4b96d);
+  padding: 4px;
+  gap: 1px;
+}
+
+.gomoku-cell {
+  position: relative;
+  border: 1px solid rgba(140, 100, 40, 0.35);
+  border-radius: 0;
+  background: transparent;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+}
+
+.gomoku-cell:not(:disabled):hover {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.gomoku-cell.gomoku-b::after,
+.gomoku-cell.gomoku-w::after {
+  content: "";
+  position: absolute;
+  inset: 8%;
+  border-radius: 50%;
+}
+
+.gomoku-cell.gomoku-b::after {
+  background: radial-gradient(circle at 35% 30%, #4a4a4a, #000);
+}
+
+.gomoku-cell.gomoku-w::after {
+  background: radial-gradient(circle at 35% 30%, #ffffff, #cfd6df);
+  border: 1px solid #aab3bf;
+}
+
+/* 勋章卡片元信息（同类站口径） */
+.medal-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--compat-paper);
+  border: 1px dashed var(--compat-line);
+  list-style: none;
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+.medal-meta li {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+/* ============ 捐赠中心（同类站 donate 口径） ============ */
+.donate-plan {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px;
+  border: 1px solid var(--compat-line);
+  border-radius: 10px;
+  background: var(--surface-raised);
+}
+.donate-plan__title {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text-body);
+}
+.donate-plan__reward {
+  font-size: 11.5px;
+  color: var(--success-bright);
+}
+.donate-plan__price {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--compat-orange-dark);
+}
+.donate-plan button {
+  min-height: var(--tap-min);
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(
+    135deg,
+    var(--compat-fill-a),
+    var(--compat-orange)
+  );
+  color: var(--text-on-accent);
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.donate-plan button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.donate-plan__lack {
+  font-size: 12px;
+  color: var(--danger-text);
+}
+.donate-vip-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--warning-soft), var(--warning));
+  color: var(--text-brand);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.donate-spark {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border: 1px dashed var(--compat-line);
+  border-radius: 10px;
+  background: var(--compat-paper);
+}
+
+/* ==== 首页：聊天室 + 趣味盒 两栏等高 ==== */
+.home-duo > section {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.home-duo .shoutbox__list {
+  flex: 1 1 auto;
+  min-height: 320px;
+  max-height: none;
+}
+@media (min-width: 1024px) {
+  .home-duo .funbox {
+    min-height: 520px;
+  }
+}
+
+/* ==== 获取 RSS 页（同类站 getrss.php 复刻） ==== */
+.rss-card {
+  padding: 16px 18px;
+  border: 1px solid var(--compat-line);
+  border-radius: 12px;
+  background: var(--surface-card);
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.rss-card__title {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.rss-fieldset {
+  border: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rss-fieldset legend {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-sub, #6b7280);
+}
+
+.rss-checks {
+  /* 流式勾选墙（auto-fit 大列会在 70 项时留白难扫读） */
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 18px;
+}
+
+.rss-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  min-height: var(--tap-min);
+  cursor: pointer;
+}
+
+.rss-rows {
+  /* 2 列基准、宽屏 4 列：标签恒在控件左侧同一行内 */
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 24px;
+}
+
+@media (min-width: 768px) {
+  .rss-rows {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+.rss-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  flex-wrap: wrap;
+}
+
+.rss-row > span {
+  color: var(--text-sub, #6b7280);
+  white-space: nowrap;
+}
+
+.rss-row select,
+.rss-row input[type="text"],
+.rss-url-row input,
+.rss-preset input {
+  min-height: var(--tap-min);
+  padding: 0 8px;
+  border: 1px solid var(--compat-line);
+  border-radius: 8px;
+  background: var(--surface-card);
+  color: inherit;
+  font-size: 13px;
+  flex: 1;
+  min-width: 0;
+}
+.rss-url-row input,
+.rss-preset input {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+}
+.rss-hint {
+  font-size: 12px;
+  color: var(--text-sub, #6b7280);
+}
+
+.rss-url-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.rss-copy {
+  min-height: var(--tap-min);
+  padding: 0 18px;
+  border: none;
+  border-radius: 999px;
+  background: var(--sky-deep, #0369a1);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.rss-copy:active {
+  opacity: 0.85;
+}
+
+.rss-presets {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rss-preset {
+  /* token 行两段式网格（旧 flex 单行在窄屏把日期与按钮挤出容器） */
+  display: grid;
+  grid-template-columns: minmax(64px, auto) 1fr;
+  align-items: center;
+  gap: 4px 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--compat-line);
+  border-radius: 10px;
+  background: var(--compat-paper, var(--surface-card));
+}
+.rss-preset > span {
+  color: var(--text-sub, #6b7280);
+  word-break: break-all;
+}
+.rss-preset__actions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.rss-preset > small {
+  grid-column: 1 / -1;
+}
+
+/* 指标磁贴：宽屏自适应铺满，窄屏自动降列 */
+.up-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+.up-stat {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-md);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-card);
+}
+.up-stat__icon {
+  flex: 0 0 38px;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--r-sm);
+  background: var(--sky-soft);
+  color: var(--text-brand);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+.up-stat__value {
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--text-strong);
+  font-variant-numeric: tabular-nums;
+  word-break: break-word;
+}
+.up-stat__label {
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+/* 磁贴列数按内容宽显式给：auto-fit minmax(160px) 在 360px 屏只剩单列
+   （328 内容宽放不下 160×2+12），5 块竖排把首屏撑到 400px。 */
+@media (max-width: 768px) and (min-width: 641px) {
+  .up-stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 640px) {
+  .up-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .up-stat {
+    gap: 10px;
+    padding: 12px;
+  }
+  .up-stat__icon {
+    flex-basis: 32px;
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+  }
+  .up-stat__value {
+    font-size: 16px;
+  }
+  /* 5 块奇数时最后一块占满整行，避免右下留半格空洞 */
+  .up-stat:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+}
+/* 卡片网格：双列，gap 14；卡片按内容自然高度（align-items:start，不为对齐拉高） */
+.up-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  align-items: start;
+}
+.up-card {
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-lg);
+  background: var(--surface-card);
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
+}
+.up-card--full {
+  grid-column: 1 / -1;
+}
+/* 首屏定席：左列「账号信息」→「下一级进度」上下叠放，右列「传输与做种」横跨两行，
+   把左侧短卡片下方的空档填掉（换顺序做不到——第二行会从本行最高卡片底下才开始）。 */
+.up-card--slot-tl {
+  grid-column: 1;
+  grid-row: 1;
+}
+.up-card--slot-bl {
+  grid-column: 1;
+  grid-row: 2;
+}
+.up-card--slot-r2 {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  /* 网格是 align-items:start（避免整行被最高的卡拉高），跨行卡单独特例撑满两行，
+     否则右列会留出与左列高差相等的那条缝 */
+  align-self: stretch;
+}
+.up-card__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-soft);
+  background: linear-gradient(90deg, var(--head-a), var(--head-b));
+  color: var(--text-strong);
+  font-size: 14px;
+  font-weight: 800;
+}
+.up-card__title i {
+  color: var(--text-brand);
+  font-style: normal;
+  font-size: 14px;
+}
+.up-card__body {
+  padding: 4px 16px 10px;
+}
+/* 资料行：标签定宽 132 + 虚线分隔（替代整块表格的横向割裂感） */
+.up-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 9px 0;
+  border-bottom: 1px dashed var(--border-soft);
+}
+.up-row:last-child {
+  border-bottom: 0;
+}
+.up-row__label {
+  flex: 0 0 132px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 700;
+  padding-top: 1px;
+}
+.up-row__label i {
+  width: 14px;
+  text-align: center;
+  color: var(--text-fainter);
+  font-style: normal;
+  font-size: 12px;
+}
+.up-row__value {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--text-body-deep);
+  font-size: 13.5px;
+  line-height: 1.6;
+  word-break: break-word;
+}
+.up-row__value a {
+  color: var(--text-brand);
+}
+.up-row__value a:hover {
+  text-decoration: underline;
+}
+/* 勋章墙：横向滚动，避免长列表撑破卡片 */
+.up-medals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 10px 0;
+}
+.up-note {
+  padding: 12px 16px;
+  border: 1px dashed var(--border-deep);
+  border-radius: var(--r-md);
+  background: var(--surface-raised);
+  color: var(--text-muted);
+  font-size: 13px;
+}
+@media (max-width: 768px) {
+  .up-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  /* 单列时取消首屏定席，回到自然流式排列（否则会撑出一个不存在的第二列） */
+  .up-card--slot-tl,
+  .up-card--slot-bl,
+  .up-card--slot-r2 {
+    grid-column: auto;
+    grid-row: auto;
+  }
+  /* 窄屏标签列固定 96px 仍放得下（最长的「真实分享率」≈86px）；
+     原先把每行折成上下两段，账号信息卡在手机上高 380px */
+  .up-row {
+    gap: 10px;
+  }
+  .up-row__label {
+    flex: 0 0 96px;
+  }
+}
+/* 手机上标签页排成一行横向滚动（9 个药丸折三行太占首屏）；
+   下一级进度的进度条通栏放第二行（原布局 360px 屏只剩 44px 可见） */
+@media (max-width: 640px) {
+  .up-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+  }
+  .up-tabs::-webkit-scrollbar {
+    display: none;
+  }
+  .up-tabs > a {
+    flex: 0 0 auto;
+  }
+  .up-progress {
+    flex-wrap: wrap;
+    row-gap: 4px;
+  }
+  .up-progress__label {
+    width: auto;
+    flex: 1 1 auto;
+  }
+  .up-progress__val {
+    width: auto;
+    flex: 0 1 auto;
+  }
+  .up-progress__track {
+    order: 3;
+    flex: 1 0 100%;
+  }
+}
+
+/* 指标磁贴的语义色变体（上传绿 / 下载橙 / 魔力黄），仍走 token，随主题换肤 */
+.up-stat__icon--up {
+  color: var(--success);
+  background: var(--success-soft);
+}
+.up-stat__icon--down {
+  color: var(--coral);
+  background: var(--coral-soft);
+}
+.up-stat__icon--spark {
+  color: var(--warning);
+  background: var(--warning-soft);
+}
+/* 卡片内嵌表格去掉自身外框，避免出现「框中框」 */
+.up-card__body .nexus-table {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* ============ 勋章稀有度角标（0143 词表） ============
+   独立于 .sticker：后者对「无 data-variant」的贴纸有 unlayered 兜底底色，
+   会把配色 utility 类盖成纸白。这里按 data-tone 直接给 token 底色。 */
+.medal-rarity {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 9px;
+  border: 1px solid var(--border-soft);
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+.medal-rarity[data-tone="gold"] {
+  background: var(--sun);
+  color: var(--on-sun); /* P1-6：同 .torrents-promo，token 化漏改处 */
+}
+.medal-rarity[data-tone="coral"] {
+  background: var(--coral);
+  color: #fff;
+}
+.medal-rarity[data-tone="mint"] {
+  background: var(--mint);
+  color: #fff;
+}
+.medal-rarity[data-tone="sky"] {
+  background: var(--sky);
+  color: #fff;
+}
+.medal-rarity[data-tone="indigo"] {
+  background: var(--indigo);
+  color: #fff;
+}
+.medal-rarity[data-tone="candy"] {
+  background: var(--candy);
+  color: #fff;
+}
+

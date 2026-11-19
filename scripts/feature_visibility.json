@@ -32,6 +32,10 @@
     {
       "endpoint": "GET /admin/contract-stats",
       "consumer": "contract-stats"
+    },
+    {
+      "endpoint": "GET /users/{id}/stats",
+      "consumer": "users/${uid}/stats"
     }
   ]
 }

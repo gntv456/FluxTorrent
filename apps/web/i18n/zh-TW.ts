@@ -28,6 +28,7 @@ const zhTwBase: Omit<
   | "endangered"
   | "teams"
   | "contracts"
+  | "profileStats"
   | "pubboard"
   | "checkin"
   | "termsPanel"
@@ -8316,4 +8317,11 @@ export const zhTW: Dict = {
       hint: "近 12 個月",
     },
   },
+  profileStats: {
+    title: "做種畫像",
+    seedingLine: "在種 {n} 顆 · {size} · 累計 {hours} 小時",
+    catsTitle: "類別構成（按體積）",
+    bucketsTitle: "做種時長分佈",
+  },
+
 };

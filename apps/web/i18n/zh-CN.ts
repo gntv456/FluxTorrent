@@ -8399,6 +8399,13 @@ export const zhCN = {
       hint: "近 12 个月",
     },
   },
+  profileStats: {
+    title: "做种画像",
+    seedingLine: "在种 {n} 颗 · {size} · 累计 {hours} 小时",
+    catsTitle: "类别构成（按体积）",
+    bucketsTitle: "做种时长分布",
+  },
+
 };
 
 export type Dict = typeof zhCN;

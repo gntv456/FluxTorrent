@@ -1,0 +1,226 @@
+/* pages/mobile-m3.css —— 自 pages.css 按段拆分（0503），段界与内容零改动，见 git 历史 */
+/* ============ 种子行卡片（M3，移动端方案 §3） ============
+ * <640 由 TorrentRowList 挂载（useIsCompact），桌面表格由
+ * torrents/page.tsx 以 md:block/hidden 双态渲染，两分支同一数据。 */
+.trow-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.trow-card {
+  display: flex;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-card);
+}
+.trow-card:active {
+  background: var(--surface-raised);
+}
+.trow-card__cover {
+  position: relative;
+  display: flex;
+  width: 56px;
+  height: 76px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--trow-cat, #93a1bc) 26%, transparent);
+  color: var(--trow-cat, #93a1bc);
+  font-size: 11.5px;
+  font-weight: 700;
+}
+.trow-card__cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.trow-card__promo {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  padding: 1px 5px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.trow-card__body {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+.trow-card__title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.trow-card__meta {
+  overflow: hidden;
+  font-size: 12px;
+  color: var(--sub);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.trow-card__nums {
+  display: flex;
+  gap: 8px;
+  margin-top: auto;
+  font-size: 12px;
+  color: var(--sub);
+  font-variant-numeric: tabular-nums;
+}
+.trow-card__seed {
+  color: var(--mint);
+}
+.trow-card__leech {
+  color: var(--coral);
+}
+
+/* 详情页底部操作条（M3；M6.3 对齐样图④：ghost 环 + primary 投影） */
+.td-actionbar {
+  position: fixed;
+  inset: auto 0 0 0;
+  z-index: 50;
+  display: flex;
+  gap: 9px;
+  padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line);
+  background: var(--chip-veil);
+  backdrop-filter: blur(10px);
+  transition: transform 0.2s var(--ease-out, ease-out);
+}
+.td-actionbar__btn {
+  min-height: 44px;
+  flex: 1;
+  border: 1.5px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-card);
+  color: var(--text-brand);
+  font-size: 15px;
+  font-weight: 700;
+}
+.td-actionbar__btn.is-primary {
+  flex: 2;
+  border-color: var(--sky-deep, #0a3d6b);
+  background: var(--sky-deep, #0a3d6b);
+  color: #fff;
+  box-shadow: 0 5px 14px -4px rgba(30, 138, 232, 0.5);
+}
+@media (min-width: 768px) {
+  .td-actionbar {
+    display: none;
+  }
+}
+
+/* ============ 首页移动问候条（M3，方案 §5） ============ */
+.mhome-head {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.mhome-head__hello {
+  margin: 0;
+  font-size: 15px;
+  color: var(--sub);
+}
+.mhome-head__hello b {
+  color: var(--ink);
+}
+.mhome-head__stats {
+  display: flex;
+  gap: 6px;
+}
+/* 2026-10-03：<span> → <dl> 以承载「标签 + 数值」两段（此前只有
+   ↑↓∑★ 符号，新用户判断不出 ∑ 是分享率、★ 是魔力）。 */
+.mhome-head__stats > div { flex: 1; padding: 7px 4px 8px;
+  border-radius: var(--r-md); background: var(--surface-card);
+  text-align: center; }
+.mhome-head__stats dt { color: var(--text-faint); font-size: 12px;
+  line-height: 1.3; }
+.mhome-head__stats dd { margin: 1px 0 0; font-size: 13px;
+  font-variant-numeric: tabular-nums; }
+.mhome-head__stats i {
+  font-style: normal;
+  color: var(--ink);
+  font-weight: 600;
+}
+
+/* ============ 下拉刷新（M3，仅触屏渲染） ============ */
+.ptr {
+  position: relative;
+  overflow: hidden;
+  transition: height 0.2s var(--ease-out, ease-out);
+}
+.ptr__ind {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 20px;
+  color: var(--sky, #3b82f6);
+  opacity: 0.6;
+}
+.ptr__ind.is-ready {
+  opacity: 1;
+}
+.ptr__ind.is-busy {
+  animation: ptr-wave 0.8s ease-in-out infinite;
+}
+@keyframes ptr-wave {
+  0%,
+  100% {
+    transform: translateX(-50%) rotate(-12deg);
+  }
+  50% {
+    transform: translateX(-50%) rotate(12deg);
+  }
+}
+
+/* ============ 行卡片左滑（M3） ============ */
+.trow-swipe {
+  position: relative;
+  /* 2026-10-07 模拟器真机联调修：acts 靠 translateX(100%) 藏在右缘外，
+     但绝对定位盒仍参与文档横向溢出——安卓 WebView 整页可横滚 112px、
+     底 TabBar(inset-x-0) 被同一溢出拉宽到 525px。裁剪掉两侧。 */
+  overflow: hidden;
+}
+/* 操作层藏在前层右侧之外：未滑动时不可见，滑动时随前层左移露出。
+   2026-10-03 修：此前缺初始位移，acts 直接压在卡片右缘，
+   移动端每行露出一块砖红（--coral）色块，像渲染破损。 */
+.trow-swipe__acts {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  transform: translateX(100%);
+}
+.trow-swipe__act {
+  display: flex;
+  width: 64px;
+  align-items: center;
+  justify-content: center;
+  background: var(--sky-deep, #0a3d6b);
+  /* P1-1：山海经 --sky-deep 是亮档，白字 2.01；走语义字色令牌 */
+  color: var(--text-on-accent);
+  font-size: 18px;
+}
+.trow-swipe__act.is-fav {
+  background: var(--coral, #e11d48);
+}
+.trow-swipe__front {
+  position: relative;
+  /* 兜底背景：前层必须不透明，否则 acts 的色块会从内层透出 */
+  background: var(--surface-card);
+  transition: transform 0.15s var(--ease-out, ease-out);
+  touch-action: pan-y;
+}
+

@@ -1,0 +1,441 @@
+/* pages/cards-misc.css —— 自 pages.css 按段拆分（0503），段界与内容零改动，见 git 历史 */
+/* ============ 种子页双栏（M4，方案 §6/§4.4） ============
+ * md-lg 生效；折叠态 .hinge-safe 避让；segments:3 时右栏加宽。 */
+.tsplit {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.8fr);
+  gap: 12px;
+  align-items: start;
+}
+@media not all and (min-width: 768px) { .tsplit { display: block; } }
+@media (min-width: 1024px) {
+  .tsplit { display: block; }
+  /* ≥lg 桌面顶栏布局接管：右栏预览不渲染在文档流尾部 */
+  .tsplit__detail {
+    display: none;
+  }
+}
+.tsplit__list {
+  min-width: 0;
+}
+.tsplit__detail {
+  position: sticky;
+  top: 84px;
+  min-height: 320px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface-card);
+  padding: 16px;
+}
+.tsplit__name {
+  margin: 0 0 6px;
+  font-size: 16px;
+  color: var(--ink);
+}
+.tsplit__nums {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--sub);
+}
+.tsplit__descr {
+  margin: 0 0 10px;
+  max-height: 180px;
+  overflow: hidden;
+  font-size: 12.5px;
+  color: var(--sub);
+}
+.tsplit__acts {
+  display: flex;
+  gap: 8px;
+}
+.tsplit__open {
+  color: var(--sky-deep, #0a3d6b);
+  font-weight: 700;
+}
+.tsplit__empty {
+  display: flex;
+  height: 280px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--sub);
+  font-size: 13px;
+}
+.tsplit__hint {
+  font-size: 12px;
+  opacity: 0.7;
+}
+/* 三折叠全展（segments:3）：右栏随三屏宽度加宽，列分界对齐折痕 */
+.tsplit--seg3 {
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+}
+
+/* ============ 桌面打磨 #3（M4）：空态纵向填充 ============
+ * 种子列表/消息空时内容区与页脚间巨大留白——min-height 46vh 居中。 */
+.torrents-empty {
+  min-height: 46vh;
+  justify-content: center;
+}
+
+/* ============ 论坛话题卡片（M5.4，概念稿 §13） ============ */
+.ftopic-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ftopic-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-card);
+}
+.ftopic-card:active {
+  background: var(--surface-raised);
+}
+.ftopic-card__title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.5;
+}
+.ftopic-card__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--sub);
+}
+.ftopic-card__nums {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ============ 发布页固定提交条（M5.5，概念稿 §13） ============ */
+.up-submitbar {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 50;
+  min-height: 48px;
+  padding-bottom: env(safe-area-inset-bottom);
+  background: var(--compat-orange, #f59e0b);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+}
+.up-submitbar:disabled {
+  opacity: 0.6;
+}
+
+/* ============ M6.1 卡片网格类：compact 档单列降级 ============
+ * 任务卡片网格 auto-fill(minmax) 在窄屏仍会挤到最小卡宽，
+ * 信息密度不可读。767px 以下降单列（断点口径与 M1 归一）。
+ * 勋章/商店网格（.hall-grid/.honor-grid/.shop-grid）的列定义住在
+ * 后导入的 medal-shop.css：它们的轨道本就放得下 320 屏，保留 auto-fill
+ * 的多列密度，不做单列降级（覆盖写这里会被源序压掉）。 */
+@media not all and (min-width: 768px) {
+  .task-card-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ============ M6.2 行卡片：H&R 紧凑卡（/myhr，概念稿 §15 范式②） ============ */
+.hrcard {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 11px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-card);
+}
+.hrcard__title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.5;
+}
+.hrcard__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--sub);
+}
+.hrcard__ft {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+}
+.hrcard__btn {
+  min-height: var(--tap-min);
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--sky-deep);
+  font-size: 12px;
+  font-weight: 700;
+}
+.hrcard__btn:disabled {
+  opacity: 0.5;
+}
+
+/* ============ M6.2 行卡片：绩效领取记录紧凑卡（/jixiao） ============ */
+.claimcard {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 11px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-card);
+}
+.claimcard__hd {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+}
+.claimcard__name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.claimcard__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--sub);
+}
+
+/* ============ M6.2 行卡片：用户主页种子历史表（/users/[id] tabs） ============
+ * server component 表格：<768 thead 隐藏、单元格转块、
+ * 每格前置 .profilet__label 小标签——行卡片语义、零 JS 双态同 DOM。 */
+.profilet__label {
+  display: none;
+}
+@media not all and (min-width: 768px) {
+  .profilet thead {
+    display: none;
+  }
+  .profilet,
+  .profilet tbody,
+  .profilet tr,
+  .profilet td {
+    display: block;
+    width: 100%;
+  }
+  .profilet tr {
+    padding: 8px 0;
+    border-bottom: 1px dashed var(--line);
+  }
+  .profilet td {
+    padding: 3px 12px;
+    text-align: left !important;
+    max-width: none !important;
+    white-space: normal;
+  }
+  .profilet td:last-child {
+    border-bottom: 0;
+  }
+  .profilet__label {
+    display: inline-block;
+    margin-right: 6px;
+    color: var(--sub);
+    /* 2026-10-07 真机联调修：10.5px 小标签在 412px 下不可读，与眉标统一 11.5px */
+    font-size: 11.5px;
+    font-weight: 600;
+  }
+}
+
+/* === prefers-reduced-motion 降级（2026-10-03 补）=====
+   本文件 553 个选择器此前 0 处降级块（motion-tide.css 有 22 处、
+   base.css 有 2 处，唯独最大的 pages.css 漏了）。口径与 motion-tide
+   一致：位移与循环动画全关，颜色/边框过渡保留（避免生硬跳变）。
+   逐个列举而非 `*` 通配——通配会连带干掉组件内部必要过渡。 */
+@media (prefers-reduced-motion: reduce) {
+  .ptr__ind.is-busy { animation: none; opacity: 0.7; }
+  .bsheet, .td-actionbar, .trow-swipe__front, .ptr { transition: none; }
+  .pting-feed-pill { transition-duration: 0.01ms; }
+}
+
+/* 头栏全局搜索（0283 P1-6 → 2026-10-31 弹窗化）：放大镜按钮 + 弹窗。 */
+.gsearch { position: relative; }
+.gsearch__btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  /* P1-3：视觉 34px 不变，命中区外扩到 44（用负 margin 抵消占位，
+     不推挤相邻顶栏控件）。 */
+  width: var(--tap-min); height: var(--tap-min); margin: -5px;
+  border: 1px solid var(--compat-line); border-radius: 999px;
+  background: var(--surface-raised); color: var(--text-muted);
+  cursor: pointer; transition: all var(--motion-fast);
+}
+.gsearch__btn:hover,
+.gsearch__btn[aria-expanded="true"] {
+  color: var(--text-brand); border-color: var(--sky);
+}
+.gsearch__modal { position: fixed; inset: 0; z-index: 90; }
+.gsearch__modal-mask {
+  position: absolute; inset: 0; background: rgb(10 20 40 / 32%);
+}
+.gsearch__pop {
+  position: absolute; top: 64px; left: 50%; transform: translateX(-50%);
+  width: min(560px, calc(100vw - 32px));
+  border: 1px solid var(--compat-line); border-radius: var(--r-md);
+  background: var(--surface-raised);
+  box-shadow: 0 18px 44px rgb(17 34 68 / 22%); padding: 10px;
+}
+.gsearch__form { display: flex; }
+.gsearch__input {
+  width: 100%; min-height: var(--tap-min); padding: 2px 14px;
+  border: 1px solid var(--compat-line); border-radius: 999px;
+  background: var(--surface-card); color: inherit; font-size: 14px;
+}
+.gsearch__input:focus {
+  outline: 2px solid var(--focus-ring); border-color: var(--sky);
+}
+.gsearch__drop {
+  position: static; margin-top: 8px; max-height: 360px; overflow-y: auto;
+  border-top: 1px solid var(--compat-line-soft);
+}
+.gsearch__cap {
+  padding: 6px 12px 2px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+.gsearch__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  color: inherit;
+  font-size: 13px;
+  border-bottom: 1px solid var(--compat-line-soft);
+}
+.gsearch__item:last-child {
+  border-bottom: none;
+}
+.gsearch__item:hover {
+  background: var(--surface-hover);
+}
+.gsearch__item--more {
+  justify-content: center;
+  font-weight: 600;
+  color: var(--text-brand);
+}
+.gsearch__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gsearch__meta {
+  flex: none;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* 通知中心卡片（0283 P1-9）：三入口聚合页 */
+.ntf-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-md);
+  background: var(--surface-card);
+  color: inherit;
+}
+.ntf-card:hover {
+  background: var(--surface-hover);
+}
+.ntf-card--hot {
+  border-color: var(--coral);
+}
+.ntf-card--warm {
+  border-color: var(--sun);
+}
+.ntf-card__title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.ntf-card__count {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--text-strong);
+}
+.ntf-card__extra {
+  font-size: 12px;
+  color: var(--coral);
+}
+
+/* 客户端指南卡片（0283 P1-7） */
+.client-card {
+  padding: 14px 16px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-md);
+  background: var(--surface-card);
+}
+.client-card--banned {
+  border-color: var(--coral);
+  opacity: 0.85;
+}
+.client-card__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+}
+.client-card__name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+.client-card__rec {
+  margin-left: 6px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--mint-soft);
+  color: var(--mint);
+  font-size: 12px;
+}
+.client-card__ban {
+  margin-left: 6px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--coral-soft);
+  color: var(--coral);
+  font-size: 12px;
+}
+.client-card__ver {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.client-card__keys {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  font-size: 13px;
+  color: var(--text-body);
+}
+.client-rules {
+  padding: 14px 16px;
+  border: 1px dashed var(--border-soft);
+  border-radius: var(--r-md);
+}

@@ -1,0 +1,266 @@
+/* pages/preserve-pm.css —— 自 pages.css 按段拆分（0503），段界与内容零改动，见 git 历史 */
+/* ============ 保种区（requireseed.php 复刻） ============ */
+.preserve-page {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.brand-utility-hero {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 20px;
+  border: 1px solid var(--compat-line-soft);
+  border-radius: var(--r-md);
+  background: linear-gradient(
+    100deg,
+    var(--compat-fill-glow),
+    var(--compat-orange-dark)
+  );
+  box-shadow: var(--shadow-card);
+}
+.preserve-hero__mark {
+  display: flex;
+  width: 52px;
+  height: 52px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: var(--on-accent-glass);
+  font-size: 26px;
+}
+.preserve-hero__copy {
+  display: flex;
+  flex-direction: column;
+  color: var(--text-on-accent);
+}
+.preserve-hero__copy small {
+  font-size: 12px;
+  letter-spacing: 2.5px;
+  opacity: 0.85;
+  font-weight: 700;
+}
+.preserve-hero__copy strong {
+  font-size: 22px;
+  font-weight: 900;
+}
+.preserve-hero__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin-left: auto;
+  padding-left: 14px;
+  border-left: 1px solid var(--border-soft);
+}
+.preserve-hero__stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.preserve-hero__stat strong {
+  color: var(--text-strong);
+  font-size: 17px;
+  font-weight: 900;
+}
+.preserve-hero__stat small {
+  color: var(--text-faint);
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+.preserve-tools summary {
+  cursor: pointer;
+}
+.preserve-tools summary,
+.preserve-list-card__heading h2 {
+  padding: 10px 16px;
+  margin: 0;
+  color: var(--text-brand);
+  font-size: 15px;
+  font-weight: 800;
+  user-select: none;
+}
+.preserve-tools__body {
+  padding: 4px 16px 14px;
+}
+.preserve-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+  margin-top: 10px;
+}
+.preserve-filter label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--text-muted);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+.preserve-filter select,
+.preserve-filter input[type="search"] {
+  min-height: var(--tap-min);
+  padding: 4px 10px;
+  border: 1px solid var(--compat-line);
+  border-radius: 8px;
+  background: var(--surface-raised);
+  font-size: 13px;
+}
+.preserve-filter__keyword input {
+  width: 220px;
+}
+.preserve-filter__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.preserve-filter .brand-button {
+  min-height: var(--tap-min);
+}
+.preserve-filter__reset {
+  color: var(--text-faint);
+  font-size: 13px;
+  font-weight: 700;
+}
+.preserve-tools__rss {
+  margin: 12px 0 8px;
+  color: var(--text-muted);
+  font-size: 12.5px;
+  line-height: 1.7;
+}
+.preserve-tools__rss strong {
+  margin-right: 6px;
+  color: var(--text-brand);
+}
+.preserve-list-card__heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-soft);
+  background: linear-gradient(90deg, var(--head-a), var(--head-b));
+}
+.preserve-list-card__heading > span {
+  color: var(--text-faint);
+  font-size: 12.5px;
+}
+/* M6.3：保种列表窄屏兜底（2026-11-15 并入圆角清零块） */
+table.preserve-list-table {
+  display: block;
+  width: max-content;
+  max-width: 100%;
+  overflow-x: auto;
+  border-radius: 0;
+  border: 0;
+  box-shadow: none;
+}
+/* ============ PM 管理组（contactstaff.php 复刻） ============ */
+.contactstaff-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.contactstaff-head h1, .contactstaff-head h2 {
+  margin: 0;
+  color: var(--text-strong);
+  font-size: 22px;
+  font-weight: 900;
+}
+.contactstaff-head p {
+  margin: 2px 0 0;
+  color: var(--text-faint);
+  font-size: 13px;
+}
+.contactstaff-subject {
+  width: 99%;
+  min-height: var(--tap-min);
+  padding: 4px 10px;
+  border: 1px solid var(--compat-line);
+  border-radius: 8px;
+  background: var(--surface-raised);
+  font-size: 13.5px;
+}
+.bbcode-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+.codebuttons {
+  min-height: var(--tap-min);
+  padding: 2px 8px;
+  margin-right: 3px;
+  border: 1px solid var(--compat-line);
+  border-radius: 6px;
+  background: var(--surface-card);
+  color: var(--text-body);
+  font-size: 12px;
+  cursor: pointer;
+}
+textarea.bbcode {
+  width: 100%;
+  min-height: 320px;
+  padding: 10px 12px;
+  border: 1px solid var(--compat-line);
+  border-radius: 8px;
+  background: var(--surface-raised);
+  font: 13.5px/1.7 inherit;
+  resize: vertical;
+}
+.contactstaff-preview {
+  margin-top: 10px;
+  padding: 12px 14px;
+  border: 1px dashed var(--compat-line);
+  border-radius: 8px;
+  background: var(--surface-card);
+  color: var(--text-body);
+}
+.contactstaff-preview p {
+  margin: 6px 0 0;
+  white-space: pre-wrap;
+}
+.contactstaff-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+.contactstaff-actions .btn {
+  min-height: var(--tap-min);
+  padding: 4px 20px;
+  border: 0;
+  border-radius: 8px;
+  color: var(--text-on-accent);
+  font-weight: 800;
+  background: linear-gradient(
+    135deg,
+    var(--compat-fill-a),
+    var(--compat-fill-b)
+  );
+  cursor: pointer;
+}
+.contactstaff-actions .btn:disabled {
+  opacity: 0.6;
+}
+.contactstaff-actions .btn2 {
+  min-height: var(--tap-min);
+  padding: 4px 16px;
+  border: 0;
+  border-radius: 8px;
+  color: var(--text-brand);
+  font-weight: 800;
+  background: var(--compat-soft);
+  cursor: pointer;
+}
+.contactstaff-hint {
+  color: var(--text-fainter);
+  font-size: 11.5px;
+}
+.contactstaff-msg {
+  margin-top: 8px;
+  color: var(--success);
+  font-size: 13px;
+  font-weight: 700;
+}
+

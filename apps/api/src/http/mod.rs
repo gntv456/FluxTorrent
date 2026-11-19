@@ -135,6 +135,7 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(crate::auth_http::me_title_get)
         .service(crate::auth_http::me_title_set)
         .service(crate::auth_http::user_public_profile)
+        .service(crate::auth_http::user_public_stats)
         .service(crate::auth_http::user_changes)
         .service(crate::auth_http::my_fields)
         .service(crate::auth_http::my_fields_put)

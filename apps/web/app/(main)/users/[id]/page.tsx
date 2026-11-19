@@ -8,6 +8,7 @@ import { getDict } from "@/i18n/server";
 import { dateLocale } from "@/i18n/config";
 import { ProfileHero, StatTiles } from "./_parts/profile-hero";
 import { CenterGrid } from "./_parts/profile-center";
+import { ProfileStatsCard } from "./_parts/profile-stats-card";
 import {
   CommentsTab,
   PostsTab,
@@ -197,6 +198,12 @@ export default async function UserProfilePage({
           prog={prog}
           seedLabel={dict.uxOpt.statSeeding}
         />
+      )}
+
+      {/* 0503 他人主页可视化（10-26 B 画像遗留）：做种画像卡，
+          服务端渲染；无做种自隐 */}
+      {active === "center" && (
+        <ProfileStatsCard uid={data.profile.id} dict={dict} />
       )}
 
       {listView && (

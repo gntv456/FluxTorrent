@@ -1,0 +1,444 @@
+/* pages/torrent-list.css —— 自 pages.css 按段拆分（0503），段界与内容零改动，见 git 历史 */
+/* ============ 种子列表行（同类站 torrents.php 口径） ============
+   类型色块 | 标题三行（主标题[置顶/新/促销+剩余] / 副题链 / 上传者+日期）
+   | 评论/存活/大小/做种/下载/完成 | 行为（下载/详情）。
+   促销行整行高亮（免费=同类站蓝、2x=暖黄），剩余时间蓝色小字跟随促销徽标。 */
+:root,
+[data-theme="brand"] {
+  --promo-free-bg: #e3f4fd; /* 免费/2x免费 行高亮（浅同类站蓝，#89c9e6 同族更淡） */
+  --promo-x2-bg: #fdf6dd; /* 2x/2x半价 行高亮（暖黄） */
+}
+[data-theme="brand-night"] {
+  --promo-free-bg: #10314a;
+  --promo-x2-bg: #33300f;
+}
+
+.torrents-td-cat {
+  padding: 8px 6px !important;
+  text-align: center;
+  vertical-align: middle;
+}
+.torrents-cat-block {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
+  border: 1px solid var(--compat-line-soft);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+/* 图标键形态（0166）：SVG 描边图形，白描边 + 轻投影与色块底融合 */
+.torrents-cat-ico {
+  color: #fff;
+  filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.35));
+}
+
+/* 封面列（竖版海报 2:3；无图回退类型色块 + 🎬） */
+.torrents-td-cover {
+  padding: 6px 2px !important;
+  vertical-align: middle;
+}
+.torrents-cover {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 69px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--compat-line-soft);
+  object-fit: cover;
+}
+.torrents-cover--fallback {
+  font-size: 18px;
+  filter: saturate(0.9);
+}
+
+.torrents-td-title {
+  min-width: 240px;
+}
+.torrents-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+}
+.torrents-pin {
+  font-size: 12px;
+  filter: saturate(1.2);
+}
+.torrents-name {
+  color: var(--text-strong);
+  min-width: 0;
+  /* 长标题截断为两行内（同类站整行展示，这里防超长标题撑爆表格） */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.torrents-name b {
+  font-weight: 700;
+}
+.torrents-new {
+  color: var(--danger-text);
+  font-size: 12px;
+  font-weight: 700;
+}
+/* 0170 审核状态徽标：待审=琥珀、被拒=红（站点开关放行后出现在列表） */
+.torrents-approval {
+  padding: 0 6px;
+  border-radius: 4px;
+  background: var(--sun);
+  color: var(--on-sun);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.7;
+}
+.torrents-approval--rejected {
+  background: var(--danger);
+  color: #fff;
+}
+/* 0306 暂缓(4)：中性灰——挂起等证据，非终态也非拒绝 */
+.torrents-approval--held { background: var(--line-soft); color: var(--ink); }
+.torrents-promo {
+  padding: 0 6px;
+  border-radius: 4px;
+  background: var(--sun);
+  color: var(--on-sun); /* P1-6：原 #6b4e00 压 --sun 底 2.09，审计后 token 化漏改处 */
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.7;
+}
+.torrents-promo--free {
+  background: var(--mint);
+  color: #fff;
+}
+/* 0427 角标「文字即色」轻量变体（同类站 UI 对标采纳②）：
+   无底色无圆角，纯品牌色粗体文字——表格密度模式下角标不撑行高，
+   行内多枚标签并排也不膨胀。实底版保留给卡片/详情等展示位。 */
+.torrents-promo--text {
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #a16207;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: inherit;
+}
+.torrents-promo--text.torrents-promo--free {
+  background: transparent;
+  color: var(--sky-deep);
+}
+/* 0424 促销角标内嵌剩余时长（Free22H 口径）：小号加粗，与角标同色系反白 */
+.torrents-promo-left {
+  font-size: 12px;
+  font-weight: 800;
+  margin-left: 3px;
+  opacity: 0.85;
+}
+.torrents-left {
+  color: var(--sky-deep);
+  font-size: 11.5px;
+}
+[data-theme="brand-night"] .torrents-left {
+  color: var(--text-brand);
+}
+
+/* 用户级列设置（0316） */
+.torrents-colset { position: relative; }
+.torrents-colset__btn {
+  padding: 2px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-card);
+  color: var(--text-sub);
+  font-size: 11.5px;
+  cursor: pointer;
+}
+.torrents-colset__btn:hover { color: var(--ink); }
+.torrents-colset__panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 40;
+  width: 220px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-card);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
+}
+.torrents-colset__hint {
+  margin-bottom: 8px;
+  color: var(--text-sub);
+  font-size: 12px;
+  line-height: 1.4;
+}
+.torrents-colset__list { display: flex; flex-direction: column; gap: 4px; }
+.torrents-colset__item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.torrents-colset__item input { accent-color: var(--sky-deep); }
+.torrents-colset__item input:disabled + span {
+  color: var(--text-sub);
+  text-decoration: line-through;
+}
+.torrents-colset__ops {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+.torrents-colset__save,
+.torrents-colset__cancel {
+  padding: 3px 12px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+.torrents-colset__save {
+  border: none;
+  background: var(--sky-deep);
+  color: #fff;
+}
+.torrents-colset__save:disabled { opacity: 0.5; cursor: default; }
+.torrents-colset__cancel {
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text-sub);
+}
+.torrents-tag--official {
+  padding: 0 6px;
+  border-radius: 4px;
+  background: var(--indigo);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.7;
+}
+/* 用户标签徽标（0159 P1）：列表行/卡片回显——字典未配色时中性灰底，
+   配了色由 inline style 覆盖（与论坛 TagChip 同口径） */
+.torrents-tag--user {
+  padding: 0 6px;
+  border-radius: 4px;
+  background: var(--fill-2, #eef1f4);
+  color: var(--text-sub, #5a6b7b);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.7;
+}
+.torrents-tag--more {
+  cursor: help;
+}
+/* 详情页标签复用列表口径的彩色轮换（普通标签按位取色，选中即上色） */
+.torrents-tag--sky {
+  padding: 0 6px;
+  border-radius: 4px;
+  background: var(--sky);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.7;
+}
+.torrents-tag--mint {
+  padding: 0 6px;
+  border-radius: 4px;
+  background: var(--mint);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.7;
+}
+.torrents-tag--sun {
+  padding: 0 6px;
+  border-radius: 4px;
+  background: var(--sun);
+  color: var(--on-sun);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.7;
+}
+.torrents-tag--candy {
+  padding: 0 6px;
+  border-radius: 4px;
+  background: var(--candy);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.7;
+}
+/* 详情页标签未选中态：同色系浅底（选中=实色，未选中=浅色，标签云始终彩色） */
+.torrents-tag--official.td-tag--off {
+  background: var(--indigo-soft);
+  color: var(--indigo);
+}
+.torrents-tag--sky.td-tag--off {
+  background: var(--sky-soft);
+  color: var(--sky-deep);
+}
+.torrents-tag--mint.td-tag--off {
+  background: var(--mint-soft);
+  color: var(--mint);
+}
+.torrents-tag--sun.td-tag--off {
+  background: var(--sun-soft);
+  color: #8a6a00;
+}
+.torrents-tag--candy.td-tag--off {
+  background: var(--candy-soft);
+  color: var(--candy);
+}
+.torrents-tag--sticky {
+  padding: 0 6px;
+  border-radius: 4px;
+  background: var(--candy);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.7;
+}
+.torrents-subtitle {
+  margin-top: 3px;
+  max-width: 640px;
+  color: var(--text-muted);
+  font-size: 11.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.torrents-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px;
+  margin-top: 3px;
+  font-size: 11.5px;
+}
+.torrents-uploader {
+  color: var(--compat-orange-dark);
+  font-weight: 700;
+}
+.torrents-meta-date {
+  color: var(--text-faint);
+}
+.torrents-td-alive {
+  font-size: 12px;
+  white-space: nowrap;
+}
+.torrents-td-actions {
+  white-space: nowrap;
+  text-align: center;
+}
+.torrents-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  min-height: var(--tap-min);
+  border-radius: 8px;
+  color: var(--text-body);
+  font-size: 15px;
+}
+.torrents-action:hover {
+  color: var(--text-brand);
+  background: var(--surface-hover);
+}
+.torrents-action:first-child {
+  color: var(--coral);
+}
+
+/* 行为列容器与 ⋮ 下拉菜单（收藏/编辑/删除） */
+.torrents-actions {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.torrents-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 70;
+  /* 0145：详情页等非表格场景仍用本绝对定位版；列表内由 --fixed 覆写（见下） */
+  display: flex;
+  flex-direction: column;
+  min-width: 128px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--compat-paper);
+  box-shadow: var(--shadow-card);
+}
+.torrents-menu button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--tap-min);
+  padding: 4px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-body);
+  font-size: 12.5px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+}
+/* 0145 列表内下拉：fixed 定位按按钮视口坐标摆位——逃离 .nexus-table 的
+   overflow:hidden（圆角裁剪）与滚动包裹层的 overflow 裁剪链；
+   种子少时最后一行的菜单不再被表格底边/外框遮挡 */
+.torrents-menu--fixed {
+  position: fixed;
+  top: auto;
+  right: auto;
+  z-index: 120;
+}
+.torrents-menu button:hover {
+  background: var(--surface-hover);
+  color: var(--text-strong);
+}
+.torrents-menu button.danger {
+  color: var(--danger-text);
+}
+.torrents-menu button.danger:hover {
+  background: var(--danger-soft);
+}
+.torrents-menu button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.torrents-actions-msg {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 69;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: var(--mint-soft);
+  color: var(--text-body);
+  font-size: 11.5px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+/* 窄屏：行为列图标并列、数字列收紧 */
+@media (max-width: 768px) {
+  .torrents-td-title {
+    min-width: 160px;
+  }
+  .torrents-subtitle {
+    max-width: 200px;
+  }
+}
+

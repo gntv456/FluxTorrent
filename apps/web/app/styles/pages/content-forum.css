@@ -1,0 +1,503 @@
+/* pages/content-forum.css —— 自 pages.css 按段拆分（0503），段界与内容零改动，见 git 历史 */
+/* ============ 内容管理（公告/趣味盒/友链）表单与操作按钮 ============ */
+.cmgmt-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 720px;
+}
+.cmgmt-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--text-muted);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+.cmgmt-form input,
+.cmgmt-form textarea {
+  min-height: var(--tap-min);
+  padding: 6px 10px;
+  border: 1px solid var(--compat-line);
+  border-radius: 8px;
+  background: var(--surface-raised);
+  font-size: 13.5px;
+}
+.cmgmt-form textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+.cmgmt-act {
+  min-height: var(--tap-min);
+  margin-left: 6px;
+  padding: 2px 12px;
+  border: 1px solid var(--compat-line);
+  border-radius: 999px;
+  background: var(--surface-raised);
+  color: var(--text-body);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.cmgmt-act:hover {
+  border-color: var(--compat-orange);
+  color: var(--compat-orange);
+}
+.cmgmt-act--danger {
+  color: var(--danger-text);
+  border-color: var(--danger-border);
+}
+.cmgmt-act--danger:hover {
+  border-color: var(--danger-text);
+  color: var(--danger-text);
+}
+.cmgmt-act--ok {
+  color: var(--success);
+  border-color: var(--success-border);
+}
+.fun-status,
+.link-status {
+  display: inline-block;
+  padding: 1px 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+.fun-status--normal {
+  background: var(--success-soft);
+  color: var(--success);
+}
+.fun-status--dull,
+.fun-status--notfunny {
+  background: var(--muted-soft);
+  color: var(--text-muted);
+}
+.fun-status--funny {
+  background: var(--surface-sunken);
+  color: var(--compat-orange-dark);
+}
+.fun-status--veryfunny {
+  background: var(--compat-soft);
+  color: var(--compat-orange-dark);
+}
+.fun-status--banned {
+  background: var(--danger-soft);
+  color: var(--danger-text);
+}
+.link-status--pending {
+  background: var(--surface-sunken);
+  color: var(--compat-orange-dark);
+}
+.link-status--active {
+  background: var(--success-soft);
+  color: var(--success);
+}
+.link-status--hidden {
+  background: var(--muted-soft);
+  color: var(--text-muted);
+}
+
+/* ============ 趣味盒 + 友链申请 ============ */
+.funbox__msg {
+  margin: 8px 14px 0;
+  color: var(--success);
+  font-size: 13px;
+  font-weight: 700;
+}
+.funbox__publish {
+  padding: 12px 14px;
+}
+.funbox__note {
+  margin: 0;
+  color: var(--text-faint);
+  font-size: 12px;
+}
+.funbox__empty {
+  padding: 24px 14px;
+  color: var(--text-faint);
+  font-size: 13px;
+  text-align: center;
+}
+.funbox__current {
+  padding: 14px 16px;
+}
+.funbox__current h3 {
+  margin: 0 0 6px;
+  color: var(--text-strong);
+  font-size: 16px;
+  font-weight: 900;
+}
+.funbox__current > p {
+  margin: 0 0 10px;
+  color: var(--text-body);
+  font-size: 13.5px;
+  line-height: 1.8;
+}
+.funbox__footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.funbox__author {
+  color: var(--text-faint);
+  font-size: 12px;
+}
+.funbox__votes {
+  display: flex;
+  gap: 8px;
+}
+.funbox__vote {
+  min-height: var(--tap-min);
+  padding: 4px 14px;
+  border: 1px solid var(--compat-line);
+  border-radius: 999px;
+  background: var(--surface-card);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.funbox__vote--fun:hover {
+  border-color: var(--success);
+  color: var(--success);
+}
+.funbox__vote--dull:hover {
+  border-color: var(--text-muted);
+}
+.funbox__voted {
+  color: var(--success);
+  font-size: 13px;
+  font-weight: 700;
+}
+.funbox__acts {
+  display: flex;
+  align-items: center;
+}
+.funbox__more-toggle {
+  width: 100%;
+  padding: 10px;
+  border: 0;
+  border-top: 1px solid var(--border-soft);
+  background: var(--surface-card);
+  color: var(--compat-orange-dark);
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.funbox__history {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 4px 14px 12px;
+  list-style: none;
+}
+.funbox__history li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px dashed var(--border-soft);
+}
+.funbox__history li:last-child {
+  border-bottom: 0;
+}
+.funbox__history li.is-banned strong {
+  text-decoration: line-through;
+  color: var(--text-fainter);
+}
+.funbox__history-main {
+  min-width: 0;
+}
+.funbox__history-main strong {
+  display: block;
+  color: var(--text-strong);
+  font-size: 13.5px;
+}
+.funbox__history-meta {
+  color: var(--text-faint);
+  font-size: 11.5px;
+}
+.linkapply__note {
+  color: var(--danger-text);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+.linkapply__msg {
+  margin-top: 10px;
+  color: var(--success);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* ============ 聊天盒 + 我的 H&R ============ */
+.shoutbox__list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 420px;
+  margin: 0;
+  padding: 10px 14px;
+  list-style: none;
+  overflow-y: auto;
+}
+.shoutbox__list li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 4px 0;
+  border-bottom: 1px dashed var(--border-soft);
+  font-size: 13px;
+}
+.shoutbox__list li:last-child {
+  border-bottom: 0;
+}
+.shoutbox__list b {
+  flex: 0 0 auto;
+  color: var(--compat-orange-dark);
+}
+.shoutbox__text {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--text-body);
+  word-break: break-word;
+}
+.shoutbox__list time {
+  flex: 0 0 auto;
+  color: var(--text-fainter);
+  font-size: 12px;
+}
+.shoutbox__empty {
+  justify-content: center;
+  color: var(--text-faint);
+}
+/* 机器人回话（0078）：蓝色底与普通消息区分 */
+.shoutbox__bot {
+  background: var(--sky-soft, rgba(56, 132, 255, 0.08));
+  border-radius: 6px;
+  padding: 4px 6px;
+}
+.shoutbox__bot b {
+  color: var(--sky, #2f7ad6);
+}
+.shoutbox__msg {
+  margin: 0 14px 6px;
+  color: var(--danger-text);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+.shoutbox__form {
+  display: flex;
+  gap: 8px;
+  padding: 10px 14px 12px;
+  border-top: 1px solid var(--border-soft);
+}
+.shoutbox__form input {
+  flex: 1 1 auto;
+  min-height: var(--tap-min);
+  padding: 6px 12px;
+  border: 1px solid var(--compat-line);
+  border-radius: 8px;
+  background: var(--surface-raised);
+  font-size: 13.5px;
+}
+
+/* ============ 论坛（pting.club 布局：左侧节点栏 + 版块卡片流） ============ */
+/* 栅格本体（display/columns）在 styles/forums-home.css：三列改造后列宽与
+   断点集中一处，同一选择器跨文件设值会踩「后到者赢」的层叠坑。 */
+.pting-forums {
+  gap: 16px;
+  align-items: start;
+}
+
+.pting-sidenav {
+  position: sticky;
+  top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 12px;
+  border: 1px solid var(--compat-line-soft);
+  border-radius: var(--r-md);
+  background: var(--compat-paper);
+  box-shadow: var(--shadow-card);
+}
+.pting-sidenav h2 {
+  margin: 0 0 4px;
+  padding: 0 8px;
+  color: var(--text-faint);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+.pting-sidenav nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.pting-sidenav a {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  border-radius: 8px;
+  color: var(--text-body);
+  font-size: 13px;
+  font-weight: 700;
+}
+.pting-sidenav a:hover {
+  background: var(--surface-hover);
+  color: var(--compat-orange);
+}
+.pting-sidenav__dot {
+  display: flex;
+  width: 26px;
+  height: 26px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 7px;
+  color: var(--text-on-accent);
+  font-size: 12px;
+  background: linear-gradient(
+    145deg,
+    var(--compat-fill-a),
+    var(--compat-fill-b)
+  );
+}
+/* M1 快修 #1：feed pill——全局 a{color} 是未分层样式，优先级压过 Tailwind
+   utility（text-white 失效的根因），故用专类 + 显式色板钉死 on-accent 口径。 */
+.pting-feed-pill {
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 9999px;
+  padding: 6px 16px;
+  font-size: 14px;
+  font-weight: 700;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+.pting-feed-pill:hover {
+  color: #fff;
+  border-color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+.pting-board__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 20px;
+  border: 1px solid var(--compat-line-soft);
+  border-radius: var(--r-md);
+  background: linear-gradient(
+    100deg,
+    var(--compat-fill-glow),
+    var(--compat-orange-dark)
+  );
+  box-shadow: var(--shadow-card);
+  color: var(--text-on-accent);
+}
+.pting-board__head h1, .pting-board__title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 900;
+}
+.pting-board__head p {
+  margin: 2px 0 0;
+  font-size: 12.5px;
+  opacity: 0.92;
+}
+.pting-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 14px;
+}
+.pting-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  border: 1px solid var(--compat-line-soft);
+  border-radius: var(--r-md);
+  background: var(--compat-paper);
+  box-shadow: var(--shadow-card);
+}
+/* 空版块（0 话题）降饱和：与有货版块拉开一眼可辨的差别，不靠加
+   文案（版块名本身已是信息，加「暂无」反显冗余）。2026-10-03 新增。 */
+.pting-card[data-empty="true"] { background: var(--surface-raised);
+  box-shadow: none; }
+.pting-card[data-empty="true"] .pting-card__title {
+  color: var(--text-muted); }
+.pting-card header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.pting-card__title {
+  color: var(--text-strong);
+  font-size: 16px;
+  font-weight: 900;
+}
+.pting-card__title:hover {
+  color: var(--compat-orange);
+}
+.pting-card__count {
+  color: var(--text-faint);
+  font-size: 12px;
+}
+.pting-card__descr {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 12.5px;
+  line-height: 1.7;
+}
+.pting-card__latest {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border-soft);
+}
+.pting-card__latest-label {
+  flex: 0 0 auto;
+  color: var(--compat-orange-dark);
+  font-size: 12px;
+  font-weight: 800;
+}
+.pting-card__latest-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 700;
+}
+.pting-card__empty {
+  padding: 24px;
+  color: var(--text-faint);
+  text-align: center;
+}
+@media (max-width: 768px) {
+  .pting-sidenav {
+    min-width: 0;
+  }
+  /* 头部横幅（搜索 + 标题 + pill + 发帖）窄屏换行；子项可收缩 */
+  .pting-board__head {
+    flex-wrap: wrap;
+  }
+  .pting-board__head > * {
+    min-width: 0;
+  }
+  .pting-sidenav {
+    position: static;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+}
+

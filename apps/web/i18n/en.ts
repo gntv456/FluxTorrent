@@ -28,6 +28,7 @@ const enBase: Omit<
   | "endangered"
   | "teams"
   | "contracts"
+  | "profileStats"
   | "pubboard"
   | "checkin"
   | "termsPanel"
@@ -8591,4 +8592,11 @@ export const en: Dict = {
       hint: "Last 12 months",
     },
   },
+  profileStats: {
+    title: "Seeding Profile",
+    seedingLine: "{n} seeding · {size} · {hours}h total",
+    catsTitle: "By category (size)",
+    bucketsTitle: "Seeding duration spread",
+  },
+
 };

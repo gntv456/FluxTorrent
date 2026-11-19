@@ -1,0 +1,518 @@
+/* pages/tasks-tools.css —— 自 pages.css 按段拆分（0503），段界与内容零改动，见 git 历史 */
+/* ============ 任务系统（task.php 复刻） ============ */
+.task-page {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+/* 标签组外壳：条与面板收 10px，组与组之间仍由 .task-page 的 gap 管 */
+.task-tabblock {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+/* 名额说明：原先挂在区块标题右侧的 <p>，标题收进标签后独立成一行 */
+.task-quota-note {
+  margin: 0 0 10px;
+  color: var(--text-muted);
+  font-size: 11.5px;
+}
+.task-hero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 18px 22px;
+  border: 1px solid var(--compat-line-soft);
+  border-radius: var(--r-md);
+  background: linear-gradient(
+    100deg,
+    var(--compat-fill-glow),
+    var(--compat-orange-dark)
+  );
+  box-shadow: var(--shadow-card);
+  color: var(--text-on-accent);
+}
+.task-eyebrow {
+  font-size: 12px;
+  letter-spacing: 2.5px;
+  opacity: 0.85;
+  font-weight: 700;
+}
+.task-hero h1, .task-hero h2 {
+  margin: 2px 0;
+  font-size: 24px;
+  font-weight: 900;
+}
+.task-hero p {
+  margin: 0;
+  font-size: 12.5px;
+  opacity: 0.92;
+}
+.task-hero-meta {
+  display: flex;
+  gap: 10px;
+}
+/* 指标胶囊：样图 § .task-hero-meta>div 的玻璃底。此前这里完全没有规则，
+   两个数值裸贴在渐变上，读不出是「一组卡片」 */
+.task-hero-meta > div {
+  padding: 10px 16px;
+  border: 1px solid var(--on-accent-glass);
+  border-radius: var(--r-md);
+  background: var(--on-accent-glass);
+  text-align: center;
+}
+.task-hero-meta span {
+  display: block;
+  font-size: 11.5px;
+  opacity: 0.85;
+}
+.task-hero-meta strong {
+  font-size: 20px;
+  font-weight: 900;
+}
+.task-panel {
+  border: 1px solid var(--compat-line-soft);
+  border-radius: var(--r-md);
+  background: var(--compat-paper);
+  box-shadow: var(--shadow-card);
+  padding: 14px 18px;
+}
+.task-section-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.task-section-heading > div {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.task-section-heading span {
+  color: var(--compat-orange);
+  font-size: 20px;
+  font-weight: 900;
+  opacity: 0.55;
+}
+.task-section-heading h2 {
+  margin: 0;
+  color: var(--text-strong);
+  font-size: 17px;
+  font-weight: 900;
+}
+.task-section-heading > p {
+  margin: 0;
+  color: var(--text-faint);
+  font-size: 12px;
+}
+.task-rules ol {
+  margin: 0;
+  padding-left: 20px;
+  color: var(--text-body);
+  font-size: 13px;
+  line-height: 2;
+}
+.task-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+.task-tier-card,
+.task-shop-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-md);
+  background: var(--surface-card);
+}
+.task-tier-card--master {
+  border-color: var(--warning);
+  box-shadow: var(--shadow-card);
+}
+.task-tier-card--ultimate {
+  border-color: var(--accent-purple);
+}
+.task-tier-card--extreme {
+  border-color: var(--danger-text);
+}
+.task-tier-card--veteran {
+  border-color: var(--warning);
+}
+.task-tier-card--insane {
+  border-color: var(--success);
+}
+.task-tier-card header,
+.task-shop-card header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.task-tier-card h3,
+.task-shop-card h3 {
+  margin: 0;
+  color: var(--text-strong);
+  font-size: 17px;
+  font-weight: 900;
+}
+.task-tier-card header span,
+.task-shop-card header span {
+  color: var(--text-faint);
+  font-size: 11.5px;
+}
+.task-tier-card dl,
+.task-shop-card dl {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 12px;
+  margin: 0;
+}
+.task-tier-card dl > div,
+.task-shop-card dl > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+}
+.task-tier-card dt,
+.task-shop-card dt {
+  color: var(--text-faint);
+  font-size: 12px;
+  font-weight: 700;
+}
+.task-tier-card dd,
+.task-shop-card dd {
+  margin: 0;
+  color: var(--text-strong);
+  font-size: 13px;
+  font-weight: 800;
+}
+/* 商店卡与任务卡此前共用同一套外壳，两种性质完全不同的卡（可领 vs 兑换）
+   在页面上分不出来。对齐样图 § .task-shop-card：虚线描边 + 浅蓝底 + 品牌蓝标题 */
+.task-shop-card {
+  border: 1px dashed var(--border-deep);
+  background: var(--sky-soft);
+}
+.task-shop-card h3 {
+  color: var(--text-brand);
+}
+.task-tier-card .brand-button,
+.task-shop-card .brand-button {
+  align-self: stretch;
+}
+/* 我的任务记录：三种结局原先同色同重，扫一眼分不出成败。
+   样图 § tplTask 的 history 面板给状态上了语义色，这里用站点的
+   --sky/--success/--coral 三档（明暗各自有值），不写死色值。
+   ⚠️ 必须写成 `.task-history td.task-history__st--x`：共享表原语
+   .nexus-table tbody td 是 (0,1,2)，单类 (0,1,0) 会被它整片吃掉
+   （实测三档全回落成 --text-body-deep）。 */
+.task-history td {
+  vertical-align: middle;
+}
+.task-history td.task-history__st {
+  font-weight: 700;
+  white-space: nowrap;
+}
+.task-history td.task-history__st--ongoing {
+  color: var(--sky-text);
+}
+.task-history td.task-history__st--done {
+  color: var(--success);
+}
+.task-history td.task-history__st--failed {
+  color: var(--coral);
+}
+/* 末两列是领取/结算时间戳：不折行 + 等宽数字，否则换行把行高撑乱 */
+.task-history td:nth-last-child(-n + 2) {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.task-dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 14px;
+}
+/* 折叠外屏（~342px）单列：minmax 280 也会在 300px 内容宽下溢出轨道 */
+@media (max-width: 640px) {
+  .task-dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.task-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.task-feed > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px dashed var(--border-soft);
+  color: var(--text-body);
+  font-size: 12.5px;
+}
+.task-feed > div:last-child {
+  border-bottom: 0;
+}
+.task-feed strong {
+  color: var(--compat-orange-dark);
+}
+.task-feed time {
+  color: var(--text-fainter);
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+.task-stats-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.task-stats-summary > div {
+  padding: 10px;
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
+  background: var(--surface-card);
+  text-align: center;
+}
+.task-stats-summary strong {
+  display: block;
+  color: var(--text-strong);
+  font-size: 22px;
+  font-weight: 900;
+}
+.task-stats-summary span {
+  color: var(--text-faint);
+  font-size: 12px;
+}
+.task-stats-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.task-stats-bars > div {
+  display: grid;
+  grid-template-columns: 76px 1fr 48px;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-body);
+  font-size: 12.5px;
+}
+.task-stats-bars progress {
+  width: 100%;
+  height: 10px;
+  appearance: none;
+  border: 0;
+  border-radius: 5px;
+  overflow: hidden;
+}
+.task-stats-bars progress::-webkit-progress-bar {
+  background: var(--border-soft);
+  border-radius: 5px;
+}
+.task-stats-bars progress::-webkit-progress-value {
+  background: linear-gradient(
+    90deg,
+    var(--compat-fill-a),
+    var(--compat-fill-b)
+  );
+  border-radius: 5px;
+}
+.task-stats-bars progress::-moz-progress-bar {
+  background: var(--compat-orange);
+  border-radius: 5px;
+}
+.task-stats-bars b {
+  text-align: right;
+  color: var(--text-brand);
+}
+.task-msg {
+  color: var(--success);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* ============ 快捷工具条（userbar__tools 复刻：举报信箱/管理组信箱/社交名单/获取RSS） ============ */
+.usertools {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+}
+/* 图标工具阵列：4 列两行（4+3），对齐右侧（对齐样图集） */
+.usertools--grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  justify-content: end;
+  gap: 6px;
+}
+.userbar-tool--icon {
+  padding: 0;
+}
+.userbar-tool__icon {
+  width: 18px;
+  height: 18px;
+  color: #2fa8ff;
+}
+/* 收件箱未读角标：图标右上角红点数字（NP userbar 同款） */
+.userbar-tool__badge {
+  position: absolute;
+  top: -7px;
+  right: -10px;
+  min-width: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #e5484d;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 15px;
+  text-align: center;
+  box-shadow: 0 0 0 2px var(--surface-raised);
+}
+.userbar-tool {
+  position: relative;
+  display: inline-flex;
+  width: 34px;
+  height: 34px;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  padding: 0;
+  border: 1px solid #dce9f8;
+  border-radius: 9px;
+  background: #fff;
+  color: #1e3a5f;
+  cursor: pointer;
+  transition:
+    background 0.14s ease,
+    color 0.14s ease,
+    border-color 0.14s ease;
+}
+.userbar-tool:hover {
+  border-color: #2fa8ff;
+  color: #fff;
+  background: #2fa8ff;
+}
+.userbar-tool > span:first-child {
+  font-size: 15px;
+  color: #2fa8ff;
+}
+.userbar-tool:hover > span:first-child {
+  color: #fff;
+}
+.userbar-tool:hover .userbar-tool__icon {
+  color: #fff;
+}
+.userbar-tool b {
+  min-width: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--compat-soft);
+  color: var(--compat-orange-dark);
+  font-size: 12px;
+  text-align: center;
+}
+.usertools__msg {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin: 4px 0 0;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: var(--surface-raised);
+  color: var(--success);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: var(--shadow-card);
+  z-index: 30;
+}
+.usertools-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  width: min(420px, 92vw);
+  padding: 12px 14px;
+  border: 1px solid var(--compat-line);
+  border-radius: 12px;
+  background: var(--compat-paper);
+  box-shadow: 0 14px 40px rgba(10, 25, 47, 0.25);
+  z-index: 30;
+}
+.usertools-popover h3 {
+  margin: 0 0 10px;
+  color: var(--text-brand);
+  font-size: 14px;
+  font-weight: 800;
+}
+.usertools-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.usertools-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--text-muted);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+.usertools-form select,
+.usertools-form input,
+.usertools-form textarea {
+  min-height: var(--tap-min);
+  padding: 4px 10px;
+  border: 1px solid var(--compat-line);
+  border-radius: 8px;
+  background: var(--surface-raised);
+  font-size: 13px;
+}
+.usertools-form textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+.usertools-form .brand-button {
+  align-self: flex-start;
+  min-height: var(--tap-min);
+}
+.usertools-rss {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.usertools-rss__note {
+  margin: 0;
+  color: var(--text-faint);
+  font-size: 12px;
+  line-height: 1.7;
+}
+.usertools-rss label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  color: var(--text-muted);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+.usertools-rss input {
+  min-height: var(--tap-min);
+  padding: 4px 10px;
+  border: 1px solid var(--compat-line);
+  border-radius: 8px;
+  background: var(--surface-raised);
+  color: var(--text-body);
+  font-size: 11.5px;
+  font-family: monospace;
+}
+
