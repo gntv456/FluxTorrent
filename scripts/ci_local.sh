@@ -33,6 +33,7 @@ node scripts/home_sections_guard.mjs
 node scripts/module_keys_guard.mjs
 node scripts/prop_wiring_guard.mjs
 node scripts/fake_switch_guard.mjs
+node scripts/user_pref_guard.mjs
 node scripts/job_catalog_guard.mjs
 node scripts/gacha_math_guard.mjs
 node scripts/gacha_pack_guard.mjs
@@ -44,6 +45,24 @@ node scripts/migrations_frozen_guard.mjs
 python3 scripts/validation_i18n_guard.py
 python3 scripts/audit_migration_checksums.py
 python3 scripts/psql_stdin_guard.py
+
+# 2026-11-19 荆棘门禁审计补齐：以下 14 项此前只在 CI 跑（预清偿漏跑导致
+# dev.23 八轮红的根因之一）。本地闸门至此与 CI web job 完全镜像。
+step "CI 镜像批（UI/UX 四棘轮 + 分层/路由/卫生/回归边界/错误注册/设计系统）"
+node scripts/check_tap_target.mjs
+node scripts/check_tiny_text.mjs
+node scripts/check_light_contrast.mjs
+node scripts/check_dark_contrast.mjs
+node scripts/design_guard.mjs
+node scripts/design_cov_guard.mjs
+node scripts/ui_design_guard.mjs
+node scripts/layer_guard.mjs
+node scripts/route_manifest.mjs --check
+node scripts/repo_hygiene_guard.mjs
+node scripts/rsc_boundary_guard.mjs
+node scripts/error_registry.mjs --check
+node scripts/view_layout_guard.mjs
+python3 scripts/sql_comment_guard.py apps
 
 if [ "${1:-}" = "--with-install" ]; then
   step "空库装站闸门（会 down -v 清掉本地数据卷）"

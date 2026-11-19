@@ -177,6 +177,21 @@ jobs:
           node ../../scripts/view_layout_guard.mjs
           node ../../scripts/prop_wiring_guard.mjs
           node ../../scripts/terms_guard.mjs
+      # 荆棘门禁补植（2026-11-19 审计）：四个只在 ci_local 出现的守卫
+      # 补进 CI——「本地跑、CI 不跑」的守卫在并行会话/外部 PR 场景是
+      # 假保护（别人不跑 ci_local 就能带病合入）：
+      #   · fake_switch_guard：settings_meta 假开关墓碑（0450 静态可扫）
+      #   · user_pref_guard：无人消费的偏好项
+      #   · gacha_math/pack_guard：抽卡数学与载荷（方案 §6.1/6.2，
+      #     EV<1 纪律的静态侧——9-19 决策的防回潮件）
+      - name: Bramble guards (fake-switch / user-pref / gacha)
+        run: |
+          node ../../scripts/fake_switch_guard.mjs
+          node ../../scripts/user_pref_guard.mjs
+          node ../../scripts/gacha_math_guard.mjs
+          node ../../scripts/gacha_pack_guard.mjs
+          node ../../scripts/prop_wiring_guard.mjs
+          node ../../scripts/terms_guard.mjs
       # 构建门禁（P1）：rewrites/standalone 输出/页面构建错误此前推迟到 publish-images
       # 发版构建才第一次暴露；tsc 通过不代表 next build 通过
       - name: Next build
