@@ -94,7 +94,7 @@ export function FreeleechPanel() {
       <h2 className="mb-2 text-base font-bold">{t.title}</h2>
       <p className="mb-3 text-xs text-sub">{t.intro}</p>
       {msg && (
-        <p className="mb-3 rounded-[var(--r-md)] bg-sky-soft p-2 text-xs">
+        <p className="mb-3 rounded-[var(--r-md)] bg-[var(--surface-sunken)] p-2 text-xs">
           {msg}
         </p>
       )}
@@ -252,7 +252,7 @@ export function ClearCachePanel() {
       <h2 className="mb-2 text-base font-bold">{t.cacheTitle}</h2>
       <p className="mb-3 text-xs text-sub">{t.cacheIntro}</p>
       {msg && (
-        <p className="mb-3 rounded-[var(--r-md)] bg-sky-soft p-2 text-xs">
+        <p className="mb-3 rounded-[var(--r-md)] bg-[var(--surface-sunken)] p-2 text-xs">
           {msg}
         </p>
       )}
