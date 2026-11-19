@@ -10,6 +10,7 @@ mod announce_handle;
 mod announce_main;
 pub(crate) mod audit;
 mod audit_retain;
+mod audit_webhook;
 mod auto_review;
 mod backfill;
 mod billing;

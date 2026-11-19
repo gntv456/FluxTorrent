@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { withTicketNote, type CheckinResp } from "@/lib/checkin-msg";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 
@@ -25,17 +26,17 @@ export function UserCheckin({ onDone }: { onDone: () => void }) {
     if (busy || checked) return;
     setBusy(true);
     try {
-      const r = await api.post<{ reward: number; streak: number }>(
-        "/api/v1/attendance/checkin",
-        {},
-      );
+      const r = await api.post<CheckinResp>("/api/v1/attendance/checkin", {});
       setChecked(true);
-      setMsg(
+      const m = withTicketNote(
         dict.my.checkinOk
           .replace("{reward}", String(r.reward))
           .replace("{streak}", String(r.streak))
           .replace("{magic}", currency),
+        dict.my,
+        r,
       );
+      setMsg(m);
       onDone();
     } catch (e) {
       if (e instanceof ApiError) {

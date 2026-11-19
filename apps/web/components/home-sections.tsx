@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { withTicketNote, type CheckinResp } from "@/lib/checkin-msg";
 import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { useIsCompact } from "@/lib/hooks/use-media";
@@ -75,7 +76,7 @@ export function HomeSections({
     api
       .get<HomeData>("/api/v1/home")
       .then(setData)
-      // 已有 SSR 直出的数据时，后台刷新失败不应把首屏内容替换成错误页
+      // SSR 数据在时后台刷新失败不替换首屏
       .catch(() => setErr((prev) => (data === null ? true : prev)));
   };
   useEffect(load, []);
@@ -84,20 +85,17 @@ export function HomeSections({
     if (checkinBusy) return;
     setCheckinBusy(true);
     try {
-      const r = await api.post<{ reward: number; streak: number }>(
+      const r = await api.post<CheckinResp>(
         "/api/v1/attendance/checkin",
       );
-      setCheckinMsg(
-        dict.my.checkinOk
-          .replace("{reward}", String(r.reward))
-          .replace("{streak}", String(r.streak))
-          .replace("{magic}", currency),
-      );
-      // 余额同步不在这里做：所有写口过 api-client 的统一广播（见 lib/spark-event）
-      // 乐观更新：弱网下 load() 挂起不能让按钮回弹成「未签到」误报。
+      const m = withTicketNote(dict.my.checkinOk
+        .replace("{reward}", String(r.reward))
+        .replace("{streak}", String(r.streak))
+        .replace("{magic}", currency), dict.my, r);
+      setCheckinMsg(m);
+      // 余额走 api-client 广播；乐观更新防弱网回弹误报。
       const today = new Date(Date.now() + 8 * 3600 * 1000)
-        .toISOString()
-        .slice(0, 10);
+        .toISOString().slice(0, 10);
       setData((prev) => {
         if (!prev) return prev;
         const a = prev.attendance as

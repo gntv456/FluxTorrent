@@ -218,7 +218,7 @@ pub(crate) async fn hr_punish(db: &PgPool) -> anyhow::Result<()> {
 async fn on_violations(db: &PgPool, n: u64) {
     tracing::warn!(n, "H&R violations detected");
     // E12 生命周期事件：H&R 违规产生（管理侧广播，尽力而为）
-    super::audit::webhook_broadcast(
+    super::audit_webhook::webhook_broadcast(
         db,
         &format!("H&R 违规 {n} 例（hr_enforce job）"),
     )

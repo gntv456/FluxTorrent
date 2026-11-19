@@ -3,36 +3,6 @@
 use super::staff_alert::{alerted_within_7d, staff_alert, staff_alert_gated};
 use sqlx::PgPool;
 
-/// 0228 运维 webhook 广播（worker 侧：直接查 site_settings + reqwest，
-/// 失败只落日志）
-pub(crate) async fn webhook_broadcast(db: &PgPool, text: &str) {
-    let keys: Vec<(String, String)> = sqlx::query_as(
-        "SELECT name, value FROM site_settings WHERE name IN \
-         ('webhook_discord', 'tg_bot_token', 'tg_chat_id')",
-    )
-    .fetch_all(db)
-    .await
-    .unwrap_or_default();
-    let kv: std::collections::HashMap<_, _> = keys.into_iter().collect();
-    let client = reqwest::Client::new();
-    if let Some(url) = kv.get("webhook_discord").filter(|u| !u.is_empty()) {
-        let body = serde_json::json!({ "content": text });
-        let _ = client.post(url).json(&body).send().await;
-    }
-    let tg = (
-        kv.get("tg_bot_token").filter(|t| !t.is_empty()),
-        kv.get("tg_chat_id").filter(|c| !c.is_empty()),
-    );
-    if let (Some(token), Some(chat)) = tg {
-        let url = format!("https://api.telegram.org/bot{token}/sendMessage");
-        let _ = client
-            .post(url)
-            .json(&serde_json::json!({ "chat_id": chat, "text": text }))
-            .send()
-            .await;
-    }
-}
-
 /// site_settings 数值键读取（缺省+钳制一体）：audit 内四处同构取参收口。
 async fn cfg_num<T: std::str::FromStr + PartialOrd + Copy>(
     db: &sqlx::PgPool,
@@ -126,7 +96,7 @@ pub async fn cheat_audit(db: &PgPool) -> anyhow::Result<u64> {
         let msg = format!(
             "🚨 cheat_audit 新增 {first_hits} 个流量差额嫌疑，详情见后台"
         );
-        webhook_broadcast(db, &msg).await;
+        super::audit_webhook::webhook_broadcast(db, &msg).await;
     }
     Ok(first_hits)
 }

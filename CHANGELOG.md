@@ -3,6 +3,48 @@
 本文件记录面向部署者的显著变更。格式参照 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)；
 版本号在首个语义化 tag（v0.x）发布后启用。
 
+## [0.5.19-dev.25] - 2026-11-19
+
+定位：**链路正确性批——投递本体修复 + 评分死链改活源 + dev.24 断链自纠**。
+
+### 修复（投递链——dev.22/23 只装修饰面，本体这轮才修）
+- **massmail 投递改 mail_outbox 入队**（P0）：同步逐户直发在圈选几千人
+  时必超反代 60s、失败即断无续发、重试重发无幂等。改走
+  `enqueue_mail_outbox`（dedupe 锚 `mass:{批次}:{uid}`）——worker 消费
+  自带幂等/退避/死信告警/单用户频控全套；响应语义改「已入队 N 封」
+  （三语文案同步），失败断连/中途 break/实发不符三类问题一次消灭。
+- **massmail 收件人补 email_bans 过滤**：与注册/邀请同口径（完整/
+  域名/前缀三式匹配）——此前群发与 outbox 都不查，被封邮箱仍收群发信。
+- **worker webhook 超时收口**（P1，「webhook 超时存量坏」记忆条目真身）：
+  `webhook_broadcast` 的 reqwest 默认无总超时，Discord/TG 黑洞时告警链
+  陪着挂。对齐 api 侧 `webhook_timeout_secs` 键（缺省 10s、clamp 1-60），
+  拆 audit_webhook.rs。
+
+### 修复（评分死链——「UI 有入口、谓词在、数据源恒空」三层完整死链）
+- `rating_min` 谓词改读 `work_meta.rating`（活数据源，TMDB/豆瓣写入）：
+  `media_info->>'rating'` 全仓零写入者，用户筛「7.5 分以上」永远得
+  0 行且 UI 不提示——误导性最强的一类死链。EXISTS 半连接（复用 WK
+  归一化常量，真机 EXPLAIN 3ms；不筛时谓词短路零开销），torrents 与
+  works 两场景一并修好。
+- works 聚合展示评分改 `COALESCE(wm.rating, r.rating)`：作品卡/列表的
+  评分列此前恒空，现在优先活源。
+- 种子详情页/海报墙的 rating 死键保留自掩（有值才渲染，不误导），
+  待后续 torrents 物化 rating 列时一并切换。
+
+### 修复（dev.24 断链自纠）
+- **签到券反馈断链**：后端一直下发 `gacha_ticket`/`gacha_ticket_milestone`，
+  前端三个签到调用点全部只读 reward/streak——用户命中里程碑不知道
+  多得了券（每日券的反馈缺失是存量问题被 dev.24 放大）。补 `lib/checkin-msg.ts`
+  共享件（`withTicketNote` + `CheckinResp` 类型），三调用点统一接入，
+  四语文案 `checkinTicket`/`checkinTicketMilestone`。
+- help 生存速览第五卡孤行：`last-child:nth-child(odd)` 通栏（2+2+1
+  的半宽空缺收口）。
+
+### 附注
+- Node 运行时升级（20→24）经查已于 10-26 落地（4834b1fb），记忆
+  「待拍板」过时，已更正。
+- 0499 迁移由并行批热修（面板行 99→98）重登记 frozen checksum。
+
 ## [0.5.19-dev.24] - 2026-11-19
 
 定位：**P2 清偿批——获取通道扩展 + 经济仪表盘双侧结构 + 通知面收尾**。

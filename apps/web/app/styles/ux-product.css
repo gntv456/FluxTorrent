@@ -22,6 +22,10 @@
 @media (min-width: 768px) {
   .ux-guide-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+/* 0501 奇数卡收口：第五卡（契约）通栏，消除 2+2+1 的半宽孤行 */
+.ux-guide-card:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
 .ux-guide-card {
   min-width: 0;
   border: 1px solid var(--border-soft);
@@ -251,6 +255,76 @@
   font-weight: 800;
   color: var(--text-strong);
 }
+.langmenu__beta {
+  margin-left: 0.35rem;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  background: var(--tone-warn-soft);
+  color: var(--tone-warn);
+  font-size: 0.625rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.ux-recent {
+  padding: var(--sp-3);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-md);
+  background: var(--surface-card);
+}
+.ux-recent__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-2);
+}
+.ux-recent__title {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 800;
+  color: var(--text-strong);
+}
+.ux-recent__clear {
+  min-height: var(--tap-min);
+  padding: 0 var(--sp-2);
+  border: 0;
+  background: transparent;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.ux-recent__clear:hover { color: var(--tone-brand); }
+.ux-recent__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ux-recent__item {
+  display: inline-flex;
+  min-height: var(--tap-min);
+  max-width: 18rem;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: 0 var(--sp-2);
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+  background: var(--surface-raised);
+  font-size: 0.75rem;
+  color: var(--text-body);
+  text-decoration: none;
+}
+.ux-recent__item:hover { border-color: var(--tone-brand-border); }
+.ux-recent__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .ux-updates__list {
   margin: 0;
   padding-left: 1.1rem;

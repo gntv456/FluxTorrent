@@ -131,6 +131,8 @@ export const ja: DeepPartial<Dict> = {
     checkin: "チェックイン +{magic}",
     checkinOk:
       "チェックイン成功！+{reward} {magic}、{streak}日連続",
+    checkinTicket: "・ガチャチケット +1",
+    checkinTicketMilestone: "・マイルストーン達成！ガチャチケット +1",
     logout: "ログアウト",
     ledger: "{magic}履歴",
     noLedger: "履歴なし",

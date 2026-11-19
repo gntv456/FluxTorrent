@@ -109,7 +109,9 @@ rep AS (
             created_at DESC, id DESC
 )
 SELECT a.wk AS key, COALESCE(NULLIF(wm.name, ''), r.name) AS name,
-       r.poster, r.rating, r.category_id,
+       r.poster,
+       -- 0501 评分改活源：wm.rating（TMDB/豆瓣）优先，死键回落
+       COALESCE(wm.rating::text, r.rating) AS rating, r.category_id,
        r.small_descr AS synopsis, r.descr AS detail,
        r.imdb_id, r.tmdb_id, r.tmdb_url, r.douban_id,
        a.torrents, a.seeders, a.leechers,
@@ -199,7 +201,8 @@ rep AS (
             created_at DESC, id DESC
 )
 SELECT a.wk AS key, COALESCE(NULLIF(wm.name, ''), r.name) AS name,
-       r.poster, r.rating, r.category_id,
+       r.poster,
+       COALESCE(wm.rating::text, r.rating) AS rating, r.category_id,
        r.small_descr AS synopsis, r.descr AS detail,
        r.imdb_id, r.tmdb_id, r.tmdb_url, r.douban_id,
        a.torrents, a.seeders, a.leechers,

@@ -156,12 +156,19 @@ pub(crate) fn extra_preds(s: ExtraSlots) -> String {
            OR (${a} = 2 AND NOT t.anonymous))",
         a = s.anonymous
     ));
-    // 媒体评分下界（0283 P1-5）：rating 存 JSONB 字符串，空串/非数值行
-    // nullif+::numeric 归 NULL 后自然落选；合法评分 < 0 的种子（脏数据）也落选
+    // 媒体评分下界（0283 P1-5；0501 改源）：media_info->>'rating' 是
+    // 无写入者的死键（全仓零写入，恒空 → 恒 0 行，三层完整死链）。
+    // 评分正源是 work_meta.rating（0399，TMDB/豆瓣写入）。改法：
+    // EXISTS 半连接 work_meta——WK 归一化表达式复用 works_sql 常量
+    // （对每行求值不可走索引，但 rating_min 只在显式筛选时绑定非
+    // None；不筛时谓词恒真零开销，works 聚合本就接受全表扫描口径）。
+    // 半连接按 wk 聚合行数去重，不影响列表计数。
     out.push_str(&format!(
-        " AND (${a}::numeric IS NULL \
-           OR NULLIF(t.media_info->>'rating', '')::numeric >= ${a})",
-        a = s.rating_min
+        " AND (${a}::numeric IS NULL OR EXISTS (SELECT 1 \
+           FROM work_meta wm WHERE wm.key = {wk} \
+             AND wm.rating >= ${a}))",
+        a = s.rating_min,
+        wk = crate::torrent_http::works_sql::wk_expr()
     ));
     out
 }

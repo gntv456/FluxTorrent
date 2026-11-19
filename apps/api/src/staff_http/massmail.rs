@@ -83,83 +83,78 @@ pub async fn massmail_send(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     state.repo.audit(Some(auth.id), "massmail_send", None).await;
-    // 审计修复（P1 永不投递）：注释宣称 worker 投递，但 worker 无任何 mass_mails 消费——
-    // 邮件永不发出且响应报 queued 误导操作者。现在当场投递（复用 build_smtp）：
-    // SMTP 配置时逐户发送并回填实发数；未配置时（开发态）明确返回 delivered=0 与
-    // 原因，不再谎报入队。
-    // 0208 P0：SMTP「站点设定优先，env 兜底」（与 mailer::smtp_config 同源）
-    let cfg = crate::mailer::smtp_config(&state.repo.db).await;
+    // 0208 P0：SMTP「站点设定优先，env 兜底」（与 mailer::smtp_config 同源）。
+    // 0501：投递改 mail_outbox 入队（worker 消费，自带幂等/退避/频控），
+    // 「当场逐户直发」形态退役——那条 P1 修复在反代 60s 超时面前不成立。
     let mut delivered: i64 = 0;
-    let mut mail_err: Option<String> = None;
+    let cfg = crate::mailer::smtp_config(&state.repo.db).await;
     let note = match cfg {
-        None => {
-            mail_err = Some(
-                "SMTP 未配置（站点设定与 SMTP_URL 均为空，邮件未投递，仅留档）"
-                    .into(),
-            );
-            mail_err.unwrap()
-        }
+        None => "SMTP 未配置（站点设定与 SMTP_URL 均为空，邮件未入队，仅留档）"
+            .into(),
         Some(cfg) => {
-            match crate::gaps_http::build_smtp(&cfg.url) {
-                Ok(mailer) => {
-                    // 群发是管理员自由文本：仍套统一骨架，语言逐收件人取。
-                    // 站点名/基址对所有收件人相同，只查一次。
-                    let scope = crate::mailer::send::mail_ctx(
-                        &state.repo.db,
-                        Some(auth.id),
-                    )
+            // 0501 投递本体修复（体检四轮 A1）：同步逐户直发改为
+            // mail_outbox 入队——单请求内几千封必超反代 60s；失败即
+            // break 无续发；重试重发无幂等。outbox 的 worker 消费自带
+            // 幂等（dedupe_key）/退避/死信告警/单用户频控全套，且
+            // enqueue 失败自带「退化为尽力直发」兜底。SMTP 构建成功与
+            // 否不再决定本请求成败（build 在 worker 侧执行）。
+            let _ = cfg; // url 仅用于探测可达性提示，不强求
+            let scope =
+                crate::mailer::send::mail_ctx(&state.repo.db, Some(auth.id))
                     .await;
-                    // 0461：群发同批带上 Reply-To（contact_email 空=不设）
-                    let reply_to =
-                        crate::mailer::send::reply_to(&state.repo.db).await;
-                    let rows: Vec<(i64, String, Option<String>)> = {
-                        let sql = format!(
-                            "SELECT u.id, u.email, u.site_language \
-                             FROM users u WHERE u.status < 2 \
-                             AND u.email IS NOT NULL{pred} ORDER BY u.id"
-                        );
-                        sqlx::query_as(&sql)
-                            .fetch_all(&state.repo.db)
-                            .await
-                            .map_err(|e| DomainError::Internal(e.into()))?
-                    };
-                    for (uid, to, lang) in &rows {
-                        let ctx = flux_shared::mailtpl::Ctx {
-                            site: &scope.site,
-                            base: &scope.base,
-                            lang: flux_shared::mailtpl::Lang::from_db(
-                                lang.as_deref(),
-                            ),
-                        };
-                        let mail = flux_shared::mailtpl::generic_notice(
-                            &ctx,
-                            body.subject.trim(),
-                            &body.body,
-                            "站 内 通 知",
-                            flux_shared::mailtpl::Tone::Gold,
-                        );
-                        match crate::mailer::send::deliver_rt(
-                            &mailer,
-                            &cfg.from,
-                            to,
-                            &mail,
-                            reply_to.as_deref(),
-                        )
-                        .await
-                        {
-                            Ok(_) => delivered += 1,
-                            Err(e) => {
-                                mail_err = Some(format!(
-                                    "第 {delivered} 封后失败（用户 {uid}）：{e}"
-                                ));
-                                break;
-                            }
-                        }
-                    }
-                }
-                Err(e) => mail_err = Some(format!("SMTP 构建失败：{e}")),
+            // 圈选 + 0501 补两闸：
+            //  · email_bans 过滤（与注册/邀请同口径——此前群发/收件
+            //    两处都不查，被封邮箱仍收群发信）
+            //  · 仍要求有邮箱
+            let rows: Vec<(i64, String, Option<String>)> = {
+                let sql = format!(
+                    "SELECT u.id, u.email, u.site_language \
+                     FROM users u WHERE u.status < 2 \
+                     AND u.email IS NOT NULL \
+                     AND NOT EXISTS (SELECT 1 FROM email_bans e \
+                         WHERE e.mode <> 'allow' \
+                           AND (lower(u.email) = lower(e.pattern) \
+                                OR (e.pattern LIKE '@%' \
+                                    AND lower(u.email) \
+                                        LIKE '%' || lower(e.pattern)) \
+                                OR (e.pattern LIKE '%@' \
+                                    AND lower(u.email) \
+                                        LIKE lower(e.pattern) || '%'))) \
+                     {pred} ORDER BY u.id",
+                );
+                sqlx::query_as(&sql)
+                    .fetch_all(&state.repo.db)
+                    .await
+                    .map_err(|e| DomainError::Internal(e.into()))?
+            };
+            let total = rows.len();
+            for (uid, to, lang) in &rows {
+                let ctx = flux_shared::mailtpl::Ctx {
+                    site: &scope.site,
+                    base: &scope.base,
+                    lang: flux_shared::mailtpl::Lang::from_db(lang.as_deref()),
+                };
+                let mail = flux_shared::mailtpl::generic_notice(
+                    &ctx,
+                    body.subject.trim(),
+                    &body.body,
+                    "站 内 通 知",
+                    flux_shared::mailtpl::Tone::Gold,
+                );
+                // dedupe 锚 mass:{批次}:{uid}——管理员重试同主题会生成
+                // 新批次 id（新行），跨批次不吞；同批次重放安全。
+                let key = format!("mass:{}:{}", id, uid);
+                crate::mailer::enqueue_mail_outbox(
+                    &state.repo.db,
+                    *uid,
+                    to,
+                    &mail,
+                    &key,
+                )
+                .await;
             }
-            mail_err.unwrap_or_else(|| "已全部投递".into())
+            delivered = total as i64;
+            format!("已入队 {total} 封，由邮件通道按频控投递（含退避重试）")
         }
     };
     if delivered > 0 {

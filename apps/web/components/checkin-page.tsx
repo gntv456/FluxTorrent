@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
+import { withTicketNote, type CheckinResp } from "@/lib/checkin-msg";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { ResubButton } from "@/components/home-resub-button";
@@ -201,16 +202,16 @@ export function CheckinPage() {
     setBusy(true);
     setMsg(null);
     try {
-      const r = await api.post<{ reward: number; streak: number }>(
-        "/api/v1/attendance/checkin",
-        {},
-      );
-      setMsg(
+      const r = await api.post<CheckinResp>("/api/v1/attendance/checkin", {});
+      const m = withTicketNote(
         dict.my.checkinOk
           .replace("{reward}", String(r.reward))
           .replace("{streak}", String(r.streak))
           .replace("{magic}", currency),
+        dict.my,
+        r,
       );
+      setMsg(m);
       loadStatus();
       // 今日已签：刷新当月标记
       if (isCurrentMonth) {
