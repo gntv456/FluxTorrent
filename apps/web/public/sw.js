@@ -1,6 +1,6 @@
 // FluxTorrent Service Worker（M26）
 // 策略（§5.7 离线策略）：静态资源缓存优先、页面导航网络优先失败回退、API 永不缓存。
-const VERSION = "flux-v3";
+const VERSION = "flux-v4";
 const STATIC_CACHE = `${VERSION}-static`;
 const PAGE_CACHE = `${VERSION}-pages`;
 const OFFLINE_URL = "/offline";
@@ -89,4 +89,48 @@ self.addEventListener("fetch", (event) => {
         ),
     );
   }
+});
+
+
+// 0503 Push 展示链补齐：订阅侧（push-settings.tsx 走 pushManager）一直
+// 完整，但 SW 侧无人消费 push 事件——后台通知静默丢，三类偏好形同虚设。
+// 载荷口径：后端 push_outbox 发 { title, body, url?, tag? }（冗余兼容
+// data.{title,body} 形态）；tag 去重防同题材连发叠屏。
+self.addEventListener("push", (event) => {
+  let p = {};
+  try {
+    p = event.data ? event.data.json() : {};
+  } catch (e) {
+    p = { body: event.data ? event.data.text() : "" };
+  }
+  const d = p.data || p;
+  const title = d.title || p.title || "FluxTorrent";
+  const body = d.body || p.body || "";
+  if (!body) return;
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body,
+      tag: d.tag || "flux",
+      icon: "/icons/icon-192.png",
+      badge: "/icons/icon-192.png",
+      data: { url: d.url || "/" },
+    }),
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || "/";
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true })
+      .then((cs) => {
+        for (const c of cs) {
+          if ("focus" in c) {
+            c.navigate(url);
+            return c.focus();
+          }
+        }
+        return self.clients.openWindow(url);
+      }),
+  );
 });

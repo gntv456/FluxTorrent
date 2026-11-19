@@ -75,6 +75,8 @@ const zhCnBase = {
     gsSearching: "搜索中…",
     gsError: "搜索请求失败，请稍后重试",
     gsRetry: "重试",
+    gsGoRequest: "站里没有？发个求种",
+    gsFullSearch: "去资源库全站精搜",
     gsOpen: "打开搜索",
     gsMore: "查看全部结果 →",
     yes: "是",
@@ -86,6 +88,8 @@ const zhCnBase = {
     timeMoD: "{n}月{m}天",
     // 全站错误页 / 404（app/error.tsx + app/not-found.tsx）
     errorTitle: "页面出错了",
+    errorRefId: "错误编号",
+    errorReport: "联系管理组反馈",
     errorDesc:
       "数据加载或渲染时发生异常，通常是暂时性的。可重试一次；若反复出现请到「联系管理组」反馈。",
     backHome: "回首页",
@@ -516,6 +520,7 @@ const zhCnBase = {
     emptyAliveAction: "查看全部（含断种）",
     emptySearchTitle: "没有找到与「{q}」匹配的种子",
     emptySearchHint: "试试减少关键词、检查拼写，或切换分类后再搜。",
+    emptyGoRequest: "站里没有？发个求种让发布者看到",
     sticky: "置顶",
     timeLeftDH: "{d}天{h}时",
     category: "分类",
@@ -1041,7 +1046,7 @@ const zhCnBase = {
     rulesFirst: "首次签到 +{n} 魔力",
     rulesDaily: "每日签到 +{n} 魔力",
     rulesMilestone:
-      "连签 {day} 天当日加送 +{bonus}（当日合计 {total}）",
+      "连签 {day} 天当日加送 +{bonus} 魔力与 1 张抽卡券（当日魔力合计 {total}）",
     rulesCap: "单日封顶 {n} 魔力",
     rulesBreak:
       "中断后连签重新计算；漏签可用补签卡补近 30 天内的日期（补签不发当日奖励，但接续连签）",
@@ -1823,6 +1828,7 @@ const zhCnBase = {
     colJoined: "注册时间",
     colLastSeen: "最近上线",
     colAction: "操作",
+    clearAll: "清空搜索与等级筛选",
     viewHome: "查看主页",
     uid: "UID",
     empty: "没有符合条件的会员",
@@ -1873,6 +1879,7 @@ const zhCnBase = {
     searchPh: "搜索话题标题…",
     searchBtn: "搜帖",
     searchEmpty: "没有匹配的话题",
+    searchGoPost: "没找到？发新帖问",
     totalPrefix: "当前共收录 ",
     totalSuffix: " 篇内容",
     newTopic: "发布新帖",
@@ -1940,6 +1947,8 @@ const zhCnBase = {
     related: "相关推荐",
     openWork: "查看作品",
     empty: "还没有可聚合的作品",
+    emptyFiltered: "当前筛选下没有作品",
+    emptyClear: "清空筛选看全部",
   },
 
   forums3: {
@@ -3241,6 +3250,7 @@ const zhCnBase = {
     colTime: "时间",
     colStatus: "状态",
     empty: "暂无求种",
+    emptyGo: "发第一个求种",
     fulfilled: "已解决",
     pending: "求种中",
     searchPlaceholder: "搜索求种…",
@@ -6881,6 +6891,7 @@ const zhCnBase = {
     recovering: "恢复中…",
     seedNote: "维护不影响做种与下载，客户端无需关闭。",
     footerNote: "恢复期间有任何疑问可联系管理组。",
+    contactLink: "联系管理组 ›",
     login: "员工登录",
     home: "回首页",
     banner: "维护模式开启中：站点对普通会员显示维护页，管理组可正常访问。",
@@ -8406,6 +8417,9 @@ export const zhCN = {
     bucketsTitle: "做种时长分布",
   },
 
+  siteNews: {
+    label: "站点公告",
+  },
 };
 
 export type Dict = typeof zhCN;

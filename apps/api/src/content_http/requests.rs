@@ -12,6 +12,18 @@ mod create;
 pub(crate) use bid::request_bid;
 pub(crate) use create::request_create;
 
+/// 求种悬赏的默认有效窗口（与挂出求种位 30 天兜底同口径）。
+/// 超期未完结的单在列表里以 status=2「已过期」呈现，且不再接受加价 / 应种。
+const EXPIRE_DAYS: i64 = 30;
+
+pub(super) fn is_expired(
+    status: i16,
+    created: chrono::DateTime<chrono::Utc>,
+) -> bool {
+    status == 0
+        && created < chrono::Utc::now() - chrono::Duration::days(EXPIRE_DAYS)
+}
+
 #[derive(sqlx::FromRow, serde::Serialize)]
 #[allow(dead_code)] // 列表响应复用字段，部分列暂未在 handler 中读取
 struct RequestRow {
@@ -42,7 +54,8 @@ pub(super) async fn request_list(
     let status_cond = match finished {
         "all" => "TRUE",
         "yes" => "r.status = 1",
-        "ing" => "r.status = 2",
+        "ing" => "r.status = 0 AND \
+                  r.created_at < now() - interval '30 days'",
         _ => "r.status = 0",
     };
     let only_mine = finished == "my";
@@ -98,7 +111,8 @@ pub(super) async fn request_list(
             // 0417 前 latest_bounty/bids 是兜底伪数据；现在为真聚合。
             // comments 仍为 null：求种单没有评论线，伪装成 0 会读成「零条讨论」。
             "comments": null, "bids": bid_cnt,
-            "status": status, "fulfilled_torrent_id": fulfilled, "created_at": ts,
+            "status": if is_expired(status, ts) { 2 } else { status },
+            "fulfilled_torrent_id": fulfilled, "created_at": ts,
         })
     })
     .collect();
@@ -119,18 +133,24 @@ pub(super) async fn request_fulfill(
     body: web::Json<FulfillReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    let r: Option<(i64, i64, i64, i16, String)> = sqlx::query_as(
-        "SELECT id, user_id, bounty, status, title FROM requests WHERE id = $1",
+    let r: Option<(
+        i64, i64, i64, i16, String, chrono::DateTime<chrono::Utc>,
+    )> = sqlx::query_as(
+        "SELECT id, user_id, bounty, status, title, created_at \
+         FROM requests WHERE id = $1",
     )
     .bind(body.request_id)
     .fetch_optional(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    let Some((id, requester, bounty, status, title)) = r else {
+    let Some((id, requester, bounty, status, title, created)) = r else {
         return Err(DomainError::NotFound(body.request_id));
     };
     if status != 0 {
         return Err(DomainError::Validation("该求种已处理".into()));
+    }
+    if super::is_expired(status, created) {
+        return Err(DomainError::Validation("该求种已过期".into()));
     }
     let t_exists: bool = sqlx::query_scalar(
         "SELECT EXISTS(SELECT 1 FROM torrents WHERE id = $1 AND \

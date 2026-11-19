@@ -32,7 +32,10 @@ export function PwaInstallBar() {
     };
     window.addEventListener("beforeinstallprompt", onPrompt);
     // iOS：无事件 3s 后仍未安装则给手动指引
-    const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    const isIOS =
+      /iphone|ipad|ipod/i.test(navigator.userAgent) ||
+      (navigator.maxTouchPoints > 1 &&
+        /Macintosh/i.test(navigator.userAgent));
     const timer = window.setTimeout(() => {
       if (isIOS) {
         setIosHint(true);

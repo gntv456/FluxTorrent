@@ -153,6 +153,15 @@ export async function EmptyTorrents({
       <a href={cta.href} className="ux-empty__cta">
         {cta.text}
       </a>
+      {/* 0503：搜索无结果的第二出口——站里真没有时求种是天然下一步 */}
+      {ctx === "search" && search && (
+        <a
+          href={`/requests?search=${encodeURIComponent(search)}`}
+          className="text-link text-xs"
+        >
+          {dict.torrent.emptyGoRequest} →
+        </a>
+      )}
     </div>
   );
 }

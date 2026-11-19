@@ -25,6 +25,25 @@ export const ja: DeepPartial<Dict> = {
   ...jaPart6,
   ...jaPart7,
   ...jaPart8,
+  profileStats: {
+    title: "シードプロフィール",
+    seedingLine: "シード中 {n} 件 · {size} · 累計 {hours} 時間",
+    catsTitle: "カテゴリ構成（容量別）",
+    bucketsTitle: "シード時間の分布",
+  },
+  uxOpt: {
+    dataExportTitle: "アカウントデータを書き出す",
+    dataExportDesc: "サイトに保存済みのプロフィール・統計・設定・記録をまとめてダウンロードします。パスワード、鍵、ログインセッションは含みません",
+    dataExportAction: "一括ダウンロード",
+    dataExportBusy: "準備中…",
+    dataExportDone: "書き出し済み",
+    dataExportPartial: "一部の取得に失敗しました（ファイル内の errors を参照）",
+    dataExportPrivacy: "クリック時にのみこのサイトから読み取り、第三者へアップロードしません",
+    masuTitle: "月間アクティブシーダー（MASU）",
+    mauTitle: "月間アクティブユーザー（MAU）",
+    masuRateTitle: "シード浸透率",
+    masuHint: "北極星指標：直近30日間にシード活動があった重複なしユーザー数。浸透率 = MASU / MAU",
+  },
 };
 
 /** 深い部分型（段落フォールバック互換のため残す） */

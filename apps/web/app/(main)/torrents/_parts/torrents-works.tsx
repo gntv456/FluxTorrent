@@ -112,10 +112,40 @@ export async function TorrentWorks({
     );
   }
   if (!data || data.items.length === 0) {
+    // 0503 空态引导补齐：聚合视图空结果不再一行灰字——区分
+    // 「筛选致空」（给清筛选出口，与非聚合四态对齐）与全站空。
+    const ks = Object.keys(sp);
+    const filtered = Boolean(
+      sp.search || sp.promo || sp.alive ||
+        ks.some((k) => k === "category_id" || k === "cat" ||
+          k.startsWith("sec_") || k.startsWith("tag") ||
+          k.startsWith("min") || k.startsWith("max")),
+    );
     return (
-      <p className="py-8 text-center text-sm text-sub">
-        {dict.works.empty}
-      </p>
+      <div className="flex flex-col items-center gap-3 py-10">
+        <p className="text-sm text-sub">
+          {filtered ? dict.works.emptyFiltered : dict.works.empty}
+        </p>
+        {filtered && (
+          <a
+            href={withParam(sp, "p", undefined)}
+            className="text-link text-xs"
+            onClick={(e) => {
+              // 清筛选回到聚合首页（丢全部筛选参数只留 group/view）
+              e.preventDefault();
+              const u = new URL(window.location.href);
+              ["search", "cat", "category_id", "tag_ids", "tag_id",
+               "tag_mode", "sort", "alive", "promo", "p",
+               ...ks.filter((k) => k.startsWith("sec_") ||
+                 k.startsWith("min") || k.startsWith("max"))].forEach((k) =>
+                u.searchParams.delete(k));
+              window.location.href = u.toString();
+            }}
+          >
+            {dict.works.emptyClear} →
+          </a>
+        )}
+      </div>
     );
   }
 

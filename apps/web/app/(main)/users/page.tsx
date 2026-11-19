@@ -152,6 +152,14 @@ export default async function UsersPage({
         emptyTitle={t.empty}
         emptyDesc={t.emptyHint}
         emptyIcon="users"
+        emptyAction={
+          // 0503：文案有建议无按钮——补清筛选直达
+          (q || classId) && (
+            <a href="/users" className="text-link text-xs">
+              {t.clearAll} →
+            </a>
+          )
+        }
       >
         <div className="brand-panel overflow-x-auto">
           <table className="nexus-table">

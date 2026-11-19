@@ -44,6 +44,9 @@ async fn admin_overview(
         "trend": trend(&state).await,
         "health": health(&state).await,
         "wau": wau(&state).await,
+        // 北极星指标（指标体系 MASU）：30 天内仍有做种 announce 的用户数。
+        "masu": crate::repo::admin_metrics::masu(&state.repo.db).await,
+        "mau": crate::repo::admin_metrics::mau(&state.repo.db).await,
     })))
 }
 
@@ -115,3 +118,5 @@ async fn wau(state: &web::Data<std::sync::Arc<AppState>>) -> i64 {
     .await
     .unwrap_or(0)
 }
+
+

@@ -119,6 +119,8 @@ export async function Header() {
               tipError={dict.common.gsError}
               retryLabel={dict.common.gsRetry}
               searchLabel={dict.common.gsOpen}
+              goRequest={dict.common.gsGoRequest}
+              goFullSearch={dict.common.gsFullSearch}
             />
           </div>
           <div className="ml-auto flex shrink-0 items-center gap-2">

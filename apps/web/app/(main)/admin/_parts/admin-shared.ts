@@ -20,6 +20,9 @@ export interface Overview {
     avg_seeders: number;
   };
   wau?: number;
+  /** MASU 北极星与分母 MAU（老后端缺字段时降级为 0） */
+  masu?: number;
+  mau?: number;
 }
 
 export interface PendingTorrent {

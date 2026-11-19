@@ -3,6 +3,36 @@
 本文件记录面向部署者的显著变更。格式参照 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)；
 版本号在首个语义化 tag（v0.x）发布后启用。
 
+## [0.5.19-dev.33] - 2026-11-19
+
+定位：**体验盲区批——空结果引导链 + 公告触达断裂 + push 展示链补齐**。
+
+### 新增
+- **空结果引导链五件**：顶栏全局搜索空态补双出口（发求种/全站精搜，
+  此前一句「无匹配结果」即死胡同）；torrents 搜索空态补求种出口；
+  论坛搜索空态补「发新帖问」；works 聚合空态两态化（筛选致空给清筛选
+  出口，与非聚合四态对齐）；users 空态补清筛选按钮（emptyAction 槽
+  首用）；requests 空板补「发第一个求种」（弹窗同源触发）。
+- **全站公告横幅**：news 此前只在首页渲染，深逛列表页用户对规则变更/
+  封禁公示零感知。SiteNewsBanner 服务端组件挂 (main)/layout（RSC 零
+  JS、失败静默、revalidate 300s）。
+- **维护页联系出口**：footer 补可点链接——走 /appeals（middleware
+  白名单内游客可达；contactstaff 不在白名单）。
+
+### 修复
+- **SW push 展示链补齐**：订阅侧（pushManager/三类偏好/VAPID）一直
+  完整，但 sw.js 无 push/notificationclick handler——后台通知静默丢。
+  补双 handler（tag 去重+点击聚焦/开窗），VERSION v3→v4 强制重装。
+- error 页补报修凭据链：digest 此前只进 console——页面展示错误编号
+  ＋联系入口。
+- 签到规则卡里程碑文案补「1 张抽卡券」（dev.24 发券但规则只提魔力，
+  用户签前不可知）。
+- PWA 安装引导 iOS 判定补 iPadOS 13+ 桌面 UA（maxTouchPoints 兜底）。
+
+### 附注
+- 本地开发库迁移欠账 7 版（495→502）已补齐并真机核验（契约面板行/
+  评分列/采样表落库）。生产链不受影响（随版本自动 apply）。
+
 ## [0.5.19-dev.25] - 2026-11-19
 
 定位：**链路正确性批——投递本体修复 + 评分死链改活源 + dev.24 断链自纠**。

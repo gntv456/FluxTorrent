@@ -27,17 +27,22 @@ pub(crate) async fn request_bid(
     }
     // 求种单必须存在且未完结——完结后加价等于把钱冻进没人能领的池子。
     // 连楼主带旁人一律拒绝（旁人加价看不到状态变化更冤）。
-    let r: Option<(i64, i16)> =
-        sqlx::query_as("SELECT user_id, status FROM requests WHERE id = $1")
+    let r: Option<(i64, i16, chrono::DateTime<chrono::Utc>)> =
+        sqlx::query_as(
+            "SELECT user_id, status, created_at FROM requests WHERE id = $1",
+        )
             .bind(request_id)
             .fetch_optional(&state.repo.db)
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
-    let Some((requester, status)) = r else {
+    let Some((requester, status, created)) = r else {
         return Err(DomainError::NotFound(request_id));
     };
     if status != 0 {
         return Err(DomainError::Validation("该求种已处理，无法加价".into()));
+    }
+    if super::is_expired(status, created) {
+        return Err(DomainError::Validation("该求种已过期，无法加价".into()));
     }
     // 幂等（与建单同口径）：客户端键体优先、头兜底，带 uid 前缀。
     // 重放 = 那笔加价早已入池，直接回当前池额，不碰余额。

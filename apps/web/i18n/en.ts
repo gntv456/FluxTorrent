@@ -105,6 +105,8 @@ const enBase: Omit<
     gsSearching: "Searching…",
     gsError: "Search request failed, please try again later",
     gsRetry: "Retry",
+    gsGoRequest: "Not here? Post a request",
+    gsFullSearch: "Full search in library",
     gsOpen: "Open search",
     gsMore: "See all results →",
     yes: "Yes",
@@ -114,6 +116,8 @@ const enBase: Omit<
     timeDh: "{n}d{m}h",
     timeMoD: "{n}mo{m}d",
     errorTitle: "Something went wrong",
+    errorRefId: "Error ID",
+    errorReport: "Report to staff",
     errorDesc:
       "An error occurred while loading or rendering this page, usually temporary. Try again; if it keeps happening, please report it via Contact Staff.",
     backHome: "Back to home",
@@ -566,6 +570,8 @@ const enBase: Omit<
     related: "Related works",
     openWork: "Open work",
     empty: "No works to group yet",
+    emptyFiltered: "No works under current filters",
+    emptyClear: "Clear filters to see all",
   },
   torrent: {
     official: "Official",
@@ -593,6 +599,7 @@ const enBase: Omit<
     emptySearchTitle: "No torrents match “{q}”",
     emptySearchHint:
       "Try fewer keywords, check your spelling, or search within another category.",
+    emptyGoRequest: "Not here? Post a request",
     sticky: "Pinned",
     timeLeftDH: "{d}d {h}h",
     category: "Category",
@@ -1142,7 +1149,7 @@ const enBase: Omit<
     rulesFirst: "First check-in: +{n} points",
     rulesDaily: "Daily check-in: +{n} points",
     rulesMilestone:
-      "Streak day {day} bonus: +{bonus} ({total} total that day)",
+      "Streak day {day}: +{bonus} magic and 1 gacha ticket ({total} magic total that day)",
     rulesCap: "Daily cap: {n} points",
     rulesBreak:
       "A missed day resets the streak; makeup cards (last 30 days) keep the streak alive but pay no reward",
@@ -1938,6 +1945,7 @@ const enBase: Omit<
     colJoined: "Joined",
     colLastSeen: "Last seen",
     colAction: "Actions",
+    clearAll: "Clear search & class filter",
     viewHome: "Profile",
     uid: "UID",
     empty: "No members match",
@@ -1988,6 +1996,7 @@ const enBase: Omit<
     searchPh: "Search topic titles…",
     searchBtn: "Search",
     searchEmpty: "No matching topics",
+    searchGoPost: "Not found? Start a topic",
     totalPrefix: "",
     totalSuffix: " topics in total",
     newTopic: "New topic",
@@ -3322,6 +3331,7 @@ const enBase: Omit<
     colTime: "Time",
     colStatus: "Status",
     empty: "No requests",
+    emptyGo: "Post the first request",
     fulfilled: "Solved",
     pending: "Open",
     searchPlaceholder: "Search requests…",
@@ -7088,6 +7098,7 @@ const enBase: Omit<
     seedNote:
       "Seeding and downloads are unaffected — no need to close your client.",
     footerNote: "Questions during the downtime? Contact the staff.",
+    contactLink: "Contact staff ›",
     login: "Staff sign in",
     home: "Back to home",
     banner:
@@ -8067,6 +8078,9 @@ const enBase: Omit<
     needsWork: "Needs work",
     statLine:
       "In use {active} · with rules {withRule} · retired refs {retired}",
+  },
+  siteNews: {
+    label: "Announcement",
   },
 };
 

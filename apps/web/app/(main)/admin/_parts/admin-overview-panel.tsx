@@ -38,6 +38,10 @@ export function AdminOverviewPanel({
 }) {
   const { dict, locale } = useI18n();
   const a = dict.admin as unknown as Record<string, string>;
+  const u = dict.uxOpt;
+  const masu = ov?.masu ?? 0;
+  const mau = ov?.mau ?? 0;
+  const masuRate = mau > 0 ? Math.round((masu / mau) * 100) : 0;
   const openAppeals = appeals.filter((x) => x.status === "open").length;
   const uptimeH = stats ? Math.max(1, Math.round(stats.uptime_secs / 3600)) : 0;
   const queue = [
@@ -202,7 +206,11 @@ export function AdminOverviewPanel({
               </>
             )}
             <Stat label={a.wauTitle} v={ov.wau ?? 0} />
+            <Stat label={u.masuTitle} v={masu} />
+            <Stat label={u.mauTitle} v={mau} />
+            <Stat label={u.masuRateTitle} v={`${masuRate}%`} />
           </div>
+          <p className="mt-2 text-xs text-sub">{u.masuHint}</p>
         </div>
       )}
 

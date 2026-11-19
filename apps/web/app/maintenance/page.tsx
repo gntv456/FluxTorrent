@@ -49,7 +49,14 @@ export default async function MaintenancePage() {
         </Link>
       </div>
 
-      <p className="text-xs text-sub">{t.footerNote}</p>
+      <p className="text-xs text-sub">
+        {t.footerNote}{" "}
+        {/* 0503：维护期无处可问——补可点出口（邮箱对游客常不可用，
+            站内工单页是稳定通道；申诉/工单页在 PUBLIC_PATHS 白名单内） */}
+        <a href="/appeals" className="text-link">
+          {t.contactLink}
+        </a>
+      </p>
     </main>
   );
 }

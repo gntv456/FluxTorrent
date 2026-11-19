@@ -57,6 +57,16 @@ export default function GlobalRouteError({
             </div>
           }
         />
+        {/* 0503：报修凭据链——digest 展示 + 联系通道，用户反馈时
+            可引用 ID（此前 digest 只进 console，用户无从转述） */}
+        <p className="mt-2 text-center text-xs text-sub">
+          {dict.common.errorRefId}:{" "}
+          <code className="font-mono">{error.digest ?? "-"}</code>
+          {" · "}
+          <Link href="/contactstaff" className="text-link">
+            {dict.common.errorReport}
+          </Link>
+        </p>
       </div>
     </main>
   );

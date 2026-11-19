@@ -44,6 +44,8 @@ export function GlobalSearch({
   tipError,
   retryLabel,
   searchLabel,
+  goRequest,
+  goFullSearch,
 }: {
   placeholder: string;
   tipTorrents: string;
@@ -56,6 +58,9 @@ export function GlobalSearch({
   retryLabel: string;
   /** 弹窗化新增：按钮的可达名（放大镜） */
   searchLabel: string;
+  /** 0503 空态双出口：求种/全站精搜 */
+  goRequest: string;
+  goFullSearch: string;
 }) {
   const [q, setQ] = useState("");
   const [hits, setHits] = useState<Hits>(EMPTY);
@@ -235,7 +240,27 @@ export function GlobalSearch({
                 ) : (
                   <>
                     {!hasHits && (
-                      <EmptyState compact icon="search" title={tipEmpty} />
+                      <EmptyState
+                        compact
+                        icon="search"
+                        title={tipEmpty}
+                        action={
+                          <div className="flex flex-col gap-1 text-xs">
+                            <a
+                              className="text-link"
+                              href={`/requests?title=${encodeURIComponent(q)}`}
+                            >
+                              {goRequest} →
+                            </a>
+                            <a
+                              className="text-link"
+                              href={`/torrents?search=${encodeURIComponent(q)}&search_area=0`}
+                            >
+                              {goFullSearch} →
+                            </a>
+                          </div>
+                        }
+                      />
                     )}
                     {hits.torrents.length > 0 && (
                       <>

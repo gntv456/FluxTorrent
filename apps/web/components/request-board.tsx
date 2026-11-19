@@ -280,7 +280,17 @@ export function RequestBoard({
               {rows !== null && rows.length === 0 && (
                 <tr>
                   <td colSpan={8} className="py-8 text-center text-sub">
-                    {t.empty}</td>
+                    {t.empty}
+                    {/* 0503：空板不自推——页头「添加求种」是弹窗态，
+                        空态行内放同款按钮把冷启动闭环 */}
+                    <button
+                      type="button"
+                      className="ml-2 text-link text-xs"
+                      onClick={() => setShowForm(true)}
+                    >
+                      {t.emptyGo} →
+                    </button>
+                  </td>
                 </tr>
               )}
             </tbody>

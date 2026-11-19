@@ -1,3 +1,4 @@
+import { SiteNewsBanner } from "@/components/site-news-banner";
 import { Header, MobileTabBar } from "@/components/layout";
 import { buildNav } from "@/lib/nav-menu";
 import { getMenuItems } from "@/lib/data";
@@ -105,6 +106,7 @@ export default async function MainLayout({
             {dict.maintenance.banner}
           </div>
         ) : null}
+        <SiteNewsBanner />
         <Header />
         {/* 动效壳（P4）：无 DOM 输出，只做顶栏吸顶态 + 滚动进场（渐进增强，不隐藏 SSR 内容） */}
         <MotionShell />
