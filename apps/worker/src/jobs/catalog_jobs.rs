@@ -32,6 +32,21 @@ pub const JOBS: &[JobDef] = &[
         name: "onboarding_followup",
         cadence: "1h",
     },
+    // 0503 竞赛结算：到期赛发名次奖（上传竞速口径）
+    JobDef {
+        name: "contest_settle",
+        cadence: "1d",
+    },
+    // 0503 流失梯度 30/60 天 + 注册周年 PM
+    JobDef {
+        name: "lifecycle_touch",
+        cadence: "1h",
+    },
+    // 0503 娱乐屋周榜派奖（上周 TOP3，幂等键防重）
+    JobDef {
+        name: "arcade_week_prize",
+        cadence: "1h",
+    },
     JobDef {
         name: "magic_pool_promo",
         cadence: "60s",

@@ -88,7 +88,7 @@ struct TaskReq {
     penalty: Option<i64>,
     #[serde(default)]
     claim_limit: Option<i32>,
-    // 考核引擎（0093）：kind=task|onboard|periodic；auto_assign 自动派发；period=once|monthly|quarterly
+    // 考核引擎（0093）：kind=task|onboard|periodic；auto_assign 自动派发；period=once|weekly|monthly|quarterly
     #[serde(default)]
     kind: Option<String>,
     #[serde(default)]
@@ -136,7 +136,12 @@ fn check_kind_period(body: &TaskReq) -> DomainResult<()> {
         .map(str::trim)
         .filter(|p| !p.is_empty());
     super::check_enum("kind", kind, &["task", "onboard", "periodic"])?;
-    super::check_enum("period", period, &["once", "monthly", "quarterly"])?;
+    // 0503：weekly 档（周常任务位；迁移 0503 已放行 CHECK）
+    super::check_enum(
+        "period",
+        period,
+        &["once", "weekly", "monthly", "quarterly"],
+    )?;
     Ok(())
 }
 #[post("/admin/tasks")]

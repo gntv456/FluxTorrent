@@ -45,7 +45,7 @@ export const NAV_SUBGROUPS: Record<string, [string, string[]][]> = {
   ops: [
     ["opsSettings", ["settings"]],
     ["opsMessage", ["staffmess", "mail", "emailbans"]],
-    ["opsRun", ["freeleech", "p2tools", "onboarding", "economy", "contractstats", "arcade"]],
+    ["opsRun", ["freeleech", "p2tools", "onboarding", "economy", "contractstats", "promoops", "arcade"]],
     ["opsExam", ["exams", "tasks", "jixiao"]],
     ["opsBiz", ["donateorders", "fundings", "props"]],
   ],

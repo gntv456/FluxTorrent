@@ -1717,8 +1717,11 @@ const zhCnBase = {
         rec: true,
         banned: false,
         keys: [
-          "工具 → 选项 → BitTorrent：会话关「启用 DHT」「启用 PEX」「本地用户发现」",
-          "做种限制：队列上限按自身带宽设置，避免「满下不种」",
+          "安装后首件事：工具 → 选项 → BitTorrent，会话关「启用 DHT」「启用 PEX」「本地用户发现」（私站防泄漏三连，漏一项都可能封号）",
+          "下载站内 .torrent 文件导入客户端——文件里已含你的 passkey，不要转发给别人",
+          "速度限制：选项 → 速度，按自家带宽上限设置上传（跑满会上传质量差，反而被限速）",
+          "做种不停：队列上限按带宽设置，避免「满下不种」触发 H&R",
+          "换机迁移前先在客户端里正常停止所有任务再搬目录（异常退出丢做种时长）",
         ],
       },
       {
@@ -4659,6 +4662,7 @@ const zhCnBase = {
       "EV 由代码常量 + 设置键现值现场复算；确定侧（周常/赛季）发放为{magic}，受 arcade_budget_* 预算闸约束。",
   },
   adminNav: {
+    promoops: { label: "运营工作台", tip: "促销归因/自动规则/竞赛管理" },
     contractstats: { label: "契约运营", tip: "签约/达标/罚金总览" },
     arcade: { label: "娱乐屋运营", tip: "三口径 EV / 门禁 / 参数 / 定义" },
     torrents: { label: "种子管理", tip: "搜索并管理站点种子" },
@@ -5314,7 +5318,7 @@ const zhCnBase = {
       onboard: "新人转正考核",
       periodic: "周期考核",
     } as Record<string, string>,
-    periods: { once: "一次性", monthly: "每月", quarterly: "每季" } as Record<
+    periods: { once: "一次性", weekly: "每週", monthly: "每月", quarterly: "每季" } as Record<
       string,
       string
     >,

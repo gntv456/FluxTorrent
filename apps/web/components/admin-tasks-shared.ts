@@ -157,7 +157,7 @@ export function fromMetricJson(metric: Record<string, unknown> | null): {
  *  （三语），由 `kindList()` / `periodList()` 拼回原 `{v, label}` 形状 ——
  *  消费方的 `.find((k) => k.v === ...)` 逻辑因此不用改。 */
 export const KIND_KEYS = ["task", "onboard", "periodic"] as const;
-export const PERIOD_KEYS = ["once", "monthly", "quarterly"] as const;
+export const PERIOD_KEYS = ["once", "weekly", "monthly", "quarterly"] as const;
 
 /** fail_penalty 行（表单勾选集 + 参数）→ 提交数组的双向转换 */
 export function toPenaltyItems(

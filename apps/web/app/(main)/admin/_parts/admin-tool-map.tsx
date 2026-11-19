@@ -155,6 +155,11 @@ export const LAZY_PANELS = {
       default: m.AdminEconomyDashboard,
     })),
   ),
+    AdminPromoOps: lazy(() =>
+    import("@/components/admin-promo-ops").then((m) => ({
+      default: m.AdminPromoOps,
+    })),
+  ),
     AdminContractStats: lazy(() =>
     import("@/components/admin-contract-stats").then((m) => ({
       default: m.AdminContractStats,

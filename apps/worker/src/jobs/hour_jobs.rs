@@ -49,6 +49,11 @@ pub(super) async fn hour_jobs(
         onboarding_followup(&db),
     )
     .await;
+    // 0503 流失梯度 30/60 天 + 注册周年（窗口幂等）
+    run_sharded(&db, &shard, "job:lifecycle_touch", lifecycle_touch(&db)).await;
+    // 0503 娱乐屋周榜派奖（上周 TOP3）
+    run_sharded(&db, &shard, "job:arcade_week_prize", arcade_week_prize(&db))
+        .await;
     run_sharded(&db, &shard, "job:wishlist_notify", wishlist_notify(&db)).await;
     run_sharded(&db, &shard, "job:highspeed_tag", highspeed_tag(&db)).await;
     run_sharded(

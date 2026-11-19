@@ -4621,6 +4621,7 @@ const zhTwBase: Omit<
       "EV 由代碼常量 + 設定鍵現值現場複算；確定側（週常/賽季）發放為{magic}，受 arcade_budget_* 預算閘約束。",
   },
   adminNav: {
+    promoops: { label: "運營工作台", tip: "促銷歸因/自動規則/競賽管理" },
     contractstats: { label: "契約運營", tip: "簽約/達標/罰金總覽" },
     arcade: { label: "娛樂屋運營", tip: "三口徑 EV / 門禁 / 參數 / 定義" },
     torrents: { label: "種子管理", tip: "搜尋並管理站點種子" },
@@ -5264,7 +5265,7 @@ const zhTwBase: Omit<
       onboard: "新人轉正考核",
       periodic: "週期考核",
     } as Record<string, string>,
-    periods: { once: "一次性", monthly: "每月", quarterly: "每季" } as Record<
+    periods: { once: "一次性", weekly: "每週", monthly: "每月", quarterly: "每季" } as Record<
       string,
       string
     >,

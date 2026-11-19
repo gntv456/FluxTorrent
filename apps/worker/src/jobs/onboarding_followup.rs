@@ -78,3 +78,96 @@ pub(crate) async fn onboarding_followup(db: &PgPool) -> anyhow::Result<u64> {
     acted += congratulated.rows_affected() as u64;
     Ok(acted)
 }
+
+/// 0503 运营触达二批（体检台账 #7）：流失梯度 + 注册周年。
+/// 此前唯一触点是第 136 天的威胁式休眠警告——30/60 天的软召回窗口
+/// 全部错过。锚同款 notice_marker；两档互相独立、各只发一次。
+pub(crate) async fn lifecycle_touch(db: &PgPool) -> anyhow::Result<u64> {
+    let mut acted = 0u64;
+    // A) 30 天未登录软召回（曾活跃过：有下载史，排除已触达）
+    let g30 = sqlx::query(
+        r#"
+        WITH anchor AS (
+            INSERT INTO spark_ledger (id, user_id, amount, kind, idempotency_key)
+            SELECT nextval('spark_ledger_id_seq'), u.id, 0, 'notice_marker',
+                   'lifecycle-g30:' || u.id
+            FROM users u
+            WHERE u.status < 2
+              AND u.last_seen_at < now() - interval '30 days'
+              AND u.last_seen_at > now() - interval '34 days'
+              AND EXISTS (SELECT 1 FROM snatches s
+                          WHERE s.user_id = u.id AND s.downloaded > 0)
+              AND NOT EXISTS (SELECT 1 FROM spark_ledger sl
+                              WHERE sl.idempotency_key =
+                                    'lifecycle-g30:' || u.id)
+            RETURNING user_id
+        )
+        INSERT INTO messages (sender_id, receiver_id, subject, body)
+        SELECT NULL, a.user_id, '好久不见——站里有你的种在等你',
+               '你已经 30 天没有登录了。你的做种还在为站点供血，'
+               || '本周新上了不少 Free 资源——回来逛一圈，签到奖励照旧。'
+               || '账号长期未登录会进入休眠流程，提前逛逛就不会有那份尴尬邮件啦。'
+        FROM anchor a
+        "#,
+    )
+    .execute(db)
+    .await?;
+    acted += g30.rows_affected() as u64;
+    // B) 60 天未登录第二档（附保种区引导）
+    let g60 = sqlx::query(
+        r#"
+        WITH anchor AS (
+            INSERT INTO spark_ledger (id, user_id, amount, kind, idempotency_key)
+            SELECT nextval('spark_ledger_id_seq'), u.id, 0, 'notice_marker',
+                   'lifecycle-g60:' || u.id
+            FROM users u
+            WHERE u.status < 2
+              AND u.last_seen_at < now() - interval '60 days'
+              AND u.last_seen_at > now() - interval '64 days'
+              AND NOT EXISTS (SELECT 1 FROM spark_ledger sl
+                              WHERE sl.idempotency_key =
+                                    'lifecycle-g60:' || u.id)
+            RETURNING user_id
+        )
+        INSERT INTO messages (sender_id, receiver_id, subject, body)
+        SELECT NULL, a.user_id, '两个月没见了——别让账号沉睡',
+               '60 天未登录，账号正在走向休眠流程（150 天未登录可能被停用）。'
+               || '回来看看：保种区正需要人认领濒危种子，签到连签奖励也还在等。'
+               || '只要登录一次就不会有任何风险。'
+        FROM anchor a
+        "#,
+    )
+    .execute(db)
+    .await?;
+    acted += g60.rows_affected() as u64;
+    // C) 注册周年 PM（满 365 天，窗口 1 天，各周年年份独立锚）
+    let anniv = sqlx::query(
+        r#"
+        WITH anchor AS (
+            INSERT INTO spark_ledger (id, user_id, amount, kind, idempotency_key)
+            SELECT nextval('spark_ledger_id_seq'), u.id, 0, 'notice_marker',
+                   'lifecycle-anniv:' || u.id || ':' ||
+                   (floor(extract(epoch FROM (now() - u.created_at)) / 86400) / 365)::int
+            FROM users u
+            WHERE u.status < 2
+              AND u.created_at <= now() - interval '365 days'
+              AND date_part('doy', u.created_at) BETWEEN
+                  date_part('doy', now()) - 1 AND date_part('doy', now())
+              AND NOT EXISTS (
+                  SELECT 1 FROM spark_ledger sl
+                  WHERE sl.idempotency_key LIKE 'lifecycle-anniv:' || u.id || ':%')
+            RETURNING user_id
+        )
+        INSERT INTO messages (sender_id, receiver_id, subject, body)
+        SELECT NULL, a.user_id, '注册周年快乐！',
+               '今天是你在站点的注册周年——感谢一路陪伴。'
+               || '你贡献的每一颗种、每一条帖都在让站点更好。'
+               || '周年之际，欢迎去「做种契约」签一份月度目标，把贡献变成奖励。'
+        FROM anchor a
+        "#,
+    )
+    .execute(db)
+    .await?;
+    acted += anniv.rows_affected() as u64;
+    Ok(acted)
+}

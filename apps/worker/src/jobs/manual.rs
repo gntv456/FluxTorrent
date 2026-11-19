@@ -84,6 +84,9 @@ pub(crate) async fn run_named(
         "contract_sample" => n(contract_sample(db).await?),
         // 0503 新人生命周期跟进
         "onboarding_followup" => n(onboarding_followup(db).await?),
+        "lifecycle_touch" => n(lifecycle_touch(db).await?),
+        "arcade_week_prize" => n(arcade_week_prize(db).await?),
+        "contest_settle" => n(contest_settle(db).await?),
         "preserve_settle" => n(preserve_settle(db).await?),
         "funding_settle" => n(funding_settle(db).await?),
         "refundable_settle" => n(refundable_settle(db).await?),

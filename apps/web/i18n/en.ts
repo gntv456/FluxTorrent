@@ -4747,6 +4747,7 @@ const enBase: Omit<
       "EV recomputed live from code constants + settings; deterministic grants (weekly/season) pay {magic}, capped by arcade_budget_*.",
   },
   adminNav: {
+    promoops: { label: "Promo Ops", tip: "Attribution / auto-rules / contests" },
     contractstats: { label: "Contracts", tip: "Sign-up / settlement / penalty overview" },
     arcade: { label: "Arcade ops", tip: "EV / gates / params / defs" },
     torrents: { label: "Torrents", tip: "Search and manage site torrents" },
@@ -5456,6 +5457,7 @@ const enBase: Omit<
     } as Record<string, string>,
     periods: {
       once: "One-off",
+      weekly: "Weekly",
       monthly: "Monthly",
       quarterly: "Quarterly",
     } as Record<string, string>,

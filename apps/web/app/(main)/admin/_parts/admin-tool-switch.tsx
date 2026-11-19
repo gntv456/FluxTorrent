@@ -159,6 +159,9 @@ export function renderSimpleTool(
     // C5 经济反通胀运营面板（0226）
     case "economy":
       return <P.AdminEconomyDashboard />;
+    // 0503 运营工作台（促销归因/自动规则/竞赛 CRUD）
+    case "promoops":
+      return <P.AdminPromoOps />;
     // 0499 契约运营视图（体检二轮 B1）
     case "contractstats":
       return <P.AdminContractStats />;
