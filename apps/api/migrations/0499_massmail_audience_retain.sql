@@ -28,11 +28,13 @@ INSERT INTO settings_meta (name, type, label_zh, label_en, hint,
 ON CONFLICT (name) DO NOTHING;
 
 -- 3) 契约运营面板导航行（体检二轮 B1：admin 零读口的配套入口；
---    端点 /admin/contract-stats 权限 SETTINGS_VIEW，行键对齐）
+--    端点 /admin/contract-stats 权限 SETTINGS_VIEW（矩阵授 class≥90）。
+--    min_class 对齐同组 economy/onboarding=98——首版误写 99，把维护
+--    开发者（98）挡在门外，线上已热修，此处同步防新站复现。
 INSERT INTO staff_panel_entries
     (panel, name, url, info, sort, section, min_class, tab_key, perm_key)
 SELECT 'sysop', '契约运营', '/admin?tool=contractstats',
-       '月度做种契约的签约/达标/罚金总览', 15, 'ops', 99,
+       '月度做种契约的签约/达标/罚金总览', 15, 'ops', 98,
        'contractstats', 'settings.view'
  WHERE NOT EXISTS (
      SELECT 1 FROM staff_panel_entries
