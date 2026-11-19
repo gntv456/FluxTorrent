@@ -467,7 +467,7 @@
  "apps/api/src/auth_http/login.rs::wide": 4,
  "apps/api/src/auth_http/logout.rs::wide": 2,
  "apps/api/src/auth_http/me.rs::wide": 9,
- "apps/api/src/auth_http/me_settings.rs": 332,
+ "apps/api/src/auth_http/me_settings.rs": 327,
  "apps/api/src/auth_http/me_settings.rs::wide": 14,
  "apps/api/src/auth_http/me_settings_kv.rs::wide": 30,
  "apps/api/src/auth_http/mod.rs::wide": 1,
