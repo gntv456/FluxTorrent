@@ -84,7 +84,10 @@ pub async fn announce_site_promos(db: &PgPool) -> anyhow::Result<u64> {
         r#"
         WITH fresh AS (
             SELECT id, kind, ends_at FROM promotions
-            WHERE scope = 'global' AND starts_at <= now() AND ends_at > now()
+            -- 0503 播报扩面：official/non_official/category 同为站点级运营动作，
+            -- 对齐 10-26 设计口径（此前只播 global，其余三类静默上线）
+            WHERE scope IN ('global', 'official', 'non_official', 'category')
+              AND starts_at <= now() AND ends_at > now()
               AND announced_at IS NULL
             ORDER BY id LIMIT 1
         ),
