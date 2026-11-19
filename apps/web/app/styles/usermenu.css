@@ -178,7 +178,7 @@
   font-weight: 800;
 }
 .usermenu__name:hover {
-  color: #bfe0ff;
+  color: var(--tone-on-accent);
   text-decoration: none;
 }
 /* 弹窗内佩戴勋章：圆点化（MedalIcon 无文字） */
@@ -245,18 +245,18 @@
 }
 .usermenu__checkin:hover:not(:disabled) {
   color: var(--text-on-accent);
-  border-color: #7fc4ff;
-  background: rgba(126, 196, 255, 0.26);
+  border-color: color-mix(in srgb, var(--accent) 70%, transparent);
+  background: color-mix(in srgb, var(--accent) 28%, transparent);
 }
 .usermenu__checkin:disabled {
   cursor: default;
-  color: #9ee6b8;
-  background: rgba(158, 230, 184, 0.12);
-  border-color: rgba(158, 230, 184, 0.5);
+  color: var(--success);
+  background: color-mix(in srgb, var(--success) 14%, transparent);
+  border-color: color-mix(in srgb, var(--success) 50%, transparent);
 }
 .usermenu__checkmsg {
   margin: 2px 0 0;
-  color: #7fe3c9;
+  color: var(--success);
   font-size: 11.5px;
   font-weight: 700;
 }
@@ -273,8 +273,8 @@
   cursor: pointer;
 }
 .usermenu__logout:hover {
-  color: #ffb4b4;
-  border-color: rgba(255, 180, 180, 0.5);
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 50%, transparent);
 }
 /* 数据条：五卡票券格（对齐样图集：浮起底 + 发丝分隔 + hover 浅蓝） */
 .usermenu__stats {

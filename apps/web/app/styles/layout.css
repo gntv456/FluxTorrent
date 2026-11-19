@@ -2169,7 +2169,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   vertical-align: -1px;
 }
 .legend-swatch--ordinary {
-  background: #a7a7a7;
+  background: var(--text-faint, #a7a7a7);
 }
 .legend-swatch--official {
   background: var(--compat-orange);
@@ -2196,7 +2196,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
 .rs-bar__ordinary {
   display: block;
   border-radius: 2px 2px 0 0;
-  background: #a7a7a7;
+  background: var(--text-faint, #a7a7a7);
   min-height: var(--tap-min);
 }
 .rs-bar__official {
@@ -2357,7 +2357,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   margin: 0;
   padding: 20px;
   border: 0;
-  background: rgba(10, 25, 47, 0.45);
+  background: var(--overlay-scrim, rgba(10, 25, 47, 0.45));
 }
 .home-news-modal__panel {
   display: flex;

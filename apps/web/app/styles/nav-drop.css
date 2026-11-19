@@ -5,26 +5,30 @@
  * 根因）。这里把同一组令牌挂到 .nvc-anchor（菜单条，nd-list 共同
  * 祖先），主题覆盖在文件尾同构双挂。 */
 .nvc-anchor {
-  --nvc-panel: #fff;
-  --nvc-root: #f8fafc;
-  --nvc-col: #fff;
-  --nvc-head: #f7fbff;
-  --nvc-strip: #fbfdff;
-  --nvc-line: #c4e0f7;
-  --nvc-sep: #eef2f6;
-  --nvc-text: #1f2a44;
-  --nvc-sub: #6b7a99;
-  --nvc-faint: #94a3b8;
-  --nvc-active-bg: #e8f4ff;
-  --nvc-active-fg: #1e8ae8;
-  --nvc-bar: #2fa8ff;
-  --nvc-hover: #e8f4ff;
-  --nvc-leaf: #1d8f73;
-  --nvc-lv-bg: #e8f4ff;
-  --nvc-lv-fg: #1e8ae8;
-  --nvc-input: #fff;
-  --nvc-btn: #2fa8ff;
-  --nvc-btn-fg: #fff;
+  /* 默认块派生化（专项批）：淡彩 13 系/tide 等无 --nvc-* 覆盖的主题
+     原先全部回落这组硬编码蓝白——顶栏下拉不跟主题。改为从语义令牌
+     派生后未覆盖主题自动协调；brand/brand-night/shanhaijing 两档的
+     文件尾覆盖块特异性更高，视觉不变。 */
+  --nvc-panel: var(--surface-card);
+  --nvc-root: var(--surface-sunken);
+  --nvc-col: var(--surface-card);
+  --nvc-head: var(--surface-sunken);
+  --nvc-strip: var(--surface-raised);
+  --nvc-line: var(--border-soft);
+  --nvc-sep: var(--border-soft);
+  --nvc-text: var(--ink);
+  --nvc-sub: var(--text-sub);
+  --nvc-faint: var(--text-faint, var(--text-sub));
+  --nvc-active-bg: color-mix(in srgb, var(--accent) 14%, transparent);
+  --nvc-active-fg: var(--accent);
+  --nvc-bar: var(--accent);
+  --nvc-hover: color-mix(in srgb, var(--accent) 12%, transparent);
+  --nvc-leaf: var(--success, #1d8f73);
+  --nvc-lv-bg: color-mix(in srgb, var(--accent) 14%, transparent);
+  --nvc-lv-fg: var(--accent);
+  --nvc-input: var(--surface-card);
+  --nvc-btn: var(--accent);
+  --nvc-btn-fg: var(--text-on-accent);
   --nvc-r: 20px;
   --nvc-row-r: 9px;
   --nvc-cap-font: var(--font-display, serif);
