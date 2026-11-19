@@ -32,7 +32,7 @@ export function ImpactPreviewCard({
     <tr className="border-t border-line">
       <td colSpan={14}>
         <div
-          className="rounded-[var(--r-md)] bg-sky-soft p-3
+          className="rounded-[var(--r-md)] bg-[var(--surface-sunken)] p-3
             text-xs text-ink"
         >
           <p>

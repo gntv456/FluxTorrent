@@ -481,3 +481,27 @@ hydration 后取数）。数据路由 **72 → 65**，覆盖 **65/65 = 100%**；
   `torrent_http`/`staff_http`/`qenv.rs` 新增 `Validation(format!`）——棘轮
   「只增不减」正与正常开发对抗，这正是 D9 要改成机制/口径的理由。
 
+## 2026-11-19 · 产品指标口径自检基线（SYNTHETIC，非真实用户数据）
+
+> 明确标注：以下数值来自 `scripts/ux_metrics_selftest.mjs` 的**合成画像**，
+> 只用于证明「采集 → 聚合 → 展示 → 导出」口径自洽，**不是真实用户行为数据**。
+> 真实数据须在可跑浏览器的环境执行 `pnpm test:ux-metrics` 或跑新用户旅程后回填本节。
+
+| 日期 | 指标 | 值 | 来源命令 |
+|---|---|---|---|
+| 2026-11-19 | 画像年龄 | 8 天 | `node --experimental-strip-types scripts/ux_metrics_selftest.mjs` |
+| 2026-11-19 | 活跃天数 | 3 天（含首日、D1、D7） | 同上 |
+| 2026-11-19 | D1 回访 | true | 同上 |
+| 2026-11-19 | D7 回访 | true | 同上 |
+| 2026-11-19 | TTFV（app_ready → first_torrent_open） | 2000 ms | 同上 |
+| 2026-11-19 | 搜索提交次数 | 2 | 同上 |
+| 2026-11-19 | 漏斗步数 | 7（signup/app_ready/guide/open/checkin/publish/invite） | 同上 |
+
+### 回填路径（待真实环境执行）
+
+1. `pnpm test:ux-metrics`：E2E 合成旅程验证渲染/导出/清除与聚合一致性。
+2. 真实新用户旅程：注册 → 首页 → 搜种 → 签到；导出 `window.__fluxUxMetrics` 与
+   `flux-ux-first-seen` / `flux-ux-active-days` 两个 localStorage 键。
+3. 用 `computeUxReport` 复算，把「首种激活率 / TTFV / D1 / D7」的真实值写入本节。
+
+

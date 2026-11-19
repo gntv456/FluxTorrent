@@ -60,6 +60,7 @@ export default async function HomePage() {
     username?: string;
     seeding?: number;
     hr?: number;
+    hr_unresolved?: number;
   }) | null;
   const meView =
     meSummary && ovx
@@ -67,7 +68,7 @@ export default async function HomePage() {
           ...meSummary,
           username: ovx.username ?? "",
           seeding: ovx.seeding ?? 0,
-          hr: ovx.hr,
+          hr: ovx.hr_unresolved ?? ovx.hr,
         }
       : meSummary;
 

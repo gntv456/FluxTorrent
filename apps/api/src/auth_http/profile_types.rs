@@ -15,6 +15,7 @@ pub(super) struct RecentUpload {
     pub(super) small_descr: Option<String>,
     pub(super) size: i64,
     pub(super) created_at: chrono::DateTime<chrono::Utc>,
+    pub(super) seeders: i32,
 }
 
 #[derive(sqlx::FromRow, serde::Serialize)]

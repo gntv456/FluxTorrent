@@ -99,7 +99,7 @@ agg AS (
 rep AS (
   SELECT DISTINCT ON (wk) wk, id, name, small_descr, descr, category_id,
          media_info->>'poster' AS poster,
-         media_info->>'rating' AS rating,
+         rating::text AS rating,
          COALESCE(NULLIF(imdb_id, ''), media_info->>'imdb_id') AS imdb_id,
          media_info->>'tmdb_id' AS tmdb_id,
          media_info->>'tmdb_url' AS tmdb_url,
@@ -191,7 +191,7 @@ agg AS (
 rep AS (
   SELECT DISTINCT ON (wk) wk, id, name, small_descr, descr, category_id,
          media_info->>'poster' AS poster,
-         media_info->>'rating' AS rating,
+         rating::text AS rating,
          COALESCE(NULLIF(imdb_id, ''), media_info->>'imdb_id') AS imdb_id,
          media_info->>'tmdb_id' AS tmdb_id,
          media_info->>'tmdb_url' AS tmdb_url,

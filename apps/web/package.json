@@ -12,6 +12,7 @@
     "test": "vitest run",
     "lhci": "lhci autorun",
     "lhci:collect": "lhci collect",
+    "test:ux-metrics": "playwright test e2e/ux-metrics.spec.ts --reporter=line",
     "test:visual": "playwright test e2e/visual-regression.spec.ts",
     "test:visual:update": "playwright test e2e/visual-regression.spec.ts --update-snapshots",
     "vr": "playwright test e2e/visual-regression.spec.ts --reporter=line",
@@ -44,5 +45,8 @@
     "tailwindcss": "^4.3.3",
     "typescript": "^5.7.2",
     "vitest": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

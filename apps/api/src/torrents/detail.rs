@@ -35,7 +35,7 @@ pub async fn get_torrent(
                {owner_expr},
                {ekind} AS promotion,
                {eends} AS promotion_ends_at,
-               t.media_info->>'rating' AS rating,
+               t.rating::text AS rating,  -- 0502 物化列
                t.media_info->>'poster' AS poster,
                t.imdb_id,
                t.hr_policy,

@@ -208,7 +208,12 @@ export function AdminClasses() {
         <p className="text-sm text-sub">{at.intro}</p>
       </div>
       {msg && (
-        <p className="rounded-[var(--r-md)] bg-sky-soft p-3 text-sm text-ink">
+        <p
+          className={`
+            rounded-[var(--r-md)] bg-[var(--surface-sunken)]
+            p-3 text-sm
+          `}
+        >
           {msg}
         </p>
       )}

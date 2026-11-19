@@ -195,6 +195,7 @@ export default async function UserProfilePage({
           gb={gb}
           seedDur={seedDur}
           prog={prog}
+          seedLabel={dict.uxOpt.statSeeding}
         />
       )}
 

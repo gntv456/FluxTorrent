@@ -32,7 +32,7 @@ pub struct TorrentRow {
     pub promotion: Option<String>,
     /// 进行中促销的截止时刻（列表展示「剩余时间」，参考站口径）
     pub promotion_ends_at: Option<chrono::DateTime<chrono::Utc>>,
-    /// 媒体评分（media_info.rating，豆瓣/IMDb 口径由录入方决定；首页海报墙展示）
+    /// 作品评分（0502 起读 torrents.rating 物化列，源 work_meta：TMDB/豆瓣）
     pub rating: Option<String>,
     /// 海报图 URL（media_info.poster；缺省时前端用生成式海报兜底）
     pub poster: Option<String>,
@@ -253,7 +253,7 @@ pub struct TorrentFilter {
     /// 与 `search` 的区别：search 会同时命中副标题/简介，本字段只卡标题。
     #[serde(default)]
     pub title_like: Option<String>,
-    /// 媒体评分下界（0283 P1-5）：media_info.rating（录入方口径，豆瓣/IMDb
+    /// 媒体评分下界（0283 P1-5；0502 起比 torrents.rating 物化列，豆瓣/IMDb
     /// 同字段）≥ 该值；0-10 一位小数，None = 不筛。无评分种子自然落选。
     #[serde(default)]
     pub rating_min: Option<f64>,

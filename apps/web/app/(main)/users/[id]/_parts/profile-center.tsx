@@ -19,6 +19,7 @@ export function CenterGrid({
   gb,
   seedDur,
   prog,
+  seedLabel,
 }: {
   data: ProfileData;
   locale: Locale;
@@ -32,6 +33,7 @@ export function CenterGrid({
     need: number,
     fmt: (n: number) => string,
   ) => { pct: number; text: string };
+  seedLabel: string;
 }) {
   const p = data.profile;
   const nc = data.next_class;
@@ -259,7 +261,13 @@ export function CenterGrid({
       )}
 
       {/* B3-7：近期发布（补更新时间列，见 _parts/profile-recent-uploads.tsx） */}
-      <RecentUploadsCard data={data} t={t} gb={gb} locale={locale} />
+      <RecentUploadsCard
+        data={data}
+        t={t}
+        gb={gb}
+        locale={locale}
+        seedLabel={seedLabel}
+      />
     </div>
   );
 }

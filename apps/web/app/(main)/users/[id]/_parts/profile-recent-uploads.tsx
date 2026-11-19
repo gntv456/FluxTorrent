@@ -15,11 +15,13 @@ export function RecentUploadsCard({
   t,
   gb,
   locale,
+  seedLabel,
 }: {
   data: ProfileData;
   t: Record<string, string>;
   gb: (n: number) => string;
   locale: Locale;
+  seedLabel: string;
 }) {
   return (
     <Card title={t.recentUploads} icon="☰" full>
@@ -28,6 +30,9 @@ export function RecentUploadsCard({
           <tr>
             <th scope="col" className="colhead">
               {t.recentUploads}
+            </th>
+            <th scope="col" className="colhead w-20 text-right">
+              {seedLabel}
             </th>
             <th scope="col" className="colhead w-28 text-right">
               {t.colSize}
@@ -49,6 +54,9 @@ export function RecentUploadsCard({
                 )}
               </td>
               <td className="num shrink-0 text-right">
+                <Badge tone="neutral" size="sm">{u.seeders}</Badge>
+              </td>
+              <td className="num shrink-0 text-right">
                 <Badge tone="neutral" size="sm">{gb(u.size)}</Badge>
               </td>
               <td className="num shrink-0 text-right text-sub">
@@ -58,7 +66,7 @@ export function RecentUploadsCard({
           ))}
           {data.recent_uploads.length === 0 && (
             <tr>
-              <td colSpan={3} className="py-6 text-center text-sub">
+              <td colSpan={4} className="py-6 text-center text-sub">
                 {t.noUploads}
               </td>
             </tr>

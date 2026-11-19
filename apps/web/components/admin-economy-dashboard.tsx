@@ -253,6 +253,7 @@ export function AdminEconomyDashboard() {
 
 /** 高频产出 kind 的人话标签（未列出的显示原始枚举——kind 是自由 TEXT）。 */
 const KIND_LABELS: Record<string, string> = {
+  // 产出侧
   seeding_reward: "做种收益",
   attendance: "签到",
   contract_reward: "契约奖励",
@@ -263,9 +264,26 @@ const KIND_LABELS: Record<string, string> = {
   subtitle_award: "字幕奖励",
   bank_interest: "银行利息",
   funding_refund: "众筹退款",
+  task_reward: "任务奖励",
+  arcade: "街机奖励",
+  gift_spark: "赠礼",
+  // 消耗侧（0502 补：罚金族+游戏族——此前大面积漏标，且 game/games 键名
+  // 错位致娱乐屋整类永远显示原始枚举）
+  contract_penalty: "契约罚金",
+  task_penalty: "任务罚金",
+  exam_penalty: "考核处罚",
   shop: "商店",
   gacha: "抽卡",
+  gacha_ticket: "抽卡券购买",
+  game: "娱乐屋",
   games: "娱乐屋",
+  fishing: "钓鱼",
+  pet_feed: "宠物投喂",
+  bank_auto_deduct: "贷款自动扣款",
+  hr: "H&R 扣罚",
+  hr_pardon: "自助免罪",
   request_bid: "求种加价",
-  gift_spark: "赠礼",
+  request_payout: "求种赔付",
+  forum_tip: "论坛打赏",
+  subtitle_bounty: "字幕悬赏",
 };

@@ -46,7 +46,7 @@
  "apps/web/lib/medal-rarity.ts::wide": 1,
  "apps/web/lib/ui-classes.ts::wide": 1,
  "apps/web/components/admin-attendance.tsx::wide": 2,
- "apps/web/components/admin-classes.tsx": 325,
+ "apps/web/components/admin-classes.tsx": 330,
  "apps/web/components/admin-contract-stats.tsx::wide": 1,
  "apps/web/components/admin-donate-orders.tsx": 481,
  "apps/web/components/admin-donate-orders.tsx::wide": 7,

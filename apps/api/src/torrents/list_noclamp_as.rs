@@ -218,7 +218,7 @@ pub async fn list_torrents_noclamp_as(
                CASE WHEN t.anonymous THEN NULL ELSE u.username END AS owner_name,
                pr.promotion,
                pr.promotion_ends_at,
-               t.media_info->>'rating' AS rating,
+               t.rating::text AS rating,  -- 0502 物化列
                t.media_info->>'poster' AS poster,
                t.imdb_id,
                t.created_at,

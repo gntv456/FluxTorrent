@@ -40,7 +40,7 @@ pub(crate) struct ExtraSlots {
     pub(crate) anonymous: u32,
     /// 标题必须命中（0267）：pattern 已由调用方转义/加通配
     pub(crate) title_like: u32,
-    /// 媒体评分下界（0283 P1-5）：media_info->>'rating' 数值化比较
+    /// 媒体评分下界（0283 P1-5；0502 起比 torrents.rating 物化列）
     pub(crate) rating_min: u32,
 }
 
@@ -156,19 +156,13 @@ pub(crate) fn extra_preds(s: ExtraSlots) -> String {
            OR (${a} = 2 AND NOT t.anonymous))",
         a = s.anonymous
     ));
-    // 媒体评分下界（0283 P1-5；0501 改源）：media_info->>'rating' 是
-    // 无写入者的死键（全仓零写入，恒空 → 恒 0 行，三层完整死链）。
-    // 评分正源是 work_meta.rating（0399，TMDB/豆瓣写入）。改法：
-    // EXISTS 半连接 work_meta——WK 归一化表达式复用 works_sql 常量
-    // （对每行求值不可走索引，但 rating_min 只在显式筛选时绑定非
-    // None；不筛时谓词恒真零开销，works 聚合本就接受全表扫描口径）。
-    // 半连接按 wk 聚合行数去重，不影响列表计数。
+    // 媒体评分下界（0283 P1-5；0501 改源；0502 物化）：评分正源
+    // work_meta.rating，已物化到 torrents.rating（0502 列+部分索引，
+    // 写钩子在 work_meta.rs upsert 同事务回填）。谓词简化为列比较，
+    // 三套槽位（列表/计数/works）经 extra_preds 一处生效。
     out.push_str(&format!(
-        " AND (${a}::numeric IS NULL OR EXISTS (SELECT 1 \
-           FROM work_meta wm WHERE wm.key = {wk} \
-             AND wm.rating >= ${a}))",
-        a = s.rating_min,
-        wk = crate::torrent_http::works_sql::wk_expr()
+        " AND (${a}::numeric IS NULL OR t.rating >= ${a})",
+        a = s.rating_min
     ));
     out
 }

@@ -216,12 +216,16 @@ fn fold_details(v: &serde_json::Value, kind: &str, ext: &str) -> WorkMetaUp {
 }
 
 async fn upsert(db: &PgPool, key: &str, u: &WorkMetaUp) -> DomainResult<()> {
+    // 0502 评分物化：与 torrents.rating 回填同事务，0 分不落；WK 复用 works_sql
+    let mut tx = db
+        .begin()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     sqlx::query(
         "INSERT INTO work_meta (key, source, external_id, name, year, \
            rating, runtime, region, director, cast_list, genres, poster, \
            synopsis, fetched_at) \
-         VALUES ($1, $2, $3, $4, $5, $6, $7, \
-           $8, $9, $10, $11, $12, $13, now()) \
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13, now()) \
          ON CONFLICT (key) DO UPDATE SET source = EXCLUDED.source, \
            external_id = EXCLUDED.external_id, name = EXCLUDED.name, \
            year = EXCLUDED.year, rating = EXCLUDED.rating, \
@@ -243,9 +247,22 @@ async fn upsert(db: &PgPool, key: &str, u: &WorkMetaUp) -> DomainResult<()> {
     .bind(&u.genres)
     .bind(&u.poster)
     .bind(&u.synopsis)
-    .execute(db)
+    .execute(&mut *tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
+    let upd = format!(
+        "UPDATE torrents t SET rating = wm.rating FROM work_meta wm \
+          WHERE wm.key = $1 AND wm.key = {} AND wm.rating > 0",
+        crate::torrent_http::works_sql::wk_expr()
+    );
+    sqlx::query(&upd)
+        .bind(key)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    tx.commit()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(())
 }
 

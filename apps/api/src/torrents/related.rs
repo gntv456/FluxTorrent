@@ -47,6 +47,8 @@ pub struct RelatedRow {
     pub promotion: Option<String>,
     pub poster: Option<String>,
     pub times_completed: i32,
+    pub group_id: Option<i64>,
+    pub subtitle_group: Option<String>,
 }
 
 /// 打分取相关种子。
@@ -114,7 +116,12 @@ pub async fn list_related(
         scored AS (
             SELECT t.id, t.name, t.small_descr, t.category_id, t.size,
                    t.seeders, t.leechers, t.times_completed,
-                   t.media_info->>'poster' AS poster,
+                   t.group_id, t.media_info->>'poster' AS poster,
+                   (SELECT string_agg(d.name, ', ' ORDER BY d.name)
+                      FROM torrent_sections ts
+                      JOIN section_dict d ON d.id = ts.dict_id
+                     WHERE ts.torrent_id = t.id
+                       AND ts.kind = 'subtitle_group') AS subtitle_group,
                    {ekind} AS promotion,
                    (
                      CASE WHEN b.group_id IS NOT NULL
@@ -135,8 +142,9 @@ pub async fn list_related(
               JOIN cand c ON c.id = t.id
              CROSS JOIN base b
         )
-        SELECT id, name, small_descr, category_id, size, seeders, leechers,
-               promotion, poster, times_completed
+        SELECT id, name, small_descr, category_id, size, seeders,
+               leechers, promotion, poster, times_completed,
+               group_id, subtitle_group
           FROM scored
          WHERE score > 0
          ORDER BY score DESC, seeders DESC, id DESC

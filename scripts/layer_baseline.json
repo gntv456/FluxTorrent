@@ -107,7 +107,7 @@
  "apps/api/src/publish_http/upload_revive.rs": 4,
  "apps/api/src/publish_http/upload_sections.rs": 16,
  "apps/api/src/publish_http/upload_suggest.rs": 6,
- "apps/api/src/publish_http/work_meta.rs": 4,
+ "apps/api/src/publish_http/work_meta.rs": 5,
  "apps/api/src/ops_http/exams.rs": 3,
  "apps/api/src/ops_http/jixiao.rs": 9,
  "apps/api/src/ops_http/jixiao_claim.rs": 7,

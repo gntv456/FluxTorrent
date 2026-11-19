@@ -81,8 +81,8 @@ export function HomeCockpit({
     threshold != null &&
     threshold > 0 &&
     me.ratioValue < threshold;
-  // 个人 H&R 条数不在 /me/overview 里：已知条数优先，缺数时只用处置线给出
-  // 「关注/安全」语义，数值位留 —，绝不把站点级 warned 数冒充个人 H&R。
+  // 个人 H&R 由 /me/overview 的 hr_unresolved 下发；老后端缺字段时降级
+  // 为处置线代理语义，数值位留 —，绝不把站点级 warned 数冒充个人 H&R。
   const hrWatch = me.hr != null ? me.hr > 0 : lowRatio;
   const seedWatch = me.seeding != null && me.seeding <= 0;
 

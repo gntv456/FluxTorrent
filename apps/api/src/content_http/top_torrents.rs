@@ -33,7 +33,7 @@ struct HotTorrentRow {
 
 const LIST_SQL_HEAD: &str = "SELECT t.id, t.name, t.size::bigint, \
     t.seeders, t.leechers, \
-    NULLIF(t.media_info->>'rating','') AS rating, \
+    t.rating::text AS rating, \
     NULLIF(t.media_info->>'poster','') AS poster, \
     t.official_tag AS official, ";
 

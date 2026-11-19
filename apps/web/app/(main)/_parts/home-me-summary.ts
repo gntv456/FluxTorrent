@@ -14,6 +14,8 @@ export interface HomeMeRaw {
   uploaded?: number;
   downloaded?: number;
   spark_balance?: number;
+  /** personal unresolved H&R from /me/overview; fallback to ratio proxy */
+  hr_unresolved?: number;
 }
 
 export interface HomeMeSummary {

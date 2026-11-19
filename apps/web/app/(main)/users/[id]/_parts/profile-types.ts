@@ -29,6 +29,7 @@ export interface RecentUpload {
   small_descr: string | null;
   size: number;
   created_at: string;
+  seeders: number;
 }
 
 export interface RecentComment {
