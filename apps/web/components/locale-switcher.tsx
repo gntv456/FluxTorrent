@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LOCALES, LOCALE_COOKIE, type Locale } from "@/i18n/config";
 import { Icon } from "@/components/icons";
+import { useI18n } from "@/i18n/client";
 
 /** 语言切换器（0148 下拉版）：地球图标按钮 + 弹出菜单（同类站/财神口径）。
  *  选中写 cookie + router.refresh()（RSC 重取，无 URL 变化）；
@@ -18,6 +19,7 @@ const LABELS: Record<Locale, string> = {
 
 export function LocaleSwitcher({ current }: { current: Locale }) {
   const router = useRouter();
+  const { dict } = useI18n();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -75,6 +77,14 @@ export function LocaleSwitcher({ current }: { current: Locale }) {
               onClick={() => switchTo(l)}
             >
               <span>{LABELS[l]}</span>
+              {l === "ja" && (
+                <span
+                  className="langmenu__beta"
+                  title={dict.uxOpt.jaBetaHint}
+                >
+                  {dict.uxOpt.jaBeta}
+                </span>
+              )}
               {l === current && (
                 <span className="langmenu__check" aria-hidden="true">
                   ✓

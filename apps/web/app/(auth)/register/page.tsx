@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { getRegisterMode } from "@/lib/use-register-mode";
 import { api, setSessionCookie, ApiError } from "@/lib/api-client";
 import { tokenSecondsLeft } from "@/lib/session-ttl";
+import { uxMark } from "@/lib/ux-metrics";
 import { apiErrorMessage, useI18n } from "@/i18n/client";
 import { fmt, LOCALE_COOKIE } from "@/i18n/config";
 import { AuthCanvas } from "@/components/auth-canvas";
@@ -201,6 +202,8 @@ export default function RegisterPage() {
         username: username.trim(),
         password,
       });
+      // 注册成功即记为漏斗起点（本地匿名事件，不含用户名与邮箱）
+      uxMark("signup_complete");
       // 标记跟着票长，别停在 12h 把有效票的人当游客（lib/session-ttl）
       setSessionCookie(true, tokenSecondsLeft(resp.token));
       // 0499 新手旅程：落地从 /torrents（裸奔）改 /account-health——

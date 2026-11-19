@@ -31,9 +31,17 @@ export default async function NotFound() {
           title={dict.common.notFoundTitle}
           desc={dict.common.notFoundDesc}
           action={
-            <Link href="/" className="ui-btn ui-btn--primary">
-              {dict.common.backIndex}
-            </Link>
+            <div className="flex flex-wrap justify-center gap-2">
+              <Link href="/" className="ui-btn ui-btn--primary">
+                {dict.common.backIndex}
+              </Link>
+              <Link href="/torrents" className="ui-btn ui-btn--secondary">
+                {dict.nav.library}
+              </Link>
+              <Link href="/help" className="ui-btn ui-btn--secondary">
+                {dict.help.title}
+              </Link>
+            </div>
           }
         />
       </div>

@@ -13,6 +13,8 @@ import {
   type Onboarding,
 } from "./_parts/onboarding-card";
 import { PolicyCard, type SitePolicy } from "./_parts/policy-card";
+import { UxFootprintCard } from "@/components/ux-footprint-card";
+import "@/app/styles/ux-product.css";
 
 export const dynamic = "force-dynamic";
 
@@ -109,6 +111,7 @@ export default async function AccountHealthPage() {
                 desc={dict.readState.failDesc}
               />
             )}
+            <UxFootprintCard />
           </div>
         </div>
       </ReadState>

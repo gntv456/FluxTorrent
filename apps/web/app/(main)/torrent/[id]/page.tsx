@@ -42,6 +42,7 @@ import type {
 } from "@fluxtorrent/domain-types";
 import { isStaffClass } from "@/lib/domain/user-class";
 import { TorrentDutyNotice } from "@/components/torrent-duty-notice";
+import { RecentViewTracker } from "@/components/recent-view-tracker";
 import "@/app/styles/ux-product.css";
 
 export const dynamic = "force-dynamic";
@@ -238,6 +239,7 @@ export default async function TorrentDetailPage({
 
   return (
     <article className="td-page">
+      <RecentViewTracker torrentId={t.id} name={t.name} />
       {/* ===== 面包屑（阳光口径：资源库 / 分类 · ID） ===== */}
       <nav className="td-crumbs" aria-label="breadcrumb">
         <a href="/torrents">{dict.nav.library}</a>

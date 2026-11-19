@@ -2,6 +2,7 @@ import Link from "next/link";
 /* 首页移动端样式（2026-11-02 重设计）：路由级加载，只服务首页这一条路由
    （同 arcade.css 的纪律：不挂 globals.css 根链让全站 90+ 页都下载）。 */
 import "@/app/styles/home-mobile.css";
+import "@/app/styles/ux-product.css";
 import "@/app/styles/ux-home.css";
 import { api, paged } from "@/lib/api-client";
 import { getDict } from "@/i18n/server";
@@ -18,6 +19,7 @@ import {
   type PosterItem,
 } from "@/components/latest-posters";
 import { HomeCategoryGuide } from "@/components/home-category-guide";
+import { RecentViewsStrip } from "@/components/recent-views-strip";
 import { Badge } from "@/components/ui/badge";
 import {
   parseHomeLayout,
@@ -151,6 +153,8 @@ export default async function HomePage() {
       {/* S1 语义修复：首页模块化布局无自然主标题——补唯一 sr-only h1
           （各区块头已由 h1 降为 h2），供 SEO 与读屏器锚定页面主题。 */}
       <h1 className="sr-only">{brandName}</h1>
+      {/* PM3-1：最近浏览续接条（有记录才渲染；纯本地，零请求） */}
+      <RecentViewsStrip />
       {/* 山海经 Hero「山海图卷」：恒渲染、CSS 控显隐（其余三主题 display:none
           零布局影响）。玉牌数据与「站点数据」区块同源（home.site_data） */}
       <ShjHero

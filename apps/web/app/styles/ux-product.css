@@ -332,3 +332,96 @@
   line-height: 1.7;
   color: var(--text-body);
 }
+
+/* ===== 数据闭环：我的使用足迹 ===== */
+.ux-foot {
+  padding: var(--sp-3);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-md);
+  background: var(--surface-card);
+}
+.ux-foot__title {
+  margin: 0 0 var(--sp-1);
+  font-size: 0.875rem;
+  font-weight: 800;
+  color: var(--text-strong);
+}
+.ux-foot__desc,
+.ux-foot__empty {
+  margin: 0 0 var(--sp-2);
+  font-size: 0.75rem;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+.ux-foot__stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-2);
+  margin: 0 0 var(--sp-3);
+}
+.ux-foot__stat {
+  padding: var(--sp-2);
+  border-radius: var(--r-sm);
+  background: var(--surface-raised);
+}
+.ux-foot__stat dt {
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+}
+.ux-foot__stat dd {
+  margin: var(--sp-1) 0 0;
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--text-strong);
+}
+.ux-foot__sub {
+  margin: 0 0 var(--sp-2);
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--text-brand);
+}
+.ux-foot__steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin: 0 0 var(--sp-3);
+  padding: 0;
+  list-style: none;
+}
+.ux-foot__step {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: 0 var(--sp-2);
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+  font-size: 0.6875rem;
+  color: var(--text-body);
+}
+.ux-foot__step b { color: var(--tone-brand); }
+.ux-foot__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.ux-foot__btn {
+  min-height: var(--tap-min);
+  padding: 0 var(--sp-3);
+  border: 1px solid var(--tone-brand-border);
+  border-radius: 999px;
+  background: var(--tone-brand-soft);
+  color: var(--tone-brand);
+  font-size: 0.75rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+.ux-foot__btn--quiet {
+  border-color: var(--border-soft);
+  background: transparent;
+  color: var(--text-muted);
+}
+.ux-foot__cleared {
+  font-size: 0.75rem;
+  color: var(--success);
+}
