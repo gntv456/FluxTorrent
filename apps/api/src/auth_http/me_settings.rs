@@ -31,6 +31,10 @@ pub async fn me_overview(
                (SELECT count(*) FROM comments c WHERE c.user_id = u.id) AS comments,
                (SELECT count(*) FROM invites i WHERE i.inviter_id = u.id AND i.status = 0) AS invites_pending,
                (SELECT count(*) FROM invites i WHERE i.inviter_id = u.id AND i.status = 1) AS invites_used,
+               -- hr for cockpit: same predicate as /auth/profile (unresolved)
+               (SELECT count(*) FROM hr_violations h
+                WHERE h.user_id = u.id AND h.resolved_at IS NULL)
+                   AS hr_unresolved,
                (SELECT count(*) FROM user_medals m WHERE m.user_id = u.id AND (m.expires_at IS NULL OR m.expires_at > now())) AS medals,
                (SELECT count(*) FROM bookmarks b
                 JOIN torrents t ON t.id = b.torrent_id
@@ -310,6 +314,7 @@ pub async fn me_overview(
         "spark_balance": get_i64("spark_balance"),
         "invites_pending": get_i64("invites_pending"),
         "invites_used": get_i64("invites_used"),
+        "hr_unresolved": get_i64("hr_unresolved"),
         "medals": get_i64("medals"),
         "parked": get_bool("parked"),
         "privacy": get_str("privacy"),

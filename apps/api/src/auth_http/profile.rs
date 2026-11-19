@@ -252,8 +252,12 @@ pub async fn user_public_profile(
     )
     .await;
     let uploads: Vec<RecentUpload> = sqlx::query_as(
-                "SELECT id, name, small_descr, size, \
-         created_at FROM torrents WHERE owner_id = $1 AND approval_status = 1 AND NOT anonymous ORDER BY id DESC LIMIT 10",
+        "SELECT t.id, t.name, t.small_descr, t.size, t.created_at, \
+         (SELECT count(*)::int FROM snatches s \
+           WHERE s.torrent_id = t.id AND s.seeding) AS seeders \
+         FROM torrents t \
+         WHERE t.owner_id = $1 AND t.approval_status = 1 \
+           AND NOT t.anonymous ORDER BY t.id DESC LIMIT 10",
     )
     .bind(uid)
     .fetch_all(&state.repo.read_db)
