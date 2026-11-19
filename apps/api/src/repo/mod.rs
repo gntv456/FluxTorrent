@@ -268,6 +268,7 @@ impl Repo {
         }
     }
 }
+pub mod admin_metrics;
 pub mod auth;
 pub mod categories;
 pub mod cheat_accuracy;
@@ -296,7 +297,6 @@ pub mod terms_gov;
 pub mod torrent_download;
 pub mod user_prefs;
 pub mod user_privacy;
-pub mod admin_metrics;
 pub mod user_stats;
 pub mod webhook;
 pub mod works_meta;

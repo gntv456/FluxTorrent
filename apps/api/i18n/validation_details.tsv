@@ -322,3 +322,5 @@ url 无效	url 無效	Invalid url
 没有可用的改名卡——可在商店购买（我的券页面自动抵扣）	沒有可用的改名卡——可在商店購買（我的券頁面自動抵扣）	No rename card available — purchase one in the shop (auto-applied on the My vouchers page)
 audience class:N 的 N 须为数字	audience class:N 的 N 須為數字	The N in audience class:N must be a number
 audience class:N 的 N 须在 1-12	audience class:N 的 N 須在 1-12	The N in audience class:N must be between 1 and 12
+该求种已过期	該求種已過期	This request has expired
+该求种已过期，无法加价	該求種已過期，無法加價	This request has expired and can no longer be bid on

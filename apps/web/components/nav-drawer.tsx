@@ -168,8 +168,7 @@ export function NavDrawer({
   }, [pathname]);
   const sp = useMemo(() => new URLSearchParams(search), [search]);
   const claimed = useMemo(
-    () => claimedPaths(leavesOf(tree), sp),
-    [tree, sp]);
+    () => claimedPaths(leavesOf(tree), sp), [tree, sp]);
   const active = useCallback(
     (href: string) => isActive(href, pathname, sp, claimed),
     [pathname, sp, claimed],
@@ -187,8 +186,7 @@ export function NavDrawer({
   useEffect(() => {
     if (!open) return;
     setOpenIds(
-      new Set(pathToActive(tree, (n) => n.href !== "" && active(n.href))),
-    );
+      new Set(pathToActive(tree, (n) => n.href !== "" && active(n.href))));
   }, [open, tree, active]);
 
   // 路由变化自动收起
@@ -271,8 +269,8 @@ export function NavDrawer({
             tipError={dict.common.gsError}
             retryLabel={dict.common.gsRetry}
             searchLabel={dict.common.gsOpen}
-              goRequest={dict.common.gsGoRequest}
-              goFullSearch={dict.common.gsFullSearch}
+            goRequest={dict.common.gsGoRequest}
+            goFullSearch={dict.common.gsFullSearch}
           />
         </div>
         <nav className="navdrawer__body" aria-label={dict.nav.ariaPrimary}>

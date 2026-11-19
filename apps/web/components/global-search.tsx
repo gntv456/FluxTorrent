@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 
 import { BusyLabel } from "@/components/ui/busy-label";
 import { EmptyState } from "@/components/ui/empty-state";
+import { EMPTY } from "./global-search-types";
+import type { Hits, TorrentHit, TopicHit } from "./global-search-types";
 
 /**
  * 头栏全局搜索（0283 P1-6 → W-25 四态化 → 2026-10-31 按钮弹窗化）：
@@ -17,22 +19,6 @@ import { EmptyState } from "@/components/ui/empty-state";
  *  - 请求失败：EmptyState warn + 重试按钮（重发当前词）。
  *  ESC / 点遮罩关闭；重开保留上次关键词（继续翻候选）。
  */
-
-interface TorrentHit {
-  id: number;
-  name: string;
-  seeders: number;
-}
-interface TopicHit {
-  topic_id: number;
-  title: string;
-}
-interface Hits {
-  torrents: TorrentHit[];
-  topics: TopicHit[];
-}
-
-const EMPTY: Hits = { torrents: [], topics: [] };
 
 export function GlobalSearch({
   placeholder,
@@ -177,6 +163,7 @@ export function GlobalSearch({
   const typed = q.trim().length >= 2;
   const hasHits = hits.torrents.length + hits.topics.length > 0;
   const allHref = `/torrents?search=${encodeURIComponent(q.trim())}`;
+  const fullHref = `/torrents?search=${encodeURIComponent(q)}&search_area=0`;
   return (
     <div ref={rootRef} className="gsearch">
       <button
@@ -190,8 +177,7 @@ export function GlobalSearch({
       >
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none"
              aria-hidden="true">
-          <circle cx="11" cy="11" r="7" stroke="currentColor"
-                  strokeWidth="2" />
+          <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" />
           <path d="m20 20-3.8-3.8" stroke="currentColor" strokeWidth="2"
                 strokeLinecap="round" />
         </svg>
@@ -254,7 +240,7 @@ export function GlobalSearch({
                             </a>
                             <a
                               className="text-link"
-                              href={`/torrents?search=${encodeURIComponent(q)}&search_area=0`}
+                              href={fullHref}
                             >
                               {goFullSearch} →
                             </a>

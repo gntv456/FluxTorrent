@@ -37,6 +37,20 @@ struct RequestRow {
     created_at: chrono::DateTime<chrono::Utc>,
 }
 
+/// 列表查询的扁平行元组（两个分支同构，提取避免重复声明）。
+type RequestTuple = (
+    i64,
+    Option<String>,
+    String,
+    Option<String>,
+    i64,
+    i16,
+    Option<i64>,
+    chrono::DateTime<chrono::Utc>,
+    Option<i64>,
+    i64,
+);
+
 /// 求种列表（同类站 viewrequests.php 口径）：finished 筛选 + 名称搜索。
 /// 最新出价/加价人次自 0417 起为真数据（request_bids 明细表）。
 #[get("/requests")]
@@ -54,8 +68,10 @@ pub(super) async fn request_list(
     let status_cond = match finished {
         "all" => "TRUE",
         "yes" => "r.status = 1",
-        "ing" => "r.status = 0 AND \
-                  r.created_at < now() - interval '30 days'",
+        "ing" => {
+            "r.status = 0 AND \
+                  r.created_at < now() - interval '30 days'"
+        }
         _ => "r.status = 0",
     };
     let only_mine = finished == "my";
@@ -75,46 +91,55 @@ pub(super) async fn request_list(
            WHERE b.request_id = r.id \
          ) bc ON TRUE";
     let rows: Vec<serde_json::Value> = if only_mine {
-        sqlx::query_as::<_, (i64, Option<String>, String, Option<String>, i64, i16, Option<i64>, chrono::DateTime<chrono::Utc>, Option<i64>, i64)>(
-            &format!(
-                "SELECT {cols} \
+        sqlx::query_as::<_, RequestTuple>(&format!(
+            "SELECT {cols} \
                  FROM requests r LEFT JOIN users u ON u.id = r.user_id \
                  {laterals} \
                  WHERE r.user_id = $2 AND r.title ILIKE $1 \
                  ORDER BY r.id DESC LIMIT 50",
-            ),
-        )
+        ))
         .bind(&search)
         .bind(auth.id)
         .fetch_all(&state.repo.db)
         .await
     } else {
-        sqlx::query_as::<_, (i64, Option<String>, String, Option<String>, i64, i16, Option<i64>, chrono::DateTime<chrono::Utc>, Option<i64>, i64)>(
-            &format!(
-                "SELECT {cols} \
+        sqlx::query_as::<_, RequestTuple>(&format!(
+            "SELECT {cols} \
                  FROM requests r LEFT JOIN users u ON u.id = r.user_id \
                  {laterals} \
                  WHERE {status_cond} AND r.title ILIKE $1 \
                  ORDER BY r.id DESC LIMIT 50",
-            ),
-        )
+        ))
         .bind(&search)
         .fetch_all(&state.repo.db)
         .await
     }
     .map_err(|e| DomainError::Internal(e.into()))?
     .into_iter()
-    .map(|(id, username, title, descr, bounty, status, fulfilled, ts, latest_bid, bid_cnt)| {
-        serde_json::json!({
-            "id": id, "username": username, "title": title, "descr": descr,
-            "bounty": bounty, "latest_bounty": latest_bid,
-            // 0417 前 latest_bounty/bids 是兜底伪数据；现在为真聚合。
-            // comments 仍为 null：求种单没有评论线，伪装成 0 会读成「零条讨论」。
-            "comments": null, "bids": bid_cnt,
-            "status": if is_expired(status, ts) { 2 } else { status },
-            "fulfilled_torrent_id": fulfilled, "created_at": ts,
-        })
-    })
+    .map(
+        |(
+            id,
+            username,
+            title,
+            descr,
+            bounty,
+            status,
+            fulfilled,
+            ts,
+            latest_bid,
+            bid_cnt,
+        )| {
+            serde_json::json!({
+                "id": id, "username": username, "title": title, "descr": descr,
+                "bounty": bounty, "latest_bounty": latest_bid,
+                // 0417 前 latest_bounty/bids 是兜底伪数据；现在为真聚合。
+                // comments 仍为 null：求种单没有评论线，伪装成 0 会读成「零条讨论」。
+                "comments": null, "bids": bid_cnt,
+                "status": if is_expired(status, ts) { 2 } else { status },
+                "fulfilled_torrent_id": fulfilled, "created_at": ts,
+            })
+        },
+    )
     .collect();
     Ok(ok(rows))
 }
@@ -133,16 +158,15 @@ pub(super) async fn request_fulfill(
     body: web::Json<FulfillReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    let r: Option<(
-        i64, i64, i64, i16, String, chrono::DateTime<chrono::Utc>,
-    )> = sqlx::query_as(
-        "SELECT id, user_id, bounty, status, title, created_at \
+    let r: Option<(i64, i64, i64, i16, String, chrono::DateTime<chrono::Utc>)> =
+        sqlx::query_as(
+            "SELECT id, user_id, bounty, status, title, created_at \
          FROM requests WHERE id = $1",
-    )
-    .bind(body.request_id)
-    .fetch_optional(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+        )
+        .bind(body.request_id)
+        .fetch_optional(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     let Some((id, requester, bounty, status, title, created)) = r else {
         return Err(DomainError::NotFound(body.request_id));
     };

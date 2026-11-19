@@ -17,27 +17,17 @@ const TID_INPUT =
   "min-h-11 rounded-[var(--r-sm)] border border-line " +
   "bg-[var(--surface-card)] px-3 text-sm text-ink";
 const FILTERS = [
-  ["all", "filterAll"],
-  ["yes", "filterYes"],
-  ["no", "filterNo"],
-  ["ing", "filterIng"],
-  ["my", "filterMy"],
+  ["all", "filterAll"], ["yes", "filterYes"], ["no", "filterNo"],
+  ["ing", "filterIng"], ["my", "filterMy"],
 ] as const;
 const ROW_BTN =
   "min-h-11 rounded-full border border-line px-2 " +
   "text-xs font-bold text-sky-deep";
 export interface RequestRow {
-  id: number;
-  username: string | null;
-  title: string;
-  descr: string | null;
-  bounty: number;
-  latest_bounty: number | null;
-  comments: number | null;
-  bids: number | null;
-  status: number;
-  fulfilled_torrent_id: number | null;
-  created_at: string;
+  id: number; username: string | null; title: string;
+  descr: string | null; bounty: number; latest_bounty: number | null;
+  comments: number | null; bids: number | null; status: number;
+  fulfilled_torrent_id: number | null; created_at: string;
 }
 
 /** 求种区列表（参考站 viewrequests.php）：头部 + 六筛选 + 八列表格 + 搜索。
@@ -90,8 +80,7 @@ export function RequestBoard({
       .catch((e: unknown) => {
         toast.error(
           t.fulfillFailed + (e instanceof Error ? e.message : ""),
-          { requestId: e instanceof ApiError ? e.requestId : undefined },
-        );
+          { requestId: e instanceof ApiError ? e.requestId : undefined });
       });
   }
 
@@ -121,8 +110,7 @@ export function RequestBoard({
       .catch((e: unknown) => {
         toast.error(
           t.bidFailed + (e instanceof Error ? e.message : ""),
-          { requestId: e instanceof ApiError ? e.requestId : undefined },
-        );
+          { requestId: e instanceof ApiError ? e.requestId : undefined });
       });
   }
 
@@ -172,8 +160,7 @@ export function RequestBoard({
         </button>
         {FILTERS.map(([key, dk]) => (
           <button
-            key={key}
-            type="button"
+            key={key} type="button"
             className="request-center__filter"
             data-active={finished === key ? "true" : undefined}
             aria-current={finished === key ? "page" : undefined}
@@ -352,11 +339,13 @@ export function RequestBoard({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t.searchPlaceholder}
-            className="min-h-11 rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-3 text-sm"
+            className={"min-h-11 rounded-[var(--r-sm)] border border-line " +
+              "bg-[var(--surface-card)] px-3 text-sm"}
           />
           <button
             type="submit"
-            className="min-h-11 rounded-full bg-sky px-4 text-sm font-bold text-[var(--text-on-accent)]"
+            className={"min-h-11 rounded-full bg-[var(--sky)] px-4 text-sm " +
+              "font-bold text-[var(--text-on-accent)]"}
             disabled={loading}
           >
             {t.search}

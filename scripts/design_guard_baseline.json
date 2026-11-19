@@ -4058,9 +4058,7 @@
  "components/pwa-install-bar.tsx": {
   "h1": [],
   "h1First": null,
-  "palette": [
-   58
-  ],
+  "palette": [],
   "color": []
  },
  "components/register-fields.tsx": {
@@ -4097,8 +4095,7 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   28,
-   349
+   25
   ],
   "color": []
  },
