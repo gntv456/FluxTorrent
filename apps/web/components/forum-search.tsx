@@ -125,12 +125,12 @@ export function ForumSearch({
                     {failed ? dict.common.loadFailed : dict.forums2.searchEmpty}
                     {/* 0503：搜不到常意味着正该发帖问 */}
                     {!failed && (
-                      <a
+                      <Link
                         href="/forums/new"
                         className="ml-2 text-link text-xs whitespace-nowrap"
                       >
                         {dict.forums2.searchGoPost} →
-                      </a>
+                      </Link>
                     )}
                   </td>
                 </tr>

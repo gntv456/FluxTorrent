@@ -155,9 +155,9 @@ export default async function UsersPage({
         emptyAction={
           // 0503：文案有建议无按钮——补清筛选直达
           (q || classId) && (
-            <a href="/users" className="text-link text-xs">
+            <Link href="/users" className="text-link text-xs">
               {t.clearAll} →
-            </a>
+            </Link>
           )
         }
       >

@@ -118,5 +118,3 @@ async fn wau(state: &web::Data<std::sync::Arc<AppState>>) -> i64 {
     .await
     .unwrap_or(0)
 }
-
-

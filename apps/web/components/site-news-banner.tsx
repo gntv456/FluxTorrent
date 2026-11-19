@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { api } from "@/lib/api-client";
 import { getDict } from "@/i18n/server";
 
@@ -30,9 +31,12 @@ export async function SiteNewsBanner() {
       data-news-id={top.id}
     >
       <span className="shrink-0 font-medium">{dict.siteNews.label}</span>
-      <a href="/" className="text-link truncate min-h-[44px] inline-flex items-center">
+      <Link
+        href="/"
+        className="text-link truncate min-h-[44px] inline-flex items-center"
+      >
         {top.title}
-      </a>
+      </Link>
     </div>
   );
 }
