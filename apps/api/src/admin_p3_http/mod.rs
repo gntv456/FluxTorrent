@@ -4,13 +4,13 @@
 //! 勋章·道具 CRUD / 用户批量操作 / Section 多维 / 考核·任务配置 / Tracker URL / 后台运维。
 
 mod attendance;
+mod auto_rules;
 mod ban_ip;
 mod bulk_notify;
 mod bulk_traffic;
-mod auto_rules;
 mod classes_admin;
-mod fun_polls;
 mod contests;
+mod fun_polls;
 mod promo_effect;
 mod torrent_batch_tags;
 // 等级门槛影响预览（classes_admin 的只读姊妹端点，300 行门禁拆出）
@@ -60,15 +60,14 @@ mod user_rename;
 mod users_batch;
 
 pub use attendance::*;
+pub use auto_rules::*;
 pub use ban_ip::*;
 pub use classes_admin::*;
 pub use classes_preview::*;
-pub use auto_rules::*;
-pub use fun_polls::*;
 pub use contests::*;
-pub use promo_effect::*;
 pub use exam_users::*;
 pub use frames::*;
+pub use fun_polls::*;
 pub use grants::*;
 pub use hr::*;
 pub use increment_bulk::*;
@@ -85,6 +84,7 @@ pub use meta::*;
 pub use mount::*;
 pub use ops::*;
 pub use ops_jobs::*;
+pub use promo_effect::*;
 pub use promo_kinds::*;
 pub use promo_tiers::*;
 pub use rename_logs::*;

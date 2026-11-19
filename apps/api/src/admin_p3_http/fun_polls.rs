@@ -41,9 +41,10 @@ pub async fn fun_poll_add(
             "问题与至少两个选项不能为空".into(),
         ));
     }
-    let opts_json =
-        serde_json::to_value(opts.iter().map(|o| o.to_string()).collect::<Vec<_>>())
-            .map_err(|e| DomainError::Internal(e.into()))?;
+    let opts_json = serde_json::to_value(
+        opts.iter().map(|o| o.to_string()).collect::<Vec<_>>(),
+    )
+    .map_err(|e| DomainError::Internal(e.into()))?;
     let id: i64 = sqlx::query_scalar(
         "INSERT INTO fun_polls (question, options, created_by) \\
          VALUES ($1, $2, $3) RETURNING id",

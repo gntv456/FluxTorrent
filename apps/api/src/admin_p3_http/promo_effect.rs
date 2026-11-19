@@ -16,13 +16,18 @@ pub async fn promo_effect(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_VIEW)
-        .await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::SETTINGS_VIEW,
+    )
+    .await?;
     // 近 10 条促销的窗口内完成下载归因（scope 匹配在 SQL 侧逐条 CASE）
     // 近 10 条促销逐条归因：LATERAL 子查询按 scope 匹配种子集，
     // 统计窗口内完成下载数与独立下载者（精确，非近似）
-    let rows: Vec<(i64, String, String, Option<i32>, i64, i64)> = sqlx::query_as(
-        r#"
+    let rows: Vec<(i64, String, String, Option<i32>, i64, i64)> =
+        sqlx::query_as(
+            r#"
         SELECT p.id, p.kind::text, p.scope::text, p.category_id,
             (SELECT count(*) FROM snatches s
                JOIN torrents t ON t.id = s.torrent_id
@@ -46,10 +51,10 @@ pub async fn promo_effect(
         WHERE p.starts_at > now() - interval '90 days'
         ORDER BY p.starts_at DESC LIMIT 10
         "#,
-    )
-    .fetch_all(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+        )
+        .fetch_all(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(serde_json::json!(rows
         .iter()
         .map(|(id, kind, scope, cat, dl, users)| serde_json::json!({

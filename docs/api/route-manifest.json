@@ -2,7 +2,7 @@
  "note": "actix 路由宏静态提取：get/post/put/patch/delete/route 六种方法宏，含 #[actix_web::get] 全限定形态；handler 关联自宏后首条 fn；注释内的宏不计（被注释掉的路由是死代码）",
  "path_scope": "path=宏原始字面量（scope 相对路径）；/api/v1 等挂载前缀由 mount 侧拼接，清单不还原 mount 链",
  "grep_baseline_note": "口径对齐 grep -rE '#\\[(actix_web::)?(get|post|put|patch|delete|route)\\(' apps/api/src --include=*.rs；grep 会数到注释里的宏，total 若比 grep 少，差额即被注释掉的死宏",
- "total": 854,
+ "total": 865,
  "routes": [
   {
    "method": "POST",
@@ -833,6 +833,30 @@
    "file": "apps/api/src/admin_p3_http/attendance.rs"
   },
   {
+   "method": "GET",
+   "path": "/admin/auto-promo-rules",
+   "handler": "auto_rules_list",
+   "file": "apps/api/src/admin_p3_http/auto_rules.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/auto-promo-rules",
+   "handler": "auto_rules_add",
+   "file": "apps/api/src/admin_p3_http/auto_rules.rs"
+  },
+  {
+   "method": "PUT",
+   "path": "/admin/auto-promo-rules/{id}",
+   "handler": "auto_rules_update",
+   "file": "apps/api/src/admin_p3_http/auto_rules.rs"
+  },
+  {
+   "method": "DELETE",
+   "path": "/admin/auto-promo-rules/{id}",
+   "handler": "auto_rules_delete",
+   "file": "apps/api/src/admin_p3_http/auto_rules.rs"
+  },
+  {
    "method": "POST",
    "path": "/admin/bans/by-ip/delete",
    "handler": "admin_ban_delete_by_ip",
@@ -855,6 +879,30 @@
    "path": "/admin/classes/{id}/impact-preview",
    "handler": "admin_class_impact_preview",
    "file": "apps/api/src/admin_p3_http/classes_preview.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/contests",
+   "handler": "admin_contests_list",
+   "file": "apps/api/src/admin_p3_http/contests.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/contests",
+   "handler": "admin_contests_add",
+   "file": "apps/api/src/admin_p3_http/contests.rs"
+  },
+  {
+   "method": "PUT",
+   "path": "/admin/contests/{id}",
+   "handler": "admin_contests_update",
+   "file": "apps/api/src/admin_p3_http/contests.rs"
+  },
+  {
+   "method": "DELETE",
+   "path": "/admin/contests/{id}",
+   "handler": "admin_contests_close",
+   "file": "apps/api/src/admin_p3_http/contests.rs"
   },
   {
    "method": "GET",
@@ -903,6 +951,18 @@
    "path": "/admin/avatar-frames/{id}",
    "handler": "admin_avatar_frame_delete",
    "file": "apps/api/src/admin_p3_http/frames.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/fun-polls",
+   "handler": "fun_poll_add",
+   "file": "apps/api/src/admin_p3_http/fun_polls.rs"
+  },
+  {
+   "method": "PUT",
+   "path": "/admin/fun-polls/{id}/close",
+   "handler": "fun_poll_close",
+   "file": "apps/api/src/admin_p3_http/fun_polls.rs"
   },
   {
    "method": "GET",
@@ -1095,6 +1155,12 @@
    "path": "/admin/jobs/run",
    "handler": "admin_job_run",
    "file": "apps/api/src/admin_p3_http/ops_jobs.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/promo-effect",
+   "handler": "promo_effect",
+   "file": "apps/api/src/admin_p3_http/promo_effect.rs"
   },
   {
    "method": "GET",

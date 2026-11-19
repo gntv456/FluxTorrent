@@ -32,10 +32,10 @@ pub const JOBS: &[JobDef] = &[
         name: "onboarding_followup",
         cadence: "1h",
     },
-    // 0503 竞赛结算：到期赛发名次奖（上传竞速口径）
+    // 0503 竞赛结算：到期赛发名次奖（上传竞速口径，hourly 幂等）
     JobDef {
         name: "contest_settle",
-        cadence: "1d",
+        cadence: "1h",
     },
     // 0503 流失梯度 30/60 天 + 注册周年 PM
     JobDef {

@@ -313,9 +313,7 @@ pub async fn run_all(
             // 日频安全：只动 status='open' 且 month=上月的行，幂等。
             shard_lock!(&db, "job:contract_settle",
                 contract_settle(&db), &shard);
-            // 0503 竞赛结算（到期赛发名次奖，settled_at 幂等）
-            shard_lock!(&db, "job:contest_settle",
-                contest_settle(&db), &shard);
+
             // 反作弊规则集回测（P-471）：catalog 一直写着 24h，可这里从来没有
             // 它的分支——只有面板手点才会跑。接上日频，版本取表里最高的两版。
             shard_lock!(&db, "job:risk_backtest",

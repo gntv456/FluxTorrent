@@ -30,17 +30,30 @@ pub async fn auto_rules_list(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_MANAGE)
-        .await?;
-    let rows: Vec<(i64, String, String, i64, i64, Option<i32>, String, i32, bool)> =
-        sqlx::query_as(
-            "SELECT id, name, name_regex, min_size, max_size, category_id, \\
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::SETTINGS_MANAGE,
+    )
+    .await?;
+    let rows: Vec<(
+        i64,
+        String,
+        String,
+        i64,
+        i64,
+        Option<i32>,
+        String,
+        i32,
+        bool,
+    )> = sqlx::query_as(
+        "SELECT id, name, name_regex, min_size, max_size, category_id, \\
              kind, hours, enabled FROM auto_promo_rules \\
              ORDER BY position, id LIMIT 100",
-        )
-        .fetch_all(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    )
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(serde_json::json!(rows
         .iter()
         .map(|(id, name, rx, mn, mx, cat, kind, hrs, en)| {
@@ -62,8 +75,12 @@ pub async fn auto_rules_add(
     body: web::Json<AutoRuleReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_MANAGE)
-        .await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::SETTINGS_MANAGE,
+    )
+    .await?;
     if body.name.trim().is_empty() {
         return Err(DomainError::Validation("规则名不能为空".into()));
     }
@@ -112,12 +129,17 @@ pub async fn auto_rules_update(
     body: web::Json<AutoRuleReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_MANAGE)
-        .await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::SETTINGS_MANAGE,
+    )
+    .await?;
     let id = path.into_inner();
     sqlx::query(
-        "UPDATE auto_promo_rules SET name = $2, name_regex = COALESCE($3, ''), \\
-           min_size = COALESCE($4, min_size), max_size = COALESCE($5, max_size), \\
+        "UPDATE auto_promo_rules SET name = $2, name_regex = COALESCE($3, ''), \
+           min_size = COALESCE($4, min_size), \
+           max_size = COALESCE($5, max_size), \
            category_id = $6, kind = $7, hours = $8, \\
            enabled = COALESCE($9, enabled) \\
          WHERE id = $1",
@@ -149,8 +171,12 @@ pub async fn auto_rules_delete(
     path: web::Path<i64>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_MANAGE)
-        .await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::SETTINGS_MANAGE,
+    )
+    .await?;
     let id = path.into_inner();
     sqlx::query("DELETE FROM auto_promo_rules WHERE id = $1")
         .bind(id)

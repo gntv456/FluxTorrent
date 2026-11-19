@@ -4,13 +4,14 @@ import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { BTN_SM_BOLD } from "@/lib/ui-classes";
+import { PromoEffectTable } from "./admin-promo-ops-effect";
 
 /** 运营工作台（0503 运营台账 #1/#2/#5 一面板三件）：
  *  促销效果归因表 + 过审自动促销规则 CRUD + 竞赛 CRUD。
  *  三件此前要么只读、要么只能 SQL 打库（auto_promo_rules /
  *  contests 建赛/促销归因）——运营自主能力的收口面板。 */
 
-interface PromoEffect {
+export interface PromoEffect {
   id: number;
   kind: string;
   scope: string;
@@ -114,37 +115,7 @@ export function AdminPromoOps() {
       </div>
       {msg && <p className="text-sm text-sub">{msg}</p>}
 
-      {tab === "effect" && (
-        <div className="brand-panel p-4">
-          <h2 className="mb-3 font-display text-lg">
-            促销效果归因（近 10 场 · 窗口内完成下载）
-          </h2>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-line text-left text-xs text-sub">
-                <th className="py-2">促销</th>
-                <th className="py-2">范围</th>
-                <th className="py-2">完成下载</th>
-                <th className="py-2">独立用户</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(effects ?? []).length === 0 && (
-                <tr><td colSpan={4} className="py-6 text-center text-sub">暂无促销记录</td></tr>
-              )}
-              {(effects ?? []).map((e) => (
-                <tr key={e.id} className="border-b border-line/50">
-                  <td className="py-2 font-mono text-xs">#{e.id} {e.kind}</td>
-                  <td className="py-2">{e.scope}</td>
-                  <td className="py-2 font-mono">{e.downloads.toLocaleString()}</td>
-                  <td className="py-2 font-mono">{e.users.toLocaleString()}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
+      {tab === "effect" && <PromoEffectTable rows={effects} />}
       {tab === "rules" && (
         <div className="brand-panel p-4">
           <h2 className="mb-3 font-display text-lg">
