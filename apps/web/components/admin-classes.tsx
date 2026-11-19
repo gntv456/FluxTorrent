@@ -26,6 +26,12 @@ interface ClassRow {
   min_account_age_days: number | null;
   demotable: boolean | null;
   promo_sparks: number | null;
+  /** 0501 四维：null = 不参与判定 */
+  min_downloaded: number | null;
+  min_seed_volume: number | null;
+  min_seed_count: number | null;
+  /** 万分比（125 = 1.25） */
+  min_ratio_bp: number | null;
   users: number;
 }
 
@@ -49,6 +55,11 @@ type Draft = {
   min_account_age_days: number;
   demotable: boolean;
   promo_sparks: number;
+  /** 0501 四维：null = 清除该维度（不参与判定）；字节维度界面按 GB */
+  min_downloaded: number | null;
+  min_seed_volume: number | null;
+  min_seed_count: number | null;
+  min_ratio_bp: number | null;
 };
 
 export function AdminClasses() {
@@ -91,9 +102,17 @@ export function AdminClasses() {
     min_account_age_days: r.min_account_age_days ?? 0,
     demotable: r.demotable ?? false,
     promo_sparks: r.promo_sparks ?? 0,
+    min_downloaded: r.min_downloaded,
+    min_seed_volume: r.min_seed_volume,
+    min_seed_count: r.min_seed_count,
+    min_ratio_bp: r.min_ratio_bp,
   };
 
-  const patch = (r: ClassRow, k: keyof Draft, v: number | string | boolean) => {
+  const patch = (
+    r: ClassRow,
+    k: keyof Draft,
+    v: number | string | boolean | null,
+  ) => {
     setDrafts((prev) => ({
       ...prev,
       [r.class_id]: { ...draftOf(r), [k]: v },
@@ -159,6 +178,36 @@ export function AdminClasses() {
   const cell = (r: ClassRow, k: keyof Draft, scale = 1) =>
     locked(r) ? <span className="text-xs text-sub">—</span> : num(r, k, scale);
 
+  /** 0501 可空维度编辑器：空输入 = null（该维度不参与判定），
+   *  有值按 scale 换算（字节维度界面 GB、分享率界面按实际值如 1.25） */
+  const numOrNull = (
+    r: ClassRow,
+    k: "min_downloaded" | "min_seed_volume" | "min_seed_count"
+      | "min_ratio_bp",
+    scale = 1,
+  ) => {
+    if (locked(r)) return <span className="text-xs text-sub">—</span>;
+    const raw = draftOf(r)[k];
+    return (
+      <input
+        type="number"
+        className={`${INPUT_MD} w-24`}
+        placeholder="—"
+        value={raw === null ? "" : Number(raw) / scale}
+        onChange={(e) => {
+          const t = e.target.value.trim();
+          patch(
+            r,
+            k,
+            t === ""
+              ? null
+              : Math.round(Number(t) * scale),
+          );
+        }}
+      />
+    );
+  };
+
   return (
     <div className="flex flex-col gap-3">
       <div>
@@ -180,6 +229,10 @@ export function AdminClasses() {
               <th>{at.thDl}</th>
               <th>{at.thSeedH}</th>
               <th>{at.thAge}</th>
+              <th>{at.thDlBytes}</th>
+              <th>{at.thSeedVol}</th>
+              <th>{at.thSeedCnt}</th>
+              <th>{at.thRatio}</th>
               <th>{at.thDemote}</th>
               <th>{at.thSparks}</th>
               <th className="text-right">{at.thUsers}</th>
@@ -216,6 +269,10 @@ export function AdminClasses() {
                   <td>{cell(r, "min_download_count")}</td>
                   <td>{cell(r, "min_seed_hours")}</td>
                   <td>{cell(r, "min_account_age_days")}</td>
+                  <td>{numOrNull(r, "min_downloaded", GB)}</td>
+                  <td>{numOrNull(r, "min_seed_volume", GB)}</td>
+                  <td>{numOrNull(r, "min_seed_count")}</td>
+                  <td>{numOrNull(r, "min_ratio_bp", 10000)}</td>
                   <td>
                     {locked(r) ? (
                       <span className="text-xs text-sub">—</span>
@@ -265,7 +322,7 @@ export function AdminClasses() {
                 </tr>
                 {pv && (
                   <tr className="border-t border-line">
-                    <td colSpan={10}>
+                    <td colSpan={14}>
                       <div
                         className="rounded-[var(--r-md)] bg-sky-soft p-3
                           text-xs text-ink"

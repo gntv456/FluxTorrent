@@ -35,6 +35,12 @@ struct AdminClassRow {
     min_account_age_days: Option<i32>,
     demotable: Option<bool>,
     promo_sparks: Option<i64>,
+    /// 0501 四维扩展：None = 不参与判定（列可空语义，兼容存量站点）
+    min_downloaded: Option<i64>,
+    min_seed_volume: Option<i64>,
+    min_seed_count: Option<i32>,
+    /// 分享率万分比（125 = 1.25）
+    min_ratio_bp: Option<i32>,
     /// 当前该档用户数（改阈值前的心里有数）
     users: i64,
 }
@@ -56,6 +62,8 @@ pub async fn admin_classes_list(
         "SELECT uc.id AS class_id, uc.name, cr.min_uploaded, \
              cr.min_download_count, cr.min_seed_hours, \
              cr.min_account_age_days, cr.demotable, cr.promo_sparks, \
+             cr.min_downloaded, cr.min_seed_volume, \
+             cr.min_seed_count, cr.min_ratio_bp, \
              (SELECT count(*) FROM users u WHERE u.class_id = uc.id) \
              AS users \
          FROM user_classes uc \
@@ -82,6 +90,24 @@ struct ClassPutBody {
     /// 会把晋升火花清零，两种都不报错。现网 LV3 就是这么被关了几天。
     demotable: Option<bool>,
     promo_sparks: Option<i64>,
+    /// 0501 四维：外层缺=不改，内层 null=显式清除该维度（回到不参与判定）
+    #[serde(default, deserialize_with = "double_option")]
+    min_downloaded: Option<Option<i64>>,
+    #[serde(default, deserialize_with = "double_option")]
+    min_seed_volume: Option<Option<i64>>,
+    #[serde(default, deserialize_with = "double_option")]
+    min_seed_count: Option<Option<i32>>,
+    #[serde(default, deserialize_with = "double_option")]
+    min_ratio_bp: Option<Option<i32>>,
+}
+
+/// serde 双层 Option：外层缺省 = 字段未传（不改），内层 null = 显式清空。
+fn double_option<'de, T, D>(de: D) -> Result<Option<Option<T>>, D::Error>
+where
+    T: serde::Deserialize<'de>,
+    D: serde::Deserializer<'de>,
+{
+    Ok(Some(Option::<T>::deserialize(de)?))
 }
 
 /// PUT /admin/classes/{id}：改单档规则（1..=12；staff 档与无规则档拒绝）
@@ -138,6 +164,11 @@ pub async fn admin_class_put(
         || body.min_seed_hours < 0
         || body.min_account_age_days < 0
         || promo_sparks < 0
+        // 0501 四维负值拦截（None 跳过）
+        || body.min_downloaded.flatten().is_some_and(|v| v < 0)
+        || body.min_seed_volume.flatten().is_some_and(|v| v < 0)
+        || body.min_seed_count.flatten().is_some_and(|v| v < 0)
+        || body.min_ratio_bp.flatten().is_some_and(|v| v < 0)
     {
         return Err(DomainError::Validation("阈值/奖励不能为负".into()));
     }
@@ -155,7 +186,9 @@ pub async fn admin_class_put(
     let n = sqlx::query(
         "UPDATE class_rules SET name = $2, min_uploaded = $3, \
              min_download_count = $4, min_seed_hours = $5, \
-             min_account_age_days = $6, demotable = $7, promo_sparks = $8 \
+             min_account_age_days = $6, demotable = $7, promo_sparks = $8, \
+             min_downloaded = $9, min_seed_volume = $10, \
+             min_seed_count = $11, min_ratio_bp = $12 \
          WHERE class_id = $1",
     )
     .bind(id)
@@ -166,6 +199,10 @@ pub async fn admin_class_put(
     .bind(body.min_account_age_days)
     .bind(demotable)
     .bind(promo_sparks)
+    .bind(body.min_downloaded.flatten())
+    .bind(body.min_seed_volume.flatten())
+    .bind(body.min_seed_count.flatten())
+    .bind(body.min_ratio_bp.flatten())
     .execute(&mut *tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?

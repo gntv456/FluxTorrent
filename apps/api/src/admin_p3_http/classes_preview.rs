@@ -40,18 +40,31 @@ pub(crate) struct ClassImpactBody {
     min_account_age_days: i32,
     #[serde(default)]
     demotable: bool,
+    /// 0501 四维（None = 该维度不参与预览判定）
+    #[serde(default)]
+    min_downloaded: Option<i64>,
+    #[serde(default)]
+    min_seed_volume: Option<i64>,
+    #[serde(default)]
+    min_seed_count: Option<i32>,
+    #[serde(default)]
+    min_ratio_bp: Option<i32>,
 }
 
 /// 结果缓存键：全参数指纹（同参数 60s 内直接回缓存）
 fn cache_key(id: i32, b: &ClassImpactBody) -> String {
     format!(
-        "clsimpact:{}:{}:{}:{}:{}:{}",
+        "clsimpact:{}:{}:{}:{}:{}:{}:{:?}:{:?}:{:?}:{:?}",
         id,
         b.min_uploaded,
         b.min_download_count,
         b.min_seed_hours,
         b.min_account_age_days,
-        b.demotable
+        b.demotable,
+        b.min_downloaded,
+        b.min_seed_volume,
+        b.min_seed_count,
+        b.min_ratio_bp
     )
 }
 
@@ -152,21 +165,39 @@ pub async fn admin_class_impact_preview(
                    COALESCE(sum(seeded_seconds), 0) / 3600 AS sh
             FROM snatches GROUP BY user_id
         ),
+        seed AS (
+            SELECT user_id,
+                   COALESCE(sum(t.size), 0)::bigint AS sv,
+                   count(*)::bigint AS sc
+            FROM snatches s2 JOIN torrents t ON t.id = s2.torrent_id
+            WHERE s2.seeding
+            GROUP BY user_id
+        ),
         stats AS (
             SELECT u.id, u.username, u.class_id, u.uploaded,
                    COALESCE(a.dl, 0)::bigint AS dl,
                    COALESCE(a.sh, 0)::bigint AS sh,
+                   u.downloaded,
+                   COALESCE(p.sv, 0)::bigint AS sv,
+                   COALESCE(p.sc, 0)::bigint AS sc,
+                   CASE WHEN u.downloaded = 0 THEN 2147483647
+                        ELSE (u.uploaded * 10000
+                              / NULLIF(u.downloaded, 0))::int
+                   END AS rbp,
                    EXTRACT(DAY FROM now() - u.created_at)::bigint AS age
             FROM users u LEFT JOIN agg a ON a.user_id = u.id
+            LEFT JOIN seed p ON p.user_id = u.id
             WHERE u.class_id < 90
         ),
         rules AS (
             -- 其余档用库中规则；目标档替换为请求体假设行
             SELECT class_id, min_uploaded, min_download_count,
-                   min_seed_hours, min_account_age_days, demotable
+                   min_seed_hours, min_account_age_days, demotable,
+                   min_downloaded, min_seed_volume, min_seed_count,
+                   min_ratio_bp
             FROM class_rules WHERE class_id <> $1
             UNION ALL
-            SELECT $1, $2, $3, $4, $5, $6
+            SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
         ),
         target AS (
             -- max 满足档；LEFT JOIN + 保底 1（worker demote 半边同口径）
@@ -176,6 +207,11 @@ pub async fn admin_class_impact_preview(
                 s.uploaded >= r.min_uploaded AND s.dl >= r.min_download_count
                 AND s.sh >= r.min_seed_hours
                 AND s.age >= r.min_account_age_days
+                AND (r.min_downloaded IS NULL
+                     OR s.downloaded >= r.min_downloaded)
+                AND (r.min_seed_volume IS NULL OR s.sv >= r.min_seed_volume)
+                AND (r.min_seed_count IS NULL OR s.sc >= r.min_seed_count)
+                AND (r.min_ratio_bp IS NULL OR s.rbp >= r.min_ratio_bp)
             GROUP BY s.id, s.username, s.class_id
         )
         -- new_class/class_id 都是 INT4，相减仍 INT4；sqlx 按 i64 解码
@@ -193,6 +229,10 @@ pub async fn admin_class_impact_preview(
     .bind(body.min_seed_hours)
     .bind(body.min_account_age_days)
     .bind(body.demotable)
+    .bind(body.min_downloaded)
+    .bind(body.min_seed_volume)
+    .bind(body.min_seed_count)
+    .bind(body.min_ratio_bp)
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;

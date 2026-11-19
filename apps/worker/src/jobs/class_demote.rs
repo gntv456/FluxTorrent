@@ -12,13 +12,32 @@ pub(super) async fn demote_with_notice(db: &PgPool) -> anyhow::Result<()> {
                    COALESCE(sum(seeded_seconds), 0) / 3600 AS sh
             FROM snatches GROUP BY user_id
         ),
+        seed AS (
+            -- 0501 四维：在种体积/颗数现值聚合（与 snatches.seeding 同源）
+            SELECT user_id,
+                   COALESCE(sum(t.size), 0)::bigint AS sv,
+                   count(*)::bigint AS sc
+            FROM snatches s JOIN torrents t ON t.id = s.torrent_id
+            WHERE s.seeding
+            GROUP BY user_id
+        ),
         stats AS (
             SELECT u.id, u.class_id, u.uploaded,
                    COALESCE(a.dl, 0)::bigint AS dl,
                    COALESCE(a.sh, 0)::bigint AS sh,
+                   u.downloaded,
+                   COALESCE(p.sv, 0)::bigint AS sv,
+                   COALESCE(p.sc, 0)::bigint AS sc,
+                   -- 分享率万分比；downloaded=0 视为∞（与全站 ratio 口径
+                   -- 一致：0 下载新号不惩罚）——用最大整数放行所有门槛
+                   CASE WHEN u.downloaded = 0 THEN 2147483647
+                        ELSE (u.uploaded * 10000
+                              / NULLIF(u.downloaded, 0))::int
+                   END AS rbp,
                    EXTRACT(DAY FROM now() - u.created_at)::bigint AS age
             FROM users u JOIN class_rules cr ON cr.class_id = u.class_id
             LEFT JOIN agg a ON a.user_id = u.id
+            LEFT JOIN seed p ON p.user_id = u.id
             WHERE u.class_id < 90 AND cr.demotable
         ),
         target AS (
@@ -28,11 +47,17 @@ pub(super) async fn demote_with_notice(db: &PgPool) -> anyhow::Result<()> {
             --  dormant 降级写 1、subtitles_govern 判 class_id >= 1、
             --  onboarding 的 demotable 开关挂的也是 class 1。
             -- 改 LEFT JOIN 后「只剩 0 档」= 空组 → NULL → 保底落到 1。
+            -- 0501 四维谓词：NULL = 不参与（兼容存量，站长按需开维度）。
             SELECT s.id, COALESCE(max(r.class_id), 1) AS new_class
             FROM stats s LEFT JOIN class_rules r ON
                 s.uploaded >= r.min_uploaded
                 AND s.dl >= r.min_download_count AND
                 s.sh >= r.min_seed_hours AND s.age >= r.min_account_age_days AND
+                (r.min_downloaded IS NULL
+                     OR s.downloaded >= r.min_downloaded) AND
+                (r.min_seed_volume IS NULL OR s.sv >= r.min_seed_volume) AND
+                (r.min_seed_count IS NULL OR s.sc >= r.min_seed_count) AND
+                (r.min_ratio_bp IS NULL OR s.rbp >= r.min_ratio_bp) AND
                 r.class_id >= 1
             GROUP BY s.id
         )

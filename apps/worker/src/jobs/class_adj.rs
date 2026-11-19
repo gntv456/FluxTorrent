@@ -109,19 +109,43 @@ pub(crate) async fn class_auto_adjust(db: &PgPool) -> anyhow::Result<()> {
                    COALESCE(sum(seeded_seconds), 0) / 3600 AS sh
             FROM snatches GROUP BY user_id
         ),
+        seed AS (
+            -- 0501 四维：在种体积/颗数（与 class_demote 同源同口径）
+            SELECT user_id,
+                   COALESCE(sum(t.size), 0)::bigint AS sv,
+                   count(*)::bigint AS sc
+            FROM snatches s JOIN torrents t ON t.id = s.torrent_id
+            WHERE s.seeding
+            GROUP BY user_id
+        ),
         stats AS (
             SELECT u.id, u.class_id, u.uploaded,
                    COALESCE(a.dl, 0)::bigint AS dl,
-                   COALESCE(a.sh, 0) AS sh,
+                   COALESCE(a.sh, 0)::bigint AS sh,
+                   u.downloaded,
+                   COALESCE(p.sv, 0)::bigint AS sv,
+                   COALESCE(p.sc, 0)::bigint AS sc,
+                   -- 分享率万分比；downloaded=0 视为∞（0 下载新号不惩罚）
+                   CASE WHEN u.downloaded = 0 THEN 2147483647
+                        ELSE (u.uploaded * 10000
+                              / NULLIF(u.downloaded, 0))::int
+                   END AS rbp,
                    EXTRACT(DAY FROM now() - u.created_at)::bigint AS age
             FROM users u LEFT JOIN agg a ON a.user_id = u.id
+            LEFT JOIN seed p ON p.user_id = u.id
             WHERE u.class_id < 90
         ),
         target AS (
+            -- 0501 四维谓词：NULL = 不参与判定（升级后存量站点行为零变化）
             SELECT s.id, max(r.class_id) AS new_class
             FROM stats s JOIN class_rules r ON
                 s.uploaded >= r.min_uploaded AND s.dl >= r.min_download_count AND
-                s.sh >= r.min_seed_hours AND s.age >= r.min_account_age_days
+                s.sh >= r.min_seed_hours AND s.age >= r.min_account_age_days AND
+                (r.min_downloaded IS NULL
+                     OR s.downloaded >= r.min_downloaded) AND
+                (r.min_seed_volume IS NULL OR s.sv >= r.min_seed_volume) AND
+                (r.min_seed_count IS NULL OR s.sc >= r.min_seed_count) AND
+                (r.min_ratio_bp IS NULL OR s.rbp >= r.min_ratio_bp)
             GROUP BY s.id
         ),
         promo AS (

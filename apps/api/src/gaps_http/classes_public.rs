@@ -27,23 +27,37 @@ pub(super) async fn classes_public(
     // 「捐赠/任命发放」档只存在于 user_classes，四维是 COALESCE 出来的
     // 占位 0，前端若把它们一并画进晋升阶梯，成员读到的是
     // 「贵宾不设门槛，人人都该是贵宾」（批十七 P-24）。
-    let rows: Vec<(i32, String, i64, i64, i64, i64, bool, bool)> =
-        sqlx::query_as(
-            "SELECT uc.id, uc.name, \
+    let rows: Vec<(
+        i32,
+        String,
+        i64,
+        i64,
+        i64,
+        i64,
+        bool,
+        bool,
+        Option<i64>,
+        Option<i64>,
+        Option<i32>,
+        Option<i32>,
+    )> = sqlx::query_as(
+        "SELECT uc.id, uc.name, \
                     COALESCE(cr.min_uploaded, 0)::bigint, \
                     COALESCE(cr.min_download_count, 0)::bigint, \
                     COALESCE(cr.min_seed_hours, 0)::bigint, \
                     COALESCE(cr.min_account_age_days, 0)::bigint, \
                     COALESCE(cr.demotable, false), \
-                    (cr.class_id IS NOT NULL) AS has_rule \
+                    (cr.class_id IS NOT NULL) AS has_rule, \
+                    cr.min_downloaded, cr.min_seed_volume, \
+                    cr.min_seed_count, cr.min_ratio_bp \
              FROM user_classes uc \
              LEFT JOIN class_rules cr ON cr.class_id = uc.id \
              WHERE uc.id < 90 \
              ORDER BY uc.id",
-        )
-        .fetch_all(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    )
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     let staff: Vec<(i32, String)> = sqlx::query_as(
         "SELECT id, name FROM user_classes WHERE id >= 90 ORDER BY id",
     )
@@ -58,36 +72,53 @@ pub(super) async fn classes_public(
             .unwrap_or(0);
     // E3：本人四维现状（与 worker class_auto_adjust 的 stats 同一口径），
     // 前端算「距下一级还差多少」。账龄按日截断，与 EXTRACT(DAY) 升级判定一致。
-    let me_stats = sqlx::query_as::<_, (i64, i64, i64, i64)>(
-        "SELECT u.uploaded::bigint, \
+    let me_stats =
+        sqlx::query_as::<_, (i64, i64, i64, i64, i64, i64, i64, i64)>(
+            "SELECT u.uploaded::bigint, \
                 (SELECT count(*) FROM snatches s WHERE s.user_id = u.id \
                   AND s.completed_at IS NOT NULL)::bigint, \
                 (SELECT COALESCE(sum(s.seeded_seconds),0)/3600 FROM snatches s \
                   WHERE s.user_id = u.id)::bigint, \
-                EXTRACT(DAY FROM now() - u.created_at)::bigint \
+                EXTRACT(DAY FROM now() - u.created_at)::bigint, \
+                u.downloaded::bigint, \
+                (SELECT COALESCE(sum(t.size),0) FROM snatches s \
+                   JOIN torrents t ON t.id = s.torrent_id \
+                  WHERE s.user_id = u.id AND s.seeding)::bigint, \
+                (SELECT count(*) FROM snatches s WHERE s.user_id = u.id \
+                  AND s.seeding)::bigint, \
+                CASE WHEN u.downloaded = 0 THEN 2147483647 \
+                     ELSE (u.uploaded * 10000 \
+                           / NULLIF(u.downloaded, 0)) \
+                END::bigint \
          FROM users u WHERE u.id = $1",
-    )
-    .bind(auth.id)
-    .fetch_optional(&state.repo.db)
-    .await
-    .ok()
-    .flatten()
-    .map(|(up, dl, sh, age)| {
-        json!({
-            "uploaded": up, "download_count": dl,
-            "seed_hours": sh, "account_age_days": age,
-        })
-    });
+        )
+        .bind(auth.id)
+        .fetch_optional(&state.repo.db)
+        .await
+        .ok()
+        .flatten()
+        .map(|(up, dl, sh, age, dlv, sv, sc, rbp)| {
+            json!({
+                "uploaded": up, "download_count": dl,
+                "seed_hours": sh, "account_age_days": age,
+                "downloaded": dlv, "seed_volume": sv,
+                "seed_count": sc, "ratio_bp": rbp,
+            })
+        });
     Ok(ok(json!({
         "me_class": me_class,
         "me_stats": me_stats,
         "classes": rows.iter().map(
-            |(id, name, up, dl, sh, age, demo, has_rule)| json!({
-                "id": id, "name": name, "has_rule": has_rule,
-                "min_uploaded": up, "min_download_count": dl,
-                "min_seed_hours": sh, "min_account_age_days": age,
-                "demotable": demo,
-            }),
+            |(id, name, up, dl, sh, age, demo, has_rule, mdl, msv, msc, mrb)| {
+                json!({
+                    "id": id, "name": name, "has_rule": has_rule,
+                    "min_uploaded": up, "min_download_count": dl,
+                    "min_seed_hours": sh, "min_account_age_days": age,
+                    "demotable": demo,
+                    "min_downloaded": mdl, "min_seed_volume": msv,
+                    "min_seed_count": msc, "min_ratio_bp": mrb,
+                })
+            },
         ).collect::<Vec<_>>(),
         "staff_classes": staff.iter().map(|(id, name)| json!({
             "id": id, "name": name,
