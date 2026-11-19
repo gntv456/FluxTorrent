@@ -74,6 +74,24 @@
 - GET /attendance 状态口拆至 checkin/status.rs（359→238+130 行，
   行数门禁）；里程碑券与 daily_free 同事务同账本。
 
+## [0.5.19-dev.26] - 2026-11-19
+
+定位：**等级门槛四维扩展——站长反馈补齐下载量/做种体积/做种颗数/分享率**。
+
+### 新增
+- `class_rules` 四新列（0501）：`min_downloaded`/`min_seed_volume`/
+  `min_seed_count`/`min_ratio_bp`，**全可空=不参与判定**——升级后
+  存量站点行为零变化，站长按需开维度。分享率内部万分比（125=1.25），
+  downloaded=0 视为∞放行（与全站 ratio 口径一致）。
+- 升降级双侧引擎（class_adj/class_demote）+ impact-preview 影响预览
+  三处谓词同步扩展（seed CTE 聚合在种体积/颗数，与 snatches.seeding
+  同源）。
+- 后台「等级要求」编辑器四列：空输入=清除该维度；字节维度按 GB、
+  分享率按 1.25 直观编辑；负值拦截。
+- 公开页 /classes：阶梯表四新列（未启用显 —）+「我的进度」卡
+  4→8 维动态矩阵（未启用维度不进达标统计与差值文案）。
+- GET/PUT /admin/classes、GET /classes 读写口全字段贯通；三语表头。
+
 ## [0.5.19-dev.23] - 2026-11-19
 
 定位：**体检二轮整改——资金静默清零 + dev.22 自造断档收口 + 新手旅程补链**。
