@@ -23,20 +23,30 @@ interface HrStats {
   trend: { date: string; violations: number }[];
 }
 
+interface DonateMonth {
+  month: string;
+  orders: number;
+  usd: number;
+  avgUsd: number;
+}
+
 export function OpsBoards() {
   const { dict } = useI18n();
   const [attDays, setAttDays] = useState<AttendanceDay[] | null>(null);
   const [hr, setHr] = useState<HrStats | null>(null);
+  const [donate, setDonate] = useState<DonateMonth[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
-      const [a, h] = await Promise.all([
+      const [a, h, dn] = await Promise.all([
         api.get<{ days: AttendanceDay[] }>("/api/v1/admin/attendance-stats"),
         api.get<HrStats>("/api/v1/admin/hr-stats"),
+        api.get<{ months: DonateMonth[] }>("/api/v1/admin/donate-stats"),
       ]);
       setAttDays(a.days ?? []);
       setHr(h);
+      setDonate(dn.months ?? []);
     } catch (e) {
       setErr(e instanceof ApiError ? e.message : dict.common.loadFailed);
     }
@@ -119,6 +129,33 @@ export function OpsBoards() {
                   <tr key={t.date} className="border-b border-line">
                     <td className="py-2">{t.date.slice(5)}</td>
                     <td className="py-2">{t.violations}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+      {donate && donate.length > 0 && (
+        <div className="brand-panel p-4">
+          <h2 className="mb-3 font-display text-lg">捐赠 12 月趋势</h2>
+          <div className="brand-wide-table-scroll">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-line text-left text-xs text-sub">
+                  <th className="py-2">月份</th>
+                  <th className="py-2">订单</th>
+                  <th className="py-2">实收 USD</th>
+                  <th className="py-2">客单价</th>
+                </tr>
+              </thead>
+              <tbody>
+                {donate.map((m) => (
+                  <tr key={m.month} className="border-b border-line">
+                    <td className="py-2">{m.month}</td>
+                    <td className="py-2">{m.orders}</td>
+                    <td className="py-2">{m.usd.toLocaleString()}</td>
+                    <td className="py-2 text-sub">{m.avgUsd}</td>
                   </tr>
                 ))}
               </tbody>

@@ -123,3 +123,49 @@ pub async fn hr_stats(
             .collect::<Vec<_>>(),
     })))
 }
+
+/// GET /admin/donate-stats —— 捐赠 12 月趋势（SETTINGS_VIEW，0507）。
+/// 「本周捐赠金额/笔数走势」此前只有 payment_orders 原始表+列表口，
+/// 运营要月度收入走势只能线下导出算。
+#[get("/admin/donate-stats")]
+pub async fn donate_stats(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::SETTINGS_VIEW,
+    )
+    .await?;
+    // 月聚合：paid 订单数 / 实收 USD 合计 / 客单价
+    let rows: Vec<(String, i64, f64)> = sqlx::query_as(
+        r#"
+        SELECT to_char(date_trunc('month', paid_at), 'YYYY-MM'),
+               count(*)::bigint,
+               COALESCE(sum(amount_paid), 0)::float8
+        FROM payment_orders
+        WHERE status = 'paid' AND paid_at IS NOT NULL
+          AND paid_at >= date_trunc('month', now()) - interval '11 months'
+        GROUP BY 1 ORDER BY 1
+        "#,
+    )
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let out: Vec<serde_json::Value> = rows
+        .iter()
+        .map(|(month, n, usd)| {
+            serde_json::json!({
+                "month": month,
+                "orders": n,
+                "usd": (usd * 100.0).round() / 100.0,
+                "avgUsd": if *n > 0 {
+                    ((usd / *n as f64) * 100.0).round() / 100.0
+                } else { 0.0 },
+            })
+        })
+        .collect();
+    Ok(ok(serde_json::json!({ "months": out })))
+}

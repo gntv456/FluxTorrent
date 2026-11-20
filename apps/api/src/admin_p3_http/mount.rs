@@ -100,6 +100,7 @@ pub fn mount_p3_tools(scope: actix_web::Scope) -> actix_web::Scope {
         .service(funnel)
         .service(attendance_stats)
         .service(hr_stats)
+        .service(donate_stats)
         .service(admin_contests_list)
         .service(admin_contests_add)
         .service(admin_contests_update)

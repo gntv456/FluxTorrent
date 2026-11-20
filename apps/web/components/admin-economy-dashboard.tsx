@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
+import { SparkFlowTable } from "./admin-spark-flow";
 
 /** C5 经济反通胀运营面板（0226）：GET /admin/economy-dashboard。
  *  近 8 周产出/消耗/净增发 + 池子存量 + Top 消耗 SKU + 人均持币 + 阀门现值。
@@ -247,6 +248,8 @@ export function AdminEconomyDashboard() {
           </table>
         </div>
       )}
+      {/* 火花月度对账（0507：/admin/spark-flow 此前无任何前端消费） */}
+      <SparkFlowTable />
     </section>
   );
 }

@@ -1,37 +1,50 @@
 //! 成就发放/休眠标记。
 //! 从 jobs.rs 按域拆出。
+//!
+//! 指标口径（0507 运营体检三批参数化）：四族指标此前在本文三处
+//! 硬编码同一份 SQL——加一个新成就类型要同步改三处，且与
+//! me_achievements 的 CASE、arcade_stubs 的 metric_of 共四处漂移
+//! 风险。现改为读 achievement_metrics 注册表（0507，0507 迁移播种
+//! 全部既有指标）动态拼聚合 CTE：新增指标 = INSERT 一行注册表，
+//! 零代码改动。gacha_draws/stub_count 两例派生类特判保留在代码内
+//! （前者查独立表，后者依赖同轮授予结果）。
 
 use sqlx::PgPool;
 
-/// 成就授予（0079 G6，U3D 口径教育站收敛版）：四族指标聚合 → 达标授予 + 火花奖励。
+/// 读注册表拼「metrics CTE 体」：每行 `({expr}) AS {metric}`，
+/// expr 里 {u} 占位替换为 users 别名 u。注册表为空时回退空串
+/// （调用方 SQL 里保留 seeding_bytes 最小集，成就引擎静默空转）。
+async fn metrics_cte(db: &PgPool) -> anyhow::Result<String> {
+    let rows: Vec<(String, String)> = sqlx::query_as(
+        "SELECT metric, sql_expr FROM achievement_metrics ORDER BY position",
+    )
+    .fetch_all(db)
+    .await?;
+    Ok(rows
+        .iter()
+        .map(|(m, expr)| {
+            format!(
+                ",\n                   ({}::bigint) AS {}",
+                expr.replace("{u}", "u"),
+                m
+            )
+        })
+        .collect())
+}
+
+/// 成就授予（0079 G6，U3D 口径教育站收敛版）：注册表指标聚合 → 达标授予 + 火花奖励。
 /// 幂等：PK (user_id, def_id) 天然防重；奖励走幂等键 achievement:{def_code}:{uid}。
 pub(crate) async fn achievement_grant(db: &PgPool) -> anyhow::Result<u64> {
-    let _res = sqlx::query(
+    let metric_cols = metrics_cte(db).await?;
+    // 授予：注册表指标逐行比对 def.metric/threshold（JOIN 侧动态拼）
+    let insert_sql = format!(
         r#"
         WITH metrics AS (
-            SELECT u.id AS user_id,
-                   COALESCE(u.seeding_size, 0) AS seeding_bytes,
-                   (SELECT count(*) FROM resurrections r
-                      WHERE r.user_id = u.id
-                        AND r.status = 'done') AS rescue_count,
-                   (SELECT count(*) FROM torrents t
-                      WHERE t.owner_id = u.id
-                        AND t.approval_status = 1) AS upload_count,
-                   (SELECT count(*) FROM posts p
-                      WHERE p.user_id = u.id) AS post_count,
-                   (SELECT count(*) FROM subtitles sb
-                      WHERE sb.user_id = u.id AND sb.deleted_at IS NULL
-                        AND sb.status = 1 AND NOT sb.anon) AS subtitle_count
+            SELECT u.id AS user_id{metric_cols}
             FROM users u WHERE u.status < 2
         ),
         m AS (
-            SELECT user_id, 'seeding_bytes' AS metric,
-                    seeding_bytes AS val FROM metrics
-            UNION ALL SELECT user_id, 'rescue_count', rescue_count FROM metrics
-            UNION ALL SELECT user_id, 'upload_count', upload_count FROM metrics
-            UNION ALL SELECT user_id, 'post_count', post_count FROM metrics
-            UNION ALL SELECT user_id, 'subtitle_count',
-                      subtitle_count FROM metrics
+            {unions}
         ),
         due AS (
             SELECT m.user_id, d.id AS def_id, d.code, d.reward_sparks, m.val
@@ -42,46 +55,27 @@ pub(crate) async fn achievement_grant(db: &PgPool) -> anyhow::Result<u64> {
         SELECT user_id, def_id, val FROM due
         ON CONFLICT (user_id, def_id) DO NOTHING
         "#,
-    )
-    .fetch_all(db)
-    .await?;
+        metric_cols = metric_cols,
+        unions = unions_sql(&metric_cols),
+    );
+    let _res = sqlx::query(&insert_sql).fetch_all(db).await?;
     // RETURNING 只能引用目标表列（code/reward_sparks 属于 achievement_defs）。
     // 0079 上线以来因 RETURNING 语法错误，成就系统从未授予过 —— 改为插入后反查达标行。
-    let res: Vec<(i64, i64, String, i64, i64)> = sqlx::query_as(
+    let res: Vec<(i64, i64, String, i64, i64)> = sqlx::query_as(&format!(
         r#"
         SELECT ua.user_id, ua.def_id, d.code, d.reward_sparks, ua.metric_value
         FROM user_achievements ua
         JOIN achievement_defs d ON d.id = ua.def_id
         WHERE (ua.user_id, ua.def_id) IN (
             SELECT m.user_id, d2.id FROM (
-                SELECT u.id AS user_id,
-                       COALESCE(u.seeding_size, 0) AS seeding_bytes,
-                       (SELECT count(*) FROM resurrections r
-                      WHERE r.user_id = u.id
-                        AND r.status = 'done') AS rescue_count,
-                       (SELECT count(*) FROM torrents t
-                      WHERE t.owner_id = u.id
-                        AND t.approval_status = 1) AS upload_count,
-                       (SELECT count(*) FROM posts p
-                      WHERE p.user_id = u.id) AS post_count,
-                       (SELECT count(*) FROM subtitles sb
-                      WHERE sb.user_id = u.id AND sb.deleted_at IS NULL
-                        AND sb.status = 1 AND NOT sb.anon) AS subtitle_count
+                SELECT u.id AS user_id{metric_cols}
                 FROM users u WHERE u.status < 2
-            ) m JOIN achievement_defs d2 ON (
-                (d2.metric = 'seeding_bytes'
-                  AND m.seeding_bytes >= d2.threshold) OR
-                (d2.metric = 'rescue_count'
-                  AND m.rescue_count >= d2.threshold) OR
-                (d2.metric = 'upload_count'
-                  AND m.upload_count >= d2.threshold) OR
-                (d2.metric = 'post_count'
-                  AND m.post_count >= d2.threshold) OR
-                (d2.metric = 'subtitle_count'
-                  AND m.subtitle_count >= d2.threshold))
+            ) m JOIN achievement_defs d2
+              ON d2.metric = m.metric AND m.val >= d2.threshold
         )
         "#,
-    )
+        metric_cols = metric_cols
+    ))
     .fetch_all(db)
     .await?;
     for &(uid, def_id, ref code, reward, _val) in &res {
@@ -129,38 +123,17 @@ pub(crate) async fn achievement_grant(db: &PgPool) -> anyhow::Result<u64> {
     }
     // 新授予（本轮才落 user_achievements 的行）补发站内信；历史达标行只走上面的
     // 幂等发奖路径，不重复发信（修复每小时向全部历史达标成就重发通知的轰炸）。
-    let newly: Vec<(i64, String, i64)> = sqlx::query_as(
+    let newly: Vec<(i64, String, i64)> = sqlx::query_as(&format!(
         r#"
         SELECT ua.user_id, d.code, d.reward_sparks
         FROM user_achievements ua
         JOIN achievement_defs d ON d.id = ua.def_id
         WHERE (ua.user_id, ua.def_id) IN (
             SELECT m.user_id, d2.id FROM (
-                SELECT u.id AS user_id,
-                       COALESCE(u.seeding_size, 0) AS seeding_bytes,
-                       (SELECT count(*) FROM resurrections r
-                      WHERE r.user_id = u.id
-                        AND r.status = 'done') AS rescue_count,
-                       (SELECT count(*) FROM torrents t
-                      WHERE t.owner_id = u.id
-                        AND t.approval_status = 1) AS upload_count,
-                       (SELECT count(*) FROM posts p
-                      WHERE p.user_id = u.id) AS post_count,
-                       (SELECT count(*) FROM subtitles sb
-                      WHERE sb.user_id = u.id AND sb.deleted_at IS NULL
-                        AND sb.status = 1 AND NOT sb.anon) AS subtitle_count
+                SELECT u.id AS user_id{metric_cols}
                 FROM users u WHERE u.status < 2
-            ) m JOIN achievement_defs d2 ON (
-                (d2.metric = 'seeding_bytes'
-                  AND m.seeding_bytes >= d2.threshold) OR
-                (d2.metric = 'rescue_count'
-                  AND m.rescue_count >= d2.threshold) OR
-                (d2.metric = 'upload_count'
-                  AND m.upload_count >= d2.threshold) OR
-                (d2.metric = 'post_count'
-                  AND m.post_count >= d2.threshold) OR
-                (d2.metric = 'subtitle_count'
-                  AND m.subtitle_count >= d2.threshold))
+            ) m JOIN achievement_defs d2
+              ON d2.metric = m.metric AND m.val >= d2.threshold
         )
         AND NOT EXISTS (
             SELECT 1 FROM messages msg
@@ -169,7 +142,8 @@ pub(crate) async fn achievement_grant(db: &PgPool) -> anyhow::Result<u64> {
               AND msg.body LIKE '%「' || d.code || '」%'
         )
         "#,
-    )
+        metric_cols = metric_cols
+    ))
     .fetch_all(db)
     .await?;
     for &(uid, ref code, reward) in &newly {
@@ -189,4 +163,33 @@ pub(crate) async fn achievement_grant(db: &PgPool) -> anyhow::Result<u64> {
         tracing::info!(n = newly.len(), "achievements granted");
     }
     Ok(res.len() as u64)
+}
+
+/// m CTE 的 UNION ALL 体：注册表每指标一行 (user_id, metric, val)。
+fn unions_sql(metric_cols: &str) -> String {
+    let metrics: Vec<&str> =
+        metric_cols.split(" AS ").skip(1).filter_map(seg).collect();
+    metrics
+        .iter()
+        .enumerate()
+        .map(|(i, m)| {
+            let head = if i == 0 {
+                "SELECT user_id, "
+            } else {
+                "UNION ALL SELECT user_id, "
+            };
+            format!("{head}'{m}' AS metric, {m} AS val FROM metrics")
+        })
+        .collect::<Vec<_>>()
+        .join("\n            ")
+}
+
+/// 从片段 `..., (expr) AS name` 序列提取末段指标名。
+fn seg(seg: &str) -> Option<&str> {
+    let t = seg.trim();
+    if t.is_empty() {
+        None
+    } else {
+        Some(t)
+    }
 }
