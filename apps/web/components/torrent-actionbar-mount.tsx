@@ -36,6 +36,7 @@ export function TorrentActionBarMount({
       a.download = `${name}.torrent`;
       a.click();
       URL.revokeObjectURL(url);
+      toast.success(dict.review.downloadStarted, { desc: name });
     } catch (e) {
       // W-21：裸 alert → toast.error（request_id 芯片可复制报障）
       // 文案走 apiErrorMessage 这一条口径（P-305）：后端把「该怎么办」写在
@@ -51,7 +52,8 @@ export function TorrentActionBarMount({
       await navigator.clipboard.writeText(window.location.href);
       toast.success(dict.torrent.linkCopied);
     } catch {
-      /* 剪贴板权限拒绝时静默（HTTP 环境常见） */
+      // 非安全上下文下 clipboard 不可用：明确告知而非静默
+      toast.error(dict.review.copyFailed);
     }
   };
   const favorite = () => {

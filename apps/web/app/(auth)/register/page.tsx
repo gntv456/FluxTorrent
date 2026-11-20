@@ -197,15 +197,30 @@ export default function RegisterPage() {
         );
         return;
       }
-      // 注册成功直接走登录（后端注册不返回 token）
-      const resp = await api.post<{ token: string }>("/api/v1/auth/login", {
-        username: username.trim(),
-        password,
-      });
+      // 注册成功直接走登录（后端注册不返回 token）。
+      // P1：二次登录失败此前被同一 catch 吞掉并映射成"注册字段错误"，
+      // 账号其实已经建好——用户重试注册只会拿到"用户名已占用"，死锁。
+      let token: string;
+      try {
+        const resp = await api.post<{ token: string }>("/api/v1/auth/login", {
+          username: username.trim(),
+          password,
+        });
+        token = resp.token;
+      } catch (loginErr) {
+        // 账号已创建，引导去登录页而不是错误地重置注册态
+        // 不新增 uxMark 事件名（UxMetricName 联合类型收紧）：二次登录
+        // 失败本身不作为漏斗终点，仅引导重登。
+        console.warn("[register] auto-login failed after signup");
+        router.push(
+          `/login?next=/account-health&registered=1&u=${encodeURIComponent(username.trim())}`,
+        );
+        return;
+      }
       // 注册成功即记为漏斗起点（本地匿名事件，不含用户名与邮箱）
       uxMark("signup_complete");
       // 标记跟着票长，别停在 12h 把有效票的人当游客（lib/session-ttl）
-      setSessionCookie(true, tokenSecondsLeft(resp.token));
+      setSessionCookie(true, tokenSecondsLeft(token));
       // 0499 新手旅程：落地从 /torrents（裸奔）改 /account-health——
       // 事实版新手清单是新人第一周唯一护栏（10-26 P0-1 口径回归）
       router.push("/account-health");

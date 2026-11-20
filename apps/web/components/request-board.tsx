@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { useDebounced } from "@/lib/hooks/use-debounced";
 import { dateLocale } from "@/i18n/config";
 import { RequestForm } from "@/components/request-board-form";
 import { RequestCardList } from "@/components/request-card-list";
@@ -42,7 +43,8 @@ export function RequestBoard({
   const { dict, locale, currency } = useI18n();
   const t = dict.requests;
   const [finished, setFinished] = useState(initialFinished);
-  const [search, setSearch] = useState(initialSearch);
+  const [searchDraft, setSearch] = useState(initialSearch);
+  const search = useDebounced(searchDraft, 400);
   const [rows, setRows] = useState<RequestRow[] | null>(null);
   const [loading, setLoading] = useState(false);
   // ZT81（2026-10-02）：三态显式化——原先 catch 里 `setRows([])` 把「服务挂了」
@@ -202,7 +204,7 @@ export function RequestBoard({
         <div
           className="brand-wide-table-scroll hidden md:block"
           role="region"
-          aria-label="scrollable table"
+          aria-label={dict.review.ariaScrollTable}
         >
           <table className="nexus-table request-center__table">
             <thead>

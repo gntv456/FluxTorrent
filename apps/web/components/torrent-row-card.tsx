@@ -68,6 +68,7 @@ function SwipeRow({
       a.download = `${t.id}.torrent`;
       a.click();
       URL.revokeObjectURL(url);
+      toast.success(dict.review.downloadStarted, { desc: t.name });
       setOpen(false);
     } catch (e) {
       fail(e);

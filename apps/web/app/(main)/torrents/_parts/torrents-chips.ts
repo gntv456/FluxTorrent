@@ -68,6 +68,9 @@ export function buildTorrentChips(opts: {
     }
   }
   if (sp.alive === "1") chip("alive", t2.aliveAliveOnly);
+  // alive=0（含断种）此前不生成 chip：玩家一搜就切到含断种视图，
+  // 却既看不到提示也没有一键退回的入口。补上 chip 让状态可见可撤销。
+  if (sp.alive === "0") chip("alive", dict.review.aliveAllChip);
   if (sp.alive === "2") chip("alive", t2.aliveDead);
   if (sp.status) {
     const stLabels: Record<string, string> = {

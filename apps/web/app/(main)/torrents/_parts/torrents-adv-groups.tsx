@@ -58,6 +58,9 @@ export function rangeInputs(
   minVal?: string,
   maxVal?: string,
   date = false,
+  /** 带单位文本（体积 1GB/500MB）：number 类型的 value sanitization
+   *  会把单位整段清空，筛选静默失效——必须走 text + inputMode=decimal。 */
+  asText = false,
 ) {
   const [minName, maxName] = pair.split("/");
   return (
@@ -65,8 +68,9 @@ export function rangeInputs(
       <input
         className="tsb-num"
         name={minName}
-        type={date ? "date" : "number"}
-        min={date ? undefined : 0}
+        type={date ? "date" : asText ? "text" : "number"}
+        min={date || asText ? undefined : 0}
+        inputMode={asText ? "decimal" : undefined}
         defaultValue={minVal}
         placeholder={minPh}
         aria-label={`${legend} ${minPh}`}
@@ -77,8 +81,9 @@ export function rangeInputs(
       <input
         className="tsb-num"
         name={maxName}
-        type={date ? "date" : "number"}
-        min={date ? undefined : 0}
+        type={date ? "date" : asText ? "text" : "number"}
+        min={date || asText ? undefined : 0}
+        inputMode={asText ? "decimal" : undefined}
         defaultValue={maxVal}
         placeholder={maxPh}
         aria-label={`${legend} ${maxPh}`}
@@ -145,7 +150,7 @@ export function TorrentsAdvGroups(ctx: AdvGroupsCtx) {
                   ["2", t2.aliveDead],
                 ] as [string, string][]
               ).map(([v, label]) =>
-                chipLabel("alive", v, label, (sp.alive ?? "0") === v, "radio"),
+                chipLabel("alive", v, label, (sp.alive ?? "1") === v, "radio"),
               )}
             </div>
           </section>
@@ -241,6 +246,8 @@ export function TorrentsAdvGroups(ctx: AdvGroupsCtx) {
               t2.sizeToPh,
               sp.size_min,
               sp.size_max,
+              false,
+              true,
             )}
             <p className="tsb-hint">{t2.sizeHint}</p>
           </section>

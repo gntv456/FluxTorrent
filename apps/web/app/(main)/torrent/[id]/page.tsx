@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { api, ApiError } from "@/lib/api-client";
+import { ErrorPanel } from "@/components/ui/error-panel";
+import { normalizeError } from "@/lib/render-error";
 import { formatBytes, promotionBadge } from "@/lib/format";
 import { siteBase } from "@/lib/site-url";
 import {
@@ -155,11 +157,21 @@ export default async function TorrentDetailPage({
   // 后端对只读辅助块失败降级为空、torrent/detail 失败才 404，语义与旧版等价。
   // group（publish 模块）下一批并入；subtitles 仍由客户端组件拉取；snatches 懒加载不变。
   const enc = encodeURIComponent(tid);
+  const { dict, locale } = await getDict();
   let agg: Aggregate;
   try {
     agg = await api.get<Aggregate>(`/api/v1/torrents/${enc}/aggregate`);
   } catch (e) {
-    if (e instanceof ApiError && e.status === 404) notFound(); else throw e;
+    if (e instanceof ApiError && e.status === 404) notFound();
+    // 非 404 异常此前直接 rethrow → 全局 error 页丢掉站内壳与面包屑。
+    // 照列表页口径就地渲染 ErrorPanel，保留上下文与重试。
+    return (
+      <ErrorPanel
+        error={normalizeError(e)}
+        retryHref={`/torrent/${tid}`}
+        desc={dict.review.detailLoadFailed}
+      />
+    );
   }
   const t = agg.torrent;
   const ext = agg.detail;
@@ -177,7 +189,6 @@ export default async function TorrentDetailPage({
     )
     .catch(() => []);
 
-  const { dict, locale } = await getDict();
   // 当前用户（0184 编辑表单推荐位 staff 判定 + 元数据源口径）
   const [me, profile, secDictAll] = await Promise.all([
     api.get<{ class_id?: number }>("/api/v1/me").catch(() => null),
@@ -241,7 +252,7 @@ export default async function TorrentDetailPage({
     <article className="td-page">
       <RecentViewTracker torrentId={t.id} name={t.name} />
       {/* ===== 面包屑（阳光口径：资源库 / 分类 · ID） ===== */}
-      <nav className="td-crumbs" aria-label="breadcrumb">
+      <nav className="td-crumbs" aria-label={dict.review.ariaBreadcrumb}>
         <a href="/torrents">{dict.nav.library}</a>
         <span aria-hidden>›</span>
         <span>{category}</span>

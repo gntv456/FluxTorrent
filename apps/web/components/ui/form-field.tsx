@@ -136,24 +136,36 @@ export function FieldErrors({
         {dict.ui.fieldErrorsTitle}
       </p>
       <ul className="ui-ferr__list">
-        {entries.map(([field, v]) => (
-          <li key={field}>
-            <button
-              type="button"
-              className="ui-ferr__field"
-              // 点击聚焦对应控件（id 规则 field-<name>；FieldErrors 顶部
-              // 汇总与字段本体可能隔着长表单，键盘/点击直达）
-              onClick={() =>
-                document.getElementById(`field-${field}`)?.focus()
-              }
-            >
-              {field}
-            </button>
-            <span className="ui-ferr__msg">
-              {Array.isArray(v) ? v.join("；") : v}
-            </span>
-          </li>
-        ))}
+        {entries.map(([field, v]) => {
+          // P1：内部键 "form"（表单级错误）与未知键此前被原样渲染成
+          // 可点按钮，页面上根本没有 id="field-form"，点击毫无反应。
+          // 改为：展示友好名；找不到对应控件时退化为纯文本。
+          const label =
+            field === "form" ? dict.review.formProblem : field;
+          const control =
+            typeof document !== "undefined"
+              ? document.getElementById(`field-${field}`)
+              : null;
+          const known = field !== "form" && control !== null;
+          return (
+            <li key={field}>
+              {known ? (
+                <button
+                  type="button"
+                  className="ui-ferr__field"
+                  onClick={() => control?.focus()}
+                >
+                  {label}
+                </button>
+              ) : (
+                <span className="ui-ferr__field">{label}</span>
+              )}
+              <span className="ui-ferr__msg">
+                {Array.isArray(v) ? v.join("；") : v}
+              </span>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

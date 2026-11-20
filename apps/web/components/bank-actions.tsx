@@ -93,8 +93,9 @@ export function BankCard() {
         amount: Number(amount),
         term_days: term,
       });
+      const n = Number(amount);
       setAmount("");
-      return "✓";
+      return dict.review.bankDepositOk.replace("{n}", fmt(n)).replace("{magic}", currency);
     });
   const withdraw = (depositId: number) =>
     act(async () => {
@@ -105,7 +106,7 @@ export function BankCard() {
         },
       );
       return r.matured
-        ? "✓"
+        ? dict.review.bankWithdrawOk.replace("{n}", "—").replace("{magic}", currency)
         : dict.bank.penaltyTaken
             .replace("{n}", fmt(r.penalty))
             .replace("{magic}", currency);
@@ -115,16 +116,18 @@ export function BankCard() {
       await api.post("/api/v1/bank/demand/deposit", {
         amount: Number(demandAmount),
       });
+      const n = Number(demandAmount);
       setDemandAmount("");
-      return "✓";
+      return dict.review.bankDepositOk.replace("{n}", fmt(n)).replace("{magic}", currency);
     });
   const demandOut = () =>
     act(async () => {
       await api.post("/api/v1/bank/demand/withdraw", {
         amount: Number(demandAmount),
       });
+      const n = Number(demandAmount);
       setDemandAmount("");
-      return "✓";
+      return dict.review.bankWithdrawOk.replace("{n}", fmt(n)).replace("{magic}", currency);
     });
   const loanApply = () =>
     act(async () => {
@@ -133,7 +136,7 @@ export function BankCard() {
         term_days: loanTerm,
       });
       setLoanAmount("");
-      return "✓";
+      return dict.review.bankLoanOk;
     });
   const loanRepay = (partial?: number) =>
     act(async () => {
@@ -155,6 +158,10 @@ export function BankCard() {
             .replace("{n}", fmt(r.paid))
             .replace("{magic}", currency);
         }
+        // P0：部分还款成功必须轮换幂等键——键只在结清分支清，
+        // 于是想分两次还清的玩家第二次必被后端判重（"该笔还款已受理"）
+        // 锁死。只有「请求已发出但结果未知」的网络异常才保留旧键。
+        repayIdemRef.current = "";
         return dict.bank.repaidPartial
           .replace("{p}", fmt(r.principal))
           .replace("{i}", fmt(r.interest))

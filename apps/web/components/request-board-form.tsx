@@ -5,7 +5,7 @@ import { BTN_MD_SKY } from "@/lib/ui-classes";
 import { useState } from "react";
 import { api } from "@/lib/api-client";
 import { clientUuid } from "@/lib/client-uuid";
-import { useI18n } from "@/i18n/client";
+import { apiErrorMessage, useI18n } from "@/i18n/client";
 
 /** 求种区发布表单（从 request-board.tsx 按域拆出）：
  *  添加求种（POST /requests）的标题/简介/悬赏三字段表单，
@@ -24,7 +24,7 @@ export function RequestForm({
   const [ftDescr, setFtDescr] = useState("");
   const [ftBounty, setFtBounty] = useState("100");
   const [ftBusy, setFtBusy] = useState(false);
-  const [ftMsg, setFtMsg] = useState<string | null>(null);
+  const [ftMsg, setFtMsg] = useState<{ ok: boolean; text: string } | null>(null);
   // P-632：一次表单会话一枚幂等键，失败重试复用、成功换新（同买按钮）。
   const [idem, setIdem] = useState(() => `web-req-${clientUuid()}`);
 
@@ -35,7 +35,7 @@ export function RequestForm({
         e.preventDefault();
         const bounty = Number(ftBounty);
         if (!ftTitle.trim() || !Number.isFinite(bounty) || bounty < 0) {
-          setFtMsg(t.formInvalid);
+          setFtMsg({ ok: false, text: t.formInvalid });
           return;
         }
         setFtBusy(true);
@@ -48,17 +48,18 @@ export function RequestForm({
             idempotency_key: idem,
           });
           setIdem(`web-req-${clientUuid()}`);
-          setFtMsg(
-            t.formOk
+          setFtMsg({
+            ok: true,
+            text: t.formOk
               .replace("{n}", String(bounty))
               .replaceAll("{magic}", currency),
-          );
+          });
           setFtTitle("");
           setFtDescr("");
           setFtBounty("100");
           onCreated();
         } catch (err) {
-          setFtMsg(err instanceof Error ? err.message : t.formInvalid);
+          setFtMsg({ ok: false, text: apiErrorMessage(dict, err) });
         } finally {
           setFtBusy(false);
         }
@@ -105,7 +106,14 @@ export function RequestForm({
         >
           {t.formCancel}
         </button>
-        {ftMsg && <span className="text-xs text-sub">{ftMsg}</span>}
+        {ftMsg && (
+          <span
+            role={ftMsg.ok ? "status" : "alert"}
+            className={`text-xs ${ftMsg.ok ? "text-mint" : "text-coral"}`}
+          >
+            {ftMsg.text}
+          </span>
+        )}
       </div>
     </form>
   );

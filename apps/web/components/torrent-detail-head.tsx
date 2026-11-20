@@ -103,6 +103,17 @@ export function TorrentHead({
         })()}
 
         <div className="td-head__badges">
+          {/* 审核态：发完种跳详情页此前不显示「审核中/未通过/暂缓」，
+              发布者完全不知道自己的种过没过审（五问评审 P1）。 */}
+          {t.approval_status !== 1 && (
+            <Badge tone={t.approval_status === 2 ? "danger" : "warn"}>
+              {t.approval_status === 0
+                ? dict.torrents.statusPending
+                : t.approval_status === 2
+                  ? dict.torrents.statusRejected
+                  : dict.torrents.statusHeld}
+            </Badge>
+          )}
           {t.sticky && (
             <Badge tone="warn">
               {dict.torrent.sticky}

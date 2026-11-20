@@ -11,6 +11,9 @@ mod preserve;
 mod resurrections;
 mod task_overview;
 mod task_records;
+mod task_shop_buy;
+#[cfg(test)]
+mod task_shop_buy_tests;
 mod tasks;
 
 use exams::*;
@@ -20,6 +23,7 @@ pub use onboarding::*;
 use preserve::*;
 use resurrections::*;
 use task_overview::*;
+use task_shop_buy::*;
 use tasks::*;
 
 pub fn mount_ops(scope: actix_web::Scope) -> actix_web::Scope {
@@ -33,6 +37,7 @@ pub fn mount_ops(scope: actix_web::Scope) -> actix_web::Scope {
         .service(task_list)
         .service(task_overview)
         .service(task_claim)
+        .service(task_shop_buy)
         // 考核引擎（0093）：我的考核进度（含当前值 vs 目标）
         .service(my_exams)
         // M19 保种区

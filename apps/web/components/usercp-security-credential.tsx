@@ -22,16 +22,16 @@ export function CredentialPanel({ flash }: { flash: (k: string) => string }) {
   const [newPass2, setNewPass2] = useState("");
   const [oldPass, setOldPass] = useState("");
   const [pwBusy, setPwBusy] = useState(false);
-  const [pwMsg, setPwMsg] = useState<string | null>(null);
+  const [pwMsg, setPwMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   async function changePasswordNow() {
     setPwMsg(null);
     if (newPass.length < 8) {
-      setPwMsg(dict.usercp.security.pwTooShort);
+      setPwMsg({ ok: false, text: dict.usercp.security.pwTooShort });
       return;
     }
     if (newPass !== newPass2) {
-      setPwMsg(dict.usercp.security.pwMismatch);
+      setPwMsg({ ok: false, text: dict.usercp.security.pwMismatch });
       return;
     }
     setPwBusy(true);
@@ -40,16 +40,18 @@ export function CredentialPanel({ flash }: { flash: (k: string) => string }) {
         old_password: oldPass,
         new_password: newPass,
       });
-      setPwMsg(dict.usercp.security.pwChanged);
+      setPwMsg({ ok: true, text: dict.usercp.security.pwChanged });
       setOldPass("");
       setNewPass("");
       setNewPass2("");
     } catch (e) {
-      setPwMsg(
-        e instanceof ApiError
-          ? (apiErrorMessage(dict, e))
-          : dict.common.networkError,
-      );
+      setPwMsg({
+        ok: false,
+        text:
+          e instanceof ApiError
+            ? apiErrorMessage(dict, e)
+            : dict.common.networkError,
+      });
     } finally {
       setPwBusy(false);
     }
@@ -124,7 +126,22 @@ export function CredentialPanel({ flash }: { flash: (k: string) => string }) {
           >
             {pwBusy ? "…" : t.changeBtn}
           </button>
-          {pwMsg && <p className="mt-1 text-xs text-sub">{pwMsg}</p>}
+          {pwMsg && (
+            <p
+              role={pwMsg.ok ? "status" : "alert"}
+              className={`mt-1 text-xs ${pwMsg.ok ? "text-mint" : "text-coral"}`}
+            >
+              {pwMsg.text}
+              {pwMsg.ok && (
+                <a
+                  href="/login?next=/my?tab=security"
+                  className="ml-2 underline"
+                >
+                  {dict.review.relogin}
+                </a>
+              )}
+            </p>
+          )}
         </td>
       </tr>
       <Row head={t.passkeyLabel}>{t.passkeyHint}</Row>

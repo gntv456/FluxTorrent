@@ -40,10 +40,15 @@ export function LoginForm() {
     rawNext.startsWith("/") && !rawNext.startsWith("//")
       ? rawNext
       : "/torrents";
-  const [username, setUsername] = useState("");
+  const [username, setUsername] = useState(
+    search.get("u") ?? "",
+  );
   const [password, setPassword] = useState("");
   const [totp, setTotp] = useState("");
   const [error, setError] = useState<string | null>(null);
+  // P1：api-client 在 401 时写 ?expired=1 回跳，但登录页此前从不读——
+  // 玩家在 /my 改设置时会话过期 → 突然回登录页 → 不知道发生了什么。
+  const expired = search.get("expired") === "1";
   const [attempts, setAttempts] = useState<number>(0); // 连续失败次数（前端口径，5 次触发后端限流）
   const [busy, setBusy] = useState(false);
   const [powWorking, setPowWorking] = useState(false); // 正在完成工作量证明
@@ -178,6 +183,11 @@ export function LoginForm() {
       {/* 安全校验提示（视觉隐藏，aria 可达） */}
       <p className="bz-visually-hidden">{dict.login.securityNote}</p>
 
+      {expired && (
+        <p role="status" className="bz-form-error bz-form-error--soft">
+          {fmt(dict.review.sessionExpired, { path: next })}
+        </p>
+      )}
       {error && (
         <p role="alert" className="bz-form-error">
           {error}
@@ -190,9 +200,11 @@ export function LoginForm() {
         </p>
       )}
       {/* 剩余尝试提醒（后端 §5.7：5 次/分钟/用户名） */}
-      {attempts > 0 && attempts < 5 && (
+      {attempts > 0 && (
         <p className="bz-form-error bz-form-error--soft">
-          {fmt(dict.login.remainingTries, { n: 5 - attempts })}
+          {attempts >= 5
+            ? dict.review.loginAttemptsExhausted
+            : fmt(dict.review.loginAttemptsLeft, { n: 5 - attempts })}
         </p>
       )}
 

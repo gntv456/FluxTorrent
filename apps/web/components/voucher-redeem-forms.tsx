@@ -51,6 +51,7 @@ export function RedeemForm({
   inputMode?: "numeric" | "text";
   maxLength?: number;
 }) {
+  const { dict } = useI18n();
   return (
     <div className="flex flex-col gap-2">
       <input
@@ -59,8 +60,15 @@ export function RedeemForm({
         value={value}
         maxLength={maxLength}
         inputMode={inputMode}
+        aria-label={placeholder}
         onChange={(e) => onChange(e.target.value)}
       />
+      {/* ID 从哪来此前完全没有提示，用户得跳出去找再手抄回来 */}
+      {inputMode === "numeric" && (
+        <a href="/my/torrentlist" className="text-xs text-link underline">
+          {dict.review.voucherSelectTorrent} →
+        </a>
+      )}
       <ConfirmPair onConfirm={onConfirm} onCancel={onCancel} />
     </div>
   );

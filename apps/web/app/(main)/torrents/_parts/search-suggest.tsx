@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useI18n } from "@/i18n/client";
 
 /**
  * 搜索输入联想（0283 P0-2）：输入 ≥2 字符防抖 300ms 调 /torrents/suggest，
@@ -22,6 +23,7 @@ export function SearchSuggest({
 }: {
   inputId?: string;
 }) {
+  const { dict } = useI18n();
   const [items, setItems] = useState<SuggestItem[]>([]);
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
@@ -128,7 +130,7 @@ export function SearchSuggest({
       id={SUGGEST_LIST_ID}
       className="tsb-suggest"
       role="listbox"
-      aria-label="search suggestions"
+      aria-label={dict.review.ariaSearchSuggest}
     >
       {items.map((it, i) => (
         <a

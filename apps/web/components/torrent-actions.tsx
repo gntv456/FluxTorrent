@@ -21,14 +21,17 @@ export function TorrentActions({
   torrentId,
   torrentName,
   dl,
+  price,
 }: {
   torrentId: number;
   /** 删除二次输入用（ConfirmDialog requireText）；列表行传入 */
   torrentName?: string;
   /** 下载钮标签；缺省走字典 torrents.download */
   dl?: string;
+  /** 付费种定价（列表行已下发）：>0 时下载前二次确认，避免「点了才扣钱」 */
+  price?: number;
 }) {
-  const { dict } = useI18n();
+  const { dict, currency } = useI18n();
   const dlLabel = dl ?? dict.torrents.download;
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -168,6 +171,12 @@ export function TorrentActions({
     }
   }
 
+  /** 付费种下载前先确认（列表行此前看不到价格，点 ⬇ 直接扣费） */
+  const [askDownload, setAskDownload] = useState(false);
+  function onDownloadClick() {
+    if ((price ?? 0) > 0) setAskDownload(true);
+    else void downloadRow();
+  }
   /** 列表行下载：与详情页同口径走 getBlob（带 Bearer）；裸 <a href> 无鉴权头必 401 */
   async function downloadRow() {
     setBusy(true);
@@ -180,6 +189,7 @@ export function TorrentActions({
       a.download = `${torrentId}.torrent`;
       a.click();
       URL.revokeObjectURL(url);
+      toast.success(dict.review.downloadStarted, { desc: torrentName });
     } catch (e) {
       const noauth = e instanceof ApiError && e.code === 2001;
       toast.error(
@@ -199,7 +209,7 @@ export function TorrentActions({
     <span className="torrents-actions" ref={ref}>
       <button
         type="button"
-        onClick={downloadRow}
+        onClick={onDownloadClick}
         disabled={busy}
         className="torrents-action"
         title={dlLabel}
@@ -271,6 +281,19 @@ export function TorrentActions({
         title={dict.torrents.delete}
         message={dict.torrents.deleteConfirm}
         requireText={torrentName}
+        busy={busy}
+      />
+      {/* 付费种二次确认：价格此前只在详情页可见，列表点 ⬇ 会静默扣费 */}
+      <ConfirmDialog
+        open={askDownload}
+        onClose={() => setAskDownload(false)}
+        onConfirm={() => {
+          setAskDownload(false);
+          void downloadRow();
+        }}
+        title={dict.torrents.download}
+        message={dict.review.downloadWillCharge.replace("{n}", String(price ?? 0)).replace("{magic}", currency)}
+        confirmLabel={dict.torrents.download}
         busy={busy}
       />
     </span>

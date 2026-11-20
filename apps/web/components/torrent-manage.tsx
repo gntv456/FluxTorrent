@@ -238,14 +238,27 @@ export function TorrentManage(p: TorrentManageProps) {
             onClick={actions.reseed} />
         )}
         {canManage && (
-          <button
-            type="button"
-            disabled={busy}
-            onClick={actions.askDel}
-            className={`${PILL} border border-tomato/60 text-tomato`}
-          >
-            🗑 {t.del}
-          </button>
+          <>
+            {/* P1：发布后「请撤回」此前在界面无入口——待审种作者可直接撤回 */}
+            {!approved && (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={actions.askDel}
+                className={`${PILL} border border-line text-sub`}
+              >
+                {dict.review.publishWithdraw}
+              </button>
+            )}
+            <button
+              type="button"
+              disabled={busy}
+              onClick={actions.askDel}
+              className={`${PILL} border border-tomato/60 text-tomato`}
+            >
+              🗑 {t.del}
+            </button>
+          </>
         )}
       </div>
       {actions.delDialog}

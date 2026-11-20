@@ -18,8 +18,8 @@ pub(super) async fn task_overview(
     let uid = auth.id;
 
     // 商店
-    let shop: Vec<(String, String, String, i32, f64, i32)> = sqlx::query_as(
-        "SELECT name, span, require_tier, require_count, cost::float8, stock \
+    let shop: Vec<(i64, String, String, Option<String>, String, i32, f64, i32, i32)> = sqlx::query_as(
+        "SELECT id, name, span, kind, require_tier, require_count, cost::float8, stock, stock_used \
          FROM task_shop_items ORDER BY sort",
     )
     .fetch_all(&state.repo.db)
@@ -27,10 +27,12 @@ pub(super) async fn task_overview(
     .map_err(|e| DomainError::Internal(e.into()))?;
     let shop_json: Vec<serde_json::Value> = shop
         .iter()
-        .map(|(n, s, t, c, cost, stock)| {
+        .map(|(id, n, s, kind, t, c, cost, stock, used)| {
             serde_json::json!({
-                "name": n, "span": s, "require_tier": t, "require_count": c,
-                "cost": cost, "stock": stock,
+                "id": id, "name": n, "span": s, "kind": kind,
+                "require_tier": t, "require_count": c,
+                "cost": cost, "stock": stock, "stock_used": used,
+                "available": kind.is_some() && (*stock <= 0 || used < stock),
             })
         })
         .collect();

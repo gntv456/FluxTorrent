@@ -126,6 +126,10 @@ export function ShopCatalog({
   const [ownedIds, setOwnedIds] = useState<Set<number>>(
     () => new Set(items.filter((i) => i.owned).map((i) => i.id)),
   );
+  // 服务端刷新后 items 更新，本地「已拥有」集合必须跟随
+  useEffect(() => {
+    setOwnedIds(new Set(items.filter((i) => i.owned).map((i) => i.id)));
+  }, [items]);
   const markBought = (it: ShopItem, total: number) => {
     setBal((b) => (b === null ? b : b - total));
     if (DRESSUP_KINDS.has(it.kind)) {
@@ -254,7 +258,14 @@ export function ShopCatalog({
                 }
                 balance={bal}
                 gift={it.kind === "gift_spark"}
-                onBought={() => markBought(it, it.price)}
+                onBought={(total) => {
+                  markBought(it, total);
+                  // P0：买券后「我的券」面板此前只在 mount 取一次，不刷新 ⇒
+                  // 玩家看不到券 → 以为没扣钱 → 再买一次，余额白扣两份。
+                  window.dispatchEvent(
+                    new CustomEvent("flux:voucher-bought"),
+                  );
+                }}
               />
             )}
           </div>

@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { api, ApiError, setSessionCookie } from "@/lib/api-client";
+import { api, setSessionCookie } from "@/lib/api-client";
 import type { NextClass } from "@/lib/usercp-level";
 import { USERCP_NAV, type UsercpTab } from "@/lib/usercp-nav";
-import { useI18n } from "@/i18n/client";
+import { apiErrorMessage, useI18n } from "@/i18n/client";
 import { LOCALE_COOKIE, siteLangToLocale, type Locale } from "@/i18n/config";
 import { OverviewTab } from "@/components/usercp-overview";
 import dynamic from "next/dynamic";
@@ -102,6 +102,10 @@ export interface UserSettings {
   privacy: string;
 }
 
+/** 安全分区自取数所需的最小回落对象：只有 privacy 一处在 SecurityTab
+ *  里读（其余字段由各子组件自己请求），故不需要伪造整份站点设定。 */
+const SECURITY_FALLBACK = { privacy: "normal" } as UserSettings;
+
 export interface Overview {
   id: number;
   username: string;
@@ -166,22 +170,30 @@ export function UsercpPanel({
     setTab(initialTab);
   }, [initialTab]);
 
-  useEffect(() => {
+  /** 站点设定取数（可重试）。
+   *
+   *  P1-7：取数失败曾把整份控制面板（**含安全分区**）变成一块死区——
+   *  用户连改密码都做不了，而且没有重试按钮；错误文案还是后端原文。
+   *  现在取数独立成函数：错误区给「重试」，文案统一走 apiErrorMessage，
+   *  安全分区不再依赖这份设定（自己取数）。 */
+  const loadSettings = useCallback(async () => {
     setErr(null);
-    api
-      .get<UserSettings>("/api/v1/me/settings")
-      .then((s) => {
-        setSettings(s);
-        // 反向一致：库里语言与当前 locale 不一致（如别的设备改过）→ 以库为准同步 cookie
-        const want = siteLangToLocale(s.site_language);
-        if (want && want !== locale) {
-          syncLocaleCookie(want);
-          router.refresh();
-        }
-      })
-      .catch((e) =>
-        setErr(e instanceof ApiError ? e.message : dict.common.loadFailed),
-      );
+    try {
+      const s = await api.get<UserSettings>("/api/v1/me/settings");
+      setSettings(s);
+      // 反向一致：库里语言与当前 locale 不一致（如别的设备改过）→ 以库为准同步 cookie
+      const want = siteLangToLocale(s.site_language);
+      if (want && want !== locale) {
+        syncLocaleCookie(want);
+        router.refresh();
+      }
+    } catch (e) {
+      setErr(apiErrorMessage(dict, e));
+    }
+  }, [dict, locale, router]);
+
+  useEffect(() => {
+    void loadSettings();
     if (tab === "overview") {
       api
         .get<Overview>("/api/v1/me/overview")
@@ -192,7 +204,9 @@ export function UsercpPanel({
   }, [tab]);
 
   const patch = (p: Partial<UserSettings>) => {
-    if (settings) setSettings({ ...settings, ...p });
+    // 安全分区能在 settings 取数失败时独立工作：以最小回落对象为底，
+    // 这样隐私等级的切换不会因为站点设定没取到而丢失。
+    setSettings((prev) => ({ ...(prev ?? SECURITY_FALLBACK), ...p }));
     setSaved(false);
   };
 
@@ -221,7 +235,7 @@ export function UsercpPanel({
         router.refresh();
       }
     } catch (e) {
-      setErr(e instanceof ApiError ? e.message : dict.common.loadFailed);
+      setErr(apiErrorMessage(dict, e));
     } finally {
       setSaving(false);
     }
@@ -243,8 +257,14 @@ export function UsercpPanel({
             data-active={tab === n.key ? "true" : undefined}
             onClick={(e) => {
               e.preventDefault();
-              window.history.replaceState(null, "", `/my?tab=${n.key}`);
               setTab(n.key);
+              // P2-11：改用客户端路由推进。旧写法 replaceState 会抹掉浏览器
+              // 历史（后退回不到上一个 tab）并把 hash 锚点冲掉。
+              const hash =
+                n.key === "security" && typeof window !== "undefined"
+                  ? window.location.hash
+                  : "";
+              router.push(`/my?tab=${n.key}${hash}`, { scroll: false });
             }}
           >
             <Icon name={n.icon} size={17} className="shrink-0" />
@@ -258,11 +278,34 @@ export function UsercpPanel({
       </aside>
 
       <div className="usercp-content">
-        {err && <p className="usercp-error">{err}</p>}
+        {err && (
+          // P1-7：取数失败给出「重试」，且不再把整份面板（含安全分区）锁死
+          <div
+            role="alert"
+            className="usercp-error flex flex-wrap items-center gap-3"
+          >
+            <span>{err}</span>
+            <button
+              type="button"
+              className="brand-button"
+              onClick={() => void loadSettings()}
+            >
+              {dict.common.retry}
+            </button>
+          </div>
+        )}
         {tab === "overview" ? (
           <OverviewTab ov={overview} loading={!overview && !err} />
         ) : tab === "wishlist" ? (
           <WishlistPanel />
+        ) : tab === "security" ? (
+          // P0-1：安全分区不进站点设定的 form。它在改密/2FA/Passkey 的
+          // 输入框里按回车会隐式提交站点设定，底部弹「已保存」而密码根本没
+          // 改。安全分区自取数、各自带提交按钮。
+          <SecurityTab s={settings ?? SECURITY_FALLBACK} patch={patch} />
+        ) : tab === "fields" ? (
+          // 自定义字段走自己的保存口（PUT /me/fields），不共用站点设定表单
+          <UserFieldsTab />
         ) : settings ? (
           <form
             className="usercp-form"
@@ -272,10 +315,10 @@ export function UsercpPanel({
             }}
           >
             {tab === "personal" && <PersonalTab s={settings} patch={patch} />}
-            {tab === "fields" && <UserFieldsTab />}
             {tab === "tracker" && <TrackerTab s={settings} patch={patch} />}
             {tab === "forum" && <ForumTab s={settings} patch={patch} />}
-            {tab === "security" && <SecurityTab s={settings} patch={patch} />}
+            {/* P0-1：底部保存行只服务站点设定三档（个人/追踪/论坛）。
+                字段分区与安全分区各有自己的保存口，不再共用这一行。 */}
             <div className="brand-wide-table-scroll">
             <table className="nexus-table nexus-form">
               <tbody>

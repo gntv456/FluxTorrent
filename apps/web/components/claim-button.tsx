@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { Badge } from "@/components/ui/badge";
@@ -22,7 +23,10 @@ export function ClaimButton({
   bonus?: number;
 }) {
   const { dict } = useI18n();
+  const router = useRouter();
   const [done, setDone] = useState(claimed);
+  // props 更新（父层 refresh 后）需跟随，否则「已认领」按钮与认领人列矛盾
+  useEffect(() => setDone(claimed), [claimed]);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -40,6 +44,8 @@ export function ClaimButton({
           try {
             await api.post("/api/v1/preserve/claim", { torrent_id: torrentId });
             setDone(true);
+            // 认领人列是服务端渲染的，本地按钮变了但列还是旧值 → refresh
+            router.refresh();
           } catch (e) {
             setMsg(
               e instanceof ApiError ? e.message : dict.common.networkError,

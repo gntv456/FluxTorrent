@@ -18,18 +18,34 @@ export function MagnetButton({ torrentId }: { torrentId: number }) {
   async function copyMagnet() {
     setMagnetState("busy");
     try {
-      const r = await api.get<{ magnet: string }>(
-        `/api/v1/torrents/${torrentId}/magnet`,
-      );
-      await navigator.clipboard.writeText(r.magnet);
-      setMagnetState("copied");
-      setTimeout(() => setMagnetState("idle"), 1500);
-    } catch (e) {
+      // 取磁力与写剪贴板拆两段：非安全上下文下 writeText 抛错，
+      // 此前被误报成"磁力获取失败"，其实磁力已经拿到——改为可手抄兜底。
+      let magnet: string;
+      try {
+        const r = await api.get<{ magnet: string }>(
+          `/api/v1/torrents/${torrentId}/magnet`,
+        );
+        magnet = r.magnet;
+      } catch (e) {
+        setMagnetState("idle");
+        toast.error(dict.torrent.magnetFailed, {
+          requestId: e instanceof ApiError ? e.requestId : undefined,
+        });
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(magnet);
+        setMagnetState("copied");
+        setTimeout(() => setMagnetState("idle"), 1500);
+      } catch {
+        setMagnetState("idle");
+        toast.info(
+          dict.review.magnetCopyFallback.replace("{link}", magnet),
+          { duration: 15000 },
+        );
+      }
+    } catch {
       setMagnetState("idle");
-      // W-24：失败 toast 带 request_id 芯片（可复制报障）
-      toast.error(dict.torrent.magnetFailed, {
-        requestId: e instanceof ApiError ? e.requestId : undefined,
-      });
     }
   }
 
@@ -81,6 +97,8 @@ export function DownloadButton({
       a.click();
       URL.revokeObjectURL(url);
       setState("idle");
+      // 四路下载此前成功零反馈：点完屏幕毫无变化，分不清是否开始。
+      toast.success(dict.review.downloadStarted, { desc: name });
     } catch (e) {
       const noauth = e instanceof ApiError && e.code === 2001;
       setState(noauth ? "noauth" : "idle");
@@ -100,7 +118,11 @@ export function DownloadButton({
         disabled={state === "busy"}
         className="td-dl-btn"
       >
-        {state === "busy" ? dict.torrent.downloading : dict.torrent.download}
+        {state === "busy"
+          ? dict.torrent.downloading
+          : state === "noauth"
+            ? dict.review.downloadNeedLogin
+            : dict.torrent.download}
       </button>
       {showMagnet && <MagnetButton torrentId={torrentId} />}
       {charged && (

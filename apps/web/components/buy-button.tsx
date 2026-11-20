@@ -42,7 +42,9 @@ export function BuyButton({
   /** 赠礼类（gift_spark）：弹窗内要填接收人用户名，提交带 to */
   gift?: boolean;
   /** 购买成功回调（0207b：父层刷新余额/拥有态） */
-  onBought?: () => void;
+  /** 购买成功回调，回传**实际总价**（单价×件数）——调用方据此扣本地余额，
+   *  否则可叠加商品只扣一件钱，余额虚高、「余额不足」预判失效。 */
+  onBought?: (total: number) => void;
 }) {
   const { dict, currency } = useI18n();
   const t = dict.buyDialog;
@@ -104,7 +106,7 @@ export function BuyButton({
       setOpen(false);
       setIdem(`web-${itemId}-${clientUuid()}`);
       startCooldown();
-      onBought?.();
+      onBought?.(total);
     } catch (err) {
       // W-18：购买失败（余额不足 4001 等）走全局 toast——错误需要用户
       // 记住且可报障（request_id 芯片一键复制），行内 msg 承担不了

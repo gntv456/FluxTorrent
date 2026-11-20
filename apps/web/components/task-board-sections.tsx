@@ -1,6 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/config";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   fmtBytes,
   tierLabel,
@@ -38,8 +41,10 @@ export function TaskTierPanel({
   busyId: number | null;
   onClaim: (id: number) => void;
 }) {
-  const { dict } = useI18n();
+  const { dict, currency } = useI18n();
   const t = dict.tasks2;
+  // P0：报名费扣款 + 30 天不可取消 + 失败扣罚，必须二次确认
+  const [pending, setPending] = useState<TaskRow | null>(null);
   const tierTasks = tasks.filter((x) => x.tier);
   const otherTasks = tasks.filter((x) => !x.tier);
   return (
@@ -100,7 +105,7 @@ export function TaskTierPanel({
               type="button"
               className="brand-button"
               disabled={busyId === task.id || task.claimed_by_me}
-              onClick={() => onClaim(task.id)}
+              onClick={() => setPending(task)}
             >
               {task.claimed_by_me ? t.claimedByMe : t.claimBtn}
               {/* 利益前置（2026-11-15）：奖励额直接标上按钮 */}
@@ -140,7 +145,7 @@ export function TaskTierPanel({
               type="button"
               className="brand-button"
               disabled={busyId === task.id || task.claimed_by_me}
-              onClick={() => onClaim(task.id)}
+              onClick={() => setPending(task)}
             >
               {task.claimed_by_me ? t.claimedByMe : t.claimBtn}
               {/* 利益前置（2026-11-15）：奖励额直接标上按钮 */}
@@ -158,16 +163,41 @@ export function TaskTierPanel({
           </article>
         ))}
       </div>
+      <ConfirmDialog
+        open={pending !== null}
+        onClose={() => setPending(null)}
+        onConfirm={() => {
+          if (pending) onClaim(pending.id);
+          setPending(null);
+        }}
+        tone="danger"
+        title={dict.review.taskClaimTitle}
+        message={fmt(dict.review.taskClaimBody, {
+          fee: (pending?.fee ?? 0).toFixed(1),
+          magic: currency,
+          days: pending?.duration_days ?? 30,
+          punish: (pending?.penalty ?? 0).toFixed(1),
+        })}
+        confirmLabel={dict.review.taskClaimConfirm}
+        busy={pending !== null && busyId === pending.id}
+      />
     </section>
   );
 }
 
 export function TaskShopPanel({
   shop,
+  stats,
+  onBuy,
+  busyId,
 }: {
   shop: TaskOverview["shop"];
+  /** 各档真实完成数（GET /tasks/overview 的 stats.tiers） */
+  stats?: TaskOverview["stats"];
+  onBuy: (item: TaskOverview["shop"][number]) => void;
+  busyId: number | null;
 }) {
-  const { dict } = useI18n();
+  const { dict, currency } = useI18n();
   const t = dict.tasks2;
   return (
     <section className="task-panel">
@@ -187,11 +217,22 @@ export function TaskShopPanel({
               </div>
               <div>
                 <dt>{t.shopDone}</dt>
-                <dd className="num">0</dd>
+                <dd className="num">
+                  {stats?.tiers.find((x) => x.tier === s.require_tier)?.done ?? "—"}
+                </dd>
               </div>
               <div>
                 <dt>{t.shopAvail}</dt>
-                <dd className="num">0</dd>
+                <dd className="num">
+                  {(() => {
+                    const done = stats?.tiers.find(
+                      (x) => x.tier === s.require_tier,
+                    )?.done;
+                    return done === undefined
+                      ? "—"
+                      : Math.max(0, s.require_count - done);
+                  })()}
+                </dd>
               </div>
               <div>
                 <dt>{t.shopCost}</dt>
@@ -199,16 +240,32 @@ export function TaskShopPanel({
               </div>
               <div>
                 <dt>{t.shopStock}</dt>
-                <dd className="num">{s.stock}</dd>
+                <dd className="num">
+                  {s.stock > 0
+                    ? s.stock - s.stock_used
+                    : dict.review.shopUnlimited}
+                </dd>
               </div>
             </dl>
             <button
               type="button"
               className="brand-button"
-              disabled
-              title={t.shopDisabled}
+              disabled={!s.available || busyId === s.id}
+              title={
+                !s.available
+                  ? dict.review.taskShopSoon
+                  : fmt(dict.review.taskShopCost, {
+                      n: s.cost.toFixed(1),
+                      magic: currency,
+                    })
+              }
+              onClick={() => onBuy(s)}
             >
-              {t.shopBuy}
+              {busyId === s.id
+                ? dict.review.taskShopBuying
+                : s.available
+                  ? t.shopBuy
+                  : dict.review.taskShopSoon}
             </button>
           </article>
         ))}

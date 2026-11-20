@@ -284,7 +284,11 @@ async function TorrentTr({
       {extra}
       {/* 行为列：下载 + ⋮ 下拉（收藏/编辑/删除，同类站 staff 菜单口径） */}
       <td className="torrents-td-actions">
-        <TorrentActions torrentId={id} torrentName={t.name} />
+        <TorrentActions
+          torrentId={id}
+          torrentName={t.name}
+          price={"price" in t ? (t.price ?? 0) : 0}
+        />
       </td>
     </tr>
   );

@@ -34,12 +34,17 @@ export interface TaskRow {
 
 export interface TaskOverview {
   shop: {
+    id: number;
     name: string;
     span: string;
+    kind?: string | null;
     require_tier: string;
     require_count: number;
     cost: number;
     stock: number;
+    stock_used: number;
+    /** 后端判据：有发放臂且未兑完 */
+    available: boolean;
   }[];
   feed: { user: string; task: string; at: string }[];
   stats: {

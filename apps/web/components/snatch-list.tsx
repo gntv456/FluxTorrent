@@ -126,7 +126,20 @@ export function SnatchList({ torrentId }: { torrentId: number }) {
         {rows.length === 0 && (
           <tr>
             <td colSpan={7} className="py-6 text-center text-sub">
-              {failed ? dict.common.loadFailed : t.empty}
+              {failed ? (
+                <>
+                  <span role="alert">{dict.common.loadFailed}</span>
+                  <button
+                    type="button"
+                    className="ml-3 text-link underline"
+                    onClick={() => setRows(null)}
+                  >
+                    {dict.common.retry}
+                  </button>
+                </>
+              ) : (
+                t.empty
+              )}
             </td>
           </tr>
         )}

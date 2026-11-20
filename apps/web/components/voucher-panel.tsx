@@ -81,6 +81,10 @@ export function VoucherPanel() {
 
   useEffect(() => {
     void load();
+    // 购买事件：商店买券成功即重取，避免「券没到货」误判导致重复购买
+    const onBought = () => void load();
+    window.addEventListener("flux:voucher-bought", onBought);
+    return () => window.removeEventListener("flux:voucher-bought", onBought);
   }, [load]);
 
   const open = vouchers.filter(
@@ -189,6 +193,11 @@ export function VoucherPanel() {
                 </small>
               </span>
               <div className="acts">
+                {using === v.id && error && (
+                  <p role="alert" className="text-xs text-[var(--danger-text)]">
+                    {error}
+                  </p>
+                )}
                 {v.used_torrent_id ? (
                   <span className="text-xs text-sub">
                     {dict.vouchers.used.replace(

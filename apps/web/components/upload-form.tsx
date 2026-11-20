@@ -12,6 +12,7 @@ import { UploadDescrBlock } from "@/components/upload-form-descr";
 import { UploadQualityBlock } from "@/components/upload-form-quality";
 import { FieldErrors, fieldsFrom } from "@/components/ui/form-field";
 import { SubmitButton } from "@/components/ui/submit-button";
+import { toast } from "@/components/ui/toast";
 import type { SectionKindMeta } from "@/components/admin-sections-shared";
 import type { SiteProfile } from "@/lib/site-profile";
 
@@ -78,6 +79,7 @@ export function UploadForm({ initialName }: { initialName?: string }) {
   // 0424 发布者 H&R 惩罚开关（同类站对标 A1）：受罚者免罪时本发布者得分成
   const [hrPunish, setHrPunish] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [errMsg, setErrMsg] = useState<string | null>(null);
   // P1-4：文件缺失的可见错误条（提交前置校验，不依赖原生气泡）
   const [fileErr, setFileErr] = useState(false);
   // W-18：字段级错误（后端 1002 信封；multipart 走裸 fetch 手工解）
@@ -208,7 +210,8 @@ export function UploadForm({ initialName }: { initialName?: string }) {
           ]);
           setFieldErrs(Object.fromEntries(asArr));
         } else {
-          setMsg(rejectReason(body, dict));
+          const reason = rejectReason(body, dict);
+          setErrMsg(reason);
         }
       } else {
         // 发布成功直接进详情页预览（0159）：待审种对本人可见
@@ -225,9 +228,11 @@ export function UploadForm({ initialName }: { initialName?: string }) {
         } else {
           setMsg(fmt(dict.upload.success, { id: newId }));
         }
+        toast.success(dict.review.publishAwaitReview);
+        // 900ms 一闪而过且被跳转吞掉，玩家不知道发成功没有；给 2.5s 读完
         setTimeout(() => {
           window.location.href = `/torrent/${newId}`;
-        }, 900);
+        }, 2500);
       }
     } catch {
       setMsg(dict.upload.networkError);
@@ -331,6 +336,11 @@ export function UploadForm({ initialName }: { initialName?: string }) {
             <td className="rowfollow" colSpan={2}>
               {/* W-18：字段级错误汇总（1002 信封）+ SubmitButton 生命周期 */}
               <div className="flex flex-wrap items-center gap-3">
+                {errMsg && (
+                  <p role="alert" className="text-sm text-[var(--danger-text)]">
+                    {dict.review.publishFailedTitle}：{errMsg}
+                  </p>
+                )}
                 <FieldErrors fields={fieldErrs} />
                 <SubmitButton
                   busy={busy}

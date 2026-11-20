@@ -292,6 +292,7 @@ pub mod seedbox;
 pub mod settings;
 pub mod shop;
 pub mod spark_ledger;
+pub mod task_shop;
 pub mod terms_gov;
 pub mod torrent_download;
 pub mod user_prefs;
