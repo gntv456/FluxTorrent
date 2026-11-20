@@ -13,3 +13,4 @@
 #
 # ── 已迁移（机制落地首批；后续按此模式渐进）──
 torrent.buy.insufficient	魔力不足：该种子为付费种子（{price} 魔力），请先充值或签到攒魔力	魔力不足：該種子為付費種子（{price} 魔力），請先儲值或簽到攢魔力	Insufficient spark: this torrent is paid ({price} spark); top up or earn via sign-in
+task_shop.tier_requirement	需在 {tier} 档完成 {count} 个任务（当前 {done}）	需在 {tier} 檔完成 {count} 個任務（當前 {done}）	Complete {count} task(s) at tier {tier} (currently {done})

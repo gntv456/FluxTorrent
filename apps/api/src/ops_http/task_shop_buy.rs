@@ -82,10 +82,19 @@ async fn task_shop_buy(
     )
     .await?;
     if done < i64::from(item.require_count) {
-        return Err(DomainError::Validation(format!(
-            "需在 {} 档完成 {} 个任务（当前 {}）",
-            item.require_tier, item.require_count, done
-        )));
+        // 带参句子走参数化模板（D9）：key 查 validation_templates.tsv，
+        // args 响应期插值——validation_i18n_guard 棘轮锁 format! 直拼。
+        return Err(DomainError::Validation(
+            crate::i18n_validation::render_validation_key(
+                "task_shop.tier_requirement",
+                crate::i18n::current(),
+                &[
+                    ("tier", item.require_tier.clone()),
+                    ("count", item.require_count.to_string()),
+                    ("done", done.to_string()),
+                ],
+            ),
+        ));
     }
     // 库存
     if item.stock > 0 && item.stock_used >= item.stock {

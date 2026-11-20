@@ -336,3 +336,9 @@ publish_at 须为 ISO8601（如 2026-11-21T09:00:00Z）	publish_at 須為 ISO860
 created_after 须为 ISO8601（如 2026-11-17T00:00:00Z）	created_after 須為 ISO8601（如 2026-11-17T00:00:00Z）	created_after must be ISO8601 (e.g. 2026-11-17T00:00:00Z)
 created_before 须为 ISO8601（如 2026-11-17T00:00:00Z）	created_before 須為 ISO8601（如 2026-11-17T00:00:00Z）	created_before must be ISO8601 (e.g. 2026-11-17T00:00:00Z)
 metric 只能是 uploads / downloads / seedtime	metric 只能是 uploads / downloads / seedtime	metric must be one of uploads / downloads / seedtime
+商品价格配置异常	商品價格配置異常	Item price is misconfigured
+缺少合法的 idempotency_key	缺少合法的 idempotency_key	Missing a valid idempotency_key
+该权益兑换暂未开放	該權益兌換暫未開放	This reward is not redeemable yet
+该权益已兑完	該權益已兌完	This reward is sold out
+该笔兑换已受理，请刷新后查看	該筆兌換已受理，請重新整理後查看	This redemption was accepted; refresh to see it
+该笔兑换已受理，请勿重复提交	該筆兌換已受理，請勿重複提交	This redemption was accepted; do not submit again

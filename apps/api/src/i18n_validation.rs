@@ -19,7 +19,10 @@ fn template_table() -> &'static std::collections::HashMap<
     (&'static str, &'static str, &'static str),
 > {
     static TABLE: std::sync::OnceLock<
-        std::collections::HashMap<&'static str, (&'static str, &'static str, &'static str)>,
+        std::collections::HashMap<
+            &'static str,
+            (&'static str, &'static str, &'static str),
+        >,
     > = std::sync::OnceLock::new();
     TABLE.get_or_init(|| {
         let mut m = std::collections::HashMap::new();
