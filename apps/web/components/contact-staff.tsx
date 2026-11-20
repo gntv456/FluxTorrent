@@ -114,7 +114,7 @@ export function ContactStaff() {
                 <div
                   className="bbcode-toolbar"
                   role="toolbar"
-                  aria-label="BBCode"
+                  aria-label={dict.review.ariaBbcode}
                 >
                   <button
                     type="button"

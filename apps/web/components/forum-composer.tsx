@@ -66,7 +66,14 @@ const BTN_CANCEL =
   "min-h-11 rounded-full border border-line px-5 text-sm " +
   "text-sub active:scale-[0.97]";
 
-export function TopicComposer({ forumId }: { forumId?: number }) {
+export function TopicComposer({
+  forumId,
+  autoOpen = false,
+}: {
+  forumId?: number;
+  /** 独立发帖页（/forums/new）：挂载即打开发帖弹窗，省掉"再点一次" */
+  autoOpen?: boolean;
+}) {
   const { dict } = useI18n();
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -93,6 +100,11 @@ export function TopicComposer({ forumId }: { forumId?: number }) {
   const [busy, setBusy] = useState(false);
   // 编辑器 tab（图1 口径）：write 正文 / live 实时预览 / done 静态预览
   const [tab, setTab] = useState<"write" | "live" | "done">("write");
+
+  // 独立发帖页：挂载即打开（/forum/new 的 CTA 直达意图）
+  useEffect(() => {
+    if (autoOpen) setOpen(true);
+  }, [autoOpen]);
 
   // 全局入口：首次打开弹窗时拉一次可发帖版块（/forums 已带 can_create）
   useEffect(() => {

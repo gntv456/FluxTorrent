@@ -43,6 +43,7 @@ export function TopicModActions({
     setBusy(true);
     try {
       await api.post(`/api/v1/forums/topics/${topicId}/manage`, payload);
+      toast.success(dict.review.modDone);
       router.refresh();
     } catch (e) {
       toast.error(apiErrorMessage(dict, e));

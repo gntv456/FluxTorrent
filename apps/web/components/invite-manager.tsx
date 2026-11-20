@@ -107,9 +107,12 @@ export function InviteManager() {
   const flash = useCallback((m: string) => {
     toast.success(m);
   }, []);
-  const flashErr = useCallback((m: string) => {
-    toast.error(m);
-  }, []);
+  const flashErr = useCallback(
+    (m: string, requestId?: string) => {
+      toast.error(m, { requestId });
+    },
+    [],
+  );
 
   const refresh = useCallback(async (p = 1) => {
     const seq = ++listSeqRef.current;
@@ -163,7 +166,10 @@ export function InviteManager() {
       setAskRevoke(null);
       await refresh(page);
     } catch (e) {
-      flashErr(e instanceof ApiError ? e.message : dict.common.networkError);
+      flashErr(
+  e instanceof ApiError ? e.message : dict.common.networkError,
+  e instanceof ApiError ? e.requestId : undefined,
+);
     } finally {
       setBusyId(null);
     }
@@ -182,7 +188,10 @@ export function InviteManager() {
       setSendEmail("");
       await refresh();
     } catch (e) {
-      flashErr(e instanceof ApiError ? e.message : dict.common.networkError);
+      flashErr(
+  e instanceof ApiError ? e.message : dict.common.networkError,
+  e instanceof ApiError ? e.requestId : undefined,
+);
     } finally {
       setMailBusy(false);
     }

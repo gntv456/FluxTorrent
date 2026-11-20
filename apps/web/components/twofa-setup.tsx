@@ -156,6 +156,18 @@ export function TwoFactorSetup() {
           <code className="break-all text-xs text-sub">
             {setup.otpauth_uri}
           </code>
+          {/* P1：验证器丢失的补救出口——启用时不给备份码，之后换手机
+              就彻底死锁（登录要码、解绑也要码）。本版本后端未下发备份码，
+              先给出明确的补救路径，不再让用户面对死胡同。 */}
+          <p className="mt-1 text-xs text-sub">
+            {dict.review.twofaBackupTitle}
+          </p>
+          <p className="text-xs text-sub">
+            {dict.review.twofaBackupLost}{" "}
+            <a href="/contactstaff" className="text-link underline">
+              /contactstaff
+            </a>
+          </p>
           <div className="mt-1 flex flex-wrap items-center gap-2">
             <input
               value={code}
@@ -203,7 +215,10 @@ export function TwoFactorSetup() {
       )}
 
       {msg && (
-        <p className="text-xs text-sub" role="status">
+        <p
+          role="status"
+          className={`text-xs ${msg.startsWith("✓") ? "text-mint" : "text-coral"}`}
+        >
           {msg}
         </p>
       )}

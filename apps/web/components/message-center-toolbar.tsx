@@ -225,14 +225,16 @@ export function BulkBar({
           disabled={selected.length === 0 || busy}
           onChange={(e) => {
             const v = e.target.value;
-            onMove(v === "" ? null : Number(v));
+            // 占位与"移回收件箱"此前 value 都是空串，onChange 不触发 ⇒
+            // 选了没反应。现在用哨兵值区分，映射回 null 走原逻辑。
+            onMove(v === "__inbox" || v === "" ? null : Number(v));
             e.target.value = "";
           }}
           className="min-h-11 rounded-full border border-[var(--compat-line)] bg-[var(--compat-paper)] px-3 font-bold disabled:opacity-40"
           defaultValue=""
         >
           <option value="">{t.moveTo}</option>
-          <option value="">{t.moveToInbox}</option>
+          <option value="__inbox">{t.moveToInbox}</option>
           {boxes.map((b) => (
             <option key={b.id} value={b.id}>
               {t.moveToBox.replace("{name}", b.name)}

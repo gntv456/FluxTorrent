@@ -42,20 +42,21 @@ export function TopicHeadMenu({ items }: { items: ReactNode[] }) {
       >
         ⋯
       </button>
-      {open ? (
-        <div className="thmenu__drop tp-headmenu__drop" role="menu">
-          {items.map((it, i) => (
-            <div
-              key={i}
-              role="menuitem"
-              className="tp-headmenu__item"
-              onClick={() => setOpen(false)}
-            >
-              {it}
-            </div>
-          ))}
-        </div>
-      ) : null}
+      {/* P0：关闭时保留 DOM（只做视觉隐藏），不能卸载子树——
+          菜单里的「举报主题」「编辑标题」各自用本地 open state 控制 Modal，
+          一旦卸载，子 state 丢失，弹窗永远打不开。
+          display:none 保留宿主节点，onMouseDown 的「点外部关闭」仍走根容器。 */}
+      <div
+        className="thmenu__drop tp-headmenu__drop"
+        role="menu"
+        style={{ display: open ? undefined : "none" }}
+      >
+        {items.map((it, i) => (
+          <div key={i} role="menuitem" className="tp-headmenu__item">
+            {it}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

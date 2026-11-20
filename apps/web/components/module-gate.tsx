@@ -27,6 +27,14 @@ export async function requireModule(
       <p className="mt-2 text-sm text-muted">
         {dict.mod.disabledBody}
       </p>
+      <div className="mt-4 flex justify-center gap-3">
+        <a href="/" className="text-link underline">
+          {dict.review.moduleBackHome}
+        </a>
+        <a href="/help" className="text-link underline">
+          {dict.review.moduleOther}
+        </a>
+      </div>
     </div>
   );
 }

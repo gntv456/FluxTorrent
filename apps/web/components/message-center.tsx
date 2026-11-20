@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError, pagedGet } from "@/lib/api-client";
 import { useI18n, apiErrorMessage } from "@/i18n/client";
+import { useDebounced } from "@/lib/hooks/use-debounced";
 import { toast } from "@/components/ui/toast";
 import {
   MessageTable,
@@ -50,7 +51,8 @@ export function MessageCenter() {
   const [rows, setRows] = useState<MessageRow[] | null>(null);
   const [boxes, setBoxes] = useState<PmBox[]>([]);
   const [selected, setSelected] = useState<number[]>([]);
-  const [search, setSearch] = useState("");
+  const [searchDraft, setSearch] = useState("");
+  const search = useDebounced(searchDraft, 400);
   const [onlyUnread, setOnlyUnread] = useState(
     () => params?.get("unread") === "true");
   const [err, setErr] = useState<string | null>(null);
@@ -94,7 +96,10 @@ export function MessageCenter() {
     api
       .get<PmBox[]>("/api/v1/messages/boxes")
       .then(setBoxes)
-      .catch(() => { setBoxes([]); toast.error(dict.common.loadFailed); });
+      .catch((e) => {
+        setBoxes([]);
+        toast.error(dict.common.loadFailed, { requestId: e instanceof ApiError ? e.requestId : undefined });
+      });
   }, [box, folder, search, onlyUnread, page, pageSize, dict]);
 
   useEffect(() => {
@@ -122,9 +127,13 @@ export function MessageCenter() {
     if (openId === m.id) return setOpenId(null);
     setOpenId(m.id);
     if (box !== "inbox" || !m.unread) return;
+    // 只本地更新那一行的未读态：此前 markread 成功后调 load() 会
+    // setRows(null) ⇒ 整表塌成骨架再弹回，展开的正文闪断，且勾选被清空。
+    setRows((prev) =>
+      prev ? prev.map((x) => (x.id === m.id ? { ...x, unread: false } : x)) : prev,
+    );
     api
       .post("/api/v1/messages/markread", { ids: [m.id] })
-      .then(() => load())
       .catch((e) => toast.error(apiErrorMessage(dict, e)));
   }
 

@@ -14,7 +14,7 @@ export function ReportTopicButton({ topicId }: { topicId: number }) {
   const { dict } = useI18n();
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
-  const [msg, setMsg] = useState<string | null>(null);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
 
   async function submit() {
@@ -30,9 +30,9 @@ export function ReportTopicButton({ topicId }: { topicId: number }) {
       });
       setReason("");
       setOpen(false);
-      setMsg(dict.usertools.reportOk);
+      setMsg({ ok: true, text: dict.usertools.reportOk });
     } catch (e) {
-      setMsg(e instanceof ApiError ? e.message : dict.common.networkError);
+      setMsg({ ok: false, text: dict.review.reportFail });
     } finally {
       setBusy(false);
     }
@@ -82,9 +82,16 @@ export function ReportTopicButton({ topicId }: { topicId: number }) {
               {reason.length}/500
             </span>
           </span>
+          {msg && (
+            <p
+              role={msg.ok ? "status" : "alert"}
+              className={`text-xs ${msg.ok ? "text-mint" : "text-coral"}`}
+            >
+              {msg.text}
+            </p>
+          )}
         </span>
       </Modal>
-      {msg && <span className="text-xs text-mint">{msg}</span>}
     </span>
   );
 }

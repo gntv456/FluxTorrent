@@ -32,12 +32,12 @@ export function BoardHead({
   const pillItem = (on: boolean | undefined) =>
     `px-3 py-1 text-xs font-bold transition ${
       on
-        ? "bg-[var(--sky-soft)] text-[var(--sky)]"
-        : "text-sub hover:text-[var(--sky)]"
+        ? "bg-[var(--sky-soft)] text-[var(--sky-text)]"
+        : "text-sub hover:text-[var(--sky-text)]"
     }`;
   return (
     <div className="flex flex-col gap-2">
-      <Link href="/forums" className="text-sm text-[var(--sky)]">
+      <Link href="/forums" className="text-sm text-[var(--sky-text)]">
         {dict.forums.backToForums}
       </Link>
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -124,8 +124,8 @@ export function BoardTagRow({
         aria-current={!tag ? "true" : undefined}
         className={`rounded-full border px-2.5 py-0.5 text-xs font-bold ${
           !tag
-            ? "border-[var(--sky)] bg-[var(--sky-soft)] text-[var(--sky)]"
-            : "border-line text-sub hover:text-[var(--sky)]"
+            ? "border-[var(--sky)] bg-[var(--sky-soft)] text-[var(--sky-text)]"
+            : "border-line text-sub hover:text-[var(--sky-text)]"
         }`}
       >
         {dict.forums.tagAll}

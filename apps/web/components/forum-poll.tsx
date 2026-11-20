@@ -1,6 +1,7 @@
 "use client";
 
 import { PANEL_MD_FLAT } from "@/lib/ui-classes";
+import { fmt } from "@/i18n/config";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -82,6 +83,7 @@ export function PollWidget({
         </span>
         <span className="num text-xs text-sub">
           {dict.forums.pollTotal.replace("{n}", String(total))}
+          {voted && ` · ${dict.review.voted}`}
         </span>
       </div>
       <div className="flex flex-col gap-1.5">

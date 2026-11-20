@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useI18n } from "@/i18n/client";
 
 /** 首页公告（社区新鲜事）的手机端头条卡。
@@ -27,6 +28,8 @@ export function MobileNewsTop({
 }) {
   const { dict } = useI18n();
   const t = dict.home2;
+  // P1：此前「全部公告」是不可点的 span，第 2~N 条公告在手机端完全不可达
+  const [showAll, setShowAll] = useState(false);
   if (news.length === 0) return null;
   const head = news[0];
   // 正文可能带 HTML（0190 允许内嵌视频），摘要只取纯文本
@@ -37,7 +40,14 @@ export function MobileNewsTop({
         <h3>
           <span aria-hidden="true">📣</span> {t.newsTitle}
         </h3>
-        <span>{t.allNews} ›</span>
+        <button
+          type="button"
+          className="min-h-11 px-2 text-link"
+          aria-expanded={showAll}
+          onClick={() => setShowAll((v) => !v)}
+        >
+          {showAll ? dict.review.newsDismiss : dict.review.allNews} ›
+        </button>
       </div>
       <button
         type="button"
@@ -50,6 +60,24 @@ export function MobileNewsTop({
         <b className="mhome-news-top__title">{head.title}</b>
         {plain ? <p className="mhome-news-top__sum">{plain}</p> : null}
       </button>
+      {showAll && news.length > 1 && (
+        <ul className="mhome-news-top__all flex flex-col gap-1 p-2">
+          {news.slice(1).map((n) => (
+            <li key={n.id}>
+              <button
+                type="button"
+                className="min-h-11 w-full text-left text-xs text-link"
+                onClick={() => {
+                  onOpen(n.id);
+                  setShowAll(false);
+                }}
+              >
+                {n.badge ? `[${n.badge}] ` : ""}{n.title}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
       <div className="mhome-news-top__foot">
         <span className="mhome-news-top__unread">
           <i aria-hidden="true" />

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { useDebounced } from "@/lib/hooks/use-debounced";
 import type {
   SubtitleListResp,
   SubtitleRow,
@@ -37,7 +38,8 @@ export function SubtitleBoard({
   const [rows, setRows] = useState<SubtitleRow[]>([]);
   const [total, setTotal] = useState(0);
   const [totalSize, setTotalSize] = useState(0);
-  const [search, setSearch] = useState("");
+  const [searchDraft, setSearch] = useState("");
+  const search = useDebounced(searchDraft, 400);
   const [langCode, setLangCode] = useState("");
   const [letter, setLetter] = useState("");
   const [aiFilter, setAiFilter] = useState("");
@@ -104,7 +106,7 @@ export function SubtitleBoard({
         ),
       )
       .catch(() => {});
-  }, [msg, reloadKey]);
+  }, [reloadKey]);
 
   const rules = kind === "lyric" ? (t.lyricRules ?? t.rules) : t.rules;
 
@@ -135,6 +137,17 @@ export function SubtitleBoard({
         </span>
       </header>
 
+      {/* P0：msg state 此前声明了、传给三处 onMsg，但从未渲染——
+          上传/举报/删除/编辑/评分全部「点了像没点」，玩家会重复点击。
+          现在以 status/alert 行内播报（成功/失败分色）。 */}
+      {msg && (
+        <p
+          role="status"
+          className="mx-4 mt-2 rounded-[var(--r-sm)] px-3 py-2 text-sm text-mint"
+        >
+          {msg}
+        </p>
+      )}
       {failed && (
         <p role="alert" className="px-4 text-xs text-sub">
           {dict.common.loadFailed}

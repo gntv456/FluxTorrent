@@ -26,7 +26,7 @@ const B64URL = (buf: ArrayBuffer) =>
 export function PasskeysCard() {
   const { dict, locale } = useI18n();
   const [rows, setRows] = useState<PasskeyRow[] | null>(null);
-  const [msg, setMsg] = useState<string | null>(null);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
   // P2 清偿：设备命名（prompt 输入槽）/ 解绑（danger）共用一个确认状态机
   const ask = useConfirm();
@@ -119,7 +119,7 @@ export function PasskeysCard() {
         sign_count: 0,
         label,
       });
-      setMsg(dict.usercp.security.webauthnBindOk);
+      setMsg({ ok: true, text: dict.usercp.security.webauthnBindOk });
       setStep(false);
       setPw("");
       setCode("");
@@ -138,7 +138,7 @@ export function PasskeysCard() {
             : nm === "TimeoutError"
               ? sec.webauthnErrTimeout
               : null;
-      setMsg(hint ?? (e instanceof ApiError ? e.message : String(e)));
+      setMsg({ ok: false, text: hint ?? (e instanceof ApiError ? e.message : String(e)) });
     } finally {
       setBusy(false);
     }
@@ -150,7 +150,7 @@ export function PasskeysCard() {
       await api.post("/api/v1/auth/passkeys/remove", { cred_id: credId });
       await load();
     } catch (e) {
-      setMsg(e instanceof ApiError ? e.message : String(e));
+      setMsg({ ok: false, text: e instanceof ApiError ? e.message : String(e) });
     } finally {
       setBusy(false);
     }
@@ -264,7 +264,14 @@ export function PasskeysCard() {
           </button>
         </div>
       ))}
-      {msg && <p className="text-xs text-sub">{msg}</p>}
+      {msg && (
+        <p
+          role={msg.ok ? "status" : "alert"}
+          className={`text-xs ${msg.ok ? "text-mint" : "text-coral"}`}
+        >
+          {msg.text}
+        </p>
+      )}
       <AskDialog {...ask} />
     </section>
   );

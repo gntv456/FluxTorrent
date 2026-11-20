@@ -234,7 +234,7 @@ export function GlobalSearch({
                           <div className="flex flex-col gap-1 text-xs">
                             <a
                               className="text-link"
-                              href={`/requests?title=${encodeURIComponent(q)}`}
+                              href={`/requests?search=${encodeURIComponent(q)}`}
                             >
                               {goRequest} →
                             </a>
