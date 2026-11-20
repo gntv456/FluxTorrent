@@ -42,7 +42,8 @@ export function FriendsActions() {
       // P-314：好友列表拉取失败此前 setRows([]) ⇒ 演成「你一个好友都没有」；
       // 置回 null（本 state 类型本就是 FriendRow[] | null）并用本文件写操作
       // 一直在用的全局 toast 报一句，净增 0 行。
-      setRows(null); toast.error(dict.common.loadFailed);
+      setRows(null);
+      toast.error(dict.common.loadFailed, { requestId: undefined });
     }
   }, [dict]);
 

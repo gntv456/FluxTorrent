@@ -223,7 +223,7 @@ export default async function UsersPage({
                       <span>
                         <Link
                           href={`/users/${m.id}`}
-                          className="font-bold text-ink hover:text-[var(--sky)]"
+                          className="font-bold text-ink hover:text-[var(--sky-text)]"
                         >
                           {m.username}
                         </Link>
@@ -262,7 +262,7 @@ export default async function UsersPage({
                   <td className="text-right">
                     <Link
                       href={`/users/${m.id}`}
-                      className="text-xs font-bold text-[var(--sky)]"
+                      className="text-xs font-bold text-[var(--sky-text)]"
                     >
                       {t.viewHome}
                     </Link>

@@ -1,4 +1,6 @@
 import { getDict } from "@/i18n/server";
+import { ErrorPanel } from "@/components/ui/error-panel";
+import { normalizeError } from "@/lib/render-error";
 import { PageHeader } from "@/components/ui/page-header";
 import { getMedalRarities, getMedals } from "@/lib/data";
 import { MedalWall } from "@/components/medal-wall";
@@ -15,10 +17,15 @@ export default async function MedalWallPage() {
 
   const { dict } = await getDict();
   // 稀有度词表（0143）：角标配色/标签/筛选档位都由它驱动
-  const [rarities, { items: medals }] = await Promise.all([
-    getMedalRarities(),
-    getMedals(),
-  ]);
+  let rarities, medals;
+  try {
+    [rarities, { items: medals }] = await Promise.all([
+      getMedalRarities(),
+      getMedals(),
+    ]);
+  } catch (e) {
+    return <ErrorPanel error={normalizeError(e)} retryHref="/medal-wall" />;
+  }
   return (
     <div className="flex flex-col gap-4">
       <PageHeader

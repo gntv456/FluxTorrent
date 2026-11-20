@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { toast } from "@/components/ui/toast";
+import { ApiError } from "@/lib/api-client";
 
 type TargetType = "user" | "forum" | "topic";
 
@@ -90,8 +92,9 @@ export function FollowButton({
           following: r.following ?? next,
           followers: r.followers ?? st.followers,
         });
-    } catch {
+    } catch (e) {
       setSt(st); // 回滚
+      toast.error(dict.common.networkError, { requestId: e instanceof ApiError ? e.requestId : undefined });
     } finally {
       setBusy(false);
     }

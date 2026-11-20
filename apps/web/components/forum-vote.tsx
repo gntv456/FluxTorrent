@@ -41,9 +41,10 @@ export function PostVoteBar({
         setOn(r.liked);
         setN(r.likes);
       }
-    } catch {
+    } catch (e) {
       setOn(!next);
       setN((x) => x + (next ? -1 : 1));
+      toast.error(apiErrorMessage(dict, e), { requestId: e instanceof ApiError ? e.requestId : undefined });
     } finally {
       setBusy(false);
     }
@@ -101,9 +102,10 @@ export function TopicFavoriteButton({
         setOn(r.faved);
         setN(r.favorites);
       }
-    } catch {
+    } catch (e) {
       setOn(!next);
       setN((x) => x + (next ? -1 : 1));
+      toast.error(apiErrorMessage(dict, e), { requestId: e instanceof ApiError ? e.requestId : undefined });
     } finally {
       setBusy(false);
     }
@@ -236,7 +238,7 @@ export function BountyAcceptButton({
       router.refresh();
     } catch (e) {
       setBusy(false);
-      toast.error(apiErrorMessage(dict, e));
+      toast.error(apiErrorMessage(dict, e), { requestId: e instanceof ApiError ? e.requestId : undefined });
     }
   }
 

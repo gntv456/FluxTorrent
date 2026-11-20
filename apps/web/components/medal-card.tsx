@@ -48,7 +48,8 @@ export function MedalCard({
   currency: string;
   balance?: number | null;
   globalGiftTaxBp?: number;
-  onWearChange: () => void;
+    /** 佩戴态变化：on = 本次是否为「戴上」 */
+  onWearChange?: (on: boolean) => void;
 }) {
   const [open, setOpen] = useState(false);
   const getTypeText =

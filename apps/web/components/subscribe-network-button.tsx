@@ -25,7 +25,7 @@ export function SubscribeNetworkButton({
   const msgT = dict.subtitleGroups;
   const [on, setOn] = useState(initialSubscribed);
   const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   async function toggle() {
     if (busy) return;
@@ -35,14 +35,14 @@ export function SubscribeNetworkButton({
       if (on) {
         await api.post(`/api/v1/networks/${networkId}/unsubscribe`, {});
         setOn(false);
-        setMsg(msgT.unsubOk);
+        setMsg({ ok: true, text: msgT.unsubOk });
       } else {
         await api.post(`/api/v1/networks/${networkId}/subscribe`, {});
         setOn(true);
-        setMsg(msgT.ok);
+        setMsg({ ok: true, text: msgT.ok });
       }
     } catch (e) {
-      setMsg(e instanceof ApiError ? e.message : msgT.failed);
+      setMsg({ ok: false, text: e instanceof ApiError ? e.message : msgT.failed });
     } finally {
       setBusy(false);
     }
@@ -66,8 +66,11 @@ export function SubscribeNetworkButton({
         {on ? `🔔 ${t.subscribed}` : `🔕 ${t.subscribe}`}
       </button>
       {msg && (
-        <span className="text-xs text-sub" role="status">
-          {msg}
+        <span
+          role={msg.ok ? "status" : "alert"}
+          className={`text-xs ${msg.ok ? "text-[var(--success)]" : "text-[var(--danger-text)]"}`}
+        >
+          {msg.text}
         </span>
       )}
     </span>

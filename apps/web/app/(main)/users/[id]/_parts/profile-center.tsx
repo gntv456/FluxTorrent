@@ -20,6 +20,7 @@ export function CenterGrid({
   seedDur,
   prog,
   seedLabel,
+  isSelf,
 }: {
   data: ProfileData;
   locale: Locale;
@@ -34,6 +35,8 @@ export function CenterGrid({
     fmt: (n: number) => string,
   ) => { pct: number; text: string };
   seedLabel: string;
+  /** 访客视角不显示「去勋章墙佩戴」这类本人专属 CTA */
+  isSelf: boolean;
 }) {
   const p = data.profile;
   const nc = data.next_class;
@@ -237,11 +240,13 @@ export function CenterGrid({
         ) : (
           <div className="ux-medal-empty">
             <p className="up-note">{t.noMedals}</p>
-            <Link href="/medal-wall" className="ux-medal-cta">
-              <Icon name="medal" size={16} />
-              <span>{t.wornMedals}</span>
-              <Icon name="chevronRight" size={14} />
-            </Link>
+            {isSelf && (
+              <Link href="/medal-wall" className="ux-medal-cta">
+                <Icon name="medal" size={16} />
+                <span>{t.wornMedals}</span>
+                <Icon name="chevronRight" size={14} />
+              </Link>
+            )}
           </div>
         )}
       </Card>

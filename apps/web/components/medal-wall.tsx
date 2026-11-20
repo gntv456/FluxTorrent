@@ -42,6 +42,7 @@ export function MedalWall({
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
   const [rar, setRar] = useState<string | null>(null);
+  const [hint, setHint] = useState<string | null>(null);
   const [sort, setSort] = useState("count");
   const perPage = 12;
 
@@ -52,6 +53,8 @@ export function MedalWall({
     });
     const kw = q.trim();
     if (kw.length >= 2) params.set("q", kw);
+    // 单字搜索此前被静默丢弃 → 玩家以为搜索坏了
+    if (kw.length === 1) setHint(dict.review.searchTooShort);
     setData(null);
     api
       .get<WallPage>(`/api/v1/medal-wall?${params}`)
@@ -152,11 +155,28 @@ export function MedalWall({
         onRetry={load}
         emptyTitle={t.empty}
       >
+        {hint && (
+          <p role="status" className="text-xs text-[var(--warn)]">
+            {hint}
+            <button
+              type="button"
+              className="ml-2 text-link underline"
+              onClick={() => setHint(null)}
+            >
+              ✕
+            </button>
+          </p>
+        )}
+        {rar && data && data.rows.length > 0 && (
+          <p className="text-xs text-sub">{dict.review.gridOnlyCurrentPage}</p>
+        )}
         {data !== null && data.rows.length > 0 && visible.length === 0 && (
           <EmptyState icon="search" title={t.emptyFilter} compact />
         )}
         {visible.length > 0 && (
           <div className="honor-grid">
+            {/* 名次用 rows 原始位置（不是筛选后的 visible 序号），
+                避免按稀有度筛时名次跳号；筛选只在本页生效并明确提示。 */}
             {rows.map((u, i) => (
               <HonorCard
                 key={u.user_id}

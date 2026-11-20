@@ -122,7 +122,13 @@ export function OfferList({
         >
           <div className="min-w-0">
             <p className="truncate font-bold">
-              {o.torrent_name ?? `#${o.torrent_id ?? "?"}`}
+              {o.torrent_id != null ? (
+                <a href={`/torrent/${o.torrent_id}`} className="text-link">
+                  {o.torrent_name ?? `#${o.torrent_id}`}
+                </a>
+              ) : (
+                o.torrent_name ?? "—"
+              )}
             </p>
             <p className="text-xs text-sub">{o.username ?? "—"}</p>
           </div>

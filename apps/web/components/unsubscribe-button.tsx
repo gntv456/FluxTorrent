@@ -29,11 +29,13 @@ export function UnsubscribeButton({
           ? `/api/v1/networks/${networkId}/unsubscribe`
           : `/api/v1/torrents/groups/${groupId}/unsubscribe`;
       await api.post(url, {});
+      toast.success(dict.review.unsubscribed);
       router.refresh();
     } catch (e) {
-      // P2 清偿：错误反馈 alert → toast.error（request_id 芯片）
-      if (e instanceof ApiError)
-        toast.error(e.message, { requestId: e.requestId });
+      // 网络超时/断网等普通 Error 此前被吞，点按钮毫无反应
+      toast.error(e instanceof ApiError ? e.message : dict.common.networkError, {
+        requestId: e instanceof ApiError ? e.requestId : undefined,
+      });
     } finally {
       setBusy(false);
     }

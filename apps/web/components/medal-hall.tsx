@@ -174,11 +174,8 @@ export function MedalHall({
             currency={currency}
             balance={balance}
             globalGiftTaxBp={globalGiftTaxBp}
-            onWearChange={() =>
-              setWornCount(
-                medals.filter((x) => x.wearing).length +
-                  (m.wearing ? -1 : 1),
-              )
+            onWearChange={(on) =>
+              setWornCount((n) => Math.max(0, n + (on ? 1 : -1)))
             }
           />
         ))}

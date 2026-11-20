@@ -1,4 +1,5 @@
 import { getFriends, getPolls, getOffers } from "@/lib/data";
+import Link from "next/link";
 import { PageHeader } from "@/components/ui/page-header";
 import { ErrorPanel } from "@/components/ui/error-panel";
 import { normalizeError } from "@/lib/render-error";
@@ -50,9 +51,12 @@ export default async function FriendsPage() {
             <ul className="mt-2 flex flex-wrap gap-2">
               {friendRows.map((f) => (
                 <li key={f.username}>
-                  <span className="pill">
+                  <Link
+                    href={`/users?q=${encodeURIComponent(f.username)}`}
+                    className="pill text-link"
+                  >
                     {f.username}
-                  </span>
+                  </Link>
                 </li>
               ))}
             </ul>

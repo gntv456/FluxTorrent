@@ -75,7 +75,11 @@ export default async function UserProfilePage({
   const { dict, locale } = await getDict();
   const t = dict.userProfile2;
   // 词表按键取值（空态文案由 LIST_VIEWS 指定键名）
-  const tt = t as unknown as Record<string, string>;
+  const tt = {
+    ...t,
+    // 第二轮评审补的 noSeeding 键在 review 段（userProfile2 无此键）
+    noSeeding: dict.review.noSeeding,
+  } as unknown as Record<string, string>;
   // B3-4：宠物空挂件（「宠物 Lv.1」占位）已移除。ProfileData 无
   // modules.pet 开关，按任务约定「没有开关就直接隐藏该空块」——不额外请求。
   const p = data.profile;
@@ -197,6 +201,7 @@ export default async function UserProfilePage({
           seedDur={seedDur}
           prog={prog}
           seedLabel={dict.uxOpt.statSeeding}
+          isSelf={!!data.viewer?.self}
         />
       )}
 
@@ -247,20 +252,37 @@ export default async function UserProfilePage({
       )}
 
       {/* 变更记录（0482c）：本人/职员可见；SSR 直拉审计回查，失败静默隐卡 */}
-      {active === "changes" && canSeeChanges && <ChangesSection uid={uid} />}
+      {active === "changes" && canSeeChanges && <ChangesSection uid={uid} dict={dict} />}
     </div>
   );
 }
 
 /** 变更记录（0482c）：SSR 拉取后交共享审计面板渲染（时间/动作/操作者/详情）；
  *  接口 403（会话过期等）时安静降级为空态，不炸整页。 */
-async function ChangesSection({ uid }: { uid: number }) {
+async function ChangesSection({
+  uid,
+  dict,
+}: {
+  uid: number;
+  dict: { review: { sessionExpired: string } };
+}) {
   let rows: AuditEntryRow[] = [];
   try {
     rows = await api.get<AuditEntryRow[]>(
       `/api/v1/users/${encodeURIComponent(uid)}/changes`,
     );
-  } catch {
+  } catch (e) {
+    // 403（会话过期）不该静默成「无记录」——给出重登提示
+    const status = (e as { status?: number })?.status;
+    if (status === 401 || status === 403) {
+      return (
+        <p className="py-4 text-sm text-sub">
+          <a href={"/login?next=" + encodeURIComponent("/users/" + uid)} className="text-link underline">
+            {dict.review.sessionExpired}
+          </a>
+        </p>
+      );
+    }
     rows = [];
   }
   return <UserAuditLogPanel audit={rows} />;

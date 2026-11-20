@@ -32,7 +32,7 @@ export interface ListView {
 /** 各 tab 的表头差异（uploads 带分类/时间，其余同列） */
 export const LIST_VIEWS: ListView[] = [
   { key: "uploads", empty: "noUploads", withMeta: true, publicOnly: true },
-  { key: "seeding", empty: "noUploads" },
+  { key: "seeding", empty: "noSeeding" },
   { key: "leeching", empty: "noLeeching" },
   { key: "completed", empty: "noCompleted" },
   { key: "incomplete", empty: "noIncomplete" },

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { api } from "@/lib/api-client";
 import { useI18n, apiErrorMessage } from "@/i18n/client";
 import { clientUuid } from "@/lib/client-uuid";
@@ -44,12 +45,15 @@ export function MedalActions({
   /** 全站赠送税率（基点，仅用于费率提示） */
   globalGiftTaxBp?: number;
   /** 佩戴态变化回调（父层刷新「已佩戴 n/N」计数） */
-  onWearChange?: () => void;
+  /** 佩戴态变化：on = 本次操作是否为「戴上」——父层据此增减计数，
+   *  不会因「先穿后脱两次」出现 +1-1 漂移 */
+  onWearChange?: (on: boolean) => void;
 }) {
   const { dict } = useI18n();
   const [isOwned, setIsOwned] = useState(owned);
+  const router = useRouter();
   const [isWearing, setIsWearing] = useState(wearing);
-  const [msg, setMsg] = useState<string | null>(null);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [idem] = useState(() => `web-medal-${medalId}-${clientUuid()}`);
   const buyable = getType === 1 && price !== null;
   // 未开售 / 已结束 / 售罄：不给购买按钮，改为状态说明。
@@ -79,9 +83,11 @@ export function MedalActions({
         idempotency_key: idem,
       });
       setIsOwned(true);
-      setMsg(dict.medals.buyOk);
+      setMsg({ ok: true, text: dict.medals.buyOk });
+      // 页头「拥有 n/总」是服务端算的——refresh 同步，否则以为没买到
+      router.refresh();
     } catch (e) {
-      setMsg(apiErrorMessage(dict, e));
+      setMsg({ ok: false, text: apiErrorMessage(dict, e) });
     }
   }
 
@@ -94,10 +100,10 @@ export function MedalActions({
         wear: on,
       });
       setIsWearing(on);
-      setMsg(on ? dict.medals.worn : dict.medals.unworn);
-      onWearChange?.();
+      setMsg({ ok: true, text: on ? dict.medals.worn : dict.medals.unworn });
+      onWearChange?.(on);
     } catch (e) {
-      setMsg(apiErrorMessage(dict, e));
+      setMsg({ ok: false, text: apiErrorMessage(dict, e) });
     }
   }
 
@@ -105,14 +111,14 @@ export function MedalActions({
     ask.open({
       title: dict.medals2.gift,
       label: dict.medals2.giftTo,
-      run: (raw) => void doGift(raw),
+      run: (raw) => doGift(raw),
     });
   }
   async function doGift(input: string) {
     const to = input.trim();
     if (!to) {
-      setMsg(dict.medals2.giftInvalid);
-      return;
+      setMsg({ ok: false, text: dict.medals2.giftInvalid });
+      return false; // 保持弹窗打开，让玩家重新输入
     }
     setMsg(null);
     try {
@@ -123,18 +129,22 @@ export function MedalActions({
           to_user: to,
         },
       );
-      setMsg(dict.medals2.giftOk.replace("{name}", to));
+      setMsg({ ok: true, text: dict.medals2.giftOk.replace("{name}", to) });
       const tax = (r as { tax?: number }).tax ?? 0;
       if (tax > 0) {
-        setMsg(
-          dict.medals2.giftOk.replace("{name}", to) +
+        setMsg({
+          ok: true,
+          text:
+            dict.medals2.giftOk.replace("{name}", to) +
             " " +
             dict.medals2.giftFeeNote.replace("{n}", String(tax)),
-        );
+        });
       }
     } catch (e) {
-      setMsg(apiErrorMessage(dict, e));
+      setMsg({ ok: false, text: apiErrorMessage(dict, e) });
+      return false; // 赠送失败：弹窗不关闭，错误在弹窗内可见
     }
+    return true;
   }
 
   const locked = (
@@ -209,7 +219,14 @@ export function MedalActions({
           </>
         )}
       </div>
-      {msg && <p className="text-xs text-sub">{msg}</p>}
+      {msg && (
+        <p
+          role={msg.ok ? "status" : "alert"}
+          className={`text-xs ${msg.ok ? "text-[var(--success)]" : "text-[var(--danger-text)]"}`}
+        >
+          {msg.text}
+        </p>
+      )}
       <AskDialog {...ask} />
     </div>
   );

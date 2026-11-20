@@ -138,11 +138,9 @@ export interface MedalsEnvelope {
 }
 
 export async function getMedals(): Promise<MedalsEnvelope> {
-  try {
-    return await api.get<MedalsEnvelope>("/api/v1/medals");
-  } catch {
-    return { items: [], max_worn: 3 };
-  }
+  // P2：失败不能回落空数组——「拥有 0/0」会让玩家以为勋章系统没上线。
+  // 让异常冒泡，由页面 ErrorPanel 给出可诊断的错误与重试。
+  return await api.get<MedalsEnvelope>("/api/v1/medals");
 }
 
 /** 勋章稀有度词表（0143）：后台可维护；失败时回落内置兜底，页面不至于空掉 */

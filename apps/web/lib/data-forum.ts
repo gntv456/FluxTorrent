@@ -203,12 +203,10 @@ export async function getFeed(
 }
 
 export async function getMyFollows(): Promise<MyFollows> {
-  const empty: MyFollows = { users: [], forums: [], topics: [] };
-  try {
-    return (await api.get<MyFollows>("/api/v1/follows/mine")) ?? empty;
-  } catch {
-    return empty;
-  }
+  // P2：失败回落空数组会被读成「没关注任何人」——让异常冒泡由页面报错
+  return (await api.get<MyFollows>("/api/v1/follows/mine")) ?? {
+    users: [], forums: [], topics: [],
+  };
 }
 
 /** 论坛标签字典（0123）：公开接口，含 tag_dict 样式列（TagChip 渲染源） */

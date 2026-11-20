@@ -56,7 +56,7 @@ export function TeamPanel() {
   const [data, setData] = useState<ListResp | null>(null);
   const [mine, setMine] = useState<MineResp | null>(null);
   const [busy, setBusy] = useState<number | null>(null);
-  const [msg, setMsg] = useState<string | null>(null);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   // P2 清偿：退队二次确认（danger：贡献期增量不返还）
   const ask = useConfirm();
 
@@ -64,12 +64,13 @@ export function TeamPanel() {
     try {
       setData(await api.get<ListResp>("/api/v1/social/team/list"));
     } catch (e) {
-      setMsg(apiErrorMessage(dict, e));
+      // 后台刷新失败不覆盖刚刚的用户操作成功反馈
+      setMsg((prev) => prev ?? { ok: false, text: apiErrorMessage(dict, e) });
     }
     try {
       setMine(await api.get<MineResp>("/api/v1/social/team/mine"));
     } catch (e) {
-      setMsg(apiErrorMessage(dict, e));
+      setMsg((prev) => prev ?? { ok: false, text: apiErrorMessage(dict, e) });
     }
   }, []);
 
@@ -83,10 +84,10 @@ export function TeamPanel() {
     setMsg(null);
     try {
       await api.post("/api/v1/social/team/join", { team_id: teamId });
-      setMsg(t.joinOk);
+      setMsg({ ok: true, text: t.joinOk });
       await load();
     } catch (e) {
-      setMsg(e instanceof ApiError ? e.message : t.joinFailed);
+      setMsg({ ok: false, text: e instanceof ApiError ? e.message : t.joinFailed });
     } finally {
       setBusy(null);
     }
@@ -98,10 +99,10 @@ export function TeamPanel() {
     setMsg(null);
     try {
       await api.post("/api/v1/social/team/leave", { team_id: teamId });
-      setMsg(t.leaveOk);
+      setMsg({ ok: true, text: t.leaveOk });
       await load();
     } catch (e) {
-      setMsg(e instanceof ApiError ? e.message : t.joinFailed);
+      setMsg({ ok: false, text: e instanceof ApiError ? e.message : t.joinFailed });
     } finally {
       setBusy(null);
     }
@@ -126,10 +127,14 @@ export function TeamPanel() {
     <div className="flex flex-col gap-4">
       {msg && (
         <p
-          className="rounded-[var(--r-md)] bg-sky-soft p-2 text-xs text-ink"
-          role="status"
+          role={msg.ok ? "status" : "alert"}
+          className={`rounded-[var(--r-md)] p-2 text-xs ${
+            msg.ok
+              ? "bg-mint/20 text-ink"
+              : "bg-coral/20 text-[var(--danger-text)]"
+          }`}
         >
-          {msg}
+          {msg.text}
         </p>
       )}
 

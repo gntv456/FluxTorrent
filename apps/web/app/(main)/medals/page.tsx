@@ -2,6 +2,8 @@ import { getMedals, getMedalRarities, getMySpark } from "@/lib/data";
 import { MedalHall } from "@/components/medal-hall";
 import { MedalProgress } from "@/components/medal-progress";
 import { getDict } from "@/i18n/server";
+import { ErrorPanel } from "@/components/ui/error-panel";
+import { normalizeError } from "@/lib/render-error";
 import { fmt } from "@/i18n/config";
 import { requireModule } from "@/components/module-gate";
 import { PageHeader } from "@/components/ui/page-header";
@@ -17,13 +19,17 @@ export default async function MedalsPage() {
   if (gate) return gate;
 
   const { dict } = await getDict();
-  const [{ items: medals, max_worn: maxWorn }, rarities, spark] =
-    await Promise.all([
+  let medalsData, rarities, spark;
+  try {
+    [medalsData, rarities, spark] = await Promise.all([
       getMedals(),
       getMedalRarities(),
-      // 余额预判用（null=匿名不预判）：购买按钮「余额不足」禁用态
       getMySpark(),
     ]);
+  } catch (e) {
+    return <ErrorPanel error={normalizeError(e)} retryHref="/medals" />;
+  }
+  const { items: medals, max_worn: maxWorn } = medalsData;
   const owned = medals.filter((m) => m.owned);
   const wearing = medals.filter((m) => m.wearing);
   // 「当前加成」= 佩戴中勋章的加成之和（0204 多佩戴位）
