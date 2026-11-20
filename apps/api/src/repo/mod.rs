@@ -1,5 +1,4 @@
-//! 仓储层：sqlx 参数化查询（§8.3.1 一律参数化；编译期检查由 CI sqlx prepare 承担）。
-//! 模块化（2026-09-20 repo 分层做实）：单文件 → 目录，后续域按 auth.rs 同模式渐进。
+//! 仓储层：sqlx 参数化查询（§8.3.1）；分层做实（2026-09-20）单文件 → 目录。
 use crate::domain::{new_passkey, UserAccount};
 use crate::errors::{DomainError, DomainResult};
 use sqlx::PgPool;

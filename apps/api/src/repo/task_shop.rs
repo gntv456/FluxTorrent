@@ -24,14 +24,26 @@ pub async fn item_for_buy(
     state: &AppState,
     item_id: i64,
 ) -> DomainResult<Option<ShopItem>> {
-    let row: Option<(i64, String, String, Option<String>, Value, String, i32, f64, i32, i32)> =
-        sqlx::query_as(
-            "SELECT id, name, span, kind, config, require_tier, require_count,                     cost::float8, stock, stock_used              FROM task_shop_items WHERE id = $1",
-        )
-        .bind(item_id)
-        .fetch_optional(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    let row: Option<(
+        i64,
+        String,
+        String,
+        Option<String>,
+        Value,
+        String,
+        i32,
+        f64,
+        i32,
+        i32,
+    )> = sqlx::query_as(
+        "SELECT id, name, span, kind, config, require_tier, require_count, \
+             cost::float8, stock, stock_used \
+             FROM task_shop_items WHERE id = $1",
+    )
+    .bind(item_id)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(row.map(
         |(
             id,
@@ -66,7 +78,9 @@ pub async fn tier_done_count(
     tier: &str,
 ) -> DomainResult<i64> {
     let n: i64 = sqlx::query_scalar(
-        "SELECT count(*) FROM task_claims c          JOIN tasks t ON t.id = c.task_id          WHERE c.user_id = $1 AND t.tier = $2 AND c.status = 1",
+        "SELECT count(*) FROM task_claims c \
+         JOIN tasks t ON t.id = c.task_id \
+         WHERE c.user_id = $1 AND t.tier = $2 AND c.status = 1",
     )
     .bind(user_id)
     .bind(tier)
@@ -83,7 +97,9 @@ pub async fn take_stock(
     item_id: i64,
 ) -> DomainResult<bool> {
     let ok: Option<bool> = sqlx::query_scalar(
-        "UPDATE task_shop_items SET stock_used = stock_used + 1          WHERE id = $1 AND (stock <= 0 OR stock_used < stock)          RETURNING true",
+        "UPDATE task_shop_items SET stock_used = stock_used + 1 \
+         WHERE id = $1 AND (stock <= 0 OR stock_used < stock) \
+         RETURNING true",
     )
     .bind(item_id)
     .fetch_optional(&mut **tx)
@@ -98,7 +114,8 @@ pub async fn release_stock(
     item_id: i64,
 ) -> DomainResult<()> {
     sqlx::query(
-        "UPDATE task_shop_items SET stock_used = GREATEST(0, stock_used - 1)          WHERE id = $1",
+        "UPDATE task_shop_items SET stock_used = GREATEST(0, stock_used - 1) \
+         WHERE id = $1",
     )
     .bind(item_id)
     .execute(db)
@@ -116,7 +133,9 @@ pub async fn insert_order(
     idem: &str,
 ) -> DomainResult<i64> {
     let id: i64 = sqlx::query_scalar(
-        "INSERT INTO task_shop_orders (user_id, item_id, cost, idempotency_key)          VALUES ($1, $2, $3, $4) RETURNING id",
+        "INSERT INTO task_shop_orders \
+         (user_id, item_id, cost, idempotency_key) \
+         VALUES ($1, $2, $3, $4) RETURNING id",
     )
     .bind(user_id)
     .bind(item_id)
@@ -140,7 +159,8 @@ pub async fn order_by_idem(
     idem: &str,
 ) -> DomainResult<Option<(i64, bool, i64, i64)>> {
     let row: Option<(i64, bool, i64, i64)> = sqlx::query_as(
-        "SELECT id, effect_applied, item_id, cost FROM task_shop_orders          WHERE user_id = $1 AND idempotency_key = $2",
+        "SELECT id, effect_applied, item_id, cost FROM task_shop_orders \
+         WHERE user_id = $1 AND idempotency_key = $2",
     )
     .bind(user_id)
     .bind(idem)
@@ -156,7 +176,8 @@ pub async fn mark_effect_applied(
     order_id: i64,
 ) -> DomainResult<()> {
     sqlx::query(
-        "UPDATE task_shop_orders SET effect_applied = true          WHERE id = $1 AND NOT effect_applied",
+        "UPDATE task_shop_orders SET effect_applied = true \
+         WHERE id = $1 AND NOT effect_applied",
     )
     .bind(order_id)
     .execute(&state.repo.db)

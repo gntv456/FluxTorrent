@@ -50,8 +50,7 @@ mod http;
 mod i18n;
 mod i18n_validation;
 mod invite_http;
-// 抓轨日志识别与打分（0312 音乐站 Logchecker）
-mod iyuu_bridge;
+mod iyuu_bridge; // 抓轨日志识别与打分（0312 音乐站 Logchecker）
 mod iyuu_icon;
 mod logcheck;
 mod mailer;
