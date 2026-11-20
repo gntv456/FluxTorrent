@@ -1,4 +1,4 @@
--- 0115: 任务商店真实兑换端点（五问评审 P1 收口）。
+-- 0508: 任务商店真实兑换端点（五问评审 P1 收口）。
 -- task_shop_items 原只有展示字段（name/span/tier/count/cost/stock），
 -- 没有任何发放通路——UI 长期显示「即将上线」。本迁移按既有商城发放体系
 -- （flux_shared::apply_item_effect）补齐 kind/config、库存已用计数与订单表。

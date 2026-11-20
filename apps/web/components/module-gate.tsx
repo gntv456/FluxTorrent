@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getDict } from "@/i18n/server";
 import { getSiteProfile } from "@/lib/site-profile";
 
@@ -28,12 +29,12 @@ export async function requireModule(
         {dict.mod.disabledBody}
       </p>
       <div className="mt-4 flex justify-center gap-3">
-        <a href="/" className="text-link underline">
+        <Link href="/" className="text-link underline">
           {dict.review.moduleBackHome}
-        </a>
-        <a href="/help" className="text-link underline">
+        </Link>
+        <Link href="/help" className="text-link underline">
           {dict.review.moduleOther}
-        </a>
+        </Link>
       </div>
     </div>
   );

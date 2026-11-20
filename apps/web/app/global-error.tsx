@@ -13,6 +13,7 @@
  *  这样既四语齐全，又不引入任何硬编码文案（i18n_guard 零新增）。
  */
 import { useEffect } from "react";
+import Link from "next/link";
 import { LOCALE_COOKIE, type Locale } from "@/i18n/config";
 import { reviewZh, reviewTw, reviewEn, reviewJa } from "@/i18n/review";
 
@@ -67,12 +68,12 @@ export default function GlobalError({
             <button type="button" className="ge-btn ge-btn--primary" onClick={reset}>
               {w.geRetry}
             </button>
-            <a href="/" className="ge-btn ge-btn--ghost">
+            <Link href="/" className="ge-btn ge-btn--ghost">
               {w.geHome}
-            </a>
-            <a href="/contactstaff" className="ge-link">
+            </Link>
+            <Link href="/contactstaff" className="ge-link">
               {w.geContact}
-            </a>
+            </Link>
           </div>
           <p className="ge-ref">
             {w.geRef}: <code>{error.digest ?? "-"}</code>
