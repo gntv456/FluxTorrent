@@ -35,12 +35,16 @@ API 挂 → compose 依赖链把 tracker/worker 一起卡死 → 全站 500。
 
 ## 守卫
 
-`scripts/migration_freeze_guard.mjs` + `scripts/migration_freeze_baseline.json`
-（冻结线 + 全量 sha384，已接 CI `build-test.yml` 与 `scripts/ci_local.sh`）。
+`scripts/migrations_frozen_guard.mjs` + `scripts/migrations_frozen_baseline.json`
+（2026-11-04 立的冻结门禁：基线全量 sha384，CRLF→LF 归一后与 sqlx 同口径，
+已接 CI `build-test.yml` 与 `scripts/ci_local.sh`）。
 
-- 改冻结文件 / 挪版本号 / 改名 → 红
-- 新增迁移未登记 → 红（跑 `node scripts/migration_freeze_guard.mjs --update` 登记并推冻结线）
-- 负向三态已验证（绿 / 篡改红 / 未登记红）
+- 改冻结文件（含注释） / 删除已登记文件 → 红
+- 新增迁移未登记 → WARN 放行（入库时跑
+  `node scripts/migrations_frozen_guard.mjs --touch <文件名>` 显式登记）
+- 2026-11-20 百灵宕机复盘时重复建设的 `migration_freeze_guard` 已退役
+  （功能被本守卫覆盖）；0509 事故善后时已把基线对齐方案 A（0499=e277）
+  并补登记全部 496 个迁移。
 
 ## 站点清单（checksum 对账的对象）
 

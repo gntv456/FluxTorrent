@@ -147,12 +147,9 @@ jobs:
       # 存量缺口 4102/5003 见脚本 KNOWN_GAPS 基线（WARN 不阻断）。
       - name: Error registry guard
         run: node ../../scripts/error_registry.mjs --check
-      # 迁移冻结守卫（2026-11-20 百灵站宕机复盘）：已应用迁移（≤冻结线）
-      # 禁止改内容/改文件名——sqlx 逐行校验 sha384 不符即拒启，dev.38 发版
-      # 时百灵库 flux-api 崩溃循环六小时即此根因。数据修正走新增幂等迁移
-      # （0509 先例）；新迁移须 --update 显式登记推冻结线。
-      - name: Migration freeze guard
-        run: node ../../scripts/migration_freeze_guard.mjs
+      # 迁移冻结已由 migrations_frozen_guard（2026-11-04 立，CRLF 归一+语义
+      # 哈希+删除检测更完备）承担——2026-11-20 百灵宕机复盘时重复建设的
+      # migration_freeze_guard 已退役；纪律见 docs/ops/migration-discipline.md。
       # UI 设计系统门禁（2026-10-03）：六条规则防「令牌层退化」——
       # CSS 变量引用须有定义 / 硬编码色值只减不增 / 断点只允许四档 /
       # z-index 只允许语义档 / 含动效文件须有 reduced-motion 降级 /

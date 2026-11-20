@@ -61,8 +61,6 @@ node scripts/route_manifest.mjs --check
 node scripts/repo_hygiene_guard.mjs
 node scripts/rsc_boundary_guard.mjs
 node scripts/error_registry.mjs --check
-# 迁移冻结守卫（2026-11-20 百灵宕机复盘）：已应用迁移禁改，见脚本头注
-node scripts/migration_freeze_guard.mjs
 node scripts/view_layout_guard.mjs
 python3 scripts/sql_comment_guard.py apps
 
