@@ -1,6 +1,8 @@
+"use client";
+
 export { ClearCachePanel } from "./admin-clearcache";
 
-"use client";
+
 
 import { BTN_MD_SKY, INPUT_CLOUD } from "@/lib/ui-classes";
 
