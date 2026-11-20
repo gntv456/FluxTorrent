@@ -38,6 +38,10 @@ const EXEMPT = new Set([
   "Spec.num",
   "FoldMobile.count",
   "Badge.className",
+  // 详情页错误面板给 retryHref（RSC 链接重试）而非 onRetry 回调（不可跨
+  // RSC 边界序列化）；title 走 desc 定制文案——均为有意不传（327bfd79）。
+  "ErrorPanel.onRetry",
+  "ErrorPanel.title",
 ]);
 
 const strip = process.argv.includes("--strip")
