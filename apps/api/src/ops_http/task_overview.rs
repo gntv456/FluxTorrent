@@ -18,8 +18,19 @@ pub(super) async fn task_overview(
     let uid = auth.id;
 
     // 商店
-    let shop: Vec<(i64, String, String, Option<String>, String, i32, f64, i32, i32)> = sqlx::query_as(
-        "SELECT id, name, span, kind, require_tier, require_count, cost::float8, stock, stock_used \
+    let shop: Vec<(
+        i64,
+        String,
+        String,
+        Option<String>,
+        String,
+        i32,
+        f64,
+        i32,
+        i32,
+    )> = sqlx::query_as(
+        "SELECT id, name, span, kind, require_tier, require_count, \
+                cost::float8, stock, stock_used \
          FROM task_shop_items ORDER BY sort",
     )
     .fetch_all(&state.repo.db)
@@ -49,19 +60,25 @@ pub(super) async fn task_overview(
         .map_err(|e| DomainError::Internal(e.into()))?;
     let feed_json: Vec<serde_json::Value> = feed
         .iter()
-        .map(|(u, name, ts)| serde_json::json!({ "user": u, "task": name, "at": ts.to_rfc3339() }))
+        .map(|(u, name, ts)| {
+            serde_json::json!({
+                "user": u, "task": name, "at": ts.to_rfc3339()
+            })
+        })
         .collect();
 
     // 统计：进行中/已完成/失败 + 各档完成率
     let (ongoing, done, failed): (i64, i64, i64) = sqlx::query_as(
-        "SELECT count(*) FILTER (WHERE status = 0), count(*) FILTER (WHERE status = 1), \
+        "SELECT count(*) FILTER (WHERE status = 0), \
+                count(*) FILTER (WHERE status = 1), \
                 count(*) FILTER (WHERE status = 2) FROM task_claims",
     )
     .fetch_one(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let tier_stats: Vec<(Option<String>, i64, i64)> = sqlx::query_as(
-        "SELECT t.tier, count(*) AS total, count(*) FILTER (WHERE c.status = 1) AS done \
+        "SELECT t.tier, count(*) AS total, \
+                count(*) FILTER (WHERE c.status = 1) AS done \
          FROM task_claims c JOIN tasks t ON t.id = c.task_id \
          GROUP BY t.tier ORDER BY t.tier NULLS LAST",
     )
@@ -76,7 +93,9 @@ pub(super) async fn task_overview(
             } else {
                 (*done as f64 / *total as f64) * 100.0
             };
-            serde_json::json!({ "tier": tier, "total": total, "done": done, "pct": pct })
+            serde_json::json!({
+                "tier": tier, "total": total, "done": done, "pct": pct
+            })
         })
         .collect();
 
@@ -87,7 +106,10 @@ pub(super) async fn task_overview(
     Ok(ok(serde_json::json!({
         "shop": shop_json,
         "feed": feed_json,
-        "stats": { "ongoing": ongoing, "done": done, "failed": failed, "tiers": tiers_json },
+        "stats": {
+            "ongoing": ongoing, "done": done, "failed": failed,
+            "tiers": tiers_json
+        },
         "my_records": mine_json,
     })))
 }
@@ -183,8 +205,12 @@ pub(super) async fn task_claim(
         SELECT $1, $2,
                u.uploaded,
                u.downloaded,
-               COALESCE((SELECT sum(s.seeded_seconds) FROM snatches s WHERE s.user_id = u.id), 0),
-               (SELECT count(*) FROM torrents t WHERE t.owner_id = u.id AND t.approval_status = 1)
+               COALESCE(
+                   (SELECT sum(s.seeded_seconds) FROM snatches s
+                    WHERE s.user_id = u.id),
+                   0),
+               (SELECT count(*) FROM torrents t
+                WHERE t.owner_id = u.id AND t.approval_status = 1)
         FROM users u
         WHERE u.id = $2
           AND (SELECT count(*) FROM task_claims tc WHERE tc.task_id = $1) < $3

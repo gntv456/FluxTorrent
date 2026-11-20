@@ -73,7 +73,9 @@ pub fn render_validation_key(
 
 #[cfg(test)]
 mod tests {
-    use super::{render_validation_key, template_count};
+    use super::render_validation_key;
+    use super::template_count;
+    use crate::i18n::Locale;
 
     /// 表非空：机制落地至少有一条模板（空表 = 忘了 TSV 或解析坏了）
     #[test]

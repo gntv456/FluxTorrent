@@ -11,7 +11,8 @@
 //   2. 只允许新增更大版本号的文件（迁移只增不改）。
 //   3. 需要修正已应用迁移的数据效果 → 新增幂等迁移（见 0509 善后先例）。
 //
-// 基线 migration_freeze_baseline.json：{"frozen_version": N, "sha384": {file: hex}}
+// 基线 migration_freeze_baseline.json：
+// {"frozen_version": N, "sha384": {file: hex}}
 // 首次生成/合法新增版本后重算：node scripts/migration_freeze_guard.mjs --update
 // （--update 只追加新版本并推进冻结线，绝不改写已冻结条目）。
 
@@ -36,7 +37,9 @@ try {
 } catch {
   if (!UPDATE) {
     console.error(
-      `[migration_freeze] 基线缺失：${BASELINE}。首跑请用 --update 生成（生成前先确认工作树里迁移目录是「已发布状态」，没有在制改动）。`,
+      `[migration_freeze] 基线缺失：${BASELINE}。首跑请用 --update 生成
+      ` +
+        `（生成前先确认工作树里迁移目录是「已发布状态」，没有在制改动）。`,
     );
     process.exit(1);
   }
@@ -110,10 +113,12 @@ if (UPDATE) {
   // 稳定排序输出，避免键顺序抖动造成无谓 diff
   writeFileSync(BASELINE, JSON.stringify(baseline, null, 2) + "\n");
   console.log(
-    `[migration_freeze] 基线已更新：冻结线 ${prev} → ${baseline.frozen_version}，共 ${files.length} 个迁移文件。`,
+    `[migration_freeze] 基线已更新：冻结线 ${prev} → ${baseline.frozen_version}，` +
+      `共 ${files.length} 个迁移文件。`,
   );
 } else {
   console.log(
-    `[migration_freeze] 通过：${files.length} 个迁移文件，冻结线 v${baseline.frozen_version}，全部与基线一致。`,
+    `[migration_freeze] 通过：${files.length} 个迁移文件，` +
+      `冻结线 v${baseline.frozen_version}，全部与基线一致。`,
   );
 }
