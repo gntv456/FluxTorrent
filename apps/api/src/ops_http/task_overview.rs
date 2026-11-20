@@ -227,7 +227,9 @@ pub(super) async fn task_claim(
             DomainError::Validation("已认领过该任务".into())
         }
         // 占位未插入只可能是名额满（用户存在性与等级已在前置校验确认）
-        sqlx::Error::RowNotFound => DomainError::Validation("认领名额已满".into()),
+        sqlx::Error::RowNotFound => {
+            DomainError::Validation("认领名额已满".into())
+        }
         other => DomainError::Internal(other.into()),
     })?;
 
