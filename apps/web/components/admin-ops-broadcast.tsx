@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { AUDIENCES, aAudienceLabel } from "@/components/admin-ops/broadcast-audiences";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
@@ -22,19 +23,6 @@ interface FunnelRow {
   firstSeed: number;
   firstCheckin: number;
 }
-
-const AUDIENCES = [
-  ["all", "全员"],
-  ["active30", "30 天活跃"],
-  ["dormant90", "90 天未活跃"],
-  ["vip", "VIP/捐赠"],
-  ["class:1", "等级≥1"],
-  ["class:5", "等级≥5"],
-  ["class:98", "等级≥98"],
-] as const;
-
-const aAudienceLabel = (key: string) =>
-  AUDIENCES.find(([k]) => k === key)?.[1] ?? key;
 
 export function AdminOpsBroadcast() {
   const { dict } = useI18n();

@@ -1,3 +1,5 @@
+export { ClearCachePanel } from "./admin-clearcache";
+
 "use client";
 
 import { BTN_MD_SKY, INPUT_CLOUD } from "@/lib/ui-classes";
@@ -247,58 +249,6 @@ export function FreeleechPanel() {
         })}
         busy={busy}
       />
-    </section>
-  );
-}
-
-/** 清除缓存：对应 POST /admin/clearcache（清除限流等运行期缓存键） */
-export function ClearCachePanel() {
-  const { dict } = useI18n();
-  const a = dict.admin as unknown as Record<string, string>;
-  const t = dict.adminPromo;
-  const [msg, setMsg] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  async function run() {
-    setBusy(true);
-    try {
-      const r = await api.post<{ cleared: number }>(
-        "/api/v1/admin/clearcache",
-        {},
-      );
-      setMsg(fmt(t.cacheCleared, { n: r.cleared }));
-    } catch (e) {
-      setMsg(
-        e instanceof ApiError
-          ? (apiErrorMessage(dict, e))
-          : a.actionFailed,
-      );
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <section className="brand-panel p-4">
-      <h2 className="mb-2 text-base font-bold">{t.cacheTitle}</h2>
-      <p className="mb-3 text-xs text-sub">{t.cacheIntro}</p>
-      {msg && (
-        <p
-          className={
-            "mb-3 rounded-[var(--r-md)] bg-[var(--surface-sunken)] " +
-            "p-2 text-xs"
-          }
-        >
-          {msg}
-        </p>
-      )}
-      <button
-        disabled={busy}
-        onClick={run}
-        className={BTN_MD_SKY}
-      >
-        {t.cacheBtn}
-      </button>
     </section>
   );
 }

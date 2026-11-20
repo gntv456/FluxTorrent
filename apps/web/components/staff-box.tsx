@@ -10,15 +10,15 @@ import {
   type StaffMsg,
 } from "@/components/staff-box-desk";
 import { TicketPanel } from "@/components/staff-box-tickets";
+import { useStaffTickets } from "@/components/staff-box-ticket-hook";
 import { PmList, PmReplyForm } from "@/components/staff-box-pm";
 import { ErrorPanel } from "@/components/ui/error-panel";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { fmt } from "@/i18n/config";
 
-// 管理组信箱（同类站 staffbox.php 口径）：与管理组成员的往来短讯，支持回复
-// 0078 工单化：新增「工单」视图（stafftickets 四态流转 + 指派 + 优先级）。
-// 拆出：契约/咨询工作台表格 @/components/staff-box-desk、
-// 工单面板 @/components/staff-box-tickets、私信视图 @/components/staff-box-pm。
+// 管理组信箱（staffbox.php 口径）：与管理组成员的往来短讯+回复。
+// 0078 工单化：工单视图（stafftickets 四态流转+指派+优先级）。
+// 拆件：desk（契约/咨询表格）/tickets/pm 三子模块。
 
 export function StaffBox() {
   const { dict } = useI18n();
@@ -30,14 +30,12 @@ export function StaffBox() {
   const [deskSel, setDeskSel] = useState<number[]>([]);
   const [answeringId, setAnsweringId] = useState<number | null>(null);
   const [answerText, setAnswerText] = useState("");
-  // 工单视图
-  const [ticketStatus, setTicketStatus] = useState<string>(""); // ""=全部
-  const { ticketRows, ticketErr, loadTickets } =
-    useTickets(ticketStatus);
-  const [ticketMsg, setTicketMsg] = useState<string | null>(null);
-  const [ticketBusy, setTicketBusy] = useState(false);
-  const [ticketEdit, setTicketEdit] = useState<number | null>(null);
-  const [ticketForm, setTicketForm] = useState({ priority: "", ticket_status: "", assign: "" });
+  const tkState = useStaffTickets(tk.updated, dict.common.networkError);
+  const {
+    ticketStatus, setTicketStatus, ticketRows, ticketErr, loadTickets,
+    ticketMsg, ticketBusy, ticketEdit, setTicketEdit, ticketForm, setTicketForm,
+    updateTicket: updateTicketRaw,
+  } = tkState;
   const [rows, setRows] = useState<MessageRow[] | null>(null);
   const [deskErr, setDeskErr] = useState<unknown>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -53,14 +51,8 @@ export function StaffBox() {
     setDeskErr(null);
     api
       .get<StaffMsg[]>(`/api/v1/staffmessages?answered=${deskTab}`)
-      .then((r) => {
-        setDeskRows(r);
-        setDeskSel([]);
-      })
-      .catch((e) => {
-        setDeskErr(e);
-        setDeskRows([]);
-      });
+      .then((r) => { setDeskRows(r); setDeskSel([]); })
+      .catch((e: unknown) => { setDeskErr(e); setDeskRows([]); });
     api
       .get<MessageRow[]>("/api/v1/messages/staff")
       .then(setRows)
@@ -78,26 +70,7 @@ export function StaffBox() {
     if (view === "ticket") loadTickets();
   }, [view, loadTickets]);
 
-  async function updateTicket(id: number) {
-    setTicketBusy(true);
-    setTicketMsg(null);
-    try {
-      await api.post("/api/v1/stafftickets/update", {
-        id,
-        priority: ticketForm.priority !== "" ? Number(ticketForm.priority) : undefined,
-        ticket_status: ticketForm.ticket_status !== "" ? Number(ticketForm.ticket_status) : undefined,
-        assign: ticketForm.assign,
-      });
-      setTicketMsg(tk.updated);
-      setTicketEdit(null);
-      setTicketForm({ priority: "", ticket_status: "", assign: "" });
-      loadTickets();
-    } catch (e) {
-      setTicketMsg(e instanceof ApiError ? e.message : dict.common.networkError);
-    } finally {
-      setTicketBusy(false);
-    }
-  }
+  const updateTicket = (id: number) => updateTicketRaw(id);
 
   async function sendAnswer(id: number) {
     if (!answerText.trim()) return;

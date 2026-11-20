@@ -1,5 +1,6 @@
 "use client";
 
+import type { TeamRow, Member, MineRow, ListResp, MineResp } from "@/components/team-panel-types";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { api, ApiError } from "@/lib/api-client";
@@ -16,39 +17,6 @@ import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
  * 与 /resurrections 的关系：那边是单人认领死种；这里是多人协作保种，
  * 复用同一套 resurrections 任务本体（挂 team_id），奖励按贡献分摊。 */
 
-type TeamRow = {
-  team_id: number;
-  torrent_id: number;
-  torrent_name: string;
-  leader_name: string;
-  member_count: number;
-  team_size_max: number;
-  deadline_at: string | null;
-  seeders: number;
-  joined: boolean;
-};
-
-type Member = {
-  uid: number;
-  username: string;
-  is_leader: boolean;
-  join_status: number;
-  delta_seconds: number;
-};
-
-type MineRow = {
-  team_id: number;
-  status: number;
-  team_size_max: number;
-  torrent_id: number | null;
-  torrent_name: string | null;
-  members: Member[];
-  /// 当前用户是否是队长（决定是否给出「退出」按钮）
-  viewer_is_leader: boolean;
-};
-
-type ListResp = { enabled: boolean; list: TeamRow[] };
-type MineResp = { enabled: boolean; list: MineRow[] };
 
 export function TeamPanel() {
   const { dict, locale } = useI18n();

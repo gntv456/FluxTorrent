@@ -8,15 +8,12 @@ import { apiErrorMessage, useI18n } from "@/i18n/client";
 import { toast } from "@/components/ui/toast";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
-/** 种子行操作列（同类站口径）：下载钮 + ⋮ 下拉菜单（收藏 / 编辑 / 删除）。
- *  编辑/删除对无权者后端会拒（owner 或 staff），前端不预判权限、按需提示错误。
- *  菜单用 fixed 定位（0145 修复）：.nexus-table 有 overflow:hidden（圆角裁剪）、
- *  滚动包裹层 overflow-x:auto 连带把 y 也变 auto——种子少时最后一行的下拉菜单
- *  伸出表格底边即被裁。fixed 按按钮实测坐标定位可逃离全部祖先裁剪；
- *  下方空间不足自动向上翻；打开期间页面/容器滚动即关闭（避免菜单悬空错位）。
- *  反馈协议（DS-PLAN-01 W-19）：删除确认走 ConfirmDialog（danger + 种子名
- *  二次输入），收藏/下载失败走 toast——原 window.confirm/alert 与行内 msg
- *  全部退役（存量 confirm/alert「触碰即迁」纪律）。 */
+/** 种子行操作列（同类站口径）：下载钮 + ⋮ 下拉菜单（收藏/编辑/删除）。
+ *  编辑/删除对无权者后端会拒（owner 或 staff），前端不预判权限、按需提示。
+ *  菜单 fixed 定位（0145）：.nexus-table overflow:hidden + 外层 overflow-x:auto
+ *  连带裁 y——种子少时末行下拉被裁；fixed 按钮实测坐标可逃离全部祖先裁剪，
+ *  下方空间不足自动上翻；打开期间滚动即关闭。反馈协议（W-19）：删除确认走
+ *  ConfirmDialog（danger + 种子名二次输入），收藏/下载失败走 toast。 */
 export function TorrentActions({
   torrentId,
   torrentName,
@@ -47,10 +44,7 @@ export function TorrentActions({
   /** 打开菜单：按 ⋮ 钮的视口坐标计算 fixed 定位；下沿空间不足（估高 128px）改向上翻 */
   function openMenu() {
     const r = moreBtnRef.current?.getBoundingClientRect();
-    if (!r) {
-      setOpen(true);
-      return;
-    }
+    if (!r) return setOpen(true);
     const EST_H = 164; // 4 项 ×36px + 内边距，量级估算即可（翻向判断容差）
     const top =
       window.innerHeight - r.bottom < EST_H + 12
@@ -182,8 +176,9 @@ export function TorrentActions({
     setBusy(true);
     try {
       const data = await api.getBlob(`/api/v1/torrents/${torrentId}/download`);
-      const blob = new Blob([data], { type: "application/x-bittorrent" });
-      const url = URL.createObjectURL(blob);
+      const url = URL.createObjectURL(
+        new Blob([data], { type: "application/x-bittorrent" }),
+      );
       const a = document.createElement("a");
       a.href = url;
       a.download = `${torrentId}.torrent`;
