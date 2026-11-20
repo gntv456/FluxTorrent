@@ -29,12 +29,16 @@ function PetLogBody({ embedded = false }: { embedded?: boolean }) {
   const t = dict.games.pet as Record<string, string>;
   const sub = dict.games.sub;
   const [data, setData] = useState<PetLog | null>(null);
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     void api
       .get<PetLog>("/api/v1/games/pet/log")
-      .then(setData)
-      .catch(() => {});
+      .then((r) => {
+        setData(r);
+        setFailed(false);
+      })
+      .catch(() => setFailed(true));
   }, []);
 
   const actionLabel = (a: string) =>
@@ -71,7 +75,24 @@ function PetLogBody({ embedded = false }: { embedded?: boolean }) {
       )}
       <section className={PANEL_LG}>
         <h2 className="mb-3 font-display text-base">{sub.recentTitle}</h2>
-        {!data ? (
+        {failed ? (
+          <p role="alert" className="text-sm text-[var(--danger-text)]">
+            {dict.review.loadFailedRetry}
+            <button
+              type="button"
+              className="ml-2 text-link underline"
+              onClick={() => {
+                setFailed(false);
+                setData(null);
+                void api.get<PetLog>("/api/v1/games/pet/log").then((r) => {
+                  setData(r);
+                }).catch(() => setFailed(true));
+              }}
+            >
+              {dict.common.retry}
+            </button>
+          </p>
+        ) : !data ? (
           <p className="text-sm text-sub">…</p>
         ) : data.items.length === 0 ? (
           <p className="text-sm text-sub">{t.logEmpty}</p>

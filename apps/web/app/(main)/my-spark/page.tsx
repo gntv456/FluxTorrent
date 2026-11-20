@@ -37,6 +37,7 @@ export default function MySparkPage() {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [err, setErr] = useState<string | null>(null);
+  const [ledgerLoading, setLedgerLoading] = useState(true);
   // 近期收支固定取第一页（最近 50 笔），翻页只换表格不换合计
   const [summary, setSummary] = useState<Summary | null>(null);
   // 样图 § my-spark 的「兑换邀请（15,000）」：价格取 /invites/status 的
@@ -60,6 +61,7 @@ export default function MySparkPage() {
   const loggedIn = mounted && hasSessionCookie();
 
   const load = useCallback(() => {
+    setErr(null); // 重试时先清旧错误，否则错误态会盖住新数据/骨架
     api
       .get<SparkInfo>("/api/v1/me/spark")
       .then(setInfo)
@@ -70,16 +72,19 @@ export default function MySparkPage() {
       )
       .then((d) => setRedeemPrice(d.redeem_price ?? null))
       .catch(() => setRedeemPrice(null));
+    setLedgerLoading(true);
     api
       .get<LedgerEnvelope>(`/api/v1/me/spark/ledger?page=${page}`)
       .then((d) => {
         setRows(d.items);
         setTotal(d.total);
+        setLedgerLoading(false);
         if (page === 1) setSummary(sums(d.items));
       })
       .catch((e) => {
         setErr(e instanceof ApiError ? e.message : dict.common.loadFailed);
         setRows([]);
+        setLedgerLoading(false);
       });
   }, [page, dict]);
   useEffect(load, [load]);
@@ -103,9 +108,15 @@ export default function MySparkPage() {
         <h1 className="font-display text-2xl">
           {t.title.replace("{magic}", currency)}
         </h1>
-        <p className="brand-panel p-4 text-sm text-sub">
-          {dict.common.pleaseLogin}
-        </p>
+        <div className="brand-panel flex flex-col items-start gap-2 p-4 text-sm text-sub">
+          <span>{dict.common.pleaseLogin}</span>
+          <a
+            href="/login?next=%2Fmy-spark"
+            className="min-h-11 rounded-full bg-sky px-4 font-bold text-[var(--text-on-accent)]"
+          >
+            {dict.review.loginAndContinue}
+          </a>
+        </div>
       </div>
     );
   }
@@ -230,6 +241,7 @@ export default function MySparkPage() {
           setPage={setPage}
           summary={summary}
           err={err}
+          loading={ledgerLoading}
           onRetry={load}
         />
       </TabPanel>

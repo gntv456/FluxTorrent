@@ -72,9 +72,13 @@ export default function BigSmallPage({
   /** 本次会话已完成的局数（防沉迷软提示用） */
   const [sessionPlays, setSessionPlays] = useState(0);
   const [err, setErr] = useState<string | null>(null);
+  // P0-5：网络错误保留幂等键供原键重试
+  const [unknown, setUnknown] = useState(false);
   const [tab, setTab] = useState("play");
   const [reduced, setReduced] = useState(false);
   const idem = useRef<string>("");
+  // 记住上次下注方向，原键重试时复用（而不是强制 small）
+  const lastGuess = useRef<"small" | "big">("small");
   const timer = useRef<number | null>(null);
 
   useEffect(() => {
@@ -108,8 +112,15 @@ export default function BigSmallPage({
   // 近 N 局统计（按局聚合的战绩算，不含流水噪音）
   const stats = hist.reduce(
     (a, r) => {
-      if (r.net > 0) a.w += 1;
-      else if (r.net === 0) a.t += 1;
+      // 豹子按三同点数判（与路单页同口径 number % 111 === 0），
+      // 此前把 net===0（返本/平局）误当豹子次数，统计与路单自相矛盾。
+      const isTriple =
+        r.number != null &&
+        r.number >= 111 &&
+        r.number <= 666 &&
+        r.number % 111 === 0;
+      if (isTriple) a.t += 1;
+      else if (r.net > 0) a.w += 1;
       else a.l += 1;
       return a;
     },
@@ -128,15 +139,16 @@ export default function BigSmallPage({
     });
   }
 
-  async function guess(g: "small" | "big") {
+  async function guess(g: "small" | "big", reuse = false) {
     if (busy) return;
+    if (!reuse) lastGuess.current = g;
     setBusy(true);
     setErr(null);
     setFlash(null);
     setRes(null);
     setNum(null);
-    idem.current =
-      clientUuid();
+    setUnknown(false);
+    if (!reuse || !idem.current) idem.current = clientUuid();
     try {
       const r = await api.post<GuessResult>("/api/v1/games/bigsmall", {
         bet,
@@ -188,6 +200,9 @@ export default function BigSmallPage({
             : (apiErrorMessage(dict, e))
           : dict.common.networkError,
       );
+      if (!(e instanceof ApiError) || (e.status ?? 0) === 0 || (e.status ?? 0) >= 500) {
+        setUnknown(true);
+      }
       setBusy(false);
     }
   }
@@ -282,6 +297,18 @@ export default function BigSmallPage({
             ]}
           />
           {err && <p className="text-xs text-[var(--danger-text)]">{err}</p>}
+          {unknown && (
+            <div className="rounded-[var(--r-sm)] border border-[var(--compat-orange)] p-2 text-xs text-ink">
+              <p>{dict.review.resultUnknownBody}</p>
+              <button
+                type="button"
+                className="mt-1 min-h-11 rounded-full bg-sky px-3 font-bold text-[var(--text-on-accent)]"
+                onClick={() => void guess(lastGuess.current, true)}
+              >
+                {dict.review.retrySameKey}
+              </button>
+            </div>
+          )}
         </div>
       }
       controls={
@@ -328,26 +355,35 @@ export default function BigSmallPage({
       }
       side={
         <div className={PANEL_LG}>
-          {/* 赔率表：后端口径（1-100 数域：小 1-49 / 大 52-100 / 50·51 平局返本）。
-              赔率 win_mult 由后端下发，区间划分与 bigsmall.rs 的三区常量一致 */}
+          {/* P0-1 修复：赔率表与真实玩法统一为三骰（小 3-10 / 大 11-18 /
+              三同豹子判负），与同页选卡、路单页、后端 bigsmall.rs 同口径。
+              区间文案直接复用选卡词表键，杜绝两处各写一套数字。 */}
           <div className="mb-3 rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] p-3">
-            <h3 className="mb-2 text-xs font-bold text-sub">赔率表</h3>
+            <h3 className="mb-2 text-xs font-bold text-sub">{dict.review.bsOddsTitle}</h3>
             <div className="grid grid-cols-1 gap-1 text-xs">
               <div className="flex justify-between">
-                <span className="text-sub">{tg.bsPickSmall} (1-49)</span>
+                <span className="text-sub">
+                  {tg.bsPickSmall} · {dict.review.bsRangeSmall}
+                </span>
                 <b className="num text-[var(--sky-deep)]">
                   {fmtMult(winMult)}x
                 </b>
               </div>
               <div className="flex justify-between">
-                <span className="text-sub">{tg.bsPickBig} (52-100)</span>
+                <span className="text-sub">
+                  {tg.bsPickBig} · {dict.review.bsRangeBig}
+                </span>
                 <b className="num text-[var(--sky-deep)]">
                   {fmtMult(winMult)}x
                 </b>
               </div>
               <div className="flex justify-between">
-                <span className="text-sub">50 / 51</span>
-                <b className="num text-[var(--gold-deep)]">{tg.bsTieRow}</b>
+                <span className="text-sub">
+                  {dict.review.bsRangeTriple}
+                </span>
+                <b className="num text-[var(--danger-text)]">
+                  {dict.review.bsTripleLose}
+                </b>
               </div>
             </div>
           </div>

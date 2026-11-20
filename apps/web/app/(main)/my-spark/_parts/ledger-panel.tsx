@@ -20,6 +20,7 @@ export function LedgerPanel({
   setPage,
   summary,
   err,
+  loading,
   onRetry,
 }: {
   rows: LedgerRow[];
@@ -28,6 +29,7 @@ export function LedgerPanel({
   setPage: (p: number) => void;
   summary: Summary | null;
   err: string | null;
+  loading: boolean;
   onRetry: () => void;
 }) {
   const { dict, locale, currency } = useI18n();
@@ -53,7 +55,7 @@ export function LedgerPanel({
         </div>
         {/* A3 四态：流水表 loading 骨架 / 错误占位 / 空态走 StatePanel */}
         <StatePanel
-          loading={rows.length === 0 && err === null}
+          loading={loading && rows.length === 0}
           error={rows.length === 0 ? err : null}
           empty={rows.length === 0}
           loadingFallback={<SkeletonRows rows={5} />}

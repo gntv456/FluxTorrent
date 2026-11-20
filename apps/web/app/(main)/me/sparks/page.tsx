@@ -72,6 +72,7 @@ export default function MySparksPage() {
     if (from) sp.set("from", dayEdge(from, false));
     if (to) sp.set("to", dayEdge(to, true));
     setData(null);
+    setFailed(false); // 换筛选即视为新的加载意图，错误态让位骨架
     api
       .get<LedgerEnvelope>(`/api/v1/me/spark/ledger?${sp.toString()}`)
       .then((d) => {

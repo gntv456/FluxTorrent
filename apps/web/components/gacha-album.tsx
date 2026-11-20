@@ -9,9 +9,12 @@
  * 2026-10 样图⑧对齐：统计行/卡面贴纸/空态与「去抽卡」CTA 挂甜梦皮肤
  * （sw-album-*），文案收编 i18n（原先硬编码中文）。
  */
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/config";
+import { toast } from "@/components/ui/toast";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ArcadeGlyph } from "@/components/arcade/arcade-glyph";
 import { GachaRecent } from "@/components/gacha-recent";
 import type { GachaRarityRow } from "@/app/(main)/gacha/_inner";
@@ -58,6 +61,11 @@ export function GachaAlbum({
   const [me, setMe] = useState<MePayload | null>(initial);
   const [busy, setBusy] = useState<number | null>(null);
   const [err, setErr] = useState("");
+  // P0-5：三动作响应丢失后不可换键重试（重复扣碎片）
+  const idem = useRef<Record<string, string>>({});
+  const [unknown, setUnknown] = useState<string | null>(null);
+  // 兑换卡一次性消耗整季碎片，二次确认
+  const [askExchange, setAskExchange] = useState<number | null>(null);
 
   const reload = useCallback(async () => {
     try {
@@ -69,20 +77,33 @@ export function GachaAlbum({
 
   useEffect(() => {
     if (!initial) void reload();
+    const onDrawn = () => void reload();
+    window.addEventListener("flux:gacha-drawn", onDrawn);
+    return () => window.removeEventListener("flux:gacha-drawn", onDrawn);
   }, [initial, reload]);
 
   const act = useCallback(
-    async (path: string, cardId: number) => {
+    async (path: string, cardId: number, reuse = false) => {
       setBusy(cardId);
       setErr("");
+      setUnknown(null);
+      const key = `${path}:${cardId}`;
+      if (!reuse || !idem.current[key]) {
+        idem.current[key] = `ui-${path}-${cardId}-${Date.now()}`;
+      }
       try {
         await api.post(`/api/v1/gacha/${path}`, {
           card_id: cardId,
-          idempotency_key: `ui-${path}-${cardId}-${Date.now()}`,
+          idempotency_key: idem.current[key],
         });
+        delete idem.current[key];
         await reload();
+        toast.success(dict.review.goMyCards, { desc: dict.review.redeemNow });
       } catch (e) {
         setErr(e instanceof ApiError ? e.message : String(e));
+        if (!(e instanceof ApiError) || (e.status ?? 0) === 0 || (e.status ?? 0) >= 500) {
+          setUnknown(key);
+        }
       } finally {
         setBusy(null);
       }
@@ -109,7 +130,23 @@ export function GachaAlbum({
   return (
     <div className="sw-album">
       {err && (
-        <div className="sw-album-panel p-3 text-sm text-destructive">{err}</div>
+        <div className="sw-album-panel p-3 text-sm text-destructive" role="alert">{err}</div>
+      )}
+      {unknown && (
+        <div className="sw-album-panel p-3 text-xs text-ink" role="status">
+          <p>{dict.review.resultUnknownBody}</p>
+          <button
+            type="button"
+            className="mt-1 min-h-11 rounded-full bg-sky px-3 font-bold text-[var(--text-on-accent)]"
+            onClick={() => {
+              const [path, id] = unknown.split(":");
+              setUnknown(null);
+              void act(path, Number(id), true);
+            }}
+          >
+            {dict.review.retrySameKey}
+          </button>
+        </div>
       )}
       <section className="sw-album-panel">
         <header className="sw-album-head">
@@ -163,7 +200,7 @@ export function GachaAlbum({
                       busy === c.id || c.exchanged || c.synthShards <= 0
                     }
                     title={c.exchanged ? tg.gachaExchanged : undefined}
-                    onClick={() => void act("exchange", c.id)}
+                    onClick={() => setAskExchange(c.id)}
                   >
                     {tg.gachaExchange.replace("{n}", String(c.synthShards))}
                   </button>
@@ -212,6 +249,19 @@ export function GachaAlbum({
           />
         </section>
       )}
+      <ConfirmDialog
+        open={askExchange !== null}
+        onClose={() => setAskExchange(null)}
+        onConfirm={() => {
+          const id = askExchange;
+          setAskExchange(null);
+          if (id !== null) void act("exchange", id);
+        }}
+        tone="danger"
+        title={dict.review.confirmCraftTitle}
+        message={fmt(dict.review.confirmCraftBody, { n: "—" })}
+        busy={busy !== null}
+      />
     </div>
   );
 }

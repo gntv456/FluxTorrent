@@ -80,6 +80,8 @@ export default function FishingPage({
     text: string;
   } | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  // P1：网络错误不能伪装成「鱼跑了」的确定失败
+  const [reelUnknown, setReelUnknown] = useState(false);
   const [tab, setTab] = useState("play");
   const [reduced, setReduced] = useState(false);
   const [sessionPlays, setSessionPlays] = useState(0);
@@ -158,17 +160,14 @@ export default function FishingPage({
           e instanceof ApiError
             ? e.code === 1002
               ? e.message
-              : (apiErrorMessage(dict, e))
+              : apiErrorMessage(dict, e)
             : dict.common.networkError,
         );
-        // 自动判负走这里：网络错误时 r0.bet 仍在闭包里，占位符照常替换
-        if (auto)
-          setFlash({
-            kind: "lose",
-            text: tf.missed
-              .replace("{n}", String(r0.bet))
-              .replace("{magic}", currency),
-          });
+        // 网络错误 ≠ 玩家失误：此前 auto 模式直接判负「鱼跑了」，
+        // 把服务端故障伪装成确定性失败。改为「结果未知」+ 查询入口。
+        if (!(e instanceof ApiError) || (e.status ?? 0) === 0 || (e.status ?? 0) >= 500) {
+          setReelUnknown(true);
+        }
       } finally {
         setRound(null);
         setPhase("done");
@@ -326,6 +325,14 @@ export default function FishingPage({
             linkHref="/games/fishing#album"
           />
           {err && <p className="text-xs text-[var(--danger-text)]">{err}</p>}
+          {reelUnknown && (
+            <div className="rounded-[var(--r-sm)] border border-[var(--compat-orange)] p-2 text-xs text-ink" role="status">
+              <p>{dict.review.resultUnknownBody}</p>
+              <a href="/games/fishing/records" className="mt-1 inline-block min-h-11 py-1 text-link underline">
+                {dict.review.checkResult} →
+              </a>
+            </div>
+          )}
         </div>
       }
       controls={
@@ -363,7 +370,7 @@ export default function FishingPage({
             )}
           </div>
           <p className="text-xs text-sub">
-            {tf.bait.replace("{n}", String(ticket))} · {tf.hintIdle}
+            {tf.bait.replace("{n}", String(bet))} · {tf.hintIdle}
           </p>
         </div>
       }

@@ -194,7 +194,20 @@ export default function FarmPage({
 
   if (!data)
     return (
-      <div className="py-16 text-center text-sub">{err ?? tf.loading}</div>
+      <div className="flex flex-col items-center gap-3 py-16 text-center">
+        <p role={err ? "alert" : "status"} className="text-sm text-sub">
+          {err ?? tf.loading}
+        </p>
+        {err && (
+          <button
+            type="button"
+            className="min-h-11 rounded-full bg-sky px-4 text-sm font-bold text-[var(--text-on-accent)]"
+            onClick={() => void refresh()}
+          >
+            {dict.common.retry}
+          </button>
+        )}
+      </div>
     );
 
   // 田里有几块地由土地阶梯定（买来的排在免费地后面）；旧响应没带 land 时退回免费数
@@ -256,7 +269,7 @@ export default function FarmPage({
         idempotency_key: qIdem.current[code],
       });
       delete qIdem.current[code];
-      setMsg({ kind: "win", text: tf.questClaimed ?? "✓ 已领取" });
+      setMsg({ kind: "win", text: tf.questClaimed ?? dict.review.modDone });
       await loadQuests();
       void loadMe();
     } catch (e) {

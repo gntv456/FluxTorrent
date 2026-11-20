@@ -179,7 +179,7 @@ export default async function OddsPage() {
       body: (
         <div className="flex flex-col gap-2">
           <p className="text-xs text-sub">{ov.bigsmall.rule}</p>
-          {/* 赔率、平局返本、以及「猜中给一件东西」都在行表里，公示照表念 */}
+          {/* 赔率、区间规则、以及「猜中给一件东西」都在行表里，公示照表念 */}
           {!!ov.bigsmall.prizes?.length &&
             prizeTable(ov.bigsmall.prizes, ov.bigsmall.ticket ?? 1)}
         </div>

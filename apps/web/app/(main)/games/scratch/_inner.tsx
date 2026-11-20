@@ -74,6 +74,8 @@ export default function ScratchPage({
   const [tab, setTab] = useState("play");
   const [sessionPlays, setSessionPlays] = useState(0);
   const idem = useRef<string>("");
+  // P0-5：网络错误后保留幂等键，提供「原键重试」而非重新下注
+  const [unknown, setUnknown] = useState(false);
 
   const loadMeta = useCallback(async () => {
     try {
@@ -113,12 +115,12 @@ export default function ScratchPage({
     net: h.net,
   }));
 
-  async function buy() {
+  async function buy(reuse = false) {
     setErr(null);
     setFlash(null);
     setPhase("buying");
-    idem.current =
-      clientUuid();
+    setUnknown(false);
+    if (!reuse || !idem.current) idem.current = clientUuid();
     try {
       const r = await api.post<ScratchResp>("/api/v1/games/scratch", {
         bet,
@@ -135,14 +137,21 @@ export default function ScratchPage({
       setRevealed([]);
       setRound((n) => n + 1);
       setPhase("scratchable");
+      idem.current = "";
+      // 买票扣款后立即刷新余额条（此前要刮完 6 格才 loadMeta，
+      // 中途离开会一直停在扣款前的数字）
+      void loadMeta();
     } catch (e) {
       setErr(
         e instanceof ApiError
           ? e.code === 1002
             ? e.message
-            : (apiErrorMessage(dict, e))
+            : apiErrorMessage(dict, e)
           : dict.common.networkError,
       );
+      if (!(e instanceof ApiError) || (e.status ?? 0) === 0 || (e.status ?? 0) >= 500) {
+        setUnknown(true); // 结果未知，保留键供原键重试
+      }
       setPhase("idle");
     }
   }
@@ -276,6 +285,18 @@ export default function ScratchPage({
           </div>
           <ResultFlash kind={flash?.kind ?? null} text={flash?.text ?? null} />
           {err && <p className="text-xs text-[var(--danger-text)]">{err}</p>}
+          {unknown && (
+            <div className="rounded-[var(--r-sm)] border border-[var(--compat-orange)] p-2 text-xs text-ink">
+              <p>{dict.review.resultUnknownBody}</p>
+              <button
+                type="button"
+                className="mt-1 min-h-11 rounded-full bg-sky px-3 font-bold text-[var(--text-on-accent)]"
+                onClick={() => void buy(true)}
+              >
+                {dict.review.retrySameKey}
+              </button>
+            </div>
+          )}
         </div>
       }
       controls={

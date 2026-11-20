@@ -6,6 +6,7 @@ import { GachaDraw } from "@/components/gacha-draw";
 import { GachaTabbed } from "@/components/gacha-tabbed";
 import { ArcadeGlyph } from "@/components/arcade/arcade-glyph";
 import { SceneGacha } from "@/components/game/scene-b";
+import { GachaPoolMeBar } from "@/components/gacha-pool-me-bar";
 import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
@@ -175,11 +176,15 @@ export default async function GachaDisclosurePage() {
                 />
               </section>
             )}
-            {/* 新手首抽体验价：未抽过卡的用户单抽 1 券（后端放行） */}
-            {me && (me.cards?.length ?? 0) === 0 && (
-              <p className="rounded-[var(--r-md)] bg-mint-soft px-3 py-2 text-xs font-bold text-ink">
-                {dict.games.gachaFirstDraw}
-              </p>
+            {/* 首抽提示 + 合成进度：抽卡后自我刷新（原为 RSC 静态 JSX） */}
+            {me && (
+              <GachaPoolMeBar
+                initial={{
+                  hasCards: (me.cards?.length ?? 0) > 0,
+                  shardBalance: me.shardBalance,
+                }}
+                ssrSynth={ssrSynth}
+              />
             )}
             {first && (
               <section className="sw-cardbook">
@@ -200,37 +205,6 @@ export default async function GachaDisclosurePage() {
                     </div>
                   ))}
                 </div>
-                {/* 合成进度（样图⑧）：真实碎片数据驱动（登录态）；未登录整块隐藏 */}
-                {me && ssrSynth > 0 && (
-                  <div className="sw-synth">
-                    <div className="sw-synth-cap">
-                      {dict.games.gachaSynthCap}
-                    </div>
-                    <div className="sw-synth-row">
-                      <span className="sw-synth-track" aria-hidden>
-                        <i
-                          style={{
-                            width: `${Math.min(
-                              100,
-                              (me.shardBalance / ssrSynth) * 100,
-                            )}%`,
-                          }}
-                        />
-                      </span>
-                      <b className="num">
-                        {dict.games.gachaSynthFrag
-                          .replace("{a}", String(me.shardBalance))
-                          .replace("{b}", String(ssrSynth))}
-                      </b>
-                    </div>
-                    <p className="sw-synth-note">
-                      {dict.games.gachaSynthNote.replace(
-                        "{n}",
-                        String(ssrSynth),
-                      )}
-                    </p>
-                  </div>
-                )}
               </section>
             )}
           </>

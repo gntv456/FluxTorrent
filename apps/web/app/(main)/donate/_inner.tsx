@@ -92,7 +92,15 @@ export default function DonatePage() {
     return (
       <div className="flex flex-col gap-4">
         <h1 className="font-display text-2xl">{t.title}</h1>
-        <p className="brand-panel p-4 text-sm text-sub">{dict.common.pleaseLogin}</p>
+        <div className="brand-panel flex flex-col items-start gap-2 p-4 text-sm text-sub">
+          <span>{dict.common.pleaseLogin}</span>
+          <a
+            href={`/login?next=${encodeURIComponent("/donate")}`}
+            className="min-h-11 rounded-full bg-sky px-4 font-bold text-[var(--text-on-accent)]"
+          >
+            {dict.review.loginAndContinue}
+          </a>
+        </div>
       </div>
     );
   }

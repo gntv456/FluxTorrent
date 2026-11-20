@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { api } from "@/lib/api-client";
+import { ErrorPanel } from "@/components/ui/error-panel";
+import { normalizeError } from "@/lib/render-error";
 import { getDict } from "@/i18n/server";
 import { dateLocale } from "@/i18n/config";
 import { requireModule } from "@/components/module-gate";
@@ -37,9 +39,12 @@ export default async function CareerPage() {
   if (gate) return gate;
   const { dict, locale, currency } = await getDict();
   const t = dict.games;
-  const career = await api
-    .get<Career>("/api/v1/games/career")
-    .catch(() => null);
+  let career: Career;
+  try {
+    career = await api.get<Career>("/api/v1/games/career");
+  } catch (e) {
+    return <ErrorPanel error={normalizeError(e)} retryHref="/games/career" />;
+  }
 
   const fmt = (n: number) => n.toLocaleString(dateLocale(locale));
   const stats: { lb: string; vl: string; tone?: string }[] = career

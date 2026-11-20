@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { toast } from "@/components/ui/toast";
 import { catPath } from "@/lib/site-profile";
 import { RssTokenPanel, type RssTokenMeta } from "./rss-tokens";
 
@@ -137,7 +138,8 @@ export function RssBuilder() {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
-      // 剪贴板权限被拒时退化：选中输入框由用户手动复制
+      // 此前注释说「退化为用户手动复制」但代码里既没选中输入框也没提示
+      toast.error(dict.review.copyFailed, );
     }
   }
 

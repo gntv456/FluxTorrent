@@ -72,6 +72,8 @@ export default function JggPage({
   /** 本次会话已完成的局数（防沉迷软提示用） */
   const [sessionPlays, setSessionPlays] = useState(0);
   const idem = useRef<string>("");
+  // P0-5：网络错误保留幂等键供原键重试
+  const [unknown, setUnknown] = useState(false);
 
   useEffect(() => {
     setReduced(window.matchMedia("(prefers-reduced-motion: reduce)").matches);
@@ -113,13 +115,14 @@ export default function JggPage({
             : ("sky" as const),
     }));
 
-  async function draw() {
+  async function draw(reuse = false) {
     if (busy) return;
     setBusy(true);
     setErr(null);
     setFlash(null);
     setRes(null);
-    idem.current = clientUuid();
+    if (!idem.current) idem.current = clientUuid();
+    setUnknown(false);
     try {
       const r = await api.post<DrawResult>("/api/v1/games/jgg", {
         idempotency_key: idem.current,
@@ -134,6 +137,9 @@ export default function JggPage({
             : (apiErrorMessage(dict, e))
           : dict.common.networkError,
       );
+      if (!(e instanceof ApiError) || (e.status ?? 0) === 0 || (e.status ?? 0) >= 500) {
+        setUnknown(true);
+      }
       setBusy(false);
     }
   }
@@ -274,6 +280,18 @@ export default function JggPage({
           />
           <SwPrizeStrip label={tj.prizeLb} items={prizeStripItems} />
           {err && <p className="text-xs text-[var(--danger-text)]">{err}</p>}
+          {unknown && (
+            <div className="rounded-[var(--r-sm)] border border-[var(--compat-orange)] p-2 text-xs text-ink">
+              <p>{dict.review.resultUnknownBody}</p>
+              <button
+                type="button"
+                className="mt-1 min-h-11 rounded-full bg-sky px-3 font-bold text-[var(--text-on-accent)]"
+                onClick={() => void draw(true)}
+              >
+                {dict.review.retrySameKey}
+              </button>
+            </div>
+          )}
         </div>
       }
       controls={

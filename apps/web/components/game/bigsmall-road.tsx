@@ -27,8 +27,14 @@ export function BigsmallRoadPage() {
   const sub = dict.games.sub;
   const [rows, setRows] = useState<RoundRow[] | null>(null);
   const [failed, setFailed] = useState(false);
+  // 赔率由后端下发，不能写死 1.90x（站长改赔率后此处会误导玩家）
+  const [winMult, setWinMult] = useState<number | null>(null);
 
   useEffect(() => {
+    void api
+      .get<{ games?: { bigsmall?: { win_mult?: number } } }>("/api/v1/games")
+      .then((o) => setWinMult(o.games?.bigsmall?.win_mult ?? null))
+      .catch(() => {});
     void api
       .get<RoundRow[] | { rows: RoundRow[] }>(
         "/api/v1/games/rounds?game=bigsmall&limit=50",
@@ -78,13 +84,13 @@ export function BigsmallRoadPage() {
             <span className="font-bold">
               {t.bsPickSmall} (3-10) · {t.roadP48}
             </span>
-            <b className="num text-[var(--sky-deep)]">1.90x</b>
+            <b className="num text-[var(--sky-deep)]">{winMult ? `${winMult.toFixed(2)}x` : "—"}</b>
           </div>
           <div className="flex justify-between rounded-[8px] bg-[var(--surface-raised)] px-3 py-1.5">
             <span className="font-bold">
               {t.bsPickBig} (11-18) · {t.roadP48}
             </span>
-            <b className="num text-[var(--sky-deep)]">1.90x</b>
+            <b className="num text-[var(--sky-deep)]">{winMult ? `${winMult.toFixed(2)}x` : "—"}</b>
           </div>
           <div className="flex justify-between rounded-[8px] bg-[var(--surface-raised)] px-3 py-1.5">
             <span className="font-bold">
@@ -140,7 +146,7 @@ export function BigsmallRoadPage() {
                         : "bg-sub"
                   }`}
                 >
-                  {r.net > 0 ? "赢" : r.net < 0 ? "输" : "·"}
+                  {r.net > 0 ? dict.review.roadWin : r.net < 0 ? dict.review.roadLose : "·"}
                 </span>
               ))}
             </div>

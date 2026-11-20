@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/config";
 import { playSfx } from "@/lib/sfx";
 import { WinBurst } from "@/components/game/win-burst";
 import type { GachaRarityRow } from "@/app/(main)/gacha/_inner";
@@ -56,6 +57,9 @@ export function GachaDraw({
   const [busy, setBusy] = useState(false);
   const [rows, setRows] = useState<DrawRow[] | null>(null);
   const [err, setErr] = useState("");
+  // P0-5：抽卡响应丢失后不可用新键重抽（会二次扣券）
+  const idem = useRef("");
+  const [unknown, setUnknown] = useState(false);
 
   useEffect(() => setBal(ticketBalance), [ticketBalance]);
 
@@ -65,26 +69,35 @@ export function GachaDraw({
   );
 
   const draw = useCallback(
-    async (count: 1 | 10) => {
+    async (count: 1 | 10, reuse = false) => {
       if (busy) return;
       setBusy(true);
       setErr("");
+      setUnknown(false);
+      if (!reuse || !idem.current) {
+        idem.current = `ui-gacha-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+      }
       try {
         const resp = await api.post<DrawResp>("/api/v1/gacha/draw", {
           banner_id: bannerId,
           count,
-          idempotency_key: `ui-gacha-${Date.now()}-${
-            Math.floor(Math.random() * 1e6)
-          }`,
+          idempotency_key: idem.current,
         });
         setRows(resp.rows);
         setBal(resp.ticketBalance);
+        // 抽卡后「我的卡册」另有自己的余额副本，此前只更新本地 bal，
+        // 切过去看到的是旧券数——广播让卡册重取。
+        window.dispatchEvent(new CustomEvent("flux:gacha-drawn"));
         const gold = resp.rows.some((r) =>
           (r.r ?? "").length > 0 && (rarityOf(r.r)?.stars ?? 0) >= 5,
         );
         playSfx(gold ? "jackpot" : "win");
+        idem.current = "";
       } catch (e) {
         setErr(e instanceof ApiError ? e.message : String(e));
+        if (!(e instanceof ApiError) || (e.status ?? 0) === 0 || (e.status ?? 0) >= 500) {
+          setUnknown(true);
+        }
       } finally {
         setBusy(false);
       }
@@ -118,14 +131,31 @@ export function GachaDraw({
         </div>
       </div>
       {err && <p className="sw-gacha-err text-sm">{err}</p>}
+      {unknown && (
+        <div className="rounded-[var(--r-sm)] border border-[var(--compat-orange)] p-2 text-xs text-ink">
+          <p>{dict.review.resultUnknownBody}</p>
+          <button
+            type="button"
+            className="mt-1 min-h-11 rounded-full bg-sky px-3 font-bold text-[var(--text-on-accent)]"
+            onClick={() => void draw(1, true)}
+          >
+            {dict.review.retrySameKey}
+          </button>
+        </div>
+      )}
       <div className="sw-gacha-acts">
         <button
           type="button"
           className="sw-album-btn gold"
-          disabled={busy}
+          disabled={busy || bal < ticketCost}
           onClick={() => void draw(1)}
         >
-          {busy ? tg.gachaDrawing : tg.gachaDrawOne.replace("{n}", String(bal))}
+          {busy
+            ? tg.gachaDrawing
+            : fmt(dict.review.costHold, {
+                n: String(bal),
+                cost: String(ticketCost),
+              })}
         </button>
         <button
           type="button"
