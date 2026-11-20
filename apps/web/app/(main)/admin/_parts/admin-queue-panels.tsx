@@ -1,8 +1,11 @@
+
+
+"use client";
+
 import { waitingText } from "./admin-appeals-panel";
 
 export { AppealsPanel } from "./admin-appeals-panel";
 
-"use client";
 
 import { PANEL_LG } from "@/lib/ui-classes";
 
