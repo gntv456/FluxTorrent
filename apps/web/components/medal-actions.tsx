@@ -111,6 +111,8 @@ export function MedalActions({
     ask.open({
       title: dict.medals2.gift,
       label: dict.medals2.giftTo,
+      // run 返回 false 时弹窗内可见的错误文案（原为空串 = 看不到失败原因）
+      errorText: dict.review.giftFailed,
       run: (raw) => doGift(raw),
     });
   }

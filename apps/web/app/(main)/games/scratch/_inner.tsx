@@ -342,7 +342,7 @@ export default function ScratchPage({
           <SwCtaRow
             primaryLabel={`${ts.buy.replace("{n}", String(bet))}`}
             goldLabel={`${ts.tenBtn} · ${bet * 10}`}
-            onPrimary={buy}
+            onPrimary={() => void buy()}
             onGold={ten.run}
             primaryDisabled={phase === "buying" || phase === "scratchable"}
             goldDisabled={

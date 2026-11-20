@@ -188,6 +188,7 @@ export default function CapsuleFocusPage({
         idempotency_key: idem.current,
       });
       setRes(r);
+      idem.current = ""; // 本局结束，下局生成新键
     } catch (e) {
       setErr(
         e instanceof ApiError
@@ -379,7 +380,7 @@ export default function CapsuleFocusPage({
           <SwCtaRow
             primaryLabel={`${tc.go} · ${ticket}`}
             goldLabel={`${tc.tenBtn} · ${ticket * 10}`}
-            onPrimary={draw}
+            onPrimary={() => void draw()}
             onGold={() => void ten.run()}
             primaryDisabled={busy || prizes.length === 0}
             goldDisabled={ten.busy || busy || prizes.length === 0}

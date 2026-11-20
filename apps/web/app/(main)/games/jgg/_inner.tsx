@@ -128,6 +128,7 @@ export default function JggPage({
         idempotency_key: idem.current,
       });
       setRes(r);
+      idem.current = ""; // 本局结束，下局生成新键
     } catch (e) {
       // 1002 用后端具体原因（如「票价超过单次上限」）
       setErr(
@@ -317,7 +318,7 @@ export default function JggPage({
           <SwCtaRow
             primaryLabel={`${tj.go} · ${ticket}`}
             goldLabel={`${tj.tenBtn} · ${ticket * 10}`}
-            onPrimary={draw}
+            onPrimary={() => void draw()}
             onGold={ten.run}
             primaryDisabled={busy || prizes.length === 0}
             goldDisabled={busy || ten.busy || prizes.length === 0}

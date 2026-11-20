@@ -294,6 +294,7 @@ export function AdminOpsBroadcast() {
           subject: askBroadcast?.subject ?? "",
         })}
         confirmLabel="确认发送"
+        busy={busy}
       />
     </section>
   );
