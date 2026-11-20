@@ -12,17 +12,26 @@ use sqlx::PgPool;
 
 pub(crate) async fn onboarding_followup(db: &PgPool) -> anyhow::Result<u64> {
     let mut acted = 0u64;
-    // A) day-3 未首下提醒
-    let nudged = sqlx::query(
-        r#"
+    // A) day-N 未首下提醒（0505 参数化：site_settings.onboarding_day3_days，
+    //    缺省 3=既有硬编码值；0=关闭该提醒）
+    let d3: i64 = sqlx::query_scalar(
+        "SELECT COALESCE((SELECT value::bigint FROM site_settings \
+          WHERE name = 'onboarding_day3_days'), 3)",
+    )
+    .fetch_one(db)
+    .await
+    .unwrap_or(3);
+    if d3 > 0 {
+        let nudged = sqlx::query(
+            r#"
         WITH anchor AS (
             INSERT INTO spark_ledger (id, user_id, amount, kind, idempotency_key)
             SELECT nextval('spark_ledger_id_seq'), u.id, 0, 'notice_marker',
                    'onboard-nudge:' || u.id
             FROM users u
             WHERE u.status < 2
-              AND u.created_at < now() - interval '3 days'
-              AND u.created_at > now() - interval '4 days'
+              AND u.created_at < now() - make_interval(days => $1)
+              AND u.created_at > now() - make_interval(days => $1 + 1)
               AND NOT EXISTS (SELECT 1 FROM snatches s
                               WHERE s.user_id = u.id
                                 AND s.downloaded > 0
@@ -40,10 +49,12 @@ pub(crate) async fn onboarding_followup(db: &PgPool) -> anyhow::Result<u64> {
                || '有疑问随时联系管理组。'
         FROM anchor a
         "#,
-    )
-    .execute(db)
-    .await?;
-    acted += nudged.rows_affected() as u64;
+        )
+        .bind(d3)
+        .execute(db)
+        .await?;
+        acted += nudged.rows_affected() as u64;
+    }
     // B) 首做种祝贺（近 24h 内首次出现做种时长，注册 ≤14 天）
     let congratulated = sqlx::query(
         r#"

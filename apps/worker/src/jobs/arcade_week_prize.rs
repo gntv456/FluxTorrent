@@ -20,6 +20,33 @@ const WIN_SQL: &str = "l.created_at >= (date_trunc('week', \
 
 const KINDS: &[(&str, &str)] = &[("lucky", "欧皇"), ("fishing", "渔王")];
 
+/// 品类配置化（0505 运营体检批）：读 site_settings.arcade_week_prize_kinds
+/// （逗号分隔 kind，缺省 lucky,fishing=既有硬编码值）。未知 kind 自然
+/// 落到 fishing 分支的通用查询（game-fishing-win 前缀不匹配即 0 人，
+/// 无害）；空值/空串=全关。
+async fn prize_kinds(db: &PgPool) -> Vec<(&'static str, &'static str)> {
+    let cfg: Option<String> = sqlx::query_scalar(
+        "SELECT value FROM site_settings \
+         WHERE name = 'arcade_week_prize_kinds'",
+    )
+    .fetch_optional(db)
+    .await
+    .ok()
+    .flatten();
+    let enabled: Vec<&str> = cfg
+        .as_deref()
+        .unwrap_or("lucky,fishing")
+        .split(',')
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .collect();
+    KINDS
+        .iter()
+        .filter(|(k, _)| enabled.contains(k))
+        .copied()
+        .collect()
+}
+
 pub(crate) async fn arcade_week_prize(db: &PgPool) -> anyhow::Result<u64> {
     let week: String = sqlx::query_scalar(WEEK_SQL)
         .fetch_one(db)
@@ -44,7 +71,8 @@ pub(crate) async fn arcade_week_prize(db: &PgPool) -> anyhow::Result<u64> {
         return Ok(0);
     }
     let mut acted = 0u64;
-    for (kind, label) in KINDS {
+    let kinds = prize_kinds(db).await;
+    for (kind, label) in &kinds {
         let winners: Vec<(i64, i64)> = match *kind {
             "lucky" => sqlx::query_as(&format!(
                 "SELECT l.user_id, max(l.amount) AS v FROM spark_ledger l \\
@@ -61,7 +89,8 @@ pub(crate) async fn arcade_week_prize(db: &PgPool) -> anyhow::Result<u64> {
             _ => sqlx::query_as(&format!(
                 "SELECT l.user_id, max(l.amount) AS v FROM spark_ledger l \\
                   WHERE l.kind = 'game' AND l.amount > 0 \\
-                    AND l.idempotency_key LIKE 'game-fishing-win:%' AND {WIN_SQL} \\
+                    AND l.idempotency_key LIKE 'game-fishing-win:%' \\
+                    AND {WIN_SQL} \\
                   GROUP BY l.user_id ORDER BY max(l.amount) DESC LIMIT 3"
             ))
             .fetch_all(db)
@@ -83,9 +112,11 @@ pub(crate) async fn arcade_week_prize(db: &PgPool) -> anyhow::Result<u64> {
             };
             let credited = match sqlx::query(
                 "INSERT INTO spark_ledger \\
-                    (id, user_id, amount, kind, idempotency_key, balance_after) \\
-                  SELECT nextval('spark_ledger_id_seq'), $1, $2, 'arcade_week', \\
-                    $3, u.spark_balance + $2 FROM users u WHERE u.id = $1 \\
+                    (id, user_id, amount, kind, idempotency_key, \\
+                     balance_after) \\
+                  SELECT nextval('spark_ledger_id_seq'), $1, $2, \\
+                    'arcade_week', $3, u.spark_balance + $2 \\
+                  FROM users u WHERE u.id = $1 \\
                   AND NOT EXISTS (SELECT 1 FROM spark_ledger \\
                                   WHERE idempotency_key = $3)",
             )
@@ -117,7 +148,8 @@ pub(crate) async fn arcade_week_prize(db: &PgPool) -> anyhow::Result<u64> {
                     continue;
                 }
                 let _ = sqlx::query(
-                    "INSERT INTO messages (sender_id, receiver_id, subject, body) \\
+                    "INSERT INTO messages \\
+                     (sender_id, receiver_id, subject, body) \\
                      VALUES (NULL, $1, $2, $3)",
                 )
                 .bind(uid)

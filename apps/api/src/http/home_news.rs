@@ -119,7 +119,9 @@ pub(super) async fn home_news_json(
         i32, String, String, String, chrono::DateTime<chrono::Utc>,
     )> = sqlx::query_as(
         "SELECT id, title, body, badge, \
-         created_at FROM announcements ORDER BY id DESC LIMIT 8",
+         created_at FROM announcements \
+         WHERE COALESCE(published_at, created_at) <= now() \
+         ORDER BY id DESC LIMIT 8",
     )
     .fetch_all(db)
     .await

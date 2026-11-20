@@ -2,7 +2,7 @@
  "note": "actix 路由宏静态提取：get/post/put/patch/delete/route 六种方法宏，含 #[actix_web::get] 全限定形态；handler 关联自宏后首条 fn；注释内的宏不计（被注释掉的路由是死代码）",
  "path_scope": "path=宏原始字面量（scope 相对路径）；/api/v1 等挂载前缀由 mount 侧拼接，清单不还原 mount 链",
  "grep_baseline_note": "口径对齐 grep -rE '#\\[(actix_web::)?(get|post|put|patch|delete|route)\\(' apps/api/src --include=*.rs；grep 会数到注释里的宏，total 若比 grep 少，差额即被注释掉的死宏",
- "total": 865,
+ "total": 869,
  "routes": [
   {
    "method": "POST",
@@ -863,6 +863,18 @@
    "file": "apps/api/src/admin_p3_http/ban_ip.rs"
   },
   {
+   "method": "POST",
+   "path": "/admin/pm-broadcast",
+   "handler": "pm_broadcast",
+   "file": "apps/api/src/admin_p3_http/broadcast.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/shout-broadcast",
+   "handler": "shout_broadcast",
+   "file": "apps/api/src/admin_p3_http/broadcast.rs"
+  },
+  {
    "method": "GET",
    "path": "/admin/classes",
    "handler": "admin_classes_list",
@@ -963,6 +975,12 @@
    "path": "/admin/fun-polls/{id}/close",
    "handler": "fun_poll_close",
    "file": "apps/api/src/admin_p3_http/fun_polls.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/funnel",
+   "handler": "funnel",
+   "file": "apps/api/src/admin_p3_http/funnel.rs"
   },
   {
    "method": "GET",
@@ -3627,6 +3645,12 @@
    "path": "/rss-info",
    "handler": "rss_info",
    "file": "apps/api/src/http/misc_handlers.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/news",
+   "handler": "news_admin_list",
+   "file": "apps/api/src/http/news_fun.rs"
   },
   {
    "method": "POST",

@@ -207,6 +207,7 @@ pub fn v1_scope() -> actix_web::Scope {
     scope
         .service(reports_http::report_create)
         .service(rss_info)
+        .service(news_admin_list)
         .service(news_create)
         .service(news_update)
         .service(news_delete)

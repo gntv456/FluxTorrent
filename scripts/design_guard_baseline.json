@@ -3201,8 +3201,7 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   152,
-   160
+   73
   ],
   "color": []
  },
@@ -5655,5 +5654,15 @@
   "color": [
    99
   ]
+ },
+ "components/content-manage-news.tsx": {
+  "h1": [],
+  "h1First": null,
+  "palette": [
+   114,
+   211,
+   276
+  ],
+  "color": []
  }
 }

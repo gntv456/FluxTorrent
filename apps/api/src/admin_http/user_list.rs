@@ -49,6 +49,12 @@ struct UserListQ {
     /// 字段值关键词（子串匹配；标量/多选/布尔都按值的 JSON 文本比）
     #[serde(default)]
     fval: Option<String>,
+    /// 注册时间圈人（0505 运营体检批）：cohort 圈选——
+    /// created_after/created_before ISO8601，闭开区间，同时给=夹取。
+    #[serde(default)]
+    created_after: Option<String>,
+    #[serde(default)]
+    created_before: Option<String>,
     #[serde(default = "default_sort")]
     sort: String,
     #[serde(default = "default_desc")]
@@ -60,6 +66,24 @@ struct UserListQ {
 }
 fn default_sort() -> String {
     "id".into()
+}
+/// ISO8601 可选解析（0505 圈人）：None/空=不限；格式错 422。
+fn parse_ts_opt(
+    s: Option<&str>,
+    field: &str,
+) -> DomainResult<Option<chrono::DateTime<chrono::Utc>>> {
+    match s.map(str::trim).filter(|s| !s.is_empty()) {
+        None => Ok(None),
+        Some(v) => Ok(Some(
+            chrono::DateTime::parse_from_rfc3339(v)
+                .map_err(|_| {
+                    DomainError::Validation(format!(
+                        "{field} 须为 ISO8601（如 2026-11-17T00:00:00Z）"
+                    ))
+                })?
+                .with_timezone(&chrono::Utc),
+        )),
+    }
 }
 fn default_desc() -> bool {
     true
@@ -145,6 +169,16 @@ async fn user_admin_list(
                 .into(),
         );
     }
+    // 注册时间圈人（0505）：$8=after $9=before，解析失败 422 不静默忽略
+    let ts_after = parse_ts_opt(q.created_after.as_deref(), "created_after")?;
+    let ts_before =
+        parse_ts_opt(q.created_before.as_deref(), "created_before")?;
+    if ts_after.is_some() {
+        where_parts.push("u.created_at >= $8".into());
+    }
+    if ts_before.is_some() {
+        where_parts.push("u.created_at < $9".into());
+    }
     let where_sql = if where_parts.is_empty() {
         "TRUE".to_string()
     } else {
@@ -153,7 +187,8 @@ async fn user_admin_list(
     let dir = if q.desc { "DESC" } else { "ASC" };
     let sql = format!(
         r#"SELECT u.id, u.username, u.email, u.class_id, c.name AS class_name,
-                  u.uploaded, u.downloaded, u.status, u.download_enabled, u.suspended,
+                  u.uploaded, u.downloaded, u.status,
+                  u.download_enabled, u.suspended,
                   u.created_at, u.last_seen_at
            FROM users u LEFT JOIN user_classes c ON c.id = u.class_id
            WHERE {where_sql}
@@ -175,6 +210,8 @@ async fn user_admin_list(
         .bind(fval_pat.clone())
         .bind(crate::dto::page_window(q.page, q.per_page).1)
         .bind(crate::dto::page_window(q.page, q.per_page).0)
+        .bind(ts_after)
+        .bind(ts_before)
         .fetch_all(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
@@ -185,6 +222,8 @@ async fn user_admin_list(
         .bind(q.class_id)
         .bind(fk)
         .bind(fval_pat)
+        .bind(ts_after)
+        .bind(ts_before)
         .fetch_one(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;

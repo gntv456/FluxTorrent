@@ -160,6 +160,11 @@ export const LAZY_PANELS = {
       default: m.AdminPromoOps,
     })),
   ),
+    AdminOpsBroadcast: lazy(() =>
+    import("@/components/admin-ops-broadcast").then((m) => ({
+      default: m.AdminOpsBroadcast,
+    })),
+  ),
     AdminContractStats: lazy(() =>
     import("@/components/admin-contract-stats").then((m) => ({
       default: m.AdminContractStats,

@@ -162,6 +162,9 @@ export function renderSimpleTool(
     // 0503 运营工作台（促销归因/自动规则/竞赛 CRUD）
     case "promoops":
       return <P.AdminPromoOps />;
+    // 0505 运营体检批（广播双口/生命周期漏斗）
+    case "opsbroadcast":
+      return <P.AdminOpsBroadcast />;
     // 0499 契约运营视图（体检二轮 B1）
     case "contractstats":
       return <P.AdminContractStats />;

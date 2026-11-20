@@ -1,8 +1,9 @@
 //! 官方投票建口（0503 运营台账 #6）：fun_polls 有 funboxvote 投票动作、
 //! 有 admin 只读总览（POLLS_MANAGE），但**无建票/关票写口**——官方
-//! 无法在后台发起投票，只能 SQL 打库。本批补两写口（POLLS_MANAGE），
-//! 同时接线 funboxvote 死奖励卡：投票者按 site_settings 发火花
-//! （每票一行幂等键，重放不发）。
+//! 无法在后台发起投票，只能 SQL 打库。本批补两写口（POLLS_MANAGE）。
+//! 投票侧费用口径勘误（运营体检）：投票实际是**扣 1 火花**（旧站
+//! funboxvote 口径，fun.rs spend_spark_tx 硬编码），并非本文件此前
+//! 声称的「按 site_settings 发火花」——发奖逻辑从未存在，特此纠偏。
 
 use actix_web::{post, put, web, HttpRequest, HttpResponse};
 use serde::Deserialize;
