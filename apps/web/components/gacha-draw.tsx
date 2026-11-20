@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, ApiError } from "@/lib/api-client";
+import { api, ApiError, isRetryableNetError } from "@/lib/api-client";
+import { BTN_RETRY_PILL, PANEL_WARN_ORANGE } from "@/lib/ui-classes";
 import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
 import { playSfx } from "@/lib/sfx";
@@ -75,7 +76,8 @@ export function GachaDraw({
       setErr("");
       setUnknown(false);
       if (!reuse || !idem.current) {
-        idem.current = `ui-gacha-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+        idem.current =
+          `ui-gacha-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
       }
       try {
         const resp = await api.post<DrawResp>("/api/v1/gacha/draw", {
@@ -95,7 +97,7 @@ export function GachaDraw({
         idem.current = "";
       } catch (e) {
         setErr(e instanceof ApiError ? e.message : String(e));
-        if (!(e instanceof ApiError) || (e.status ?? 0) === 0 || (e.status ?? 0) >= 500) {
+        if (isRetryableNetError(e)) {
           setUnknown(true);
         }
       } finally {
@@ -132,11 +134,11 @@ export function GachaDraw({
       </div>
       {err && <p className="sw-gacha-err text-sm">{err}</p>}
       {unknown && (
-        <div className="rounded-[var(--r-sm)] border border-[var(--compat-orange)] p-2 text-xs text-ink">
+        <div className={PANEL_WARN_ORANGE}>
           <p>{dict.review.resultUnknownBody}</p>
           <button
             type="button"
-            className="mt-1 min-h-11 rounded-full bg-sky px-3 font-bold text-[var(--text-on-accent)]"
+            className={BTN_RETRY_PILL}
             onClick={() => void draw(1, true)}
           >
             {dict.review.retrySameKey}

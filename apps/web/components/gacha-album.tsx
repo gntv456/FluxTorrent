@@ -10,7 +10,8 @@
  * （sw-album-*），文案收编 i18n（原先硬编码中文）。
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, ApiError } from "@/lib/api-client";
+import { api, ApiError, isRetryableNetError } from "@/lib/api-client";
+import { BTN_RETRY_PILL } from "@/lib/ui-classes";
 import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
 import { toast } from "@/components/ui/toast";
@@ -101,7 +102,7 @@ export function GachaAlbum({
         toast.success(dict.review.goMyCards, { desc: dict.review.redeemNow });
       } catch (e) {
         setErr(e instanceof ApiError ? e.message : String(e));
-        if (!(e instanceof ApiError) || (e.status ?? 0) === 0 || (e.status ?? 0) >= 500) {
+        if (isRetryableNetError(e)) {
           setUnknown(key);
         }
       } finally {
@@ -130,14 +131,17 @@ export function GachaAlbum({
   return (
     <div className="sw-album">
       {err && (
-        <div className="sw-album-panel p-3 text-sm text-destructive" role="alert">{err}</div>
+        <div className="sw-album-panel p-3 text-sm text-destructive"
+             role="alert">
+          {err}
+        </div>
       )}
       {unknown && (
         <div className="sw-album-panel p-3 text-xs text-ink" role="status">
           <p>{dict.review.resultUnknownBody}</p>
           <button
             type="button"
-            className="mt-1 min-h-11 rounded-full bg-sky px-3 font-bold text-[var(--text-on-accent)]"
+            className={BTN_RETRY_PILL}
             onClick={() => {
               const [path, id] = unknown.split(":");
               setUnknown(null);

@@ -1,8 +1,13 @@
 "use client";
-import { PANEL_LG, PANEL_LG_COL } from "@/lib/ui-classes";
+import {
+  BTN_RETRY_PILL,
+  PANEL_LG,
+  PANEL_LG_COL,
+  PANEL_WARN_ORANGE,
+} from "@/lib/ui-classes";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, ApiError } from "@/lib/api-client";
+import { api, ApiError, isRetryableNetError } from "@/lib/api-client";
 import { apiErrorMessage, useI18n } from "@/i18n/client";
 import { fmtCur } from "@/i18n/config";
 import { fmtMult } from "@/lib/games";
@@ -200,7 +205,7 @@ export default function BigSmallPage({
             : (apiErrorMessage(dict, e))
           : dict.common.networkError,
       );
-      if (!(e instanceof ApiError) || (e.status ?? 0) === 0 || (e.status ?? 0) >= 500) {
+      if (isRetryableNetError(e)) {
         setUnknown(true);
       }
       setBusy(false);
@@ -298,11 +303,11 @@ export default function BigSmallPage({
           />
           {err && <p className="text-xs text-[var(--danger-text)]">{err}</p>}
           {unknown && (
-            <div className="rounded-[var(--r-sm)] border border-[var(--compat-orange)] p-2 text-xs text-ink">
+            <div className={PANEL_WARN_ORANGE}>
               <p>{dict.review.resultUnknownBody}</p>
               <button
                 type="button"
-                className="mt-1 min-h-11 rounded-full bg-sky px-3 font-bold text-[var(--text-on-accent)]"
+                className={BTN_RETRY_PILL}
                 onClick={() => void guess(lastGuess.current, true)}
               >
                 {dict.review.retrySameKey}
@@ -358,8 +363,11 @@ export default function BigSmallPage({
           {/* P0-1 修复：赔率表与真实玩法统一为三骰（小 3-10 / 大 11-18 /
               三同豹子判负），与同页选卡、路单页、后端 bigsmall.rs 同口径。
               区间文案直接复用选卡词表键，杜绝两处各写一套数字。 */}
-          <div className="mb-3 rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] p-3">
-            <h3 className="mb-2 text-xs font-bold text-sub">{dict.review.bsOddsTitle}</h3>
+          <div className="mb-3 rounded-[var(--r-md)] border border-line p-3
+           bg-[var(--surface-card)]">
+            <h3 className="mb-2 text-xs font-bold text-sub">
+              {dict.review.bsOddsTitle}
+            </h3>
             <div className="grid grid-cols-1 gap-1 text-xs">
               <div className="flex justify-between">
                 <span className="text-sub">

@@ -37,3 +37,14 @@ export class ApiError extends Error {
     return Object.keys(out).length > 0 ? out : undefined;
   }
 }
+
+/** 可重试的网络/服务错误（游戏域 catch 分支共用）：
+ *  非 ApiError（fetch 抛的网络错）或 status 缺失/5xx——这类重试有意义；
+ *  业务 4xx（余额不足等）重试无意义。line_limit 折行收口：七处同款
+ *  判定收口到此处（games/scratch|fishing|jgg|capsule|bigsmall、
+ *  gacha-draw、gacha-album）。 */
+export function isRetryableNetError(e: unknown): boolean {
+  if (!(e instanceof ApiError)) return true;
+  const st = e.status ?? 0;
+  return st === 0 || st >= 500;
+}

@@ -1,8 +1,8 @@
 import type { ApiEnvelope, Page, PageParams } from "@fluxtorrent/domain-types";
 import { LOCALE_COOKIE } from "@/i18n/config";
-import { ApiError } from "@/lib/api-error";
+import { ApiError, isRetryableNetError } from "@/lib/api-error";
 
-export { ApiError };
+export { ApiError, isRetryableNetError };
 import { apiServerBase } from "@/lib/api-upstream";
 import { blobRequest, toApiError } from "@/lib/blob-error";
 import { netMsg } from "@/lib/net-msg";

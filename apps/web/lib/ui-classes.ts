@@ -121,7 +121,8 @@ export const TERMS_FLD =
   "bg-cloud px-2 text-sm outline-none focus:border-sky";
 
 export const TERMS_BTN_PRIMARY =
-  "rounded-full bg-sky px-4 py-1.5 text-sm font-bold text-[var(--text-on-accent)] " +
+  "rounded-full bg-sky px-4 py-1.5 text-sm font-bold " +
+  "text-[var(--text-on-accent)] " +
   "disabled:opacity-50";
 
 export const TERMS_BTN_GHOST =
@@ -149,3 +150,14 @@ export const WIKI_SIDE_LINK =
 export const WIKI_TOC_LINK =
   "block rounded-[var(--r-sm)] px-2 py-1 text-xs text-sub " +
   "hover:bg-cloud hover:text-link";
+
+/** 游戏域「结果未知/重试」胶囊按钮（scratch/fishing/jgg/capsule/bigsmall/
+ *  gacha-draw/gacha-album 同款；44px 触达高） */
+export const BTN_RETRY_PILL =
+  "mt-1 min-h-11 rounded-full bg-sky px-3 font-bold " +
+  "text-[var(--text-on-accent)]";
+
+/** 游戏域结果未知提示面板（compat-orange 描边小字面板） */
+export const PANEL_WARN_ORANGE =
+  "rounded-[var(--r-sm)] border border-[var(--compat-orange)] "
+  + "p-2 text-xs text-ink";

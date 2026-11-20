@@ -1,8 +1,13 @@
 "use client";
-import { PANEL_LG, PANEL_LG_COL } from "@/lib/ui-classes";
+import {
+  BTN_RETRY_PILL,
+  PANEL_LG,
+  PANEL_LG_COL,
+  PANEL_WARN_ORANGE,
+} from "@/lib/ui-classes";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, ApiError } from "@/lib/api-client";
+import { api, ApiError, isRetryableNetError } from "@/lib/api-client";
 import { apiErrorMessage, useI18n } from "@/i18n/client";
 import { fmtCur } from "@/i18n/config";
 import { GameShell, PlayHint } from "@/components/game/game-kit";
@@ -149,7 +154,7 @@ export default function ScratchPage({
             : apiErrorMessage(dict, e)
           : dict.common.networkError,
       );
-      if (!(e instanceof ApiError) || (e.status ?? 0) === 0 || (e.status ?? 0) >= 500) {
+      if (isRetryableNetError(e)) {
         setUnknown(true); // 结果未知，保留键供原键重试
       }
       setPhase("idle");
@@ -286,11 +291,11 @@ export default function ScratchPage({
           <ResultFlash kind={flash?.kind ?? null} text={flash?.text ?? null} />
           {err && <p className="text-xs text-[var(--danger-text)]">{err}</p>}
           {unknown && (
-            <div className="rounded-[var(--r-sm)] border border-[var(--compat-orange)] p-2 text-xs text-ink">
+            <div className={PANEL_WARN_ORANGE}>
               <p>{dict.review.resultUnknownBody}</p>
               <button
                 type="button"
-                className="mt-1 min-h-11 rounded-full bg-sky px-3 font-bold text-[var(--text-on-accent)]"
+                className={BTN_RETRY_PILL}
                 onClick={() => void buy(true)}
               >
                 {dict.review.retrySameKey}

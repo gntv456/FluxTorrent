@@ -1,7 +1,7 @@
 "use client";
-import { PANEL_LG } from "@/lib/ui-classes";
+import { BTN_RETRY_PILL, PANEL_LG, PANEL_WARN_ORANGE } from "@/lib/ui-classes";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, ApiError } from "@/lib/api-client";
+import { api, ApiError, isRetryableNetError } from "@/lib/api-client";
 import { useTenDraw } from "@/lib/ten-draw";
 import {
   SwCtaRow,
@@ -138,7 +138,7 @@ export default function JggPage({
             : (apiErrorMessage(dict, e))
           : dict.common.networkError,
       );
-      if (!(e instanceof ApiError) || (e.status ?? 0) === 0 || (e.status ?? 0) >= 500) {
+      if (isRetryableNetError(e)) {
         setUnknown(true);
       }
       setBusy(false);
@@ -282,11 +282,11 @@ export default function JggPage({
           <SwPrizeStrip label={tj.prizeLb} items={prizeStripItems} />
           {err && <p className="text-xs text-[var(--danger-text)]">{err}</p>}
           {unknown && (
-            <div className="rounded-[var(--r-sm)] border border-[var(--compat-orange)] p-2 text-xs text-ink">
+            <div className={PANEL_WARN_ORANGE}>
               <p>{dict.review.resultUnknownBody}</p>
               <button
                 type="button"
-                className="mt-1 min-h-11 rounded-full bg-sky px-3 font-bold text-[var(--text-on-accent)]"
+                className={BTN_RETRY_PILL}
                 onClick={() => void draw(true)}
               >
                 {dict.review.retrySameKey}

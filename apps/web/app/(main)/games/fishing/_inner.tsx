@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { PANEL_LG_COL } from "@/lib/ui-classes";
-import { api, ApiError } from "@/lib/api-client";
+import { PANEL_LG_COL, PANEL_WARN_ORANGE } from "@/lib/ui-classes";
+import { api, ApiError, isRetryableNetError } from "@/lib/api-client";
 import { apiErrorMessage, useI18n } from "@/i18n/client";
 import { fmtCur } from "@/i18n/config";
 import { ChipSelect, GameShell, PlayHint } from "@/components/game/game-kit";
@@ -165,7 +165,7 @@ export default function FishingPage({
         );
         // 网络错误 ≠ 玩家失误：此前 auto 模式直接判负「鱼跑了」，
         // 把服务端故障伪装成确定性失败。改为「结果未知」+ 查询入口。
-        if (!(e instanceof ApiError) || (e.status ?? 0) === 0 || (e.status ?? 0) >= 500) {
+        if (isRetryableNetError(e)) {
           setReelUnknown(true);
         }
       } finally {
@@ -326,9 +326,12 @@ export default function FishingPage({
           />
           {err && <p className="text-xs text-[var(--danger-text)]">{err}</p>}
           {reelUnknown && (
-            <div className="rounded-[var(--r-sm)] border border-[var(--compat-orange)] p-2 text-xs text-ink" role="status">
+            <div className={PANEL_WARN_ORANGE} role="status">
               <p>{dict.review.resultUnknownBody}</p>
-              <a href="/games/fishing/records" className="mt-1 inline-block min-h-11 py-1 text-link underline">
+              <a
+                href="/games/fishing/records"
+                className="mt-1 inline-block min-h-11 py-1 text-link underline"
+              >
                 {dict.review.checkResult} →
               </a>
             </div>
