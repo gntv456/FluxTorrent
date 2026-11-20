@@ -24,9 +24,12 @@ async fn task_shop_buy(
     body: web::Json<BuyReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    let raw_key = crate::http::idempotency::body_or_header(&body.idempotency_key)
-        .filter(|k| crate::http::idempotency::valid_shape(k))
-        .ok_or_else(|| DomainError::Validation("缺少合法的 idempotency_key".into()))?;
+    let raw_key =
+        crate::http::idempotency::body_or_header(&body.idempotency_key)
+            .filter(|k| crate::http::idempotency::valid_shape(k))
+            .ok_or_else(|| {
+                DomainError::Validation("缺少合法的 idempotency_key".into())
+            })?;
     let idem = format!("task_shop:{}:{}", auth.id, raw_key);
 
     let item = crate::repo::task_shop::item_for_buy(&state, body.item_id)
@@ -36,7 +39,10 @@ async fn task_shop_buy(
     let kind = item
         .kind
         .clone()
-        .filter(|k| crate::economy_http::has_effect(k) || matches!(k.as_str(), "temp_invite" | "rename_card"))
+        .filter(|k| {
+            crate::economy_http::has_effect(k)
+                || matches!(k.as_str(), "temp_invite" | "rename_card")
+        })
         .ok_or_else(|| DomainError::Validation("该权益兑换暂未开放".into()))?;
 
     // 重放：已扣款订单按 effect_applied 决定补发还是原样返回
@@ -112,8 +118,11 @@ async fn task_shop_buy(
     .await?;
     if matches!(outcome, crate::economy_http::SpendOutcome::Replayed) {
         // 极小并发窗口：同键已由另一请求扣款；归还本次占位
-        crate::repo::task_shop::release_stock(&state.repo.db, body.item_id).await?;
-        return Err(DomainError::Validation("该笔兑换已受理，请刷新后查看".into()));
+        crate::repo::task_shop::release_stock(&state.repo.db, body.item_id)
+            .await?;
+        return Err(DomainError::Validation(
+            "该笔兑换已受理，请刷新后查看".into(),
+        ));
     }
     let order_id = crate::repo::task_shop::insert_order(
         &mut tx,
@@ -141,11 +150,10 @@ async fn task_shop_buy(
     if applied {
         crate::repo::task_shop::mark_effect_applied(&state, order_id).await?;
     }
-    state.repo.audit(
-        Some(auth.id),
-        "task_shop_buy",
-        Some(body.item_id),
-    ).await;
+    state
+        .repo
+        .audit(Some(auth.id), "task_shop_buy", Some(body.item_id))
+        .await;
 
     Ok(ok(serde_json::json!({
         "order_id": order_id,

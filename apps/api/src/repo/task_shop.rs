@@ -32,9 +32,31 @@ pub async fn item_for_buy(
         .fetch_optional(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
-    Ok(row.map(|(id, name, span, kind, config, require_tier, require_count, cost, stock, stock_used)| ShopItem {
-        id, name, span, kind, config, require_tier, require_count, cost, stock, stock_used,
-    }))
+    Ok(row.map(
+        |(
+            id,
+            name,
+            span,
+            kind,
+            config,
+            require_tier,
+            require_count,
+            cost,
+            stock,
+            stock_used,
+        )| ShopItem {
+            id,
+            name,
+            span,
+            kind,
+            config,
+            require_tier,
+            require_count,
+            cost,
+            stock,
+            stock_used,
+        },
+    ))
 }
 
 /// 用户在指定难度档已完成任务数（门槛判据）。
