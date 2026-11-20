@@ -5318,7 +5318,7 @@ const zhCnBase = {
       onboard: "新人转正考核",
       periodic: "周期考核",
     } as Record<string, string>,
-    periods: { once: "一次性", weekly: "每週", monthly: "每月", quarterly: "每季" } as Record<
+    periods: { once: "一次性", weekly: "每周", monthly: "每月", quarterly: "每季" } as Record<
       string,
       string
     >,
