@@ -324,3 +324,7 @@ audience class:N 的 N 须为数字	audience class:N 的 N 須為數字	The N in
 audience class:N 的 N 须在 1-12	audience class:N 的 N 須在 1-12	The N in audience class:N must be between 1 and 12
 该求种已过期	該求種已過期	This request has expired
 该求种已过期，无法加价	該求種已過期，無法加價	This request has expired and can no longer be bid on
+kind 仅支持 free/x2/x2free/half/x2half/p30	kind 僅支持 free/x2/x2free/half/x2half/p30	kind must be one of free/x2/x2free/half/x2half/p30
+竞赛标题不能为空	競賽標題不能為空	Contest title cannot be empty
+规则名不能为空	規則名不能為空	Rule name cannot be empty
+问题与至少两个选项不能为空	問題與至少兩個選項不能為空	Question and at least two options are required
