@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { api } from "@/lib/api-client";
+import { Badge } from "@/components/ui/badge";
 import { getDict } from "@/i18n/server";
 
 /** 全站公告横幅（0503）：news 此前只在首页渲染——深逛 /torrents 等页的
@@ -30,7 +31,7 @@ export async function SiteNewsBanner() {
         px-4 py-1.5 text-center text-sm"
       data-news-id={top.id}
     >
-      <span className="shrink-0 font-medium">{dict.siteNews.label}</span>
+      <Badge tone="warn">{dict.siteNews.label}</Badge>
       <Link
         href="/"
         className="text-link truncate min-h-[44px] inline-flex items-center"

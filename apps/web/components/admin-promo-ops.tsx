@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { Badge } from "@/components/ui/badge";
 import { BTN_SM_BOLD } from "@/lib/ui-classes";
 import { PromoEffectTable } from "./admin-promo-ops-effect";
 
@@ -113,7 +114,7 @@ export function AdminPromoOps() {
           </button>
         ))}
       </div>
-      {msg && <p className="text-sm text-sub">{msg}</p>}
+      {msg && <Badge tone="brand">{msg}</Badge>}
 
       {tab === "effect" && <PromoEffectTable rows={effects} />}
       {tab === "rules" && (
