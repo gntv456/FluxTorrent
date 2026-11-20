@@ -253,10 +253,10 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   133,
-   152,
+   136,
    155,
-   184
+   158,
+   187
   ],
   "color": []
  },
@@ -769,10 +769,12 @@
  },
  "app/(main)/my-spark/page.tsx": {
   "h1": [
-   103
+   108
   ],
-  "h1First": 91,
-  "palette": [],
+  "h1First": 96,
+  "palette": [
+   116
+  ],
   "color": []
  },
  "app/(main)/my-spark/_parts/excluded-note.tsx": {
@@ -1052,7 +1054,9 @@
  "app/(main)/gomoku/_inner.tsx": {
   "h1": [],
   "h1First": null,
-  "palette": [],
+  "palette": [
+   35
+  ],
   "color": []
  },
  "app/(main)/getrss/loading.tsx": {
@@ -1235,8 +1239,8 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   288,
-   290
+   307,
+   309
   ],
   "color": []
  },
@@ -1337,8 +1341,9 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   369,
-   373
+   204,
+   384,
+   388
   ],
   "color": []
  },
@@ -1358,11 +1363,11 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   319,
-   321
+   337,
+   339
   ],
   "color": [
-   273
+   279
   ]
  },
  "app/(main)/games/capsule/records/loading.tsx": {
@@ -1678,8 +1683,9 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   155,
-   254
+   99,
+   164,
+   263
   ],
   "color": []
  },
@@ -2553,7 +2559,7 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   131
+   135
   ],
   "color": []
  },
@@ -2944,8 +2950,7 @@
   "h1First": null,
   "palette": [
    31,
-   117,
-   212
+   118
   ],
   "color": []
  },
@@ -3045,7 +3050,7 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   183
+   198
   ],
   "color": []
  },
@@ -3137,7 +3142,7 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   51
+   57
   ],
   "color": []
  },
@@ -3285,8 +3290,8 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   109,
-   110
+   115,
+   116
   ],
   "color": []
  },
@@ -3355,9 +3360,9 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   99,
-   116,
-   146
+   101,
+   118,
+   148
   ],
   "color": []
  },
@@ -3365,9 +3370,9 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   102,
-   235,
-   248
+   103,
+   236,
+   249
   ],
   "color": []
  },
@@ -3391,7 +3396,7 @@
    51,
    70,
    77,
-   87
+   88
   ],
   "color": []
  },
@@ -3462,11 +3467,12 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   61,
-   62,
-   121,
-   122,
-   250
+   65,
+   66,
+   129,
+   130,
+   264,
+   265
   ],
   "color": []
  },
@@ -3482,12 +3488,12 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   84,
-   93,
-   106,
-   135,
-   152,
-   160
+   85,
+   94,
+   107,
+   136,
+   153,
+   161
   ],
   "color": []
  },
@@ -3633,11 +3639,13 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   59,
-   71,
    73,
-   85,
-   93
+   74,
+   86,
+   89,
+   105,
+   106,
+   117
   ],
   "color": []
  },
@@ -3675,10 +3683,11 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   159,
-   391,
-   399,
-   400
+   167,
+   168,
+   404,
+   414,
+   415
   ],
   "color": []
  },
@@ -3983,10 +3992,11 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   169,
-   181,
-   191,
-   217
+   175,
+   187,
+   197,
+   223,
+   276
   ],
   "color": []
  },
@@ -4080,9 +4090,10 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   74,
-   84,
-   94
+   76,
+   87,
+   99,
+   117
   ],
   "color": []
  },
@@ -4090,7 +4101,7 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   25
+   26
   ],
   "color": []
  },
@@ -4576,7 +4587,9 @@
  "components/subtitle-board.tsx": {
   "h1": [],
   "h1First": null,
-  "palette": [],
+  "palette": [
+   147
+  ],
   "color": []
  },
  "components/subtitle-card-list.tsx": {
@@ -4680,9 +4693,10 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   129,
-   177,
-   250
+   103,
+   104,
+   152,
+   228
   ],
   "color": []
  },
@@ -4806,8 +4820,8 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   210,
-   235
+   218,
+   243
   ],
   "color": []
  },
@@ -4837,9 +4851,9 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   230,
-   245,
-   325
+   256,
+   283,
+   375
   ],
   "color": []
  },
@@ -4952,8 +4966,9 @@
   "h1First": null,
   "palette": [
    143,
-   153,
-   174
+   154,
+   188,
+   224
   ],
   "color": []
  },
@@ -4961,8 +4976,8 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   48,
-   49
+   52,
+   53
   ],
   "color": []
  },
@@ -5076,7 +5091,9 @@
  "components/usercp-security-credential.tsx": {
   "h1": [],
   "h1First": null,
-  "palette": [],
+  "palette": [
+   136
+  ],
   "color": []
  },
  "components/usercp-security.tsx": {
@@ -5329,8 +5346,8 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   139,
-   162
+   154,
+   179
   ],
   "color": []
  },
@@ -5617,10 +5634,10 @@
  },
  "app/(main)/games/career/page.tsx": {
   "h1": [],
-  "h1First": 68,
+  "h1First": 73,
   "palette": [
-   54,
-   127
+   59,
+   132
   ],
   "color": []
  },
@@ -5714,6 +5731,14 @@
   "h1": [],
   "h1First": null,
   "palette": [],
+  "color": []
+ },
+ "components/gacha-pool-me-bar.tsx": {
+  "h1": [],
+  "h1First": null,
+  "palette": [
+   40
+  ],
   "color": []
  }
 }
