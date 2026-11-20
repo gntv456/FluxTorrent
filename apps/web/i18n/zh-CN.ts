@@ -4089,7 +4089,7 @@ const zhCnBase = {
     connectInfo: "连接信息",
     btClient: "BT 客户端",
     completedSnatches: "完成种子",
-    tabCenter: "个人中心",
+    tabCenter: "概览",
     tabUploads: "发布种子",
     tabSeeding: "当前做种",
     tabLeeching: "当前下载",

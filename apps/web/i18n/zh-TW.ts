@@ -4061,7 +4061,7 @@ const zhTwBase: Omit<
     connectInfo: "連線資訊",
     btClient: "BT 用戶端",
     completedSnatches: "完成種子",
-    tabCenter: "個人中心",
+    tabCenter: "概覽",
     tabUploads: "發布種子",
     tabSeeding: "當前做種",
     tabLeeching: "當前下載",

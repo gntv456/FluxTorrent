@@ -884,7 +884,7 @@ export const jaPart4 = {
     connectInfo: "接続情報",
     btClient: "BT クライアント",
     completedSnatches: "完了トレント",
-    tabCenter: "個人センター",
+    tabCenter: "概要",
     tabUploads: "投稿トレント",
     tabSeeding: "シード中",
     tabLeeching: "ダウンロード中",
