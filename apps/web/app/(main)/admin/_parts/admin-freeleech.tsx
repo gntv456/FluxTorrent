@@ -11,6 +11,7 @@ import { BTN_MD_SKY, INPUT_CLOUD } from "@/lib/ui-classes";
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { apiErrorMessage, useI18n } from "@/i18n/client";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { dateLocale, fmt } from "@/i18n/config";
 import type { PromoRow } from "./admin-shared";
 
@@ -33,6 +34,8 @@ export function FreeleechPanel() {
   const [categoryId, setCategoryId] = useState("1");
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // P1：全站促销直接影响经济，创建/移除需二次确认
+  const [ask, setAsk] = useState<{ type: "create" } | { type: "remove"; id: number } | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -133,7 +136,7 @@ export function FreeleechPanel() {
                 <td className="rowfollow">
                   <button
                     disabled={busy}
-                    onClick={() => remove(r.id)}
+                    onClick={() => setAsk({ type: "remove", id: r.id })}
                     className={
                       "min-h-11 rounded-full border border-line px-3 " +
                       "font-bold text-[var(--danger-text)] disabled:opacity-50"
@@ -218,12 +221,30 @@ export function FreeleechPanel() {
         </label>
         <button
           disabled={busy}
-          onClick={create}
+          onClick={() => setAsk({ type: "create" })}
           className={BTN_MD_SKY}
         >
           {t.applyBtn}
         </button>
       </div>
+      <ConfirmDialog
+        open={ask !== null}
+        onClose={() => setAsk(null)}
+        onConfirm={() => {
+          const a = ask;
+          setAsk(null);
+          if (!a) return;
+          if (a.type === "create") void create();
+          else void remove(a.id);
+        }}
+        tone="danger"
+        title={dict.review.confirmFreeleechTitle}
+        message={fmt(dict.review.confirmFreeleechBody, {
+          scope,
+          hours: String(hours),
+        })}
+        busy={busy}
+      />
     </section>
   );
 }

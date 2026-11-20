@@ -398,6 +398,8 @@ export default function AdminPage() {
             onResume={doResume}
             status={rq.status}
             onStatus={rq.setStatus}
+            failed={rq.failed}
+            onRetry={() => void rq.reload()}
           />
         );
 

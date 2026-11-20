@@ -85,7 +85,7 @@ export function AdminOpsJobs() {
         "/api/v1/admin/jobs/run",
         { job },
       );
-      setMsg(fmt(r.coalesced ? t.jobsCoalesced : t.jobsQueued, { job }));
+      setMsg(fmt(r.coalesced ? t.jobsCoalesced : t.jobsQueued, { job }) + " · " + dict.review.jobQueuedHint);
       load();
     } catch (e) {
       setMsg(e instanceof ApiError ? e.message : t.runFailed);

@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/config";
 import { Badge } from "@/components/ui/badge";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { BTN_SM_BOLD } from "@/lib/ui-classes";
 import { OpsBoards } from "./admin-ops-boards";
 
@@ -31,6 +33,9 @@ const AUDIENCES = [
   ["class:98", "等级≥98"],
 ] as const;
 
+const aAudienceLabel = (key: string) =>
+  AUDIENCES.find(([k]) => k === key)?.[1] ?? key;
+
 export function AdminOpsBroadcast() {
   const { dict } = useI18n();
   const [tab, setTab] = useState<"funnel" | "pm" | "shout" | "boards">(
@@ -42,6 +47,12 @@ export function AdminOpsBroadcast() {
   const [pmSubject, setPmSubject] = useState("");
   const [pmBody, setPmBody] = useState("");
   const [shoutMsg, setShoutMsg] = useState("");
+  // P0-2：全员/批量广播不可逆，发送前二次确认 + 影响面预演
+  const [askBroadcast, setAskBroadcast] = useState<{
+    subject: string;
+    body: string;
+    audience: string;
+  } | null>(null);
   const [funnel, setFunnel] = useState<FunnelRow[] | null>(null);
   const [funnelWeeks, setFunnelWeeks] = useState(8);
 
@@ -110,7 +121,7 @@ export function AdminOpsBroadcast() {
               value={funnelWeeks}
               onChange={(e) => setFunnelWeeks(Number(e.target.value))}
               className="rounded border border-line px-2 py-1 text-sm"
-              aria-label="回看周数"
+              aria-label={dict.review.ariaReviewWeeks}
             >
               {[4, 8, 12, 26].map((w) => (
                 <option key={w} value={w}>近 {w} 周</option>
@@ -213,15 +224,11 @@ export function AdminOpsBroadcast() {
               disabled={busy || !pmSubject.trim() || !pmBody.trim()}
               className={BTN_SM_BOLD}
               onClick={() =>
-                send(
-                  () =>
-                    api.post("/api/v1/admin/pm-broadcast", {
-                      subject: pmSubject,
-                      body: pmBody,
-                      audience,
-                    }),
-                  "广播已发送",
-                )
+                setAskBroadcast({
+                  subject: pmSubject,
+                  body: pmBody,
+                  audience,
+                })
               }
             >
               发送广播
@@ -263,6 +270,31 @@ export function AdminOpsBroadcast() {
           </div>
         </div>
       )}
+      <ConfirmDialog
+        open={askBroadcast !== null}
+        onClose={() => setAskBroadcast(null)}
+        onConfirm={() => {
+          const a = askBroadcast;
+          setAskBroadcast(null);
+          if (!a) return;
+          void send(
+            () =>
+              api.post("/api/v1/admin/pm-broadcast", {
+                subject: a.subject,
+                body: a.body,
+                audience: a.audience,
+              }),
+            "广播已发送",
+          );
+        }}
+        tone="danger"
+        title={dict.review.confirmBroadcastTitle}
+        message={fmt(dict.review.confirmBroadcastBody, {
+          who: aAudienceLabel(askBroadcast?.audience ?? ""),
+          subject: askBroadcast?.subject ?? "",
+        })}
+        confirmLabel="确认发送"
+      />
     </section>
   );
 }

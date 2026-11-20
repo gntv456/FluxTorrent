@@ -43,7 +43,7 @@ export function AdminUserFieldsPanel({ userId }: { userId: number }) {
   const [rows, setRows] = useState<FieldRow[] | null>(null);
   const [draft, setDraft] = useState<Record<string, unknown>>({});
   const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [err, setErr] = useState<unknown>(null);
 
   const load = useCallback(async () => {
@@ -170,10 +170,10 @@ export function AdminUserFieldsPanel({ userId }: { userId: number }) {
         `/api/v1/admin/users/${userId}/fields`,
         { values: draft },
       );
-      setMsg(fmt(at.fieldsSaved, { n: r.saved }));
+      setMsg({ ok: true, text: fmt(at.fieldsSaved, { n: r.saved }) });
       await load();
     } catch (e) {
-      setMsg(e instanceof ApiError ? e.message : at.opFail);
+      setMsg({ ok: false, text: e instanceof ApiError ? e.message : at.opFail });
     } finally {
       setBusy(false);
     }
@@ -209,7 +209,16 @@ export function AdminUserFieldsPanel({ userId }: { userId: number }) {
           {fmt(at.fieldsSave, { n: dirty.length })}
         </button>
         <span className="text-xs text-sub">{at.fieldsHint}</span>
-        {msg && <span className="text-xs text-mint">{msg}</span>}
+        {msg && (
+          <span
+            role={msg.ok ? "status" : "alert"}
+            className={`text-xs ${
+              msg.ok ? "text-[var(--success)]" : "text-[var(--danger-text)]"
+            }`}
+          >
+            {msg.text}
+          </span>
+        )}
       </div>
     </div>
   );

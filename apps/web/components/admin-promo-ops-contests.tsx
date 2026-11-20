@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { BTN_SM_BOLD } from "@/lib/ui-classes";
+import { useI18n } from "@/i18n/client";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 /** 运营工作台·竞赛管理 tab（0506 从 admin-promo-ops.tsx 按域拆出守
  *  300 门禁）：建赛（含赛制选择）+ 列表 + 关闭。赛制 0506 参数化
@@ -30,11 +32,14 @@ export function ContestsTab({
   contests: Contest[] | null;
   load: () => Promise<void>;
 }) {
+  const { dict } = useI18n();
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [ctTitle, setCtTitle] = useState("");
   const [ctDescr, setCtDescr] = useState("");
   const [ctMetric, setCtMetric] = useState("uploads");
+  // P1：关闭竞赛终止报名并触发结算，需二次确认
+  const [askClose, setAskClose] = useState<number | null>(null);
 
   async function act(fn: () => Promise<unknown>, okMsg: string) {
     setBusy(true);
@@ -70,7 +75,7 @@ export function ContestsTab({
           value={ctMetric}
           onChange={(e) => setCtMetric(e.target.value)}
           className="rounded border border-line px-2 py-2 text-sm"
-          aria-label="计分赛制"
+          aria-label={dict.review.ariaScoringSystem}
         >
           {METRICS.map(([k, label]) => (
             <option key={k} value={k}>{label}</option>
@@ -133,12 +138,7 @@ export function ContestsTab({
                     type="button"
                     className="text-link text-xs"
                     disabled={busy}
-                    onClick={() =>
-                      act(
-                        () => api.del(`/api/v1/admin/contests/${c.id}`),
-                        "已关闭（到期后自动结算）",
-                      )
-                    }
+                    onClick={() => setAskClose(c.id)}
                   >
                     关闭
                   </button>
@@ -148,6 +148,23 @@ export function ContestsTab({
           ))}
         </tbody>
       </table>
+      <ConfirmDialog
+        open={askClose !== null}
+        onClose={() => setAskClose(null)}
+        onConfirm={() => {
+          const id = askClose;
+          setAskClose(null);
+          if (id !== null)
+            void act(
+              () => api.del(`/api/v1/admin/contests/${id}`),
+              "已关闭（到期后自动结算）",
+            );
+        }}
+        tone="danger"
+        title={dict.review.confirmCloseContestTitle}
+        message={dict.review.confirmCloseContestBody}
+        busy={busy}
+      />
     </div>
   );
 }

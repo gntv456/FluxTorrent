@@ -44,17 +44,20 @@ export function IncrementBulk() {
   const [body, setBody] = useState("");
   const [sender, setSender] = useState("self");
   const [email, setEmail] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
+  const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
   const [busy, setBusy] = useState(false);
   // P2 清偿：正式发放二次确认（danger：批量经济写操作），confirm 退役
   const ask = useConfirm();
   // 发放成功后自增，台账跟着回读（不然发完这一屏还是空的）
   const [ledTick, setLedTick] = useState(0);
 
-  const flash = useCallback((m: string) => {
-    setMsg(m);
-    setTimeout(() => setMsg(null), 5000);
-  }, []);
+  const flash = useCallback(
+    (m: string, ok = true) => {
+      setMsg({ text: m, ok });
+      setTimeout(() => setMsg(null), 5000);
+    },
+    [],
+  );
 
   useEffect(() => {
     api
@@ -142,7 +145,7 @@ export function IncrementBulk() {
       setSubject("");
       setBody("");
     } catch (e) {
-      flash(e instanceof ApiError ? e.message : t.fail);
+      flash(e instanceof ApiError ? e.message : t.fail, false);
     } finally {
       setBusy(false);
     }
@@ -156,8 +159,13 @@ export function IncrementBulk() {
   return (
     <div className="flex flex-col gap-3">
       {msg && (
-        <p className="rounded-[var(--r-md)] bg-sky-soft p-3 text-sm text-ink">
-          {msg}
+        <p
+          role={msg.ok ? "status" : "alert"}
+          className={`rounded-[var(--r-md)] p-3 text-sm ${
+            msg.ok ? "bg-mint-soft text-ink" : "bg-coral-soft text-[var(--danger-text)]"
+          }`}
+        >
+          {msg.text}
         </p>
       )}
       <section className="brand-panel p-4">

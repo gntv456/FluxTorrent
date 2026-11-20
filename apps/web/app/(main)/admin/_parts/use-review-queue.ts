@@ -22,6 +22,8 @@ export interface ReviewQueueState {
   setReasonId: (id: number | null) => void;
   setPage: (offset: number) => void;
   reload: () => Promise<void>;
+  /** P0-4：取数失败标识——区分「队列真的空」与「接口挂了」 */
+  failed: boolean;
   /** 0306：审核态视图——0=待审（默认）· 4=暂缓（可取回、可恢复）。
    *  旧口径只拉 status=0，暂缓完的种从台上消失，审核员再也找不回它。 */
   status: number;
@@ -45,17 +47,27 @@ export function useReviewQueue(): ReviewQueueState {
   const [status, setStatus] = useState(0);
   const [reasons, setReasons] = useState<DenyReason[]>([]);
   const [reasonId, setReasonId] = useState<number | null>(null);
+  const [failed, setFailed] = useState(false);
   const pageSize = 50;
 
   // 取数抽成带参函数：resume 要在 setStatus 后立刻按新态重拉，
   // 不能依赖会随 state 重建的 reload 闭包（否则拿到旧 status 的列表）。
   const fetchQueue = useCallback(async (off: number, st: number) => {
-    const d = await api.get<QueueEnvelope>(
-      `/api/v1/admin/reviews?limit=${pageSize}` +
-        `&offset=${off}&status=${st}`,
-    );
-    setItems(d.items ?? []);
-    setTotal(d.total ?? 0);
+    try {
+      const d = await api.get<QueueEnvelope>(
+        `/api/v1/admin/reviews?limit=${pageSize}` +
+          `&offset=${off}&status=${st}`,
+      );
+      setItems(d.items ?? []);
+      setTotal(d.total ?? 0);
+      setFailed(false);
+    } catch (e) {
+      // P0-4：此前调用方 .catch(() => {}) 吞掉错误 → 空 items 被读成「没人待审」
+      setFailed(true);
+      setItems([]);
+      setTotal(0);
+      throw e;
+    }
   }, []);
 
   const reload = useCallback(async () => {
@@ -63,8 +75,17 @@ export function useReviewQueue(): ReviewQueueState {
   }, [fetchQueue, offset, status]);
 
   useEffect(() => {
-    reload().catch(() => {});
+    // failed 已在 fetchQueue 内设置，这里只吞掉未处理的 rejection
+    void reload().catch(() => {});
   }, [reload]);
+  // 视图切换重置分页：否则在第 N 页切视图会用旧 offset 拉新列表 → 假空态
+  const setStatusReset = useCallback(
+    (s: number) => {
+      setStatus(s);
+      setOffset(0);
+    },
+    [],
+  );
 
   // 拒因字典只在审核台用得到，但仍一次性拉取（7 条，几毫秒）
   useEffect(() => {
@@ -96,10 +117,11 @@ export function useReviewQueue(): ReviewQueueState {
     reasons,
     reasonId,
     setReasonId,
+    failed,
     setPage: setOffset,
     reload,
     status,
-    setStatus,
+    setStatus: setStatusReset,
     resume,
   };
 }

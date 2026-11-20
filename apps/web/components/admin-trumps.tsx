@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 interface TrumpRow {
   id: number;
@@ -26,6 +27,8 @@ export function AdminTrumps() {
   const [rows, setRows] = useState<TrumpRow[] | null>(null);
   const [busy, setBusy] = useState(0);
   const [msg, setMsg] = useState<string | null>(null);
+  // P0-3：接受即淘汰种子，不可逆——二次确认 + 理由留痕提示
+  const [ask, setAsk] = useState<{ id: number; accept: boolean } | null>(null);
 
   const load = useCallback(() => {
     api
@@ -92,7 +95,7 @@ export function AdminTrumps() {
                       type="button"
                       className="sticker"
                       disabled={busy === r.id}
-                      onClick={() => act(r.id, true)}
+                      onClick={() => setAsk({ id: r.id, accept: true })}
                     >
                       {d.reportAccept}
                     </button>
@@ -100,7 +103,7 @@ export function AdminTrumps() {
                       type="button"
                       className="sticker ml-1"
                       disabled={busy === r.id}
-                      onClick={() => act(r.id, false)}
+                      onClick={() => setAsk({ id: r.id, accept: false })}
                     >
                       {d.reportReject}
                     </button>
@@ -111,6 +114,20 @@ export function AdminTrumps() {
           </table>
         </div>
       )}
+      <ConfirmDialog
+        open={ask !== null}
+        onClose={() => setAsk(null)}
+        onConfirm={() => {
+          const a = ask;
+          setAsk(null);
+          if (a) void act(a.id, a.accept);
+        }}
+        tone={ask?.accept ? "danger" : "neutral"}
+        title={dict.review.confirmResolveTitle}
+        message={dict.review.confirmResolveBody}
+        confirmLabel={ask?.accept ? d.reportAccept : d.reportReject}
+        busy={busy !== 0}
+      />
     </section>
   );
 }

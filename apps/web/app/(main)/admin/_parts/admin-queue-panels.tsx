@@ -40,6 +40,8 @@ export function ReviewsPanel({
   onResume,
   status,
   onStatus,
+  failed,
+  onRetry,
 }: {
   reviews: PendingTorrent[];
   total: number;
@@ -53,6 +55,9 @@ export function ReviewsPanel({
   onPostpone: (torrentId: number) => void;
   /** 批量通过本页全部待审（POST /admin/reviews/batch；自审条目由后端跳过） */
   onBatch: (ids: number[], approve: boolean) => void;
+  /** P0-4：队列取数失败，不能被读成「队列为空」 */
+  failed: boolean;
+  onRetry: () => void;
   /** 暂缓恢复（POST /admin/reviews/resume；暂缓视图专用） */
   onResume: (torrentId: number) => void;
   /** 0306：审核态视图 0=待审 / 4=暂缓 */
@@ -188,7 +193,19 @@ export function ReviewsPanel({
             </div>
           </li>
         ))}
-        {reviews.length === 0 && (
+        {failed && (
+          <li className="py-6 text-center" role="alert">
+            <span className="text-[var(--danger-text)]">{dict.review.loadFailedRetry}</span>
+            <button
+              type="button"
+              className="ml-3 text-link underline"
+              onClick={onRetry}
+            >
+              {dict.common.retry}
+            </button>
+          </li>
+        )}
+        {!failed && reviews.length === 0 && (
           <li className="py-6 text-center text-sub">
             {postponed ? a.queuePostponedEmpty : a.queueEmpty}
           </li>

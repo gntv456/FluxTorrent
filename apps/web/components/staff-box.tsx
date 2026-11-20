@@ -12,6 +12,8 @@ import {
 import { TicketPanel } from "@/components/staff-box-tickets";
 import { PmList, PmReplyForm } from "@/components/staff-box-pm";
 import { ErrorPanel } from "@/components/ui/error-panel";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { fmt } from "@/i18n/config";
 
 // 管理组信箱（同类站 staffbox.php 口径）：与管理组成员的往来短讯，支持回复
 // 0078 工单化：新增「工单」视图（stafftickets 四态流转 + 指派 + 优先级）。
@@ -44,6 +46,8 @@ export function StaffBox() {
   const [replyBody, setReplyBody] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  // P1：批量删除不可逆，需二次确认 + 数量提示
+  const [askBulk, setAskBulk] = useState<"mark" | "delete" | null>(null);
 
   const load = () => {
     setDeskErr(null);
@@ -117,6 +121,8 @@ export function StaffBox() {
     setBusy(true);
     try {
       await api.post(`/api/v1/staffmessages/${action}`, { ids: deskSel });
+      // 成功反馈（此前零提示，玩家只能靠列表刷新自行比对）
+      setMsg(fmt(dict.review.modDone, {}) + `（${deskSel.length}）`);
       load();
     } catch (e) {
       setMsg(e instanceof ApiError ? e.message : dict.common.networkError);
@@ -206,7 +212,7 @@ export function StaffBox() {
             <button
               type="button"
               disabled={deskSel.length === 0 || busy}
-              onClick={() => bulkDesk("mark")}
+              onClick={() => setAskBulk("mark")}
               className="min-h-11 rounded-full border border-[var(--compat-line)] px-3 font-bold disabled:opacity-40"
             >
               ✓ {t.mark}
@@ -214,7 +220,7 @@ export function StaffBox() {
             <button
               type="button"
               disabled={deskSel.length === 0 || busy}
-              onClick={() => bulkDesk("delete")}
+              onClick={() => setAskBulk("delete")}
               className="min-h-11 rounded-full border border-[var(--danger-border)] px-3 font-bold text-[var(--danger-text)] disabled:opacity-40"
             >
               🗑 {t.del}
@@ -295,6 +301,19 @@ export function StaffBox() {
           onClose={() => setReplyTo(null)}
         />
       )}
+      <ConfirmDialog
+        open={askBulk !== null}
+        onClose={() => setAskBulk(null)}
+        onConfirm={() => {
+          const a = askBulk;
+          setAskBulk(null);
+          if (a) void bulkDesk(a);
+        }}
+        tone={askBulk === "delete" ? "danger" : "neutral"}
+        title={dict.review.confirmBulkDeleteTitle}
+        message={fmt(dict.review.confirmBulkDeleteBody, { n: deskSel.length })}
+        busy={busy}
+      />
     </section>
   );
 }
