@@ -269,6 +269,7 @@ impl Repo {
     }
 }
 pub mod admin_metrics;
+pub mod attendance;
 pub mod auth;
 pub mod categories;
 pub mod cheat_accuracy;
