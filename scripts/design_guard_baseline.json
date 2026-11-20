@@ -1919,13 +1919,9 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   71,
-   166,
-   173,
-   224,
-   235,
-   236,
-   256
+   72,
+   172,
+   179
   ],
   "color": []
  },
@@ -5674,6 +5670,47 @@
   "color": []
  },
  "components/admin-spark-flow.tsx": {
+  "h1": [],
+  "h1First": null,
+  "palette": [],
+  "color": []
+ },
+ "app/(main)/admin/_parts/admin-appeals-panel.tsx": {
+  "h1": [],
+  "h1First": null,
+  "palette": [
+   44,
+   55,
+   56,
+   76
+  ],
+  "color": []
+ },
+ "app/(main)/admin/_parts/admin-clearcache.tsx": {
+  "h1": [],
+  "h1First": null,
+  "palette": [],
+  "color": []
+ },
+ "components/admin-ops/broadcast-audiences.ts": {
+  "h1": [],
+  "h1First": null,
+  "palette": [],
+  "color": []
+ },
+ "components/admin-ops-broadcast.tsx": {
+  "h1": [],
+  "h1First": null,
+  "palette": [],
+  "color": []
+ },
+ "components/staff-box-ticket-hook.ts": {
+  "h1": [],
+  "h1First": null,
+  "palette": [],
+  "color": []
+ },
+ "components/team-panel-types.ts": {
   "h1": [],
   "h1First": null,
   "palette": [],
