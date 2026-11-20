@@ -68,19 +68,27 @@ fn default_sort() -> String {
     "id".into()
 }
 /// ISO8601 可选解析（0505 圈人）：None/空=不限；格式错 422。
-fn parse_ts_opt(
+/// 字段名内建进静态句（validation_i18n 棘轮：动态 format! 串计数只许降，
+/// 静态句按原句查 validation_details.tsv）——两个调用点各走各的静态句。
+fn parse_ts_created_after(
     s: Option<&str>,
-    field: &str,
+) -> DomainResult<Option<chrono::DateTime<chrono::Utc>>> {
+    parse_ts_static(s, "created_after 须为 ISO8601（如 2026-11-17T00:00:00Z）")
+}
+fn parse_ts_created_before(
+    s: Option<&str>,
+) -> DomainResult<Option<chrono::DateTime<chrono::Utc>>> {
+    parse_ts_static(s, "created_before 须为 ISO8601（如 2026-11-17T00:00:00Z）")
+}
+fn parse_ts_static(
+    s: Option<&str>,
+    msg: &'static str,
 ) -> DomainResult<Option<chrono::DateTime<chrono::Utc>>> {
     match s.map(str::trim).filter(|s| !s.is_empty()) {
         None => Ok(None),
         Some(v) => Ok(Some(
             chrono::DateTime::parse_from_rfc3339(v)
-                .map_err(|_| {
-                    DomainError::Validation(format!(
-                        "{field} 须为 ISO8601（如 2026-11-17T00:00:00Z）"
-                    ))
-                })?
+                .map_err(|_| DomainError::Validation(msg.to_string()))?
                 .with_timezone(&chrono::Utc),
         )),
     }
@@ -170,9 +178,8 @@ async fn user_admin_list(
         );
     }
     // 注册时间圈人（0505）：$8=after $9=before，解析失败 422 不静默忽略
-    let ts_after = parse_ts_opt(q.created_after.as_deref(), "created_after")?;
-    let ts_before =
-        parse_ts_opt(q.created_before.as_deref(), "created_before")?;
+    let ts_after = parse_ts_created_after(q.created_after.as_deref())?;
+    let ts_before = parse_ts_created_before(q.created_before.as_deref())?;
     if ts_after.is_some() {
         where_parts.push("u.created_at >= $8".into());
     }

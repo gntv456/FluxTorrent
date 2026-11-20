@@ -328,3 +328,11 @@ kind 仅支持 free/x2/x2free/half/x2half/p30	kind 僅支持 free/x2/x2free/half
 竞赛标题不能为空	競賽標題不能為空	Contest title cannot be empty
 规则名不能为空	規則名不能為空	Rule name cannot be empty
 问题与至少两个选项不能为空	問題與至少兩個選項不能為空	Question and at least two options are required
+audience uploaded:N 的 N 须为数字（GB）	audience uploaded:N 的 N 須為數字（GB）	audience uploaded:N must be a number (GB)
+audience uploaded:N 的 N 须在 1-1024（GB）	audience uploaded:N 的 N 須在 1-1024（GB）	audience uploaded:N must be within 1-1024 (GB)
+publish_at 须为 ISO8601（如 2026-11-21T09:00:00Z）	publish_at 須為 ISO8601（如 2026-11-21T09:00:00Z）	publish_at must be ISO8601 (e.g. 2026-11-21T09:00:00Z)
+圈选人群为空，未发送	圈選人群為空，未發送	Audience selection is empty; nothing sent
+广播需 1-300 字	廣播需 1-300 字	Broadcast must be 1-300 characters
+created_after 须为 ISO8601（如 2026-11-17T00:00:00Z）	created_after 須為 ISO8601（如 2026-11-17T00:00:00Z）	created_after must be ISO8601 (e.g. 2026-11-17T00:00:00Z)
+created_before 须为 ISO8601（如 2026-11-17T00:00:00Z）	created_before 須為 ISO8601（如 2026-11-17T00:00:00Z）	created_before must be ISO8601 (e.g. 2026-11-17T00:00:00Z)
+metric 只能是 uploads / downloads / seedtime	metric 只能是 uploads / downloads / seedtime	metric must be one of uploads / downloads / seedtime

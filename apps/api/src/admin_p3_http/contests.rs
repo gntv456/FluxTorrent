@@ -45,12 +45,14 @@ pub struct ContestReq {
 }
 
 /// metric 白名单校验（与 0506 CHECK 约束同源）。
+/// 固定句不走 format!（validation_i18n 棘轮：动态串计数只许降）——
+/// 422 语义已由本句表达，不再回显非法值。
 fn check_metric(metric: Option<&str>) -> DomainResult<()> {
     match metric.unwrap_or("uploads") {
         "uploads" | "downloads" | "seedtime" => Ok(()),
-        other => Err(DomainError::Validation(format!(
-            "metric 只能是 uploads / downloads / seedtime（得到 {other}）"
-        ))),
+        _ => Err(DomainError::Validation(
+            "metric 只能是 uploads / downloads / seedtime".into(),
+        )),
     }
 }
 

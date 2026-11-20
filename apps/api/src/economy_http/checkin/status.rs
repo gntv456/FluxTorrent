@@ -108,6 +108,11 @@ pub(super) async fn checkin_status(
     .fetch_all(&state.repo.db)
     .await
     .unwrap_or_default();
+    // 累计签到天数（全量口径）：此前响应体没有这个字段，前端只能拿
+    // `recent.length`（近 30 天）兜底——连签 483 天的老玩家在签到页看到
+    // 「累计签到 30」。SQL 下沉 repo/（FRAME §2：H 层禁 sqlx）。
+    let total_days: i64 =
+        crate::repo::attendance::total_days(&state.repo, auth.id).await;
     let mut heat: std::collections::BTreeMap<String, i64> =
         std::collections::BTreeMap::new();
     for (d,) in &att_all {
@@ -119,6 +124,7 @@ pub(super) async fn checkin_status(
         .collect();
     Ok(ok(serde_json::json!({
         "checked_today": checked_today, "streak": current_streak,
+        "total_days": total_days,
         "recent": rows, "makeup_cards": makeup_cards,
         "heatmap": heatmap,
         "rules": {
