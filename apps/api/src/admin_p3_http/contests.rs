@@ -38,6 +38,20 @@ pub struct ContestReq {
     pub ends_at: Option<String>,
     /// [{"rank":1,"sparks":5000},...]
     pub prizes: Option<serde_json::Value>,
+    /// 计分赛制（0506）：uploads=过审种数 | downloads=完成下载数
+    /// | seedtime=做种秒存量；缺省 uploads=0503 既有口径零漂移
+    #[serde(default)]
+    pub metric: Option<String>,
+}
+
+/// metric 白名单校验（与 0506 CHECK 约束同源）。
+fn check_metric(metric: Option<&str>) -> DomainResult<()> {
+    match metric.unwrap_or("uploads") {
+        "uploads" | "downloads" | "seedtime" => Ok(()),
+        other => Err(DomainError::Validation(format!(
+            "metric 只能是 uploads / downloads / seedtime（得到 {other}）"
+        ))),
+    }
 }
 
 /// GET /admin/contests —— 全部竞赛 + 报名数 + 当前分差榜头名。
@@ -47,21 +61,25 @@ pub async fn admin_contests_list(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_manage(&req, &state).await?;
-    let rows: Vec<(i32, String, Option<String>, bool, i64)> = sqlx::query_as(
-        "SELECT c.id, c.title, c.descr, c.is_active, \
+    let rows: Vec<(i32, String, Option<String>, bool, i64, String)> =
+        sqlx::query_as(
+            "SELECT c.id, c.title, c.descr, c.is_active, \
              (SELECT count(*) FROM contest_entries e \
-              WHERE e.contest_id = c.id)::bigint \
+              WHERE e.contest_id = c.id)::bigint, \
+             COALESCE(c.metric, 'uploads') \
          FROM contests c ORDER BY c.id DESC LIMIT 50",
-    )
-    .fetch_all(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+        )
+        .fetch_all(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(serde_json::json!(rows
         .iter()
-        .map(|(id, title, descr, active, joins)| serde_json::json!({
-            "id": id, "title": title, "descr": descr,
-            "is_active": active, "joins": joins,
-        }))
+        .map(
+            |(id, title, descr, active, joins, metric)| serde_json::json!({
+                "id": id, "title": title, "descr": descr,
+                "is_active": active, "joins": joins, "metric": metric,
+            })
+        )
         .collect::<Vec<_>>())))
 }
 
@@ -76,19 +94,22 @@ pub async fn admin_contests_add(
     if body.title.trim().is_empty() {
         return Err(DomainError::Validation("竞赛标题不能为空".into()));
     }
+    check_metric(body.metric.as_deref())?;
     let id: i32 = sqlx::query_scalar(
         "INSERT INTO contests (title, descr, starts_at, ends_at, prizes, \
-           is_active) \
+           is_active, metric) \
          VALUES ($1, $2, \
            COALESCE($3::timestamptz, now()), \
            COALESCE($4::timestamptz, now() + interval '30 days'), \
-           COALESCE($5, '[]'::jsonb), TRUE) RETURNING id",
+           COALESCE($5, '[]'::jsonb), TRUE, \
+           COALESCE($6, 'uploads')) RETURNING id",
     )
     .bind(body.title.trim())
     .bind(&body.descr)
     .bind(&body.starts_at)
     .bind(&body.ends_at)
     .bind(&body.prizes)
+    .bind(&body.metric)
     .fetch_one(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -109,11 +130,13 @@ pub async fn admin_contests_update(
 ) -> DomainResult<HttpResponse> {
     let auth = require_manage(&req, &state).await?;
     let id = path.into_inner();
+    check_metric(body.metric.as_deref())?;
     sqlx::query(
         "UPDATE contests SET title = $2, descr = $3, \
            starts_at = COALESCE($4::timestamptz, starts_at), \
            ends_at = COALESCE($5::timestamptz, ends_at), \
-           prizes = COALESCE($6, prizes) \
+           prizes = COALESCE($6, prizes), \
+           metric = COALESCE($7, metric) \
          WHERE id = $1",
     )
     .bind(id)
@@ -122,6 +145,7 @@ pub async fn admin_contests_update(
     .bind(&body.starts_at)
     .bind(&body.ends_at)
     .bind(&body.prizes)
+    .bind(&body.metric)
     .execute(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;

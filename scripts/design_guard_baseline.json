@@ -5664,5 +5664,13 @@
    276
   ],
   "color": []
+ },
+ "components/admin-ops-boards.tsx": {
+  "h1": [],
+  "h1First": null,
+  "palette": [
+   52
+  ],
+  "color": []
  }
 }

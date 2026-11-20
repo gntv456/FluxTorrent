@@ -20,6 +20,7 @@ use crate::state::AppState;
 
 /// 0497 同款圈选（与 massmail::audience_pred 字节级同口径；两边各自
 /// 独立小函数，跨模块抽公共反而把 staff_http 与 admin_p3_http 焊死）。
+/// 0506 补 never_dl 档（注册后从未完成下载）。
 fn audience_pred(audience: Option<&str>) -> String {
     match audience.unwrap_or("all") {
         "active30" => " AND COALESCE(u.last_seen_at, u.created_at) \
@@ -31,11 +32,14 @@ fn audience_pred(audience: Option<&str>) -> String {
         "vip" => " AND (u.donor OR u.vip_until > now() \
                  OR u.donor_until > now())"
             .into(),
+        "never_dl" => " AND NOT EXISTS (SELECT 1 FROM snatches s \
+                 WHERE s.user_id = u.id AND s.downloaded > 0)"
+            .into(),
         _ => String::new(),
     }
 }
 
-/// audience 参数解析（class:N 特殊档，与 massmail_send 同规）。
+/// audience 参数解析（class:N / uploaded:N 特殊档，与 massmail_send 同规）。
 fn aud_parse(aud: Option<&str>) -> DomainResult<(String, String)> {
     let aud = aud.unwrap_or("all");
     if let Some(n) = aud.strip_prefix("class:") {
@@ -49,6 +53,22 @@ fn aud_parse(aud: Option<&str>) -> DomainResult<(String, String)> {
         }
         return Ok((format!(" AND u.class_id >= {n}"), aud.to_string()));
     }
+    if let Some(n) = aud.strip_prefix("uploaded:") {
+        let n: i64 = n.parse().map_err(|_| {
+            DomainError::Validation(
+                "audience uploaded:N 的 N 须为数字（GB）".into(),
+            )
+        })?;
+        if !(1..=1024).contains(&n) {
+            return Err(DomainError::Validation(
+                "audience uploaded:N 的 N 须在 1-1024（GB）".into(),
+            ));
+        }
+        return Ok((
+            format!(" AND u.uploaded >= {n} * 1073741824"),
+            aud.to_string(),
+        ));
+    }
     Ok((audience_pred(Some(aud)), aud.to_string()))
 }
 
@@ -56,7 +76,8 @@ fn aud_parse(aud: Option<&str>) -> DomainResult<(String, String)> {
 pub struct PmBroadcastReq {
     pub subject: String,
     pub body: String,
-    /// all | active30 | dormant90 | vip | class:N（1-12）
+    /// all | active30 | dormant90 | vip | never_dl | class:N（1-12）
+    /// | uploaded:N（累计上传 ≥N GB，1-1024）
     #[serde(default)]
     pub audience: Option<String>,
 }

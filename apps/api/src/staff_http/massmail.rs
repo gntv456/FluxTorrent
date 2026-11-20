@@ -42,7 +42,8 @@ pub async fn massmail_send(
     if body.subject.trim().is_empty() || body.body.trim().is_empty() {
         return Err(DomainError::Validation("主题和正文不能为空".into()));
     }
-    // 0497 圈选：class:N 特殊解析（N 白名单 1-12），其余走枚举片段
+    // 0497 圈选：class:N 特殊解析（N 白名单 1-12），其余走枚举片段；
+    // 0506 补 uploaded:N（累计上传 ≥N GB，N 1-1024）
     let aud = body.audience.as_deref().unwrap_or("all");
     let (pred, aud_note): (String, String) =
         if let Some(n) = aud.strip_prefix("class:") {
@@ -55,6 +56,21 @@ pub async fn massmail_send(
                 ));
             }
             (format!(" AND u.class_id >= {n}"), aud.to_string())
+        } else if let Some(n) = aud.strip_prefix("uploaded:") {
+            let n: i64 = n.parse().map_err(|_| {
+                DomainError::Validation(
+                    "audience uploaded:N 的 N 须为数字（GB）".into(),
+                )
+            })?;
+            if !(1..=1024).contains(&n) {
+                return Err(DomainError::Validation(
+                    "audience uploaded:N 的 N 须在 1-1024（GB）".into(),
+                ));
+            }
+            (
+                format!(" AND u.uploaded >= {n} * 1073741824"),
+                aud.to_string(),
+            )
         } else {
             (audience_pred(Some(aud)), aud.to_string())
         };
@@ -180,6 +196,8 @@ pub(super) struct MassMailBody {
     /// 0497 圈选人群（缺省 all 保持旧行为）：
     /// all=全员 | active30=30天内活跃 | dormant90=90天未活跃（召回）
     /// | vip=捐赠/VIP | class:N=指定等级及以上（N 1-12）
+    /// 0506 运营体检批补两档：never_dl=注册后从未完成下载（首下引导
+    /// 挽留）| uploaded:N=累计上传量≥N GB（贡献者回馈）
     #[serde(default)]
     pub(super) audience: Option<String>,
 }
@@ -195,6 +213,9 @@ fn audience_pred(audience: Option<&str>) -> String {
             .into(),
         "vip" => " AND (u.donor OR u.vip_until > now() \
                  OR u.donor_until > now())"
+            .into(),
+        "never_dl" => " AND NOT EXISTS (SELECT 1 FROM snatches s \
+                 WHERE s.user_id = u.id AND s.downloaded > 0)"
             .into(),
         _ => String::new(),
     }

@@ -99,7 +99,8 @@ pub(crate) async fn lifecycle_touch(db: &PgPool) -> anyhow::Result<u64> {
     let g30 = sqlx::query(
         r#"
         WITH anchor AS (
-            INSERT INTO spark_ledger (id, user_id, amount, kind, idempotency_key)
+            INSERT INTO spark_ledger
+                (id, user_id, amount, kind, idempotency_key)
             SELECT nextval('spark_ledger_id_seq'), u.id, 0, 'notice_marker',
                    'lifecycle-g30:' || u.id
             FROM users u
@@ -124,6 +125,40 @@ pub(crate) async fn lifecycle_touch(db: &PgPool) -> anyhow::Result<u64> {
     .execute(db)
     .await?;
     acted += g30.rows_affected() as u64;
+    // A2) 30 天未登录软召回·注册即沉没分支（0506 运营体检批补盲区）：
+    // 原 g30 要求有下载史——注册后从未下载成功的用户反而永远不进召回
+    // 名单，恰是流失最重的一群。本档文案引导完成首次下载，锚独立
+    // （lifecycle-g30new），与 A 档互斥（有下载史走 A 档）。
+    let g30_new = sqlx::query(
+        r#"
+        WITH anchor AS (
+            INSERT INTO spark_ledger
+                (id, user_id, amount, kind, idempotency_key)
+            SELECT nextval('spark_ledger_id_seq'), u.id, 0, 'notice_marker',
+                   'lifecycle-g30new:' || u.id
+            FROM users u
+            WHERE u.status < 2
+              AND u.last_seen_at < now() - interval '30 days'
+              AND u.last_seen_at > now() - interval '34 days'
+              AND NOT EXISTS (SELECT 1 FROM snatches s
+                              WHERE s.user_id = u.id AND s.downloaded > 0)
+              AND NOT EXISTS (SELECT 1 FROM spark_ledger sl
+                              WHERE sl.idempotency_key =
+                                    'lifecycle-g30new:' || u.id)
+            RETURNING user_id
+        )
+        INSERT INTO messages (sender_id, receiver_id, subject, body)
+        SELECT NULL, a.user_id, '第一步还没迈出？带你 5 分钟上手',
+               '注册之后还没下载过种子——很多资源都是 Free 下载不扣分享率，'
+               || '挑一颗热门的把 .torrent 导进客户端就完成了第一步；'
+               || '「账户健康」页有新手清单和客户端配置指南。'
+               || '长期未登录的账号会进入休眠流程，回来逛逛就好。'
+        FROM anchor a
+        "#,
+    )
+    .execute(db)
+    .await?;
+    acted += g30_new.rows_affected() as u64;
     // B) 60 天未登录第二档（附保种区引导）
     let g60 = sqlx::query(
         r#"

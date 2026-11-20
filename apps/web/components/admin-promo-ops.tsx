@@ -6,6 +6,8 @@ import { useI18n } from "@/i18n/client";
 import { Badge } from "@/components/ui/badge";
 import { BTN_SM_BOLD } from "@/lib/ui-classes";
 import { PromoEffectTable } from "./admin-promo-ops-effect";
+import { ContestsTab } from "./admin-promo-ops-contests";
+import type { Contest } from "./admin-promo-ops-contests";
 
 /** 运营工作台（0503 运营台账 #1/#2/#5 一面板三件）：
  *  促销效果归因表 + 过审自动促销规则 CRUD + 竞赛 CRUD。
@@ -33,14 +35,6 @@ interface AutoRule {
   enabled: boolean;
 }
 
-interface Contest {
-  id: number;
-  title: string;
-  descr: string | null;
-  is_active: boolean;
-  joins: number;
-}
-
 const KINDS = ["free", "x2", "x2free", "half", "x2half", "p30"];
 
 export function AdminPromoOps() {
@@ -52,12 +46,10 @@ export function AdminPromoOps() {
   const [contests, setContests] = useState<Contest[] | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  // 新建表单共享态（rules / contests 各一份）
+  // 新建表单共享态（rules 一份；contests 态在 ContestsTab 内聚）
   const [ruleName, setRuleName] = useState("");
   const [ruleKind, setRuleKind] = useState("free");
   const [ruleHours, setRuleHours] = useState(72);
-  const [ctTitle, setCtTitle] = useState("");
-  const [ctDescr, setCtDescr] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -208,88 +200,8 @@ export function AdminPromoOps() {
             </tbody>
           </table>
         </div>
-      )}
+      )}      {tab === "contests" && <ContestsTab contests={contests} load={load} />}
 
-      {tab === "contests" && (
-        <div className="brand-panel p-4">
-          <h2 className="mb-3 font-display text-lg">竞赛管理</h2>
-          <div className="mb-4 flex flex-wrap items-end gap-2">
-            <input
-              placeholder="竞赛标题"
-              value={ctTitle}
-              onChange={(e) => setCtTitle(e.target.value)}
-              className="w-56 rounded border border-line px-2 py-2 text-sm"
-            />
-            <input
-              placeholder="赛制说明（可选）"
-              value={ctDescr}
-              onChange={(e) => setCtDescr(e.target.value)}
-              className="w-64 rounded border border-line px-2 py-2 text-sm"
-            />
-            <button
-              type="button"
-              disabled={busy || !ctTitle.trim()}
-              className={BTN_SM_BOLD}
-              onClick={() =>
-                act(
-                  () =>
-                    api.post("/api/v1/admin/contests", {
-                      title: ctTitle,
-                      descr: ctDescr || null,
-                      prizes: [
-                        { rank: 1, sparks: 5000 },
-                        { rank: 2, sparks: 3000 },
-                        { rank: 3, sparks: 1000 },
-                      ],
-                    }),
-                  "竞赛已创建（默认 30 天、TOP3 奖励）",
-                )
-              }
-            >
-              建赛
-            </button>
-          </div>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-line text-left text-xs text-sub">
-                <th className="py-2">竞赛</th>
-                <th className="py-2">报名</th>
-                <th className="py-2">状态</th>
-                <th className="py-2">操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(contests ?? []).length === 0 && (
-                <tr><td colSpan={4} className="py-6 text-center text-sub">暂无竞赛</td></tr>
-              )}
-              {(contests ?? []).map((c) => (
-                <tr key={c.id} className="border-b border-line/50">
-                  <td className="py-2">{c.title}</td>
-                  <td className="py-2">{c.joins}</td>
-                  <td className="py-2">{c.is_active ? "进行中" : "已结束"}</td>
-                  <td className="py-2">
-                    {c.is_active && (
-                      <button
-                        type="button"
-                        className="text-link text-xs"
-                        disabled={busy}
-                        onClick={() =>
-                          act(
-                            () => api.del(`/api/v1/admin/contests/${c.id}`),
-                            "已关闭（到期后自动结算）",
-                          )
-                        }
-                      >
-                        关闭
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
     </section>
   );
 }

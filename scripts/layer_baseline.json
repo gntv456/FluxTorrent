@@ -336,6 +336,7 @@
  "apps/api/src/admin_p3_http/fun_polls.rs": 2,
  "apps/api/src/admin_p3_http/broadcast.rs": 3,
  "apps/api/src/admin_p3_http/funnel.rs": 1,
+ "apps/api/src/admin_p3_http/ops_stats.rs": 3,
  "apps/api/src/admin_p3_http/grants.rs": 9,
  "apps/api/src/admin_p3_http/hr.rs": 3,
  "apps/api/src/admin_p3_http/increment_grant.rs": 12,

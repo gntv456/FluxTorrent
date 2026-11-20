@@ -5,6 +5,7 @@ import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { Badge } from "@/components/ui/badge";
 import { BTN_SM_BOLD } from "@/lib/ui-classes";
+import { OpsBoards } from "./admin-ops-boards";
 
 /** 运营广播与生命周期漏斗（0505 运营体检批一面板两件）：
  *  ① 广播：PM 批量广播（复用 massmail 0497 圈选口径）+ 聊天室官方
@@ -32,7 +33,9 @@ const AUDIENCES = [
 
 export function AdminOpsBroadcast() {
   const { dict } = useI18n();
-  const [tab, setTab] = useState<"pm" | "shout" | "funnel">("funnel");
+  const [tab, setTab] = useState<"funnel" | "pm" | "shout" | "boards">(
+    "funnel",
+  );
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [audience, setAudience] = useState<string>("all");
@@ -76,6 +79,7 @@ export function AdminOpsBroadcast() {
 
   const tabs = [
     ["funnel", "生命周期漏斗"],
+    ["boards", "签到/H&R 看板"],
     ["pm", "站内信广播"],
     ["shout", "聊天室广播"],
   ] as const;
@@ -167,6 +171,8 @@ export function AdminOpsBroadcast() {
           </div>
         </div>
       )}
+
+      {tab === "boards" && <OpsBoards />}
 
       {tab === "pm" && (
         <div className="brand-panel p-4">
