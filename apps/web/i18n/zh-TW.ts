@@ -4,6 +4,7 @@ import type { Dict } from "./zh-CN";
 import { termsPanelTw } from "./terms-panel";
 import { auditLabelsTw } from "./audit-labels";
 import { uxOptTw } from "./ux-opt";
+import { reviewTw } from "./review";
 
 const zhTwBase: Omit<
   Dict,
@@ -34,6 +35,7 @@ const zhTwBase: Omit<
   | "termsPanel"
   | "auditLabels"
   | "uxOpt"
+  | "review"
 > = {
   meta: {
     titleSuffix: "PT",
@@ -1107,6 +1109,14 @@ const zhTwBase: Omit<
     rulesNextBadge: "下一檔 {day} 天",
     rulesCycle:
       "週期制：連簽滿 {cycle} 天後次日從第 1 天重新計算，里程碑加送每週期循環發放（當前週期第 {pos} 天）",
+    heroTodayTitle: "今日簽到可得",
+    heroDay: "本週期第 {pos} 天",
+    heroNextMs: "下一檔 · {day} 天 · +{bonus}",
+    heroTotalLine: "連簽 {streak} 天 · 累計 {total} 天",
+    heroMsTitle: "里程碑加送（每週期循環）",
+    heroMsNow: "當前 {pos} 天",
+    heroMsHit: "已過",
+    heroCardNote: "補簽卡 {cards} 張 · 漏簽可補近 30 天",
     mhomeNote:
       "每天簽到領魔力，連簽天數越多獎勵越多。累計簽到 {total} 天、連續 {streak} 天；漏簽可選取近 30 天內的日期補簽（補簽卡 {cards} 張）。",
     closeModal: "關閉公告彈窗",
@@ -1119,6 +1129,7 @@ const zhTwBase: Omit<
     close: "關閉",
   },
   alm: {
+    detailTitle: "{date} · 黃曆",
     month: "月",
     weekdays: ["日", "一", "二", "三", "四", "五", "六"],
     weekHead: ["一", "二", "三", "四", "五", "六", "日"],
@@ -8051,6 +8062,7 @@ const groupsubTw: Dict["groupsub"] = {
 
 export const zhTW: Dict = {
   ...zhTwBase,
+  review: reviewTw,
   uxOpt: uxOptTw,
   termsPanel: termsPanelTw,
   auditLabels: auditLabelsTw,

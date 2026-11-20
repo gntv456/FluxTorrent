@@ -1,0 +1,285 @@
+/* 签到日历页（/checkin）域样式（2026-11-20 从 layout.css 按域切出——
+   layout.css 撞 3000 行门禁上限）：hero 主动作卡 + 里程碑规则链 +
+   日历/黄历两栏 + 热力嵌入行。万年历本体样式在 almanac.css。 */
+.checkin-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+/* ===== hero 主动作卡（重排版 2026-11-20）：今日可得 + 大按钮 + 周期刻度 ===== */
+.ck-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px 22px 16px;
+  border-radius: var(--r-lg, 12px);
+  border: 1px solid var(--line);
+  background: var(--panel, transparent);
+}
+.ck-hero__main {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 18px;
+}
+.ck-hero__gain {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 128px;
+}
+.ck-hero__gain-label {
+  color: var(--text-faint);
+  font-size: 12.5px;
+}
+.ck-hero__gain-num {
+  color: var(--text-strong);
+  font-size: 34px;
+  font-weight: 800;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+}
+.ck-hero__gain-num small {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.ck-hero__gain-num.is-done {
+  color: var(--mint);
+}
+.ck-hero__act {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 7px;
+  margin-left: auto;
+}
+.ck-hero__btn {
+  min-height: 46px;
+  padding: 10px 34px;
+  border: 0;
+  border-radius: 999px;
+  color: var(--text-on-accent);
+  font-size: 16px;
+  font-weight: 800;
+  font-family: inherit;
+  background: linear-gradient(
+    135deg,
+    var(--compat-fill-a),
+    var(--compat-fill-b)
+  );
+  box-shadow: 0 4px 14px var(--accent-shadow);
+  cursor: pointer;
+}
+.ck-hero__btn:active {
+  transform: scale(0.97);
+}
+.ck-hero__btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.ck-hero__done {
+  display: inline-flex;
+  align-items: center;
+  min-height: 46px;
+  padding: 0 26px;
+  border-radius: 999px;
+  color: var(--success);
+  font-size: 15px;
+  font-weight: 800;
+  background: var(--mint-soft);
+}
+.ck-hero__meta {
+  margin: 0;
+  color: var(--text-faint);
+  font-size: 12.5px;
+}
+/* 周期刻度：里程碑档位钉在进度条上的刻度点 */
+.ck-hero__cycle {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ck-hero__track {
+  position: relative;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--surface-sunken, rgba(0, 0, 0, 0.04));
+}
+.ck-hero__track > i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    var(--compat-fill-a),
+    var(--compat-fill-b)
+  );
+}
+.ck-hero__track > em {
+  position: absolute;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  border: 2px solid var(--panel, var(--surface-card, #fff));
+  background: var(--surface-sunken);
+  cursor: help;
+}
+.ck-hero__track > em.is-hit {
+  background: var(--mint);
+}
+.ck-hero__cycle-note {
+  margin: 0;
+  color: var(--text-faint);
+  font-size: 12px;
+}
+/* ===== 规则卡（checkin-rules.tsx）：里程碑链条 ===== */
+.ck-rules {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-soft, var(--line));
+}
+.ck-rules__title {
+  margin: 0 0 10px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--text-strong);
+  font-size: 13px;
+  font-weight: 800;
+}
+.ck-rules__pos {
+  color: var(--text-faint);
+  font-size: 12px;
+  font-weight: 600;
+}
+.ck-rules__chain {
+  margin: 0 0 10px;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.ck-rules__chain li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid var(--border-soft, var(--line));
+  border-radius: 999px;
+  background: var(--surface-raised, transparent);
+  color: var(--text-muted);
+  font-size: 12.5px;
+}
+.ck-rules__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--surface-sunken);
+}
+.ck-rules__chain li.is-hit .ck-rules__dot {
+  background: var(--mint);
+}
+.ck-rules__chain li.is-next {
+  border-color: var(--mint);
+  color: var(--text-strong);
+  font-weight: 700;
+}
+.ck-rules__chain li.is-next .ck-rules__dot {
+  background: var(--mint);
+  animation: ck-pulse 1.6s ease-in-out infinite;
+}
+@keyframes ck-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--mint) 45%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--mint) 0%, transparent);
+  }
+}
+.ck-rules__chain li b {
+  color: var(--text-strong);
+  font-size: 14px;
+}
+.ck-rules__chain li.is-next b {
+  color: var(--mint);
+}
+.ck-rules__chain li small {
+  color: var(--text-faint);
+  font-weight: 600;
+}
+.ck-rules__note {
+  margin: 3px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+/* 补签入口行（hero 下独立一行，弹层件自带徽标） */
+.checkin-page__resub {
+  display: flex;
+  justify-content: flex-end;
+}
+/* 热力足迹并入日历卡尾：标题左、条带右的一行带 */
+.checkin-page__heat {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-soft, var(--line));
+}
+.checkin-page__heat-t {
+  flex: none;
+  color: var(--text-faint);
+  font-size: 12px;
+  font-weight: 700;
+}
+.checkin-page__heat-t small {
+  font-weight: 500;
+  opacity: 0.75;
+}
+.checkin-page__heat > div {
+  min-width: 0;
+}
+.checkin-page__almanac {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+.checkin-page__cal,
+.checkin-page__detail {
+  border-radius: var(--r-lg, 12px);
+  border: 1px solid var(--line);
+  background: var(--surface-card, var(--panel, transparent));
+  padding: 14px 16px;
+  min-width: 0;
+}
+/* 宽屏：左日历 + 右农历明细两栏，页面更紧凑好看 */
+@media (min-width: 900px) {
+  .checkin-page__almanac {
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  }
+  .checkin-page__detail {
+    position: sticky;
+    top: 16px;
+  }
+}
+/* 动效降级（ui_design_guard §5）：里程碑下一档的呼吸点 + 按钮/刻度过渡
+   在 prefers-reduced-motion 下全部停掉。 */
+@media (prefers-reduced-motion: reduce) {
+  .ck-hero__btn:active,
+  .ck-rules__chain li.is-next .ck-rules__dot {
+    animation: none;
+    transition: none;
+  }
+  .ck-rules__chain li.is-next .ck-rules__dot {
+    box-shadow: none;
+  }
+}

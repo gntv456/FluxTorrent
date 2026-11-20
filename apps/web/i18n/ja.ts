@@ -7,6 +7,7 @@
  */
 
 import type { Dict } from "./zh-CN";
+import { reviewJa } from "./review";
 import { jaPart1 } from "./ja-part-1";
 import { jaPart2 } from "./ja-part-2";
 import { jaPart3 } from "./ja-part-3";
@@ -18,6 +19,7 @@ import { jaPart8 } from "./ja-part-8";
 
 export const ja: DeepPartial<Dict> = {
   ...jaPart1,
+  review: reviewJa,
   ...jaPart2,
   ...jaPart3,
   ...jaPart4,

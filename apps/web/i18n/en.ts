@@ -4,6 +4,7 @@ import type { Dict } from "./zh-CN";
 import { termsPanelEn } from "./terms-panel";
 import { auditLabelsEn } from "./audit-labels";
 import { uxOptEn } from "./ux-opt";
+import { reviewEn } from "./review";
 
 const enBase: Omit<
   Dict,
@@ -34,6 +35,7 @@ const enBase: Omit<
   | "termsPanel"
   | "auditLabels"
   | "uxOpt"
+  | "review"
 > = {
   meta: {
     titleSuffix: "FluxTorrent",
@@ -1156,6 +1158,14 @@ const enBase: Omit<
     rulesNextBadge: "Next: day {day}",
     rulesCycle:
       "Cycles: after a full {cycle}-day streak the count restarts at day 1 and milestone bonuses recur every cycle (currently day {pos} of this cycle)",
+    heroTodayTitle: "Today's reward",
+    heroDay: "Day {pos} of this cycle",
+    heroNextMs: "Next: day {day} · +{bonus}",
+    heroTotalLine: "{streak}-day streak · {total} days total",
+    heroMsTitle: "Milestone bonuses (every cycle)",
+    heroMsNow: "Now day {pos}",
+    heroMsHit: "Passed",
+    heroCardNote: "{cards} makeup cards · covers the last 30 days",
     mhomeNote:
       "Sign in daily for points; longer streaks earn more. {total} days total, {streak}-day streak. Missed days within the last 30 can be made up with a makeup card ({cards} held).",
     closeModal: "Close announcement",
@@ -1168,6 +1178,7 @@ const enBase: Omit<
     close: "Close",
   },
   alm: {
+    detailTitle: "{date} · Almanac",
     month: "",
     weekdays: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
     weekHead: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
@@ -8324,6 +8335,7 @@ const groupsubEn: Dict["groupsub"] = {
 
 export const en: Dict = {
   ...enBase,
+  review: reviewEn,
   uxOpt: uxOptEn,
   termsPanel: termsPanelEn,
   auditLabels: auditLabelsEn,

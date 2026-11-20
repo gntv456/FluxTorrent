@@ -82,6 +82,14 @@ export const jaPart2 = {
     rulesNextBadge: "次の段階 {day} 日",
     rulesCycle:
       "周期制：{cycle} 日連続すると翌日から1日目に戻ります。マイルストーンの追加報酬は各周期で繰り返し付与されます（現在の周期は {pos} 日目）",
+    heroTodayTitle: "今日の報酬",
+    heroDay: "この周期の {pos} 日目",
+    heroNextMs: "次の段階 · {day} 日 · +{bonus}",
+    heroTotalLine: "連続 {streak} 日 · 累計 {total} 日",
+    heroMsTitle: "マイルストーン報酬（各周期で繰り返し）",
+    heroMsNow: "現在 {pos} 日",
+    heroMsHit: "通過済み",
+    heroCardNote: "補填カード {cards} 枚 · 直近30日を補填可",
     mhomeNote:
       "毎日チェックインして火花をもらえます。連続日数が多いほど報酬も増えます。累計 {total} 日、連続 {streak} 日；漏らした日は直近30日以内から選んで補填できます（補填カード {cards} 枚）。",
     closeModal: "お知らせモーダルを閉じる",
@@ -94,6 +102,7 @@ export const jaPart2 = {
     close: "閉じる",
   },
   alm: {
+    detailTitle: "{date} · 暦",
     month: "月",
     weekdays: ["日", "月", "火", "水", "木", "金", "土"],
     weekHead: ["月", "火", "水", "木", "金", "土", "日"],

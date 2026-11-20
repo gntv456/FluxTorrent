@@ -17,6 +17,8 @@
 @import "./styles/base.css";
 @import "./styles/layout.css";
 @import "./styles/layout-tab-auth.css";
+/* 签到日历页域（2026-11-20 从 layout.css 按域切出：hero/规则链/两栏） */
+@import "./styles/checkin.css";
 /* 万年历月历+明细（从 home-mobile.css 抽为全局）：桌面签到页 /checkin 与手机
    首页抽屉共用，故上移到全局链（不依赖首页路由级加载）。 */
 @import "./styles/almanac.css";

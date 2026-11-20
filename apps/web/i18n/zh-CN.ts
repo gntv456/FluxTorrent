@@ -3,6 +3,7 @@
 import { termsPanelZh } from "./terms-panel";
 import { auditLabelsZh } from "./audit-labels";
 import { uxOptZh } from "./ux-opt";
+import { reviewZh } from "./review";
 
 const zhCnBase = {
   meta: {
@@ -1053,6 +1054,14 @@ const zhCnBase = {
     rulesNextBadge: "下一档 {day} 天",
     rulesCycle:
       "周期制：连签满 {cycle} 天后次日从第 1 天重新计算，里程碑加送每周期循环发放（当前周期第 {pos} 天）",
+    heroTodayTitle: "今日签到可得",
+    heroDay: "本周期第 {pos} 天",
+    heroNextMs: "下一档 · {day} 天 · +{bonus}",
+    heroTotalLine: "连签 {streak} 天 · 累计 {total} 天",
+    heroMsTitle: "里程碑加送（每周期循环）",
+    heroMsNow: "当前 {pos} 天",
+    heroMsHit: "已过",
+    heroCardNote: "补签卡 {cards} 张 · 漏签可补近 30 天",
     mhomeNote:
       "每天签到领魔力，连签天数越多奖励越多。累计签到 {total} 天、连续 {streak} 天；漏签可选取近 30 天内的日期补签（补签卡 {cards} 张）。",
     closeModal: "关闭公告弹窗",
@@ -1065,6 +1074,7 @@ const zhCnBase = {
     close: "关闭",
   },
   alm: {
+    detailTitle: "{date} · 黄历",
     month: "月",
     weekdays: ["日", "一", "二", "三", "四", "五", "六"],
     weekHead: ["一", "二", "三", "四", "五", "六", "日"],
@@ -7909,6 +7919,7 @@ const security2fa: Security2faDict = {
 };
 export const zhCN = {
   ...zhCnBase,
+  review: reviewZh,
   uxOpt: uxOptZh,
   security2fa,
   termsPanel: termsPanelZh,
