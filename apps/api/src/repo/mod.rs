@@ -147,9 +147,9 @@ impl Repo {
         .map_err(|e| DomainError::Internal(e.into()))?;
         match row {
             Some(inviter) => Ok(inviter),
+            // 区分无效/已用（M01 错误码 2005/2006）
             None => {
-                // 区分无效/已用（M01 错误码 2005/2006）
-                let used: bool = sqlx::query_scalar(
+                let used = sqlx::query_scalar(
                     "SELECT EXISTS(SELECT 1 FROM invites \
                      WHERE code = $1 AND status = 1)",
                 )
@@ -244,9 +244,7 @@ impl Repo {
             );
         }
         if let Some(serde_json::Value::Object(m)) = extra {
-            for (k, val) in m {
-                v.insert(k, val);
-            }
+            v.extend(m);
         }
         let payload = if v.is_empty() {
             None
