@@ -78,6 +78,58 @@ pub(crate) async fn edit_torrent(
         },
     )
     .await?;
+    // 豆瓣/TMDB（编辑对齐发布页 metaIds）：三态同 imdb——None=不动；
+    // Some(填了) 必须解析得出编号（与发种同一把提取器），Some("")=清除。
+    // SQL 在域层 torrents::edit_meta_ids（H 层禁 SQL）。
+    if body.douban.is_some() || body.tmdb.is_some() {
+        let douban_id = match body.douban.as_deref().map(str::trim) {
+            None => None,
+            Some("") => Some(String::new()),
+            Some(s) => Some(
+                crate::publish_http::upload_ids_pub::extract_douban_pub(s)
+                    .ok_or_else(|| {
+                        DomainError::Validation(
+                            crate::publish_http::upload_ids_pub::DOUBAN_HINT
+                                .into(),
+                        )
+                    })?,
+            ),
+        };
+        let (tmdb_id, tmdb_url) = match body.tmdb.as_deref().map(str::trim) {
+            None => (None, None),
+            Some("") => (Some(String::new()), None),
+            Some(s) => {
+                let id =
+                    crate::publish_http::upload_ids_pub::extract_tmdb_pub(s)
+                        .ok_or_else(|| {
+                            DomainError::Validation(
+                                crate::publish_http::upload_ids_pub::TMDB_HINT
+                                    .into(),
+                            )
+                        })?;
+                // 有链接存原链接（作品页精确跳转），裸编号落 movie 路径兜底
+                let url = if s.starts_with("http") {
+                    Some(s.to_string())
+                } else {
+                    Some(format!("https://www.themoviedb.org/movie/{id}"))
+                };
+                (Some(id), url)
+            }
+        };
+        torrents::edit_meta_ids(
+            &state.repo.db,
+            tid,
+            douban_id.as_deref(),
+            tmdb_id.as_deref(),
+            tmdb_url.as_deref(),
+        )
+        .await?;
+    }
+    // 发布者 H&R 分成开关（0424 单向 opt-in 的编辑补口）：None=不动；
+    // false=摘 publisher_enabled 键（回站点缺省），true=写入。
+    if let Some(on) = body.hr_punish {
+        torrents::edit_hr_punish(&state.repo.db, tid, on).await?;
+    }
     // P-346：MediaInfo 一变就重跑一致性判定（站方 93f741b5 的机器抓标题党）。
     // 此前判定器全仓零调用点——MediaInfo 原样存下就没人判过，`mediainfo_check`
     // 恒为 NULL（2026-10-16 实测：编辑口写入 392 字符后该列仍是 NULL）。

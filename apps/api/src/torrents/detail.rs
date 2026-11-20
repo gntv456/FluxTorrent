@@ -93,6 +93,12 @@ pub async fn get_torrent_detail(
                ) AS last_action,
                (t.times_completed * 2 + 1)::bigint AS views,
                t.pos_state, t.pos_state_until, t.pick_type,
+               -- 编辑表单回显（对齐发布页）：豆瓣/TMDB 条目 + H&R 分成开关
+               t.media_info->>'douban_id' AS douban_id,
+               t.media_info->>'tmdb_id' AS tmdb_id,
+               t.media_info->>'tmdb_url' AS tmdb_url,
+               COALESCE((t.hr_policy->>'publisher_enabled') \
+                 IN ('true','1'), false) AS hr_punish_publisher,
                '{}'::jsonb AS sections
         FROM torrents t
         WHERE t.id = $1 AND (

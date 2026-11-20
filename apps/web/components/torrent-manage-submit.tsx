@@ -139,6 +139,11 @@ export function buildEditPayload(x: {
   fPoster: string;
   fMediainfo: string;
   fNfo: string;
+  /** 豆瓣/TMDB 原文（ID 或链接；空串 = 清除，非空 = 后端归一） */
+  fDouban: string;
+  fTmdb: string;
+  /** 发布者 H&R 分成开关（0424）：编辑口单向 opt-in 的补口 */
+  fHrPunish: boolean;
   fSec: Record<string, string>;
   /** B2：维度定义（编码 sections 时按 field_type 分派） */
   catKinds: SectionKindMeta[];
@@ -162,6 +167,12 @@ export function buildEditPayload(x: {
     // 媒介/学段/版本三个 legacy 列不再提交：维度归属统一走下面的 sections。
     poster: x.fPoster.trim(),
     mediainfo: x.fMediainfo.trim(),
+    // 豆瓣/TMDB（编辑对齐发布页 metaIds）：始终提交——空串=清除、
+    // 非空=后端按发种同一把提取器归一后写 media_info
+    douban: x.fDouban.trim(),
+    tmdb: x.fTmdb.trim(),
+    // H&R 分成开关：始终提交（后端 None=不动，这里显式带上用户的选择）
+    hr_punish: x.fHrPunish,
     // NFO（批 B）：表单不预填（聚合口不下发 nfo 全文给编辑面板），
     // 所以留空必须是「不动」而不是「清空」——与上面 mediainfo 刻意不同。
     nfo: x.fNfo.trim() || undefined,

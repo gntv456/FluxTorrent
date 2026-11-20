@@ -176,6 +176,10 @@ export function ManageMetaFields({
   fNfo, setFNfo,
   fImdb,
   setFImdb,
+  fDouban,
+  setFDouban,
+  fTmdb,
+  setFTmdb,
   attach,
 }: {
   dict: Dict;
@@ -188,6 +192,10 @@ export function ManageMetaFields({
   fNfo: string; setFNfo: (v: string) => void;
   fImdb: string;
   setFImdb: (v: string) => void;
+  fDouban: string;
+  setFDouban: (v: string) => void;
+  fTmdb: string;
+  setFTmdb: (v: string) => void;
   attach: { busy: boolean; msg: string | null; upload: (f: File) => void };
 }) {
   const u = dict.upload;
@@ -248,13 +256,42 @@ export function ManageMetaFields({
           <input
             value={fImdb}
             placeholder="tt1234567"
-            onChange={(e) =>
-              setFImdb(e.target.value.replace(/[^tT0-9]/g, "").slice(0, 10))
-            }
+            onChange={(e) => setFImdb(e.target.value)}
+            onBlur={(e) => {
+              // 粘贴整条链接时失焦归一成 tt 编号（后端本也收链接，
+              // 归一只为回显紧凑）；tt 原文或半截输入不动
+              const v = e.target.value.trim();
+              const m = v.match(/tt\d{7,8}/i);
+              if (m && v !== m[0]) setFImdb(m[0]);
+            }}
             className={IMDB_INPUT}
           />
           <span className="text-xs text-sub">{t.fieldImdbNote}</span>
         </label>
+      )}
+      {/* 豆瓣/TMDB（编辑对齐发布页 metaIds 行）：douban 或 tmdb 任一源
+          启用即出整行（发布页同款门），两栏都是 ID 或链接原文回显 */}
+      {(metaSrc.includes("douban") || metaSrc.includes("tmdb")) && (
+        <div className="flex flex-col gap-1 text-xs">
+          <span className="font-bold">{u.metaIds}</span>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <input
+              value={fDouban}
+              placeholder="movie.douban.com/subject/1292052"
+              onChange={(e) => setFDouban(e.target.value)}
+              maxLength={300}
+              className={`${FLD} min-w-0 flex-1`}
+            />
+            <input
+              value={fTmdb}
+              placeholder="themoviedb.org/movie/603"
+              onChange={(e) => setFTmdb(e.target.value)}
+              maxLength={300}
+              className={`${FLD} min-w-0 flex-1`}
+            />
+          </div>
+          <span className="text-xs text-sub">{u.metaIdsHint}</span>
+        </div>
       )}
     </>
   );

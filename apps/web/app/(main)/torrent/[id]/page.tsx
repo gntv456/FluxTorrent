@@ -198,7 +198,7 @@ export default async function TorrentDetailPage({
         Record<string, { id: number; name: string }[]> & {
           kinds?: SectionKindMeta[];
         }
-      >("/api/v1/section-dict")
+      >(`/api/v1/section-dict?category_id=${t.category_id}`)
       .catch(() => null),
   ]);
   // E6 视图布局：段落隐藏门（空集=全显示；模块开关仍优先，无数据仍不渲染）
@@ -283,6 +283,9 @@ export default async function TorrentDetailPage({
               descr={ext?.descr ?? null} anonymous={t.anonymous}
               categoryId={t.category_id} price={ext?.price ?? 0}
               posterUrl={t.poster} mediainfo={ext?.mediainfo ?? null}
+              nfo={agg.nfo} doubanId={ext?.douban_id ?? null}
+              tmdbId={ext?.tmdb_id ?? null} tmdbUrl={ext?.tmdb_url ?? null}
+              hrPunish={ext?.hr_punish_publisher ?? false}
               sections={editSecVals} secKinds={editKinds} secDict={editDict}
               cats={editCats} seeders={t.seeders} imdbId={t.imdb_id ?? null}
               tagDict={agg.tags.dict} tagMine={agg.tags.mine}

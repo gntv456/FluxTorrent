@@ -139,6 +139,12 @@ pub struct TorrentDetailRow {
     pub pos_state: i16,
     pub pos_state_until: Option<chrono::DateTime<chrono::Utc>>,
     pub pick_type: i16,
+    /// 豆瓣/TMDB 回显（编辑对齐发布页 metaIds；media_info 键）
+    pub douban_id: Option<String>,
+    pub tmdb_id: Option<String>,
+    pub tmdb_url: Option<String>,
+    /// 发布者 H&R 分成开关回显（0424 单向 opt-in；编辑表单初值）
+    pub hr_punish_publisher: bool,
 }
 
 /// 详情页文件列表（files 表；无记录时前端隐藏该区块）

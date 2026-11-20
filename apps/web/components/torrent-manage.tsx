@@ -58,6 +58,14 @@ export interface TorrentManageProps {
   posState?: number;
   posStateUntil?: string | null;
   pickType?: number;
+  /** 豆瓣/TMDB 条目回显（编辑对齐发布页 metaIds；media_info 键） */
+  doubanId?: string | null;
+  tmdbId?: string | null;
+  tmdbUrl?: string | null;
+  /** 发布者 H&R 分成开关回显（0424 单向 opt-in） */
+  hrPunish?: boolean;
+  /** NFO 全文回显（聚合口本就下发 agg.nfo；直接预填） */
+  nfo?: string | null;
   isStaff?: boolean;
   /** 元数据源（0184：条目输入/PT-Gen 按站型显隐，与发布页同口径） */
   metaSources?: string[];
@@ -91,6 +99,11 @@ export function TorrentManage(p: TorrentManageProps) {
     posState,
     posStateUntil,
     pickType,
+    doubanId,
+    tmdbId,
+    tmdbUrl,
+    hrPunish,
+    nfo,
     isStaff,
     metaSources,
     autoOpen,
@@ -122,8 +135,14 @@ export function TorrentManage(p: TorrentManageProps) {
   const [fPrice, setFPrice] = useState(price);
   const [fPoster, setFPoster] = useState(posterUrl ?? "");
   const [fMediainfo, setFMediainfo] = useState(mediainfo ?? "");
-  // NFO 不预填（聚合口不下发 nfo 全文）：留空=保持原值，见 MetaNfoFields 头注
-  const [fNfo, setFNfo] = useState("");
+  // 豆瓣/TMDB（编辑对齐发布页 metaIds）：回显优先原始链接（tmdb 精确跳转）
+  const [fDouban, setFDouban] = useState(doubanId ?? "");
+  const [fTmdb, setFTmdb] = useState(tmdbUrl || tmdbId || "");
+  // H&R 分成开关（0424 单向 opt-in 的编辑补口）
+  const [fHrPunish, setFHrPunish] = useState(hrPunish ?? false);
+  // NFO 预填（聚合口 agg.nfo 本就下发全文；旧「留空=保持」口径废止：
+  // 始终提交，留空=清空，与 mediainfo 同三态）
+  const [fNfo, setFNfo] = useState(nfo ?? "");
   const [fPtgenUrl, setFPtgenUrl] = useState("");
   const [ptgenBusy, setPtgenBusy] = useState(false);
   // 标签整组编辑（0159 P1）：与发布表单同交互——普通标签 checkbox；
@@ -151,7 +170,11 @@ export function TorrentManage(p: TorrentManageProps) {
     onDeleted: () => router.push("/torrents"),
   });
 
-  const metaSrc = metaSources ?? ["imdb", "douban", "bangumi", "indienova"];
+  // 缺省兜底对齐发布页 upload-form（imdb/douban/bangumi/indienova/
+  // mediainfo/tmdb 六源）
+  const metaSrc =
+    metaSources ??
+    ["imdb", "douban", "bangumi", "indienova", "mediainfo", "tmdb"];
 
   // 深链 ?edit=1 只消费一次：关闭弹层后清参数，刷新/分享不带出
   useEffect(() => {
@@ -193,6 +216,9 @@ export function TorrentManage(p: TorrentManageProps) {
         fImdb,
         fPoster,
         fMediainfo, fNfo,
+        fDouban,
+        fTmdb,
+        fHrPunish,
         fSec,
         catKinds,
         fTags,
@@ -299,6 +325,8 @@ export function TorrentManage(p: TorrentManageProps) {
             fMediainfo={fMediainfo} setFMediainfo={setFMediainfo}
             fNfo={fNfo} setFNfo={setFNfo}
             fImdb={fImdb} setFImdb={setFImdb}
+            fDouban={fDouban} setFDouban={setFDouban}
+            fTmdb={fTmdb} setFTmdb={setFTmdb}
             attach={attach}
           />
           {/* 简介与 BBCode 工具条（0173 复用发布页组件） */}
@@ -314,6 +342,15 @@ export function TorrentManage(p: TorrentManageProps) {
               onChange={(e) => setFAnon(e.target.checked)}
             />
             {t.fieldAnonymous}
+          </label>
+          {/* H&R 分成开关（0424）：与发布页 hrPunish 同文案同语义 */}
+          <label className="flex items-center gap-2 text-xs">
+            <input
+              type="checkbox"
+              checked={fHrPunish}
+              onChange={(e) => setFHrPunish(e.target.checked)}
+            />
+            {dict.upload.hrPunishHint}
           </label>
           <ManageTagsBlock
             tagDict={tagDict}

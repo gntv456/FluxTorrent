@@ -152,3 +152,12 @@ pub(super) fn maybe_enrich(
         }
     });
 }
+
+/// 编辑口复用入口（publish_http::upload_ids_pub）：与发种同一把提取器
+pub(crate) fn extract_tmdb_pub(text: &str) -> Option<String> {
+    extract_tmdb(text)
+}
+
+pub(crate) fn extract_douban_pub(text: &str) -> Option<String> {
+    extract_douban(text)
+}

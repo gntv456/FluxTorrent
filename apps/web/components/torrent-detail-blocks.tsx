@@ -18,9 +18,7 @@ import type { TorrentComment } from "@fluxtorrent/domain-types";
 import { Badge } from "@/components/ui/badge";
 import { CommentsLoadMore } from "@/components/torrent-comments-more";
 
-/** 种子详情页交互区块（按域拆自 page.tsx）：扩展数据类型、同组版本表、
- *  感谢者名单、评论区。数据装载留在 page.tsx。 */
-
+/** 种子详情页交互区块（按域拆自 page.tsx，数据装载留在 page.tsx） */
 /** 详情扩展数据（/detail 接口；descr/MediaInfo/views 等非列表字段） */
 export interface TorrentDetailExt {
   descr: string | null;
@@ -35,8 +33,7 @@ export interface TorrentDetailExt {
   /** 是否已收藏/已感谢（详情个人段；收藏与感谢按钮初始态） */
   bookmarked?: boolean;
   thanked?: boolean;
-  /** 动态属性（0085/0087；B2 六类型）：kind → { dict_id, name, label, sort,
-   *  field_type, values[] }。`name` = 首个展示值（向后兼容），多值看 `values`。 */
+  /** 动态属性（B2 六类型）：kind → { dict_id, name, label, values[] } */
   sections?: Record<
     string,
     {
@@ -48,19 +45,22 @@ export interface TorrentDetailExt {
       values?: string[];
     }
   >;
-  /** MediaInfo 全文（发布表单录入，折叠块展示） */
+  /** MediaInfo 全文（发布表单录入）；推荐位回显（0184 编辑表单） */
   mediainfo?: string | null;
-  /** 推荐位回显（0184 编辑表单）：置顶位置/截止/推荐影片 */
   pos_state?: number;
   pos_state_until?: string | null;
   pick_type?: number;
+  /** 豆瓣/TMDB 回显 + H&R 分成开关（对齐发布页回显初值） */
+  douban_id?: string | null;
+  tmdb_id?: string | null;
+  tmdb_url?: string | null;
+  hr_punish_publisher?: boolean;
 }
 
 /** 聚合组（0069）：同一资源的多个版本 */
 export interface GroupInfo {
   group: { id: number; name: string; descr: string | null } | null;
-  /** P-583：当前登录者是否已订阅该组（匿名 false），订阅按钮初始态 */
-  subscribed?: boolean;
+  subscribed?: boolean; // P-583：已订阅（匿名 false）；订阅按钮初始态
   items: Array<{
     id: number;
     name: string;
@@ -71,7 +71,7 @@ export interface GroupInfo {
     times_completed: number;
     official: boolean;
     current: boolean;
-    /** 多版本分槽（0336 G2）：由 standard 维度派生 UHD/HD/SD/Other */
+    /** 多版本分槽（0336 G2）：standard 维度派生 UHD/HD/SD/Other */
     tier?: string;
   }>;
 }

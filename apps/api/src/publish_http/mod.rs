@@ -25,6 +25,15 @@ mod upload_body;
 mod upload_fields;
 // 外部条目 ID 归一化（IMDb/TMDB/豆瓣）：作品聚合归堆的唯一口径
 mod upload_ids;
+/// 编辑口（torrent_http/manage.rs）复用豆瓣/TMDB 归一：与发种同一把提取器，
+/// 「填了就必须解析得出」的校验口径不漂移
+pub(crate) mod upload_ids_pub {
+    // 常量在 upload_ids 里是 pub(super)（模块私有口径），这里以 pub(crate)
+    // 常量别名桥接（直接 use 会因可见性不足 E0364）
+    pub(crate) const TMDB_HINT: &str = super::upload_ids::TMDB_HINT;
+    pub(crate) const DOUBAN_HINT: &str = super::upload_ids::DOUBAN_HINT;
+    pub(crate) use super::upload_ids::{extract_douban_pub, extract_tmdb_pub};
+}
 // 种子工件（0323 game/software）：校验和清单/更新日志的 part 通道与落库
 mod upload_artifacts;
 // 抓轨日志闸门与落库（0312）

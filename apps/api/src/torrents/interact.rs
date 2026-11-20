@@ -214,3 +214,63 @@ pub async fn restore_torrent(db: &PgPool, torrent_id: i64) -> DomainResult<()> {
     }
     Ok(())
 }
+
+/// 豆瓣/TMDB 条目落库（编辑对齐发布页 metaIds 2026-11-20 批）：
+/// 与发种 `publish_http::upload_ids::persist` 同形状——`jsonb ||` 顶层合并
+/// （jsonb_set 中间层不存在会静默不建，0328 事故教训）；TMDB 有链接存原
+/// 链接（作品页精确跳转），裸编号落 movie 路径兜底。空串经 NULLIF 折成
+/// NULL，`jsonb_strip_nulls` 让对应键消失（= 清除）；两栏全 None 不白跑。
+pub async fn edit_meta_ids(
+    db: &PgPool,
+    torrent_id: i64,
+    douban_id: Option<&str>,
+    tmdb_id: Option<&str>,
+    tmdb_url: Option<&str>,
+) -> DomainResult<()> {
+    if douban_id.is_none() && tmdb_id.is_none() {
+        return Ok(());
+    }
+    sqlx::query(
+        "UPDATE torrents SET\
+         media_info = COALESCE(media_info, '{}'::jsonb) ||\
+           jsonb_strip_nulls(jsonb_build_object(\
+             'douban_id', $2::text,\
+             'tmdb_id', $3::text,\
+             'tmdb_url', $4::text)),\
+         mtime = now() WHERE id = $1",
+    )
+    .bind(torrent_id)
+    .bind(douban_id.filter(|s| !s.is_empty()))
+    .bind(tmdb_id.filter(|s| !s.is_empty()))
+    .bind(tmdb_url.filter(|s| !s.is_empty()))
+    .execute(db)
+    .await
+    .map_err(|err| DomainError::Internal(err.into()))?;
+    Ok(())
+}
+
+/// 发布者 H&R 分成开关（0424 单向 opt-in 的编辑补口）：false = 只摘
+/// publisher_enabled 键（回站点缺省），true = 写入。只动该键，不动
+/// hr_policy 其余键（enabled/days/seed_hours 是执法配置）。
+pub async fn edit_hr_punish(
+    db: &PgPool,
+    torrent_id: i64,
+    on: bool,
+) -> DomainResult<()> {
+    let q = if on {
+        "UPDATE torrents SET hr_policy =\
+         COALESCE(hr_policy, '{}'::jsonb) ||\
+         jsonb_build_object('publisher_enabled', true),\
+         mtime = now() WHERE id = $1"
+    } else {
+        "UPDATE torrents SET hr_policy =\
+         COALESCE(hr_policy, '{}'::jsonb) - 'publisher_enabled',\
+         mtime = now() WHERE id = $1"
+    };
+    sqlx::query(q)
+        .bind(torrent_id)
+        .execute(db)
+        .await
+        .map_err(|err| DomainError::Internal(err.into()))?;
+    Ok(())
+}

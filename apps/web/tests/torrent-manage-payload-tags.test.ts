@@ -20,6 +20,9 @@ const base = {
   fPoster: "",
   fMediainfo: "",
   fNfo: "",
+  fDouban: "",
+  fTmdb: "",
+  fHrPunish: false,
   fSec: {} as Record<string, string>,
   catKinds: [] as {
     kind: string;

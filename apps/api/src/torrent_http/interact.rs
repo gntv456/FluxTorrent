@@ -363,6 +363,17 @@ pub(super) struct TorrentEditReq {
     /// IMDB id（0150：后台/编辑表单直填；非法形态会被 manage 层过滤为 None）
     #[serde(default)]
     pub(super) imdb_id: Option<String>,
+    /// 豆瓣条目（编辑对齐发布页 metaIds）：None=不动；Some=按发种同款
+    /// 提取器归一，空串=清除（manage 层分派）
+    #[serde(default)]
+    pub(super) douban: Option<String>,
+    /// TMDB 条目（同上）：manage 层归一后与 douban 同写 media_info
+    #[serde(default)]
+    pub(super) tmdb: Option<String>,
+    /// 发布者 H&R 免罪分成开关（0424 单向 opt-in）：None=不动；
+    /// Some(false)=只清 publisher_enabled 键，Some(true)=写入
+    #[serde(default)]
+    pub(super) hr_punish: Option<bool>,
     /// 封面外链（0173 编辑同步发布能力）：None=不动，Some("")=清除，Some(url)=写入
     #[serde(default)]
     pub(super) poster: Option<String>,
