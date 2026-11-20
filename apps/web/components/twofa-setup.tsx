@@ -140,7 +140,8 @@ export function TwoFactorSetup() {
             type="button"
             disabled={busy || !password}
             onClick={beginSetup}
-            className="min-h-11 w-fit rounded-full bg-sky px-4 text-xs font-bold text-[var(--text-on-accent)] disabled:opacity-50"
+            className="min-h-11 w-fit rounded-full bg-sky px-4 text-xs font-bold
+              text-[var(--text-on-accent)] disabled:opacity-50"
           >
             {t.setup}
           </button>
@@ -177,13 +178,15 @@ export function TwoFactorSetup() {
               inputMode="numeric"
               placeholder={t.codeLabel}
               aria-label={t.codeLabel}
-              className="num w-28 rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-2 py-1 text-sm"
+              className="num w-28 rounded-[var(--r-sm)] border border-line
+                bg-[var(--surface-card)] px-2 py-1 text-sm"
             />
             <button
               type="button"
               disabled={busy}
               onClick={enable}
-              className="min-h-11 rounded-full bg-mint px-4 text-xs font-bold text-[var(--text-on-accent)] disabled:opacity-50"
+              className="min-h-11 rounded-full bg-mint px-4 text-xs font-bold
+                text-[var(--text-on-accent)] disabled:opacity-50"
             >
               {t.enable}
             </button>
@@ -201,7 +204,8 @@ export function TwoFactorSetup() {
             inputMode="numeric"
             placeholder={t.codeLabel}
             aria-label={t.codeLabel}
-            className="num w-28 rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-2 py-1 text-sm"
+            className="num w-28 rounded-[var(--r-sm)] border border-line
+              bg-[var(--surface-card)] px-2 py-1 text-sm"
           />
           <button
             type="button"

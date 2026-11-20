@@ -100,7 +100,8 @@ export default async function UsersPage({
           name="q"
           defaultValue={q}
           placeholder={t.searchPh}
-          className={`${INPUT_GROW} min-w-[180px] text-ink placeholder:text-sub`}
+          className={`${INPUT_GROW} min-w-[180px] text-ink
+            placeholder:text-sub`}
         />
         <select
           name="class_id"
@@ -223,7 +224,8 @@ export default async function UsersPage({
                       <span>
                         <Link
                           href={`/users/${m.id}`}
-                          className="font-bold text-ink hover:text-[var(--sky-text)]"
+                          className="font-bold text-ink
+                            hover:text-[var(--sky-text)]"
                         >
                           {m.username}
                         </Link>

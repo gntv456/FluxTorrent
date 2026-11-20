@@ -136,7 +136,8 @@ export function IncrementBulk() {
           .replace("{n}", String(r.targets))
           .replace("{m}", String(r.affected))
           .replace("{pm}", subject.trim() ? t.donePm : "") +
-          ` · ${r.batch_id ?? ""}${r.ledger && r.ledger !== "ok" ? ` · ${t.ledgerWarn}` : ""}`,
+          ` · ${r.batch_id ?? ""}` +
+          (r.ledger && r.ledger !== "ok" ? ` · ${t.ledgerWarn}` : ""),
       );
       setLedTick((v) => v + 1);
       setClasses(new Set());
@@ -162,7 +163,9 @@ export function IncrementBulk() {
         <p
           role={msg.ok ? "status" : "alert"}
           className={`rounded-[var(--r-md)] p-3 text-sm ${
-            msg.ok ? "bg-mint-soft text-ink" : "bg-coral-soft text-[var(--danger-text)]"
+            msg.ok
+              ? "bg-mint-soft text-ink"
+              : "bg-coral-soft text-[var(--danger-text)]"
           }`}
         >
           {msg.text}
@@ -181,7 +184,8 @@ export function IncrementBulk() {
                     {KINDS.map(([k, label]) => (
                       <label
                         key={k}
-                        className="flex cursor-pointer items-center gap-1.5 text-sm"
+                        className="flex cursor-pointer items-center gap-1.5
+                          text-sm"
                       >
                         <input
                           type="radio"
@@ -362,7 +366,8 @@ export function IncrementBulk() {
               <tr>
                 <td className="rowhead">{t.operator}</td>
                 <td className="rowfollow">
-                  <label className="mr-4 inline-flex items-center gap-1.5 text-sm">
+                  <label className="mr-4 inline-flex items-center gap-1.5
+                    text-sm">
                     <input
                       type="radio"
                       name="bulk-sender"
@@ -396,7 +401,9 @@ export function IncrementBulk() {
                           run: () => submit(false),
                         })
                       }
-                      className="min-h-11 rounded-full bg-sky px-6 text-sm font-bold text-[var(--text-on-accent)] disabled:opacity-50"
+                      className="min-h-11 rounded-full bg-sky px-6 text-sm
+                        font-bold
+                        text-[var(--text-on-accent)] disabled:opacity-50"
                     >
                       {busy ? t.running : t.submit}
                     </button>

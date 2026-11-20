@@ -94,7 +94,9 @@ export function FollowButton({
         });
     } catch (e) {
       setSt(st); // 回滚
-      toast.error(dict.common.networkError, { requestId: e instanceof ApiError ? e.requestId : undefined });
+      toast.error(dict.common.networkError, {
+        requestId: e instanceof ApiError ? e.requestId : undefined,
+      });
     } finally {
       setBusy(false);
     }
@@ -107,7 +109,8 @@ export function FollowButton({
       disabled={busy}
       aria-pressed={on}
       title={on ? t.following : t.follow}
-      className={`inline-flex min-h-11 items-center gap-1 rounded-full border px-3 text-xs font-bold transition disabled:opacity-50 ${
+      className={`inline-flex min-h-11 items-center gap-1 rounded-full border px-3 text-xs
+        font-bold transition disabled:opacity-50 ${
         on
           ? "border-transparent bg-[var(--sky-soft)] text-sky"
           : "border-line text-sub hover:border-sky hover:text-sky"

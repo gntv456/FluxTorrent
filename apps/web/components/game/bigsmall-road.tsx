@@ -68,7 +68,9 @@ export function BigsmallRoadPage() {
       <div className="flex flex-wrap items-center gap-2">
         <Link
           href="/games/bigsmall"
-          className="min-h-11 rounded-full border border-line px-3 text-xs font-bold text-sub"
+          className="min-h-11 rounded-full border border-line px-3 text-xs
+            font-bold
+            text-sub"
         >
           ← {t.title}
         </Link>
@@ -80,19 +82,24 @@ export function BigsmallRoadPage() {
         <h2 className="mb-2 font-display text-base">{t.ruleCard}</h2>
         <p className="mb-3 text-sm text-sub">{t.ruleText}</p>
         <div className="grid grid-cols-1 gap-1 text-[12px] sm:grid-cols-2">
-          <div className="flex justify-between rounded-[8px] bg-[var(--surface-raised)] px-3 py-1.5">
+          <div className="flex justify-between rounded-[8px]
+            bg-[var(--surface-raised)] px-3 py-1.5">
             <span className="font-bold">
               {t.bsPickSmall} (3-10) · {t.roadP48}
             </span>
-            <b className="num text-[var(--sky-deep)]">{winMult ? `${winMult.toFixed(2)}x` : "—"}</b>
+            <b className="num text-[var(--sky-deep)]">{winMult ?
+              `${winMult.toFixed(2)}x` : "—"}</b>
           </div>
-          <div className="flex justify-between rounded-[8px] bg-[var(--surface-raised)] px-3 py-1.5">
+          <div className="flex justify-between rounded-[8px]
+            bg-[var(--surface-raised)] px-3 py-1.5">
             <span className="font-bold">
               {t.bsPickBig} (11-18) · {t.roadP48}
             </span>
-            <b className="num text-[var(--sky-deep)]">{winMult ? `${winMult.toFixed(2)}x` : "—"}</b>
+            <b className="num text-[var(--sky-deep)]">{winMult ?
+              `${winMult.toFixed(2)}x` : "—"}</b>
           </div>
-          <div className="flex justify-between rounded-[8px] bg-[var(--surface-raised)] px-3 py-1.5">
+          <div className="flex justify-between rounded-[8px]
+            bg-[var(--surface-raised)] px-3 py-1.5">
             <span className="font-bold">
               {t.bsPickTriple} · {t.roadPTriple}
             </span>
@@ -138,7 +145,9 @@ export function BigsmallRoadPage() {
               {rows.slice(0, 20).map((r, i) => (
                 <span
                   key={i}
-                  className={`grid h-7 w-7 place-items-center rounded-full text-xs font-black text-white ${
+                  className={`grid h-7 w-7 place-items-center rounded-full
+                    text-xs
+                    font-black text-white ${
                     r.net > 0
                       ? "bg-[var(--coral)]"
                       : r.net < 0
@@ -146,7 +155,8 @@ export function BigsmallRoadPage() {
                         : "bg-sub"
                   }`}
                 >
-                  {r.net > 0 ? dict.review.roadWin : r.net < 0 ? dict.review.roadLose : "·"}
+                  {r.net > 0 ? dict.review.roadWin : r.net < 0 ?
+                    dict.review.roadLose : "·"}
                 </span>
               ))}
             </div>
@@ -154,7 +164,8 @@ export function BigsmallRoadPage() {
               {rows.map((r, i) => (
                 <div
                   key={i}
-                  className="flex items-center gap-3 rounded-[10px] bg-[var(--surface-raised)] px-3 py-2 text-xs"
+                  className="flex items-center gap-3 rounded-[10px]
+                    bg-[var(--surface-raised)] px-3 py-2 text-xs"
                 >
                   <span className="num shrink-0 text-sub">
                     {new Date(r.at).toLocaleString()}

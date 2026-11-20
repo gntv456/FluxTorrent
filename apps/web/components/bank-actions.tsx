@@ -79,7 +79,8 @@ export function BankCard() {
       toast.success(await fn());
       refresh();
     } catch (e) {
-      toast.error(e instanceof ApiError ? e.message : dict.common.networkError, {
+      toast.error(e instanceof ApiError ? e.message : dict.common.networkError,
+        {
         requestId: e instanceof ApiError ? e.requestId : undefined,
       });
     } finally {
@@ -95,7 +96,8 @@ export function BankCard() {
       });
       const n = Number(amount);
       setAmount("");
-      return dict.review.bankDepositOk.replace("{n}", fmt(n)).replace("{magic}", currency);
+      return dict.review.bankDepositOk.replace("{n}",
+        fmt(n)).replace("{magic}", currency);
     });
   const withdraw = (depositId: number) =>
     act(async () => {
@@ -106,7 +108,8 @@ export function BankCard() {
         },
       );
       return r.matured
-        ? dict.review.bankWithdrawOk.replace("{n}", "—").replace("{magic}", currency)
+        ? dict.review.bankWithdrawOk.replace("{n}", "—").replace("{magic}",
+          currency)
         : dict.bank.penaltyTaken
             .replace("{n}", fmt(r.penalty))
             .replace("{magic}", currency);
@@ -118,7 +121,8 @@ export function BankCard() {
       });
       const n = Number(demandAmount);
       setDemandAmount("");
-      return dict.review.bankDepositOk.replace("{n}", fmt(n)).replace("{magic}", currency);
+      return dict.review.bankDepositOk.replace("{n}",
+        fmt(n)).replace("{magic}", currency);
     });
   const demandOut = () =>
     act(async () => {
@@ -127,7 +131,8 @@ export function BankCard() {
       });
       const n = Number(demandAmount);
       setDemandAmount("");
-      return dict.review.bankWithdrawOk.replace("{n}", fmt(n)).replace("{magic}", currency);
+      return dict.review.bankWithdrawOk.replace("{n}",
+        fmt(n)).replace("{magic}", currency);
     });
   const loanApply = () =>
     act(async () => {
@@ -180,14 +185,18 @@ export function BankCard() {
       return (
         <div
           role="alert"
-          className="flex flex-col items-center gap-3 rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] px-4 py-10 text-center shadow-[var(--shadow-card)]"
+          className="flex flex-col items-center gap-3 rounded-[var(--r-md)]
+            border
+            border-line bg-[var(--surface-card)] px-4 py-10 text-center
+            shadow-[var(--shadow-card)]"
         >
           <p className="text-sm text-sub">{dict.common.loadFailed}</p>
           <button
             type="button"
             disabled={busy}
             onClick={() => refresh()}
-            className="min-h-[44px] rounded-full bg-sky-deep px-6 text-sm text-[var(--text-on-accent)] disabled:opacity-50"
+            className="min-h-[44px] rounded-full bg-sky-deep px-6 text-sm
+              text-[var(--text-on-accent)] disabled:opacity-50"
           >
             {dict.common.retry}
           </button>
@@ -217,7 +226,8 @@ export function BankCard() {
   return (
     <div className="flex flex-col gap-4">
       {/* 站点银行条：运营概览 + 结息健康 */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] px-4 py-2 text-xs text-sub shadow-[var(--shadow-card)]">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1
+        rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] px-4 py-2 text-xs text-sub shadow-[var(--shadow-card)]">
         <span className="font-bold text-ink">{dict.bank.siteOverview}</span>
         <span>
           {dict.bank.siteDemand}: {fmt(ov.site.demand_total)}（
@@ -237,7 +247,8 @@ export function BankCard() {
         <Badge
           tone={ov.site.settle_healthy ? "success" : "warn"}
           className="ml-auto">
-          {ov.site.settle_healthy ? dict.bank.settleOk : dict.bank.settlePending}
+          {ov.site.settle_healthy ? dict.bank.settleOk :
+            dict.bank.settlePending}
         </Badge>
       </div>
 
@@ -316,7 +327,9 @@ export function BankCard() {
             {interest.map((r) => (
               <li
                 key={r.id}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-3 py-2 text-xs"
+                className="flex flex-wrap items-center justify-between gap-2
+                  rounded-[var(--r-sm)] border border-line
+                  bg-[var(--surface-card)] px-3 py-2 text-xs"
               >
                 <Badge tone="success" className="num">
                   {r.kind === "demand"

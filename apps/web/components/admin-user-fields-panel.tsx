@@ -28,7 +28,8 @@ interface FieldRow {
 }
 
 const SUBMIT_BTN =
-  "min-h-11 rounded-full bg-sky px-4 text-xs font-bold text-[var(--text-on-accent)] " +
+  "min-h-11 rounded-full bg-sky px-4 text-xs font-bold " +
+  "text-[var(--text-on-accent)] " +
   "disabled:opacity-50";
 
 /** 值 → 控件文本（number/bool 等非字符串都折成可编辑字符串） */
@@ -173,7 +174,10 @@ export function AdminUserFieldsPanel({ userId }: { userId: number }) {
       setMsg({ ok: true, text: fmt(at.fieldsSaved, { n: r.saved }) });
       await load();
     } catch (e) {
-      setMsg({ ok: false, text: e instanceof ApiError ? e.message : at.opFail });
+      setMsg({
+        ok: false,
+        text: e instanceof ApiError ? e.message : at.opFail,
+      });
     } finally {
       setBusy(false);
     }

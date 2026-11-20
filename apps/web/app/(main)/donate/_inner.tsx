@@ -96,7 +96,8 @@ export default function DonatePage() {
           <span>{dict.common.pleaseLogin}</span>
           <a
             href={`/login?next=${encodeURIComponent("/donate")}`}
-            className="min-h-11 rounded-full bg-sky px-4 font-bold text-[var(--text-on-accent)]"
+            className="min-h-11 rounded-full bg-sky px-4 font-bold
+              text-[var(--text-on-accent)]"
           >
             {dict.review.loginAndContinue}
           </a>

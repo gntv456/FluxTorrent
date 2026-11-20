@@ -92,7 +92,10 @@ export function ReviewsPanel({
       />
       <ul className="flex flex-col divide-y divide-line">
         {reviews.map((t) => (
-          <li key={t.id} className="flex flex-wrap items-start gap-2 py-2 sm:gap-3">
+          <li
+              key={t.id}
+              className="flex flex-wrap items-start gap-2 py-2 sm:gap-3"
+            >
             <div className="w-full min-w-0 sm:w-auto sm:flex-1">
               <p className="text-sm font-bold">{t.name}</p>
               <p className="text-xs text-sub">
@@ -126,7 +129,9 @@ export function ReviewsPanel({
                     {Object.entries(t.sections)
                       .map(
                         ([k, v]) =>
-                          `${k}: ${(v.vs ?? []).filter(Boolean).join(" / ") || v.v || "—"}`,
+                          `${k}: ${(v.vs ?? []).filter(Boolean).join(" / ") ||
+                          v.v ||
+                          "—"}`,
                       )
                       .join(" · ")}
                   </p>
@@ -195,7 +200,9 @@ export function ReviewsPanel({
         ))}
         {failed && (
           <li className="py-6 text-center" role="alert">
-            <span className="text-[var(--danger-text)]">{dict.review.loadFailedRetry}</span>
+            <span className="text-[var(--danger-text)]">
+              {dict.review.loadFailedRetry}
+            </span>
             <button
               type="button"
               className="ml-3 text-link underline"
@@ -235,7 +242,10 @@ export function AppealsPanel({
     <section className={PANEL_LG}>
       <ul className="flex flex-col divide-y divide-line">
         {appeals.map((ap) => (
-          <li key={ap.id} className="flex flex-wrap items-center gap-2 py-2 sm:gap-3">
+          <li
+              key={ap.id}
+              className="flex flex-wrap items-center gap-2 py-2 sm:gap-3"
+            >
             <div className="w-full min-w-0 sm:w-auto sm:flex-1">
               <p className="text-sm">
                 <span className="rounded-full bg-sun/30 px-2 py-0.5 text-xs">

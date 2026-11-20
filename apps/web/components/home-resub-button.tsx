@@ -19,7 +19,8 @@ export function ResubButton({
   onCardsChange?: (n: number) => void;
 }) {
   const { dict, currency } = useI18n();
-  const t = dict.attResub2 ?? ({ btn: dict.review.resubMissed } as { btn?: string });
+  const t = dict.attResub2 ?? ({ btn: dict.review.resubMissed } as { btn?:
+    string });
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -59,14 +60,18 @@ export function ResubButton({
     <>
       <button
         type="button"
-        className="min-h-11 rounded-full border border-line px-3 text-xs font-bold text-sub disabled:opacity-50"
+        className="min-h-11 rounded-full border border-line px-3 text-xs
+          font-bold
+          text-sub disabled:opacity-50"
         title={dict.attResub2.note}
         disabled={busy}
         onClick={() => setOpen(!open)}
       >
         {t.btn}
         <span
-          className={`ml-1 rounded-full px-1.5 text-xs ${cards > 0 ? "bg-mint/30 text-ink" : "bg-coral/20 text-[var(--danger-text)]"}`}
+          className={`ml-1 rounded-full px-1.5 text-xs ${cards > 0 ?
+            "bg-mint/30 text-ink"
+            : "bg-coral/20 text-[var(--danger-text)]"}`}
         >
           ×{cards}
         </span>
@@ -78,7 +83,8 @@ export function ResubButton({
       >
         <div className="flex flex-col">
             {cards === 0 ? (
-              <p className="rounded-[var(--r-md)] bg-sun/20 p-3 text-xs text-ink">
+              <p className="rounded-[var(--r-md)] bg-sun/20 p-3 text-xs
+                text-ink">
                 暂无可用补签卡：可到
                 <a href="/shop" className="font-bold text-sky">
                   {currency}商店
@@ -92,7 +98,9 @@ export function ResubButton({
                     key={d}
                     disabled={busy || signed.has(d)}
                     onClick={() => doResub(d)}
-                    className={`min-h-11 rounded-full border px-3 text-xs font-bold disabled:opacity-50 ${
+                    className={`min-h-11 rounded-full border px-3 text-xs
+                      font-bold
+                      disabled:opacity-50 ${
                       signed.has(d)
                         ? "border-mint bg-mint/20 text-mint"
                         : "border-line hover:border-sky"
@@ -106,7 +114,8 @@ export function ResubButton({
               </div>
             )}
             {msg && (
-              <p className="mt-3 rounded-[var(--r-md)] bg-sky-soft p-2 text-xs text-ink">
+              <p className="mt-3 rounded-[var(--r-md)] bg-sky-soft p-2 text-xs
+                text-ink">
                 {msg}
               </p>
             )}

@@ -201,7 +201,8 @@ export default function FarmPage({
         {err && (
           <button
             type="button"
-            className="min-h-11 rounded-full bg-sky px-4 text-sm font-bold text-[var(--text-on-accent)]"
+            className="min-h-11 rounded-full bg-sky px-4 text-sm font-bold
+              text-[var(--text-on-accent)]"
             onClick={() => void refresh()}
           >
             {dict.common.retry}
@@ -341,7 +342,8 @@ export default function FarmPage({
       <div className="flex flex-wrap items-center gap-2">
         <Link
           href="/games"
-          className="min-h-11 rounded-full border border-line px-3 text-xs font-bold text-sub"
+          className="min-h-11 rounded-full border border-line px-3 text-xs font-bold
+            text-sub"
         >
           ← {tg.back}
         </Link>

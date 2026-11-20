@@ -65,7 +65,8 @@ export function GachaRates({
                     const rr = rmap.get(row.r);
                     const color = rr?.frame ?? undefined;
                     return (
-                      <tr key={row.r + row.type} className="border-b last:border-0">
+                      <tr key={row.r + row.type}
+                        className="border-b last:border-0">
                         <td className="px-4 py-2">
                           <span
                             className="font-semibold"
@@ -78,7 +79,9 @@ export function GachaRates({
                                 : (rr?.label ?? row.r)}
                           </span>
                         </td>
-                        <td className="px-4 py-2 tabular-nums">{pct(row.base, 3)}</td>
+                        <td className="px-4 py-2 tabular-nums">
+                          {pct(row.base, 3)}
+                        </td>
                         <td className="px-4 py-2 tabular-nums font-semibold">
                           {pct(row.comp, 3)}
                         </td>
@@ -95,7 +98,9 @@ export function GachaRates({
                 </tbody>
               </table>
             </div>
-            <footer className="flex flex-wrap gap-x-6 gap-y-1 p-4 text-xs text-muted">
+            <footer
+              className="flex flex-wrap gap-x-6 gap-y-1 p-4 text-xs text-muted"
+            >
               <span>
                 {r.gachaGoldComp}{" "}
                 <b className="text-base tabular-nums">{pct(b.goldComp)}</b>

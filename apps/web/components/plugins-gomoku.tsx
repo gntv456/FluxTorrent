@@ -22,7 +22,8 @@ const JOIN_INPUT =
   "min-h-11 w-32 rounded-[var(--r-md)] border border-line " +
   "px-3 text-sm";
 const JOIN_BTN =
-  "min-h-11 rounded-full bg-sky px-4 text-xs font-bold text-[var(--text-on-accent)]";
+  "min-h-11 rounded-full bg-sky px-4 text-xs font-bold " +
+  "text-[var(--text-on-accent)]";
 
 export function GomokuBoard({ meId }: { meId: number }) {
   const { dict } = useI18n();
@@ -152,7 +153,8 @@ export function GomokuBoard({ meId }: { meId: number }) {
           </button>
         )}
       </div>
-      <div className="gomoku-board mx-auto" role="grid" aria-label={dict.review.ariaGomoku}>
+      <div className="gomoku-board mx-auto" role="grid"
+        aria-label={dict.review.ariaGomoku}>
         {Array.from({ length: 225 }, (_, i) => {
           const c = cells[i];
           const clickable = myTurn && c === ".";

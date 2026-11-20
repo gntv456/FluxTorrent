@@ -24,7 +24,8 @@ export function RequestForm({
   const [ftDescr, setFtDescr] = useState("");
   const [ftBounty, setFtBounty] = useState("100");
   const [ftBusy, setFtBusy] = useState(false);
-  const [ftMsg, setFtMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [ftMsg, setFtMsg] = useState<{ ok: boolean; text: string } |
+    null>(null);
   // P-632：一次表单会话一枚幂等键，失败重试复用、成功换新（同买按钮）。
   const [idem, setIdem] = useState(() => `web-req-${clientUuid()}`);
 
@@ -72,7 +73,8 @@ export function RequestForm({
           onChange={(e) => setFtTitle(e.target.value)}
           maxLength={200}
           required
-          className="min-h-11 rounded-[var(--r-sm)] border border-line bg-cloud px-3"
+          className="min-h-11 rounded-[var(--r-sm)] border border-line bg-cloud
+            px-3"
         />
       </label>
       <label className="flex flex-col gap-1 text-sm">
@@ -82,7 +84,8 @@ export function RequestForm({
           onChange={(e) => setFtDescr(e.target.value)}
           maxLength={2000}
           rows={3}
-          className="rounded-[var(--r-sm)] border border-line bg-cloud px-3 py-2"
+          className="rounded-[var(--r-sm)] border border-line bg-cloud px-3
+            py-2"
         />
       </label>
       <label className="flex flex-col gap-1 text-sm">
@@ -92,7 +95,9 @@ export function RequestForm({
           min={0}
           value={ftBounty}
           onChange={(e) => setFtBounty(e.target.value)}
-          className="min-h-11 w-40 rounded-[var(--r-sm)] border border-line bg-cloud px-3"
+          className="min-h-11 w-40 rounded-[var(--r-sm)] border border-line
+            bg-cloud
+            px-3"
         />
       </label>
       <div className="flex items-center gap-2">
