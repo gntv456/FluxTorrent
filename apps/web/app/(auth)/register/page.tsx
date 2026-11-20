@@ -213,7 +213,8 @@ export default function RegisterPage() {
         // 失败本身不作为漏斗终点，仅引导重登。
         console.warn("[register] auto-login failed after signup");
         router.push(
-          `/login?next=/account-health&registered=1&u=${encodeURIComponent(username.trim())}`,
+          `/login?next=/account-health&registered=1` +
+          `&u=${encodeURIComponent(username.trim())}`,
         );
         return;
       }

@@ -22,7 +22,10 @@ export function GachaPoolMeBar({
       api
         .get<{ cards: unknown[]; shardBalance: number }>("/api/v1/gacha/me")
         .then((r) =>
-          setMe({ hasCards: (r.cards?.length ?? 0) > 0, shardBalance: r.shardBalance }),
+          setMe({
+            hasCards: (r.cards?.length ?? 0) > 0,
+            shardBalance: r.shardBalance,
+          })
         )
         .catch(() => {});
     };
@@ -33,7 +36,10 @@ export function GachaPoolMeBar({
   return (
     <>
       {!me.hasCards && (
-        <p className="rounded-[var(--r-md)] bg-mint-soft px-3 py-2 text-xs font-bold text-ink">
+        <p
+          className="rounded-[var(--r-md)] bg-mint-soft px-3 py-2
+            text-xs font-bold text-ink"
+        >
           {dict.games.gachaFirstDraw}
         </p>
       )}
@@ -44,7 +50,8 @@ export function GachaPoolMeBar({
             <span className="sw-synth-track" aria-hidden>
               <i
                 style={{
-                  width: `${Math.min(100, (me.shardBalance / ssrSynth) * 100)}%`,
+                  width:
+                    `${Math.min(100, (me.shardBalance / ssrSynth) * 100)}%`,
                 }}
               />
             </span>

@@ -43,7 +43,11 @@ export function TaskBoard({ sparkBalance }: { sparkBalance: number | null }) {
     async (item: TaskOverview["shop"][number]) => {
       setShopBusyId(item.id);
       try {
-        const resp = await api.post<{ name: string; cost: number; replayed?: boolean }>(
+        const resp = await api.post<{
+          name: string;
+          cost: number;
+          replayed?: boolean;
+        }>(
           "/api/v1/tasks/shop/buy",
           {
             item_id: item.id,

@@ -224,7 +224,11 @@ export function MedalActions({
       {msg && (
         <p
           role={msg.ok ? "status" : "alert"}
-          className={`text-xs ${msg.ok ? "text-[var(--success)]" : "text-[var(--danger-text)]"}`}
+          className={`text-xs ${
+            msg.ok
+              ? "text-[var(--success)]"
+              : "text-[var(--danger-text)]"
+          }`}
         >
           {msg.text}
         </p>

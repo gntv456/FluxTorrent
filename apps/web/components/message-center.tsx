@@ -98,7 +98,9 @@ export function MessageCenter() {
       .then(setBoxes)
       .catch((e) => {
         setBoxes([]);
-        toast.error(dict.common.loadFailed, { requestId: e instanceof ApiError ? e.requestId : undefined });
+        toast.error(dict.common.loadFailed, {
+          requestId: e instanceof ApiError ? e.requestId : undefined,
+        });
       });
   }, [box, folder, search, onlyUnread, page, pageSize, dict]);
 
@@ -130,7 +132,9 @@ export function MessageCenter() {
     // 只本地更新那一行的未读态：此前 markread 成功后调 load() 会
     // setRows(null) ⇒ 整表塌成骨架再弹回，展开的正文闪断，且勾选被清空。
     setRows((prev) =>
-      prev ? prev.map((x) => (x.id === m.id ? { ...x, unread: false } : x)) : prev,
+      prev
+        ? prev.map((x) => (x.id === m.id ? { ...x, unread: false } : x))
+        : prev,
     );
     api
       .post("/api/v1/messages/markread", { ids: [m.id] })

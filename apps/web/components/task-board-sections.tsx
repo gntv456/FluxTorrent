@@ -218,7 +218,8 @@ export function TaskShopPanel({
               <div>
                 <dt>{t.shopDone}</dt>
                 <dd className="num">
-                  {stats?.tiers.find((x) => x.tier === s.require_tier)?.done ?? "—"}
+                  {stats?.tiers.find((x) => x.tier === s.require_tier)
+                    ?.done ?? "—"}
                 </dd>
               </div>
               <div>

@@ -42,7 +42,10 @@ export function SubscribeNetworkButton({
         setMsg({ ok: true, text: msgT.ok });
       }
     } catch (e) {
-      setMsg({ ok: false, text: e instanceof ApiError ? e.message : msgT.failed });
+      setMsg({
+        ok: false,
+        text: e instanceof ApiError ? e.message : msgT.failed,
+      });
     } finally {
       setBusy(false);
     }
@@ -68,7 +71,9 @@ export function SubscribeNetworkButton({
       {msg && (
         <span
           role={msg.ok ? "status" : "alert"}
-          className={`text-xs ${msg.ok ? "text-[var(--success)]" : "text-[var(--danger-text)]"}`}
+          className={`text-xs ${
+  msg.ok ? "text-[var(--success)]" : "text-[var(--danger-text)]"
+}`}
         >
           {msg.text}
         </span>

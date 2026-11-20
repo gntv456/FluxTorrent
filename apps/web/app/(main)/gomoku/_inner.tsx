@@ -27,11 +27,13 @@ export default function GomokuPage() {
       {err ? (
         <p className="brand-panel p-4 text-sm text-sub">{err}</p>
       ) : me === null ? (
-        <div className="brand-panel flex flex-col items-start gap-2 p-4 text-sm text-sub">
+        <div className="brand-panel flex flex-col items-start gap-2
+                                   p-4 text-sm text-sub">
           <span>{dict.common.pleaseLogin}</span>
           <a
             href="/login?next=%2Fgomoku"
-            className="min-h-11 rounded-full bg-sky px-4 font-bold text-[var(--text-on-accent)]"
+            className="min-h-11 rounded-full bg-sky px-4 font-bold
+                                       text-[var(--text-on-accent)]"
           >
             {dict.review.loginAndContinue}
           </a>

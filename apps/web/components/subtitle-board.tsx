@@ -143,7 +143,8 @@ export function SubtitleBoard({
       {msg && (
         <p
           role="status"
-          className="mx-4 mt-2 rounded-[var(--r-sm)] px-3 py-2 text-sm text-mint"
+          className="mx-4 mt-2 rounded-[var(--r-sm)] px-3 py-2
+                                   text-sm text-mint"
         >
           {msg}
         </p>

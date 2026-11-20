@@ -35,7 +35,9 @@ export function FreeleechPanel() {
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   // P1：全站促销直接影响经济，创建/移除需二次确认
-  const [ask, setAsk] = useState<{ type: "create" } | { type: "remove"; id: number } | null>(null);
+  const [ask, setAsk] = useState<
+    { type: "create" } | { type: "remove"; id: number } | null
+  >(null);
 
   const load = useCallback(async () => {
     try {

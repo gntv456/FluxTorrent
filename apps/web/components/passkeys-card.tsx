@@ -138,7 +138,10 @@ export function PasskeysCard() {
             : nm === "TimeoutError"
               ? sec.webauthnErrTimeout
               : null;
-      setMsg({ ok: false, text: hint ?? (e instanceof ApiError ? e.message : String(e)) });
+      setMsg({
+        ok: false,
+        text: hint ?? (e instanceof ApiError ? e.message : String(e)),
+      });
     } finally {
       setBusy(false);
     }
@@ -150,7 +153,10 @@ export function PasskeysCard() {
       await api.post("/api/v1/auth/passkeys/remove", { cred_id: credId });
       await load();
     } catch (e) {
-      setMsg({ ok: false, text: e instanceof ApiError ? e.message : String(e) });
+      setMsg({
+        ok: false,
+        text: e instanceof ApiError ? e.message : String(e),
+      });
     } finally {
       setBusy(false);
     }

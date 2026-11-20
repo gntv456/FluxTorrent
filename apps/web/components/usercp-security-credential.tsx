@@ -22,7 +22,10 @@ export function CredentialPanel({ flash }: { flash: (k: string) => string }) {
   const [newPass2, setNewPass2] = useState("");
   const [oldPass, setOldPass] = useState("");
   const [pwBusy, setPwBusy] = useState(false);
-  const [pwMsg, setPwMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [pwMsg, setPwMsg] = useState<{
+    ok: boolean;
+    text: string;
+  } | null>(null);
 
   async function changePasswordNow() {
     setPwMsg(null);
@@ -129,7 +132,9 @@ export function CredentialPanel({ flash }: { flash: (k: string) => string }) {
           {pwMsg && (
             <p
               role={pwMsg.ok ? "status" : "alert"}
-              className={`mt-1 text-xs ${pwMsg.ok ? "text-mint" : "text-coral"}`}
+              className={`mt-1 text-xs ${
+                pwMsg.ok ? "text-mint" : "text-coral"
+              }`}
             >
               {pwMsg.text}
               {pwMsg.ok && (

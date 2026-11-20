@@ -12,7 +12,12 @@ export default async function Page() {
   try {
     initial = await api.get<BoardData>("/api/v1/games/arcade/leaderboard");
   } catch (e) {
-    return <ErrorPanel error={normalizeError(e)} retryHref="/games/leaderboard" />;
+    return (
+      <ErrorPanel
+        error={normalizeError(e)}
+        retryHref="/games/leaderboard"
+      />
+    );
   }
   return <LeaderboardPage initial={initial} />;
 }

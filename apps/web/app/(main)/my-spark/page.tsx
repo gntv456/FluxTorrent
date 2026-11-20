@@ -108,11 +108,13 @@ export default function MySparkPage() {
         <h1 className="font-display text-2xl">
           {t.title.replace("{magic}", currency)}
         </h1>
-        <div className="brand-panel flex flex-col items-start gap-2 p-4 text-sm text-sub">
+        <div className="brand-panel flex flex-col items-start gap-2
+                                   p-4 text-sm text-sub">
           <span>{dict.common.pleaseLogin}</span>
           <a
             href="/login?next=%2Fmy-spark"
-            className="min-h-11 rounded-full bg-sky px-4 font-bold text-[var(--text-on-accent)]"
+            className="min-h-11 rounded-full bg-sky px-4 font-bold
+                                       text-[var(--text-on-accent)]"
           >
             {dict.review.loginAndContinue}
           </a>

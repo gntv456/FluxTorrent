@@ -102,7 +102,12 @@
   border: 1px solid var(--line);
   color: inherit;
 }
-.ge-link { min-height: 44px; display: inline-flex; align-items: center; color: var(--link); }
+.ge-link {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  color: var(--link);
+}
 .ge-ref { margin-top: 16px; font-size: 12px; color: var(--text-faint); }
 
 

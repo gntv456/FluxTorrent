@@ -292,7 +292,9 @@ export function TorrentActions({
           void downloadRow();
         }}
         title={dict.torrents.download}
-        message={dict.review.downloadWillCharge.replace("{n}", String(price ?? 0)).replace("{magic}", currency)}
+        message={dict.review.downloadWillCharge
+        .replace("{n}", String(price ?? 0))
+        .replace("{magic}", currency)}
         confirmLabel={dict.torrents.download}
         busy={busy}
       />

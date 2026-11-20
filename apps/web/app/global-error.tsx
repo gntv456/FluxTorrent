@@ -65,7 +65,11 @@ export default function GlobalError({
           <h1 className="ge-title">{w.geTitle}</h1>
           <p className="ge-desc">{w.geDesc}</p>
           <div className="ge-actions">
-            <button type="button" className="ge-btn ge-btn--primary" onClick={reset}>
+            <button
+              type="button"
+              className="ge-btn ge-btn--primary"
+              onClick={reset}
+            >
               {w.geRetry}
             </button>
             <Link href="/" className="ge-btn ge-btn--ghost">

@@ -252,7 +252,9 @@ export default async function UserProfilePage({
       )}
 
       {/* 变更记录（0482c）：本人/职员可见；SSR 直拉审计回查，失败静默隐卡 */}
-      {active === "changes" && canSeeChanges && <ChangesSection uid={uid} dict={dict} />}
+      {active === "changes" && canSeeChanges && (
+        <ChangesSection uid={uid} dict={dict} />
+      )}
     </div>
   );
 }
@@ -277,7 +279,10 @@ async function ChangesSection({
     if (status === 401 || status === 403) {
       return (
         <p className="py-4 text-sm text-sub">
-          <a href={"/login?next=" + encodeURIComponent("/users/" + uid)} className="text-link underline">
+          <a
+            href={"/login?next=" + encodeURIComponent("/users/" + uid)}
+            className="text-link underline"
+          >
             {dict.review.sessionExpired}
           </a>
         </p>

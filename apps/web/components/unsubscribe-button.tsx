@@ -33,7 +33,9 @@ export function UnsubscribeButton({
       router.refresh();
     } catch (e) {
       // 网络超时/断网等普通 Error 此前被吞，点按钮毫无反应
-      toast.error(e instanceof ApiError ? e.message : dict.common.networkError, {
+      toast.error(
+        e instanceof ApiError ? e.message : dict.common.networkError,
+        {
         requestId: e instanceof ApiError ? e.requestId : undefined,
       });
     } finally {

@@ -155,7 +155,10 @@ export function BanLogList() {
       {needLogin && (
         <p className="px-4 py-6 text-center text-sm text-sub">
           {t.needLogin}{" "}
-          <Link href="/login" className="font-bold text-[var(--sky-text)] underline">
+          <Link
+            href="/login"
+            className="font-bold text-[var(--sky-text)] underline"
+          >
             {dict.forgot.backToLogin}
           </Link>
         </p>
@@ -216,7 +219,9 @@ export function BanLogList() {
                   <td className="text-right">
                     <Link
                       href="/appeals"
-                      className="text-xs font-bold text-[var(--sky-text)] underline"
+                      className={
+                        "text-xs font-bold text-[var(--sky-text)] underline"
+                      }
                     >
                       {t.appeal}
                     </Link>
