@@ -43,7 +43,7 @@ export function AppealRows({
           <p className="text-sm text-sub">{t.empty}</p>
           <Link
             href="/ban-log"
-            className="text-xs text-[var(--sky)] underline"
+            className="text-xs text-[var(--sky-text)] underline"
           >
             {t.banlogLink}
           </Link>

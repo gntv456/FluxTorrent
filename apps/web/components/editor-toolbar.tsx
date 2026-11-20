@@ -22,7 +22,7 @@ export interface ToolbarHandle {
 const BTN =
   "inline-flex h-7 min-w-7 items-center justify-center rounded px-1.5 " +
   "text-xs font-bold text-sub hover:bg-[var(--surface-sunken)] " +
-  "hover:text-[var(--sky)]";
+  "hover:text-[var(--sky-text)]";
 
 const EMOJIS = [
   "😀", "😂", "🤣", "😊", "😍", "🤔", "😎", "😢", "😭", "😡",

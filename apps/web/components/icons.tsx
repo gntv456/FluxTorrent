@@ -10,7 +10,7 @@
  * 用法：
  *   <Icon name="seed" />                    // 默认 20
  *   <Icon name="download" size={16} />
- *   <Icon name="spark" className="text-[var(--sky)]" />
+ *   <Icon name="spark" className="text-[var(--sky-text)]" />
  *   <Icon name="preserve" title="认领保种" /> // 承载信息时传 title（自动 role=img + <title>）
  *
  * 这是纯展示组件（无 hook / 无事件），**刻意不加 "use client"**：

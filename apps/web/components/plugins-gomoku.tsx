@@ -152,7 +152,7 @@ export function GomokuBoard({ meId }: { meId: number }) {
           </button>
         )}
       </div>
-      <div className="gomoku-board mx-auto" role="grid" aria-label="gomoku">
+      <div className="gomoku-board mx-auto" role="grid" aria-label={dict.review.ariaGomoku}>
         {Array.from({ length: 225 }, (_, i) => {
           const c = cells[i];
           const clickable = myTurn && c === ".";

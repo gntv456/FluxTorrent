@@ -58,4 +58,51 @@
    (main)/gacha/layout.tsx）。原因：这两个文件只服务 games 与 gacha 两个路由，
    挂在根 @import 链会让全站 93 个页面都下载 120KB 无关样式。
    纪律：新增路由级样式一律 import 进该路由的 layout，不要回灌本文件。 */
+/* 根布局级错误页（global-error.tsx）：不依赖任何站点壳样式，
+   全部走语义令牌，跳过失控的根布局也能正确渲染。 */
+.ge-body {
+  margin: 0;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: var(--surface-page);
+  color: var(--text-body);
+  font-family: var(--font-body);
+}
+.ge-card {
+  max-width: 440px;
+  text-align: center;
+}
+.ge-icon { font-size: 40px; margin: 0; }
+.ge-title { font-size: 22px; margin: 12px 0; }
+.ge-desc { font-size: 14px; line-height: 1.7; color: var(--text-muted); }
+.ge-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 16px;
+}
+.ge-btn {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 20px;
+  border-radius: 999px;
+  text-decoration: none;
+}
+.ge-btn--primary {
+  border: 0;
+  background: var(--brand);
+  color: var(--text-on-accent);
+  cursor: pointer;
+}
+.ge-btn--ghost {
+  border: 1px solid var(--line);
+  color: inherit;
+}
+.ge-link { min-height: 44px; display: inline-flex; align-items: center; color: var(--link); }
+.ge-ref { margin-top: 16px; font-size: 12px; color: var(--text-faint); }
+
 

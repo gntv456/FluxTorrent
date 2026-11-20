@@ -1,5 +1,7 @@
 "use client";
 
+import { useI18n } from "@/i18n/client";
+
 /**
  * 游戏页顶部的切换标签条（样图手机版结构：每个游戏是「主玩法 + 子页」
  * 的 tab 形态，不是把所有区块平铺在一页）。
@@ -14,8 +16,9 @@ export function GameTabs({
   active: string;
   onChange: (key: string) => void;
 }) {
+  const { dict } = useI18n();
   return (
-    <nav className="gtabs" aria-label="tab">
+    <nav className="gtabs" aria-label={dict.review.ariaTabList}>
       {tabs.map((t) => (
         <button
           key={t.key}

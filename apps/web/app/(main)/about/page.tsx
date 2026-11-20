@@ -131,7 +131,7 @@ export default async function AboutPage() {
               )}
               <li className={ROW}>
                 <span className="text-xs text-sub">{t.selfLink}</span>
-                <Link href="/top" className="font-bold text-[var(--sky)]">
+                <Link href="/top" className="font-bold text-[var(--sky-text)]">
                   {dict.nav.top}
                 </Link>
               </li>

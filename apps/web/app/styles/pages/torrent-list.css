@@ -442,3 +442,80 @@
   }
 }
 
+/* ============================================================
+   行级语义类（2026-11-20 五问评审 P1 补验）
+   ------------------------------------------------------------
+   这些类在 tsx 里早已加在表格行 / 卡片 <li> 上，但**全站 css 一条
+   规则都没有**——断种（seeders=0）、官种、置顶与免费/2x/半价促销
+   在列表里长得跟普通行一模一样。种子站里「还有没有人在做种」
+   是玩家判断要不要点的第一信息，这里补上视觉层。
+
+   只使用既有语义令牌，不写死 hex（design_guard 的 L4→L1 禁令）。
+   ============================================================ */
+
+/* 断种：左侧危险色条 + 降低标题/数字权重，一眼可辨 */
+tr.torrent-dead > td:first-child,
+li.torrent-dead::before {
+  box-shadow: inset 3px 0 0 var(--danger);
+}
+li.torrent-dead::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  border-radius: 3px 0 0 3px;
+  background: var(--danger);
+}
+tr.torrent-dead .torrents-name,
+li.torrent-dead .trow-card__title {
+  color: var(--text-faint);
+}
+tr.torrent-dead .trow-card__seed,
+tr.torrent-dead .seed-arrow,
+li.torrent-dead .trow-card__seed {
+  color: var(--danger-text);
+  font-weight: 700;
+}
+
+/* 官种：主色标记，与断种的危险色区分开 */
+tr.torrent-official > td:first-child,
+li.torrent-official::before {
+  box-shadow: inset 3px 0 0 var(--brand);
+}
+li.torrent-official::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  border-radius: 3px 0 0 3px;
+  background: var(--brand);
+}
+
+/* 置顶：轻提示条，不抢断种/官种的强标记 */
+tr.torrent-sticky > td:first-child {
+  box-shadow: inset 3px 0 0 var(--tone-warn);
+}
+
+/* NexusPHP 口径的促销行级语义类（与 promoRowBg 内联底色叠加，
+   这里只补「类名存在即可被脚本/样式定位」的语义层）。 */
+tr.pro_free,
+li.pro_free {
+  --promo-semantic: var(--promo-free-bg);
+}
+tr.pro_2up,
+li.pro_2up {
+  --promo-semantic: var(--promo-x2-bg);
+}
+tr.pro_50pct,
+li.pro_50pct {
+  --promo-semantic: var(--promo-x2-bg);
+}
+tr.pro_30pct,
+li.pro_30pct {
+  --promo-semantic: var(--promo-x2-bg);
+}
+

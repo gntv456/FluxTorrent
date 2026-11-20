@@ -183,7 +183,7 @@ export function ShoutBox({ active = true }: { active?: boolean } = {}) {
           <Icon
             name="messages"
             size={16}
-            className="mr-1 inline align-[-3px] text-[var(--sky)]"
+            className="mr-1 inline align-[-3px] text-[var(--sky-text)]"
           />{" "}
           {t.title}
         </h2>

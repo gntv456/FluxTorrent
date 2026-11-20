@@ -170,4 +170,4 @@ export default async function ApiDocsPage() {
 
 const LINK_SRC =
   "rounded-full border border-line px-3 py-1 font-bold " +
-  "hover:border-[var(--sky)] hover:text-[var(--sky)]";
+  "hover:border-[var(--sky)] hover:text-[var(--sky-text)]";

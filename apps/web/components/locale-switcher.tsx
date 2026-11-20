@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LOCALES, LOCALE_COOKIE, type Locale } from "@/i18n/config";
 import { Icon } from "@/components/icons";
+import { useI18n } from "@/i18n/client";
 
 /** 语言切换器（0148 下拉版）：地球图标按钮 + 弹出菜单（同类站/财神口径）。
  *  选中写 cookie + router.refresh()（RSC 重取，无 URL 变化）；
@@ -17,6 +18,7 @@ const LABELS: Record<Locale, string> = {
 };
 
 export function LocaleSwitcher({ current }: { current: Locale }) {
+  const { dict } = useI18n();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -52,7 +54,7 @@ export function LocaleSwitcher({ current }: { current: Locale }) {
         className="langmenu__trigger"
         aria-expanded={open}
         aria-haspopup="true"
-        aria-label="Language / 语言"
+        aria-label={dict.review.ariaLanguage}
         title={LABELS[current]}
         onClick={() => setOpen((v) => !v)}
       >

@@ -574,6 +574,12 @@
     left: 12px;
     width: auto;
   }
+  /* P1：弹窗打开时 toast 若停在顶部会盖住 ✕ 与标题，且拦截遮罩点击，
+     手机无 Esc ⇒ 5 秒内无法关弹窗。有弹层时改挂底部。 */
+  body:has(.ui-cfm__scrim, .ui-modal__scrim) .ui-toast__vp {
+    top: auto;
+    bottom: calc(12px + env(safe-area-inset-bottom));
+  }
 }
 .ui-toast {
   display: flex;

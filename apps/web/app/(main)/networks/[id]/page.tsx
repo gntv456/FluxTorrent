@@ -50,7 +50,7 @@ export default async function NetworkDetailPage({
 
   return (
     <div className="flex flex-col gap-4">
-      <nav className="text-sm text-sub" aria-label="breadcrumb">
+      <nav className="text-sm text-sub" aria-label={dict.review.ariaBreadcrumb}>
         <Link href="/networks">{t.backToList}</Link>
         <span aria-hidden> › </span>
         <span className="text-body">{n.name}</span>

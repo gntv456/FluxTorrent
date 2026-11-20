@@ -157,6 +157,12 @@ jobs:
         run: node ../../scripts/ui_design_guard.mjs
       # 设计系统覆盖率门禁（W-43）：四指标只许向好——路由加载态覆盖/
       # 原语采用率/<main> 只许升、非豁免 hex 只许降；指标恶化 → 红灯。
+      - name: UI 五问评审整改 guard
+        # 2026-11-20 UI 五问评审沉淀：行级语义类必须有样式、正文禁用装饰色、
+        # aria-label 不得硬编码、toast.error 必须可诊断、路由级 error 边界、
+        # 表单原语采用率下限——把人工评审结论固化为机器拦截。
+        run: node ../../scripts/ui_review_guard.mjs
+
       - name: Design coverage guard
         run: node ../../scripts/design_cov_guard.mjs
       # 双主题对比度门禁（W-40 校准+W-43 挂 CI）：暗色套任一关键配对

@@ -42,7 +42,7 @@ export function BookmarkRemoveButton({
       disabled={busy}
       className="shrink-0 rounded-full border border-line px-3 py-0.5
         text-xs text-sub transition-colors
-        hover:border-[var(--sky)] hover:text-[var(--sky)]
+        hover:border-[var(--sky)] hover:text-[var(--sky-text)]
         disabled:opacity-50"
     >
       {busy ? dict.ui.actionFeedbackBusy : dict.my.bmRemove}

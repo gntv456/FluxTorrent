@@ -145,7 +145,7 @@ export async function EmptyTorrents({
         className={
           ctx === "search"
             ? "text-[var(--text-faint)]"
-            : "text-[var(--sky)]"
+            : "text-[var(--sky-text)]"
         }
       />
       <h2 className="font-display text-xl text-ink">{title}</h2>

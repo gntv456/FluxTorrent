@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { useFocusTrap } from "@/lib/use-focus-trap";
+import { useI18n } from "@/i18n/client";
 
 /** 覆盖式弹窗（0173）：fixed 遮罩 + 居中卡片，ESC / 点遮罩关闭，锁 body 滚动。
  *  详情页编辑（TorrentManage）、购买置顶免费（PromoBuyButton）共用。
@@ -47,6 +48,7 @@ export function Modal({
   align?: "center" | "right";
   children: React.ReactNode;
 }) {
+  const { dict } = useI18n();
   const cardRef = useRef<HTMLDivElement>(null);
   // SSR 期没有 document，渲染期直接 createPortal 会抛 ReferenceError
   // （同 torrent-head-more 的 mounted 闸，不用 typeof document 判——
@@ -107,7 +109,7 @@ export function Modal({
           <button
             type="button"
             onClick={onClose}
-            aria-label="close"
+            aria-label={dict.review.ariaClose}
             className="flex h-7 w-7 items-center justify-center rounded-full border border-line text-xs text-sub"
           >
             ×

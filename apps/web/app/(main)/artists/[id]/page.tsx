@@ -45,7 +45,7 @@ export default async function ArtistDetailPage({
 
   return (
     <div className="flex flex-col gap-4">
-      <nav className="text-sm text-sub" aria-label="breadcrumb">
+      <nav className="text-sm text-sub" aria-label={dict.review.ariaBreadcrumb}>
         <Link href="/artists">{t.backToList}</Link>
         <span aria-hidden> › </span>
         <span className="text-body">{a.name}</span>

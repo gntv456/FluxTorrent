@@ -19,7 +19,7 @@ export default async function OfflinePage() {
       id="main-content"
       className="mx-auto flex max-w-md flex-col items-center gap-4 py-16 text-center"
     >
-      <Icon name="seed" size={64} className="text-[var(--sky)]" />
+      <Icon name="seed" size={64} className="text-[var(--sky-text)]" />
       <h1 className="font-display text-2xl">{t.title}</h1>
       <p className="text-sm text-sub">{t.subtitle}</p>
 
@@ -45,4 +45,4 @@ export default async function OfflinePage() {
 
 const GHOST_LINK =
   "min-h-[44px] inline-flex items-center rounded-full border border-line px-6 font-bold";
-const TEXT_LINK = "font-bold text-[var(--sky)] underline";
+const TEXT_LINK = "font-bold text-[var(--sky-text)] underline";

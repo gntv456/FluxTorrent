@@ -26,7 +26,7 @@ export default async function MaintenancePage() {
       className="mx-auto flex max-w-md flex-col items-center gap-4
         py-16 text-center"
     >
-      <Icon name="seed" size={64} className="text-[var(--sky)]" />
+      <Icon name="seed" size={64} className="text-[var(--sky-text)]" />
       <h1 className="font-display text-2xl">{t.title}</h1>
 
       <p className="whitespace-pre-line text-sm text-sub">{message}</p>

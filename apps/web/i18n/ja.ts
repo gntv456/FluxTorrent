@@ -27,6 +27,10 @@ export const ja: DeepPartial<Dict> = {
   ...jaPart6,
   ...jaPart7,
   ...jaPart8,
+  // siteNews 段（zh-CN 有、此前 ja 缺）：缺段会让 ja_coverage 门禁红
+  siteNews: {
+    label: "サイトのお知らせ",
+  },
   profileStats: {
     title: "シードプロフィール",
     seedingLine: "シード中 {n} 件 · {size} · 累計 {hours} 時間",

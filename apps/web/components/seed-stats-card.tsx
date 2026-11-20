@@ -111,7 +111,7 @@ export function SeedStatsCard() {
                     <td className="rowfollow">
                       <a
                         href={`/user/${r.user_id}`}
-                        className="hover:text-[var(--sky)]"
+                        className="hover:text-[var(--sky-text)]"
                       >
                         {r.username}
                       </a>

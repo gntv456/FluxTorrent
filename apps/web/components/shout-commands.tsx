@@ -51,7 +51,7 @@ export function ShoutCommands({
         onClick={() => setOpen((v) => !v)}
         className={
           "flex h-11 shrink-0 items-center gap-0.5 rounded-lg border " +
-          "border-line px-2 text-sm font-bold text-[var(--sky)] " +
+          "border-line px-2 text-sm font-bold text-[var(--sky-text)] " +
           "hover:border-[var(--sky)] disabled:opacity-50"
         }
       >
@@ -84,7 +84,7 @@ export function ShoutCommands({
                 "hover:border-[var(--sky)] disabled:opacity-50"
               }
             >
-              <b className="shrink-0 text-[var(--sky)]">{c.cmd}</b>
+              <b className="shrink-0 text-[var(--sky-text)]">{c.cmd}</b>
               <span className="min-w-0 flex-1 truncate text-sub">
                 {c.desc}
               </span>

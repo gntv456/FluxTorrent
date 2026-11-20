@@ -89,4 +89,4 @@ export default async function LinkApplyPage() {
 }
 
 const LINK_CLS =
-  "block truncate text-sm font-bold underline text-[var(--sky)]";
+  "block truncate text-sm font-bold underline text-[var(--sky-text)]";

@@ -95,7 +95,7 @@ export function ShoutBotRow({
 }) {
   return (
     <li className="shoutbox__bot">
-      <b className="text-[var(--sky)]">🤖 {botName}</b>
+      <b className="text-[var(--sky-text)]">🤖 {botName}</b>
       {/* 纵列包一层：li 是 flex 行布局，种卡块要落在回话文本下方 */}
       <span className="flex min-w-0 flex-1 flex-col">
         {/* /help 清单是多行文本，pre-line 保住 \n 排版 */}

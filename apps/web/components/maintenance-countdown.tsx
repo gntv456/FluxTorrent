@@ -17,7 +17,7 @@ export function MaintenanceCountdown({ until }: { until: string }) {
   if (left === null) return null; // 解析失败（理论不可达，后端已校验）
   if (left <= 0) {
     return (
-      <p className="font-display text-lg text-[var(--sky)]">
+      <p className="font-display text-lg text-[var(--sky-text)]">
         {dict.maintenance.recovering}
       </p>
     );
@@ -28,7 +28,7 @@ export function MaintenanceCountdown({ until }: { until: string }) {
   const pad = (n: number) => String(n).padStart(2, "0");
   return (
     <p
-      className="font-display text-2xl tabular-nums text-[var(--sky)]"
+      className="font-display text-2xl tabular-nums text-[var(--sky-text)]"
       role="timer"
       aria-live="off"
     >

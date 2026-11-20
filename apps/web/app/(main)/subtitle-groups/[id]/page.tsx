@@ -51,7 +51,7 @@ export default async function SubtitleGroupPage({
 
   return (
     <div className="flex flex-col gap-4">
-      <nav className="text-sm text-sub" aria-label="breadcrumb">
+      <nav className="text-sm text-sub" aria-label={dict.review.ariaBreadcrumb}>
         <Link href="/subtitle-groups">{t.backToList}</Link>
         <span aria-hidden> › </span>
         <span className="text-body">{g.name}</span>

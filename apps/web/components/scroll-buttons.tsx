@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Icon } from "@/components/icons";
+import { useI18n } from "@/i18n/client";
 
 /**
  * 右下角「至顶端 / 至底端」浮动按钮。
@@ -18,6 +19,7 @@ import { Icon } from "@/components/icons";
  * 因此浅色与夜间主题下都成立（不引用只在浅色定义的 --tide-* 专有令牌）。
  */
 export function ScrollButtons() {
+  const { dict } = useI18n();
   const [show, setShow] = useState(false);
   const [atBottom, setAtBottom] = useState(false);
 
@@ -63,8 +65,8 @@ export function ScrollButtons() {
         type="button"
         className={btnClass}
         onClick={() => jump(0)}
-        aria-label="回到顶部"
-        title="回到顶部"
+        aria-label={dict.review.ariaScrollTop}
+        title={dict.review.ariaScrollTop}
         tabIndex={show ? 0 : -1}
       >
         <Icon name="arrowUp" size={18} />
@@ -74,8 +76,8 @@ export function ScrollButtons() {
         className={btnClass}
         onClick={() => jump(document.documentElement.scrollHeight)}
         disabled={atBottom}
-        aria-label="跳到页面底部"
-        title="跳到页面底部"
+        aria-label={dict.review.ariaScrollBottom}
+        title={dict.review.ariaScrollBottom}
         tabIndex={show ? 0 : -1}
       >
         <Icon name="arrowDown" size={18} />

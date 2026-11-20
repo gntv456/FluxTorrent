@@ -127,14 +127,14 @@ export default async function RulesPage() {
           {t.appealHint}{" "}
           <Link
             href="/appeals"
-            className="font-bold text-[var(--sky)] underline"
+            className="font-bold text-[var(--sky-text)] underline"
           >
             {t.appealLink}
           </Link>{" "}
           ·{" "}
           <Link
             href="/ban-log"
-            className="font-bold text-[var(--sky)] underline"
+            className="font-bold text-[var(--sky-text)] underline"
           >
             {t.banlogLink}
           </Link>
