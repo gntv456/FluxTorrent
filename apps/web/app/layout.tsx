@@ -78,7 +78,11 @@ export async function generateMetadata(): Promise<Metadata> {
       images: ["/brand/og.png"],
     },
     // manifest 由 app/manifest.ts 运行时生成（品牌跟随 site_profile.brand），Next 自动注入 <link rel="manifest">
-    // 站点图标（0214）：site_favicon 有值优先（支持站内附件 /api/v1/attachments/{sha}）
+    // 站点图标（0214）：site_favicon 有值优先（支持站内附件 /api/v1/attachments/{sha}）。
+    // 原 app/favicon.ico 约定文件已挪 public/（2026-11-20 好学站 favicon 修复）：
+    // 约定文件会让 Next 无条件注入 <link rel="icon" href="/favicon.ico">，站点
+    // site_favicon 误指它时浏览器合并结果恒为内置 FT 默认图，配置链被兜底架空。
+    // 挪出后图标完全由本配置驱动；public/favicon.ico 仅保留 URL 作直连兜底。
     icons: profile.site_favicon?.trim()
       ? { icon: profile.site_favicon.trim(), apple: profile.site_favicon.trim() }
       : {
