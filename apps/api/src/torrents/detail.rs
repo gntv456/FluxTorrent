@@ -97,8 +97,9 @@ pub async fn get_torrent_detail(
                t.media_info->>'douban_id' AS douban_id,
                t.media_info->>'tmdb_id' AS tmdb_id,
                t.media_info->>'tmdb_url' AS tmdb_url,
-               COALESCE((t.hr_policy->>'publisher_enabled') \
-                 IN ('true','1'), false) AS hr_punish_publisher,
+               COALESCE(
+                   (t.hr_policy->>'publisher_enabled') IN ('true','1'),
+                   false) AS hr_punish_publisher,
                '{}'::jsonb AS sections
         FROM torrents t
         WHERE t.id = $1 AND (
