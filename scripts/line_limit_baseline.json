@@ -366,7 +366,7 @@
   "apps/api/src/repo/mod.rs::wide": 4,
   "apps/api/src/repo/webhook.rs::wide": 1,
   "apps/api/src/push_http/crypto.rs::wide": 3,
-  "apps/api/src/publish_http/download.rs": 323,
+  "apps/api/src/publish_http/download.rs": 315,
   "apps/api/src/publish_http/group.rs::wide": 1,
   "apps/api/src/publish_http/ptgen.rs": 306,
   "apps/api/src/publish_http/ptgen.rs::wide": 1,

@@ -1,4 +1,5 @@
 //! `.torrent` 构建链的数据访问（`publish_http/download.rs` 的 SQL 唯一居所）。
+//! 2026-11-24 与 `detail` 归组进 `repo/torrent/`（见同目录 mod.rs）。
 //! 2026-10-15 下沉：FRAME §2「H 不 import sqlx」。
 //!
 //! 五处查询 + 两处设置读，逐字搬运：
@@ -9,7 +10,7 @@
 //! announce 基址的读站点设定走共用的 `repo::settings`（此前这里是第
 //! 三份逐字相同的局部 `setting()` 拷贝）。
 
-use super::Repo;
+use crate::repo::Repo;
 
 /// ① 种名（None = 行不在或读失败，落盘名退回 "torrent"）。
 pub async fn torrent_name(repo: &Repo, id: i64) -> Option<String> {

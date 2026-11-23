@@ -20,10 +20,10 @@ use crate::http::require_auth;
 use crate::state::AppState;
 use crate::torrents;
 
-mod aggregate_preserve;
+use crate::repo::torrent::detail::PreserveClaimState;
+
 mod aggregate_viewer;
 
-use aggregate_preserve::PreserveClaimState;
 use aggregate_viewer::load_viewer_segment;
 
 /// 详情共享段 + 仅本用户可见的互动位（平铺成 detail JSON 的同一层，
@@ -250,7 +250,7 @@ async fn assemble(
     state: &web::Data<std::sync::Arc<AppState>>,
     id: i64,
 ) -> DomainResult<TorrentAggregate> {
-    let v = load_viewer_segment(&state.repo.db, id, uid).await?;
+    let v = load_viewer_segment(state, id, uid).await?;
     // detail 里的 is_owner / purchased 是 viewer 态，共享缓存存的是「第一个
     // 访问者」的答案——必须用当前用户的重算值覆写后再端出去（0285）。
     let mut detail = shared.detail;

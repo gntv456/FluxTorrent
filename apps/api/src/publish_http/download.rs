@@ -35,8 +35,7 @@ pub async fn download(
     // P-299：存盘名。批量口早就是 `{种名}-{id}.torrent`，单击口此前
     // 只带 Content-Type，浏览器按 URL 末段落盘成 `download`。
     let name =
-        crate::repo::torrent_download::torrent_name(&state.repo, torrent_id)
-            .await;
+        crate::repo::torrent::torrent_name(&state.repo, torrent_id).await;
     let label = format!(
         "{}-{torrent_id}.torrent",
         crate::archive::safe_name(name.as_deref().unwrap_or("torrent"))
@@ -128,21 +127,15 @@ pub async fn build_torrent_bytes(
     user_id: i64,
     torrent_id: i64,
 ) -> DomainResult<Vec<u8>> {
-    let raw = crate::repo::torrent_download::raw_torrent_file(
-        &state.repo,
-        torrent_id,
-    )
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    let raw = crate::repo::torrent::raw_torrent_file(&state.repo, torrent_id)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     let Some(raw) = raw else {
         // 区分两种 404（评审 P1-4）：种子行不在 = 真不存在；行在但 torrent_files
         // 原文丢失 = 站点数据异常——统一报「资源不存在」会让用户误以为被封权，
         // 详情页一切正常却下载 404 的场景必须给出可行动的提示。
-        let exists = crate::repo::torrent_download::torrent_exists(
-            &state.repo,
-            torrent_id,
-        )
-        .await;
+        let exists =
+            crate::repo::torrent::torrent_exists(&state.repo, torrent_id).await;
         if exists {
             return Err(DomainError::Validation(
                 "种子文件缺失（原始 .torrent 未存档），请联系管理组补档".into(),
@@ -220,8 +213,7 @@ pub async fn build_torrent_bytes(
     // 地址须带 scheme（http(s):// 或 udp://），站长填裸域名时拒绝入库
     // 由管理端校验承担，这里只兜底跳过。
     {
-        let extra =
-            crate::repo::torrent_download::extra_trackers(&state.repo).await;
+        let extra = crate::repo::torrent::extra_trackers(&state.repo).await;
         let mut known_roots: Vec<String> = vec![
             announce.clone(),
             fallbacks.iter().cloned().collect::<Vec<_>>().join("§"),

@@ -10,7 +10,7 @@
  "apps/api/src/twofa_http/admin_misc.rs": 4,
  "apps/api/src/twofa_http/otpauth.rs": 3,
  "apps/api/src/twofa_http/step_up.rs": 1,
- "apps/api/src/torrent_http/aggregate.rs": 4,
+ "apps/api/src/torrent_http/aggregate.rs": 1,
  "apps/api/src/torrent_http/batch.rs": 1,
  "apps/api/src/torrent_http/comments_like.rs": 5,
  "apps/api/src/torrent_http/crossseed_panel.rs": 1,
