@@ -3447,6 +3447,7 @@ const zhTwBase: Omit<
       mTie: "票券返還",
       mLose: "很遺憾",
       mAgain: "再刮一張",
+      winClose: "關閉",
     },
     streakLabel: "{n} 連勝 · 手氣正旺",
     bigsmall: {
@@ -3497,6 +3498,8 @@ const zhTwBase: Omit<
       bsDiceWait: "本局點數 · 等待投擲",
       bsRecent: "近 5 局：{s}",
       roomChip10k: "1萬",
+      roomChipsLabel: "籌碼面額",
+      roomPlayersLabel: "線上玩家",
       roomDemoNames: "大軍|上龍頭|li俊|發飆的蝸牛|Mike|夜行者|錦鯉",
       roomRound: "第 {n} 期",
       roomCountdown: "開獎倒計時 {n}s",

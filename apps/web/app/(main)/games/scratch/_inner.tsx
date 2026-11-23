@@ -417,6 +417,7 @@ export default function ScratchPage({
         amountSuffix={currency}
         againLabel={ts.mAgain}
         tenLabel={ts.tenBtn}
+        closeLabel={ts.winClose}
         onAgain={() => {
           closeModal();
           void buy();

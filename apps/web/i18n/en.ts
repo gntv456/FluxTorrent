@@ -3557,6 +3557,7 @@ const enBase: Omit<
       mTie: "Ticket refunded",
       mLose: "So close",
       mAgain: "Scratch again",
+      winClose: "Close",
     },
     streakLabel: "{n} win streak",
     bigsmall: {
@@ -3607,6 +3608,8 @@ const enBase: Omit<
       bsDiceWait: "Rolling · awaiting throw",
       bsRecent: "Last 5: {s}",
       roomChip10k: "10K",
+      roomChipsLabel: "Chip denominations",
+      roomPlayersLabel: "Players online",
       roomDemoNames: "Army|ShangLongtou|li Jun|Snail Rager|Mike|Nightwalker|Koi",
       roomRound: "Round {n}",
       roomCountdown: "Draw in {n}s",

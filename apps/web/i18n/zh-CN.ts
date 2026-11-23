@@ -3474,6 +3474,7 @@ const zhCnBase = {
       mTie: "票券返还",
       mLose: "很遗憾",
       mAgain: "再刮一张",
+      winClose: "关闭",
     },
     streakLabel: "{n} 连胜 · 手气正旺",
     bigsmall: {
@@ -3530,6 +3531,8 @@ const zhCnBase = {
       roomClosed: "本期已截止，等待新一期",
       roomLast: "上期开奖",
       roomChip10k: "1万",
+      roomChipsLabel: "筹码面额",
+      roomPlayersLabel: "在线玩家",
       roomDemoNames: "大军|上龙头|li俊|发飙的蜗牛|Mike|夜行者|锦鲤",
     },
     jgg: {

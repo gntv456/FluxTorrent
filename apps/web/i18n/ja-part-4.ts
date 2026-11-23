@@ -264,6 +264,7 @@ export const jaPart4 = {
       mTie: "チケット返還",
       mLose: "残念",
       mAgain: "もう一枚削る",
+      winClose: "閉じる",
     },
     streakLabel: "{n} 連勝 · 調子がいいですね",
     bigsmall: {
@@ -313,6 +314,8 @@ export const jaPart4 = {
       bsDiceWait: "今回の出目 · 投擲待ち",
       bsRecent: "直近5回：{s}",
       roomChip10k: "1万",
+      roomChipsLabel: "チップ額面",
+      roomPlayersLabel: "オンラインプレイヤー",
       roomDemoNames: "大軍|上龍頭|li俊|発砇の蝸牛|Mike|夜行者|錦鯉",
     },
     jgg: {

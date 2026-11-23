@@ -27,6 +27,7 @@ export function ScratchWinModal({
   amountSuffix,
   againLabel,
   tenLabel,
+  closeLabel,
   onAgain,
   onTen,
   onClose,
@@ -39,6 +40,7 @@ export function ScratchWinModal({
   amountSuffix?: string;
   againLabel: string;
   tenLabel?: string;
+  closeLabel: string;
   onAgain: () => void;
   onTen?: () => void;
   onClose: () => void;
@@ -75,7 +77,7 @@ export function ScratchWinModal({
           type="button"
           className="sw-win-x"
           onClick={onClose}
-          aria-label="close"
+          aria-label={closeLabel}
         >
           ✕
         </button>

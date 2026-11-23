@@ -31,7 +31,7 @@ export function PlayerRail() {
   const { dict } = useI18n();
   const names = dict.games.bigsmall.roomDemoNames.split("|");
   return (
-    <div className="bs-rail" aria-label="players">
+    <div className="bs-rail" aria-label={dict.games.bigsmall.roomPlayersLabel}>
       {names.map((name, i) => (
         <div className="bs-rail-player" key={name}>
           <span

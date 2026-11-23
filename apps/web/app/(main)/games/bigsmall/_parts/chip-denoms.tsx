@@ -32,7 +32,7 @@ export function ChipDenoms({
   const label = (v: number) =>
     v === 10000 ? tg.roomChip10k : String(v);
   return (
-    <div className="bs-chips" role="group" aria-label="chip denoms">
+    <div className="bs-chips" role="group" aria-label={tg.roomChipsLabel}>
       {DENOMS.map((d) => {
         const off = disabled || d.value > maxBet;
         const active = value === d.value && !off;
