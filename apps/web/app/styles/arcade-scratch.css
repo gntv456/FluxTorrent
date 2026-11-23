@@ -133,7 +133,7 @@
 .sp-deco.d4 { top: 10px; right: 14px; font-size: 15px; }
 .sp-banner-title {
   position: relative;
-  z-index: 2;
+  z-index: var(--z-raised);
   line-height: 1.05;
 }
 .sp-row2 {
@@ -150,7 +150,7 @@
 }
 .sp-ribbon {
   position: relative;
-  z-index: 2;
+  z-index: var(--z-raised);
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -237,11 +237,11 @@
   border-radius: 14px;
   border: 2px dashed rgba(60, 30, 0, 0.55);
   pointer-events: none;
-  z-index: 3;
+  z-index: var(--z-raised);
 }
 .scratch-promo .sw-coat-grid {
   position: relative;
-  z-index: 1;
+  z-index: var(--z-base);
   background: #f3ead2;
   border-radius: 12px;
   padding: 10px;
@@ -399,8 +399,7 @@
   margin-top: 2px;
 }
 .sp-pi-prob {
-  font-family: var(--num, monospace);
-  font-size: 13px;
+    font-size: 13px;
   font-weight: 900;
   color: var(--sp-yel-1);
 }
@@ -421,7 +420,7 @@
 .scratch-promo .sw-win-overlay {
   position: fixed;
   inset: 0;
-  z-index: 95;
+  z-index: var(--z-modal);
   display: grid;
   place-items: center;
   padding: 16px;
@@ -487,8 +486,7 @@
   margin-top: 6px;
 }
 .scratch-promo .sw-win-amt {
-  font-family: var(--num, monospace);
-  font-size: 26px;
+    font-size: 26px;
   font-weight: 900;
   margin-top: 10px;
   color: #46d3a4;
@@ -528,4 +526,11 @@
     gap: 8px;
   }
   .sw-win-btns { flex-wrap: wrap; }
+}
+
+/* 动效降级：中奖弹窗 pop 动画对减少动态用户直接关闭 */
+@media (prefers-reduced-motion: reduce) {
+  .scratch-promo .sw-win-card {
+    animation: none;
+  }
 }
