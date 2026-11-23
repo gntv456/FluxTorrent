@@ -5,8 +5,16 @@
    不逐元素贴样式。visual hierarchy：夜色底 → 金线面板 → 发光内容。
    ════════════════════════════════════════════════════════════════ */
 
+
+/* ── 主题跟随闸（2026-11-23）：整文件规则只在暗色族主题生效。
+   此前令牌换血无条件命中所有主题——日间主题（seablue/sakura/…）进
+   /games 被强换深蓝底，与站内其余页面断裂。日间主题走 sweet 皮肤
+   的主题派生（见 arcade-sweet.css 令牌化段），夜场皮肤不再越权。 */
+
 /* ── ① 令牌换血：夜场色板 ── */
-[data-arcade="sweet"] {
+[data-arcade="sweet"]
+  :where(html[data-theme$="-night"], html[data-theme="shanhaijing"],
+    html[data-theme="brand-night"]) {
   /* 表面：夜色三级 */
   --surface-page: #101828;
   --surface-card: #1a2438;
@@ -33,8 +41,12 @@
 }
 
 /* 页面骨架：夜空底 + 星点氛围（替代白底） */
-[data-arcade="sweet"] .games-shell,
-[data-arcade="sweet"] main {
+[data-arcade="sweet"]
+  :where(html[data-theme$="-night"], html[data-theme="shanhaijing"],
+    html[data-theme="brand-night"]) .games-shell,
+[data-arcade="sweet"]
+  :where(html[data-theme$="-night"], html[data-theme="shanhaijing"],
+    html[data-theme="brand-night"]) main {
   background:
     radial-gradient(
       1100px 500px at 70% -8%,
@@ -51,20 +63,36 @@
 
 /* ── ② 面板质感：暗玻璃 + 金细线 + 深投影 ── */
 /* 舞台盒：sweet 层的白珍珠渐变带 !important，这里同权重后加载覆盖 */
-[data-arcade="sweet"] .gs-stage-box {
+[data-arcade="sweet"]
+  :where(html[data-theme$="-night"], html[data-theme="shanhaijing"],
+    html[data-theme="brand-night"]) .gs-stage-box {
   background: linear-gradient(165deg, #1e2a44 0%, #182238 100%) !important;
   border-color: #3a4a72 !important;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.05),
     0 12px 32px -16px rgba(0, 0, 0, 0.6) !important;
 }
-[data-arcade="sweet"] .gs-shell,
-[data-arcade="sweet"] .sw-album-panel,
-[data-arcade="sweet"] .sw-cardbook,
-[data-arcade="sweet"] .gs-balance,
-[data-arcade="sweet"] [class*="PANEL_LG"],
-[data-arcade="sweet"] .rounded-\[var\(--r-lg\)\],
-[data-arcade="sweet"] .rounded-\[var\(--r-md\)\] {
+[data-arcade="sweet"]
+  :where(html[data-theme$="-night"], html[data-theme="shanhaijing"],
+    html[data-theme="brand-night"]) .gs-shell,
+[data-arcade="sweet"]
+  :where(html[data-theme$="-night"], html[data-theme="shanhaijing"],
+    html[data-theme="brand-night"]) .sw-album-panel,
+[data-arcade="sweet"]
+  :where(html[data-theme$="-night"], html[data-theme="shanhaijing"],
+    html[data-theme="brand-night"]) .sw-cardbook,
+[data-arcade="sweet"]
+  :where(html[data-theme$="-night"], html[data-theme="shanhaijing"],
+    html[data-theme="brand-night"]) .gs-balance,
+[data-arcade="sweet"]
+  :where(html[data-theme$="-night"], html[data-theme="shanhaijing"],
+    html[data-theme="brand-night"]) [class*="PANEL_LG"],
+[data-arcade="sweet"]
+  :where(html[data-theme$="-night"], html[data-theme="shanhaijing"],
+    html[data-theme="brand-night"]) .rounded-\[var\(--r-lg\)\],
+[data-arcade="sweet"]
+  :where(html[data-theme$="-night"], html[data-theme="shanhaijing"],
+    html[data-theme="brand-night"]) .rounded-\[var\(--r-md\)\] {
   background: linear-gradient(165deg, #1e2a44 0%, #182238 100%);
   border: 1px solid #3a4a72;
   box-shadow:
@@ -73,7 +101,9 @@
 }
 
 /* ── ③ 大厅卡：夜场机台（金框 + 深底 + 悬浮发光） ── */
-[data-arcade="sweet"] .gc-card {
+[data-arcade="sweet"]
+  :where(html[data-theme$="-night"], html[data-theme="shanhaijing"],
+    html[data-theme="brand-night"]) .gc-card {
   background: linear-gradient(170deg, #223050 0%, #182238 100%);
   border: 1px solid #4a5c8c;
   box-shadow:
@@ -84,35 +114,49 @@
     box-shadow 0.25s ease,
     border-color 0.25s ease;
 }
-[data-arcade="sweet"] .gc-card:hover {
+[data-arcade="sweet"]
+  :where(html[data-theme$="-night"], html[data-theme="shanhaijing"],
+    html[data-theme="brand-night"]) .gc-card:hover {
   transform: translateY(-4px);
   border-color: rgba(232, 196, 118, 0.55);
   box-shadow:
     0 18px 44px -16px rgba(0, 0, 0, 0.8),
     0 0 24px -6px rgba(232, 196, 118, 0.25);
 }
-[data-arcade="sweet"] .gc-title {
+[data-arcade="sweet"]
+  :where(html[data-theme$="-night"], html[data-theme="shanhaijing"],
+    html[data-theme="brand-night"]) .gc-title {
   color: #f2f6ff;
 }
-[data-arcade="sweet"] .gc-sub {
+[data-arcade="sweet"]
+  :where(html[data-theme$="-night"], html[data-theme="shanhaijing"],
+    html[data-theme="brand-night"]) .gc-sub {
   color: #8fa0c5;
 }
-[data-arcade="sweet"] .gc-go {
+[data-arcade="sweet"]
+  :where(html[data-theme$="-night"], html[data-theme="shanhaijing"],
+    html[data-theme="brand-night"]) .gc-go {
   color: var(--sun);
 }
 /* scene 画布内的令牌跟随夜场（scene 用 var() 上色，自动生效） */
 
 /* 快捷入口夜场化 */
-[data-arcade="sweet"] .gc-qi {
+[data-arcade="sweet"]
+  :where(html[data-theme$="-night"], html[data-theme="shanhaijing"],
+    html[data-theme="brand-night"]) .gc-qi {
   background: linear-gradient(170deg, #223050, #182238);
   border: 1px solid #3a4a72;
 }
-[data-arcade="sweet"] .gc-qi:hover {
+[data-arcade="sweet"]
+  :where(html[data-theme$="-night"], html[data-theme="shanhaijing"],
+    html[data-theme="brand-night"]) .gc-qi:hover {
   border-color: rgba(232, 196, 118, 0.5);
 }
 
 /* ── ④ 玩法舞台：机台屏（深底 + 金描边 + 内发光） ── */
-[data-arcade="sweet"] .gs-stage {
+[data-arcade="sweet"]
+  :where(html[data-theme$="-night"], html[data-theme="shanhaijing"],
+    html[data-theme="brand-night"]) .gs-stage {
   background: linear-gradient(170deg, #16203a 0%, #101828 100%);
   border: 1px solid #4a5c8c;
   border-radius: var(--r-lg);
@@ -122,7 +166,9 @@
     0 0 0 1px rgba(232, 196, 118, 0.15);
 }
 /* 九宫格/转盘聚光底适配夜场（原浅色聚光换金色光束） */
-[data-arcade="sweet"] .jgg-scene-host .gs-art {
+[data-arcade="sweet"]
+  :where(html[data-theme$="-night"], html[data-theme="shanhaijing"],
+    html[data-theme="brand-night"]) .jgg-scene-host .gs-art {
   background:
     radial-gradient(
       85% 60% at 50% 8%,
@@ -136,7 +182,9 @@
       #101828 100%
     ) !important;
 }
-[data-arcade="sweet"] .jgg-scene-host .gs-art::before {
+[data-arcade="sweet"]
+  :where(html[data-theme$="-night"], html[data-theme="shanhaijing"],
+    html[data-theme="brand-night"]) .jgg-scene-host .gs-art::before {
   background-image: radial-gradient(
     rgba(232, 196, 118, 0.16) 1px,
     transparent 1.4px
@@ -145,7 +193,9 @@
 
 /* ── ⑤ 玩法件夜场化：骰/蛋/卡面/灯阵 ── */
 /* 转盘扇区：夜场宝石色（原浅粉彩在深底上像贴纸） */
-[data-arcade="sweet"] {
+[data-arcade="sweet"]
+  :where(html[data-theme$="-night"], html[data-theme="shanhaijing"],
+    html[data-theme="brand-night"]) {
   --mood-wheel-gold-a: #e8b84e;
   --mood-wheel-gold-b: #f4d488;
   --mood-wheel-violet-a: #7c6cb8;
@@ -159,28 +209,40 @@
   --mood-bright: #0c1424;
 }
 /* 骰面：象牙白 + 金边在深底上更「实体」 */
-[data-arcade="sweet"] .bs-die svg rect {
+[data-arcade="sweet"]
+  :where(html[data-theme$="-night"], html[data-theme="shanhaijing"],
+    html[data-theme="brand-night"]) .bs-die svg rect {
   fill: #f6f1e4;
   stroke: #e8c476;
 }
-[data-arcade="sweet"] .bs-die svg circle {
+[data-arcade="sweet"]
+  :where(html[data-theme$="-night"], html[data-theme="shanhaijing"],
+    html[data-theme="brand-night"]) .bs-die svg circle {
   fill: #2c3e5c;
 }
 /* 九宫格灯球：深底玻璃球（jgrid 球体走内联样式的不动，这里补球阵间隙底纹） */
-[data-arcade="sweet"] .jgrid {
+[data-arcade="sweet"]
+  :where(html[data-theme$="-night"], html[data-theme="shanhaijing"],
+    html[data-theme="brand-night"]) .jgrid {
   --jg-gap: 10px;
 }
 
 /* SwTenModal / 结果浮层 */
-[data-arcade="sweet"] .sw-ten,
-[data-arcade="sweet"] [role="dialog"] {
+[data-arcade="sweet"]
+  :where(html[data-theme$="-night"], html[data-theme="shanhaijing"],
+    html[data-theme="brand-night"]) .sw-ten,
+[data-arcade="sweet"]
+  :where(html[data-theme$="-night"], html[data-theme="shanhaijing"],
+    html[data-theme="brand-night"]) [role="dialog"] {
   background: #1a2438;
   border: 1px solid #4a5c8c;
   color: #f2f6ff;
 }
 
 /* ── ⑥ Hero：夜场霓虹横幅（替换浅蓝渐变） ── */
-[data-arcade="sweet"] .gc-hero {
+[data-arcade="sweet"]
+  :where(html[data-theme$="-night"], html[data-theme="shanhaijing"],
+    html[data-theme="brand-night"]) .gc-hero {
   background:
     radial-gradient(
       700px 300px at 82% 10%,
@@ -198,75 +260,113 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.06),
     0 16px 44px -20px rgba(0, 0, 0, 0.7);
 }
-[data-arcade="sweet"] .gc-hero h1 {
+[data-arcade="sweet"]
+  :where(html[data-theme$="-night"], html[data-theme="shanhaijing"],
+    html[data-theme="brand-night"]) .gc-hero h1 {
   color: #f6e6c2;
   text-shadow: 0 0 24px rgba(232, 196, 118, 0.35);
 }
-[data-arcade="sweet"] .gc-hero-sub {
+[data-arcade="sweet"]
+  :where(html[data-theme$="-night"], html[data-theme="shanhaijing"],
+    html[data-theme="brand-night"]) .gc-hero-sub {
   color: #aebbdd;
 }
-[data-arcade="sweet"] .gc-hero-cta {
+[data-arcade="sweet"]
+  :where(html[data-theme$="-night"], html[data-theme="shanhaijing"],
+    html[data-theme="brand-night"]) .gc-hero-cta {
   background: linear-gradient(135deg, #e8c476, #c89c4e);
   color: #1a2438;
   border: none;
   box-shadow: 0 6px 20px -8px rgba(232, 196, 118, 0.6);
 }
-[data-arcade="sweet"] .gc-hero-cta:hover {
+[data-arcade="sweet"]
+  :where(html[data-theme$="-night"], html[data-theme="shanhaijing"],
+    html[data-theme="brand-night"]) .gc-hero-cta:hover {
   box-shadow: 0 8px 26px -8px rgba(232, 196, 118, 0.85);
 }
-[data-arcade="sweet"] .gc-hero-stat {
+[data-arcade="sweet"]
+  :where(html[data-theme$="-night"], html[data-theme="shanhaijing"],
+    html[data-theme="brand-night"]) .gc-hero-stat {
   color: #cdd8ee;
 }
-[data-arcade="sweet"] .gc-hero-stat b {
+[data-arcade="sweet"]
+  :where(html[data-theme$="-night"], html[data-theme="shanhaijing"],
+    html[data-theme="brand-night"]) .gc-hero-stat b {
   color: var(--sun);
   text-shadow: 0 0 18px rgba(232, 196, 118, 0.45);
 }
-[data-arcade="sweet"] .gc-hero-orb {
+[data-arcade="sweet"]
+  :where(html[data-theme$="-night"], html[data-theme="shanhaijing"],
+    html[data-theme="brand-night"]) .gc-hero-orb {
   opacity: 0.7;
 }
 
 /* ── ⑦ 分组标题线：金虚线 ── */
-[data-arcade="sweet"] .gc-group-hd h2 {
+[data-arcade="sweet"]
+  :where(html[data-theme$="-night"], html[data-theme="shanhaijing"],
+    html[data-theme="brand-night"]) .gc-group-hd h2 {
   color: #f2f6ff;
 }
-[data-arcade="sweet"] .gc-group-line {
+[data-arcade="sweet"]
+  :where(html[data-theme$="-night"], html[data-theme="shanhaijing"],
+    html[data-theme="brand-night"]) .gc-group-line {
   background: linear-gradient(90deg, rgba(232, 196, 118, 0.6), transparent);
 }
-[data-arcade="sweet"] .gc-group-n {
+[data-arcade="sweet"]
+  :where(html[data-theme$="-night"], html[data-theme="shanhaijing"],
+    html[data-theme="brand-night"]) .gc-group-n {
   background: rgba(232, 196, 118, 0.16);
   color: var(--sun);
   border: 1px solid rgba(232, 196, 118, 0.4);
 }
 
 /* ── ⑧ 文字/链接层 ── */
-[data-arcade="sweet"] .text-sub,
-[data-arcade="sweet"] p.text-sub {
+[data-arcade="sweet"]
+  :where(html[data-theme$="-night"], html[data-theme="shanhaijing"],
+    html[data-theme="brand-night"]) .text-sub,
+[data-arcade="sweet"]
+  :where(html[data-theme$="-night"], html[data-theme="shanhaijing"],
+    html[data-theme="brand-night"]) p.text-sub {
   color: #8fa0c5;
 }
-[data-arcade="sweet"] a.text-xs.font-bold,
-[data-arcade="sweet"] .text-\[\--sky-deep\] {
+[data-arcade="sweet"]
+  :where(html[data-theme$="-night"], html[data-theme="shanhaijing"],
+    html[data-theme="brand-night"]) a.text-xs.font-bold,
+[data-arcade="sweet"]
+  :where(html[data-theme$="-night"], html[data-theme="shanhaijing"],
+    html[data-theme="brand-night"]) .text-\[\--sky-deep\] {
   color: #7cb8f5;
 }
 
 /* ── ⑨ BalanceBar / ChipSelect / 按钮件 ── */
-[data-arcade="sweet"] .arc-chip {
+[data-arcade="sweet"]
+  :where(html[data-theme$="-night"], html[data-theme="shanhaijing"],
+    html[data-theme="brand-night"]) .arc-chip {
   background: #223050;
   border: 1px solid #4a5c8c;
   color: #f2f6ff;
 }
-[data-arcade="sweet"] .arc-chip[aria-pressed="true"] {
+[data-arcade="sweet"]
+  :where(html[data-theme$="-night"], html[data-theme="shanhaijing"],
+    html[data-theme="brand-night"]) .arc-chip[aria-pressed="true"] {
   background: linear-gradient(135deg, #e8c476, #c89c4e);
   color: #1a2438;
   border-color: transparent;
   box-shadow: 0 4px 14px -6px rgba(232, 196, 118, 0.6);
 }
-[data-arcade="sweet"] .gs-back {
+[data-arcade="sweet"]
+  :where(html[data-theme$="-night"], html[data-theme="shanhaijing"],
+    html[data-theme="brand-night"]) .gs-back {
   background: #1e2a44;
   border-color: #3a4a72;
   color: #aebbdd;
 }
-[data-arcade="sweet"] input.bg-\[--surface-card\],
-[data-arcade="sweet"] input[type="number"] {
+[data-arcade="sweet"]
+  :where(html[data-theme$="-night"], html[data-theme="shanhaijing"],
+    html[data-theme="brand-night"]) input.bg-\[--surface-card\],
+[data-arcade="sweet"]
+  :where(html[data-theme$="-night"], html[data-theme="shanhaijing"],
+    html[data-theme="brand-night"]) input[type="number"] {
   background: #101828;
   border-color: #3a4a72;
   color: #f2f6ff;
@@ -274,14 +374,18 @@
 
 /* ── ⑩ 场景画（scene-a/b/c）：深底 → 「亮着的机台屏幕」质感。
    夜场里屏幕是自发光体：降饱和 + 内晕影 + 顶部金光反射 + 夜色基底。 */
-[data-arcade="sweet"] .gc-scene {
+[data-arcade="sweet"]
+  :where(html[data-theme$="-night"], html[data-theme="shanhaijing"],
+    html[data-theme="brand-night"]) .gc-scene {
   background: #16203a;
   filter: brightness(0.92) saturate(0.85) contrast(1.06);
   box-shadow:
     inset 0 0 40px rgba(5, 10, 22, 0.55),
     inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
-[data-arcade="sweet"] .gc-art::before {
+[data-arcade="sweet"]
+  :where(html[data-theme$="-night"], html[data-theme="shanhaijing"],
+    html[data-theme="brand-night"]) .gc-art::before {
   content: "";
   position: absolute;
   inset: 0;
@@ -299,13 +403,21 @@
 /* ── ⑪ reduced-motion：本文件无关键帧动画，但有 hover 位移/发光过渡，
         对前庭敏感用户一并降级（位移与光晕归零，保留底色对比） ── */
 @media (prefers-reduced-motion: reduce) {
-  [data-arcade="sweet"] .gc-card,
-  [data-arcade="sweet"] .gc-card:hover {
+  [data-arcade="sweet"]
+  :where(html[data-theme$="-night"], html[data-theme="shanhaijing"],
+    html[data-theme="brand-night"]) .gc-card,
+  [data-arcade="sweet"]
+  :where(html[data-theme$="-night"], html[data-theme="shanhaijing"],
+    html[data-theme="brand-night"]) .gc-card:hover {
     transform: none;
     transition: none;
   }
-  [data-arcade="sweet"] .gc-card:hover,
-  [data-arcade="sweet"] .gc-hero-cta:hover {
+  [data-arcade="sweet"]
+  :where(html[data-theme$="-night"], html[data-theme="shanhaijing"],
+    html[data-theme="brand-night"]) .gc-card:hover,
+  [data-arcade="sweet"]
+  :where(html[data-theme$="-night"], html[data-theme="shanhaijing"],
+    html[data-theme="brand-night"]) .gc-hero-cta:hover {
     box-shadow: none;
   }
 }
@@ -314,28 +426,42 @@
    .gtabs 标签条 / .sw-stat 三格统计 / .sw-hrow 历史行 / .sw-prize-strip
    奖池条原为白底浅蓝渐变（sweet 层 902/1340/1370/2070），夜场域内
    与金线夜色面板冲突，统一压成夜色面板家族。 ── */
-[data-arcade="sweet"] .gtabs {
+[data-arcade="sweet"]
+  :where(html[data-theme$="-night"], html[data-theme="shanhaijing"],
+    html[data-theme="brand-night"]) .gtabs {
   background: linear-gradient(165deg, #1e2a44 0%, #182238 100%);
   box-shadow: inset 0 0 0 1.5px #3a4a72;
 }
-[data-arcade="sweet"] .sw-stat {
+[data-arcade="sweet"]
+  :where(html[data-theme$="-night"], html[data-theme="shanhaijing"],
+    html[data-theme="brand-night"]) .sw-stat {
   background: linear-gradient(165deg, #1e2a44 0%, #182238 100%);
   box-shadow: inset 0 0 0 1px #3a4a72;
 }
-[data-arcade="sweet"] .sw-stat-lb {
+[data-arcade="sweet"]
+  :where(html[data-theme$="-night"], html[data-theme="shanhaijing"],
+    html[data-theme="brand-night"]) .sw-stat-lb {
   color: #8fa0c5;
 }
-[data-arcade="sweet"] .sw-hrow {
+[data-arcade="sweet"]
+  :where(html[data-theme$="-night"], html[data-theme="shanhaijing"],
+    html[data-theme="brand-night"]) .sw-hrow {
   border: 1px solid #3a4a72;
   background: #1a2438;
 }
-[data-arcade="sweet"] .sw-htime {
+[data-arcade="sweet"]
+  :where(html[data-theme$="-night"], html[data-theme="shanhaijing"],
+    html[data-theme="brand-night"]) .sw-htime {
   color: #8fa0c5;
 }
-[data-arcade="sweet"] .sw-prize-strip {
+[data-arcade="sweet"]
+  :where(html[data-theme$="-night"], html[data-theme="shanhaijing"],
+    html[data-theme="brand-night"]) .sw-prize-strip {
   background: linear-gradient(165deg, #1e2a44 0%, #182238 100%);
   box-shadow: inset 0 0 0 1px var(--sweet-gold);
 }
-[data-arcade="sweet"] .sw-prize-lb {
+[data-arcade="sweet"]
+  :where(html[data-theme$="-night"], html[data-theme="shanhaijing"],
+    html[data-theme="brand-night"]) .sw-prize-lb {
   color: var(--sun);
 }

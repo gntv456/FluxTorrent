@@ -8,31 +8,39 @@
    ============================================================ */
 
 [data-arcade="sweet"] {
-  /* —— 局部令牌（不污染全局 TIDE）—— */
+  /* —— 局部令牌（不污染全局 TIDE）——
+     主题跟随（2026-11-23）：蓝调家族色从站点 --theme-hue 派生
+     （pastel 13 款日间主题都有该变量），娱乐屋自动染成当前主题色相；
+     brand 等经典档无 --theme-hue，回落原设计蓝（原值原样）。 */
   --sweet-cream: #f4f8fd;
-  --sweet-mist: #c5dff0;
-  --sweet-sky: #8ab4dd;
-  --sweet-sky-deep: #4a7ab0;
-  --sweet-lilac: #b8c8e8;
-  --sweet-lilac-deep: #6a7ab8;
+  --sweet-mist:
+    color-mix(in srgb, var(--theme-hue, #8ab4dd) 32%, #ffffff);
+  --sweet-sky: color-mix(in srgb, var(--theme-hue, #8ab4dd) 62%, #ffffff);
+  --sweet-sky-deep: color-mix(in srgb, var(--theme-hue, #4a7ab0) 78%, #1a3a5c);
+  --sweet-lilac: color-mix(in srgb, var(--theme-hue, #b8c8e8) 30%, #e8ecf8);
+  --sweet-lilac-deep:
+    color-mix(in srgb, var(--theme-hue, #6a7ab8) 70%, #4a5a8c);
   --sweet-gold: #d4af7a;
   --sweet-gold-deep: #b08a4a;
-  --sweet-ink: #2c3e5c;
-  --sweet-ink-soft: #5a6b8c;
-  --sweet-line: #d8e4f2;
-  --sweet-shadow: 0 10px 30px -12px rgba(74, 122, 176, 0.35);
+  --sweet-ink: color-mix(in srgb, var(--theme-hue, #2c3e5c) 55%, #14243c);
+  --sweet-ink-soft: color-mix(in srgb, var(--theme-hue, #5a6b8c) 60%, #6a7a94);
+  --sweet-line: color-mix(in srgb, var(--theme-hue, #d8e4f2) 22%, #ffffff);
+  --sweet-shadow: 0 10px 30px -12px
+    color-mix(in srgb, var(--theme-hue, #4a7ab0) 38%, transparent);
   --sweet-shadow-gold: 0 6px 20px -8px rgba(212, 175, 122, 0.45);
   --sweet-serif: "Noto Serif SC", "Songti SC", serif;
 
-  /* 让现有 TIDE 令牌在本作用域内偏蓝 */
-  --sky: #4a7ab0;
-  --sky-deep: #2c5a8c;
-  --sky-soft: #e8f0fa;
+  /* 让现有 TIDE 令牌在本作用域内偏主题色 */
+  --sky: color-mix(in srgb, var(--theme-hue, #4a7ab0) 82%, #1a3a5c);
+  --sky-deep: color-mix(in srgb, var(--theme-hue, #2c5a8c) 72%, #102a48);
+  --sky-soft:
+    color-mix(in srgb, var(--theme-hue, #4a7ab0) 12%, #ffffff);
   --r-xl: 28px;
   --r-lg: 22px;
   --r-md: 16px;
   --shadow-card: var(--sweet-shadow);
-  --shadow-hover: 0 14px 34px -14px rgba(74, 122, 176, 0.45);
+  --shadow-hover: 0 14px 34px -14px
+    color-mix(in srgb, var(--theme-hue, #4a7ab0) 48%, transparent);
 }
 
 /* 眉标：贴金小字（设计稿 DAILY BONUS 母题） */
@@ -48,7 +56,12 @@
   position: relative;
   border-radius: var(--r-xl);
   padding: 30px 26px;
-  background: linear-gradient(135deg, #c5dff8 0%, #9ec0e8 50%, #b8c8e8 100%);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--theme-hue, #8ab4dd) 30%, #ffffff) 0%,
+    color-mix(in srgb, var(--theme-hue, #8ab4dd) 52%, #ffffff) 50%,
+    var(--sweet-lilac) 100%
+  );
   box-shadow:
     inset 0 0 0 1.5px rgba(255, 255, 255, 0.6),
     var(--sweet-shadow);
@@ -103,8 +116,8 @@
   letter-spacing: 0.08em;
   background: linear-gradient(
     105deg,
-    #24466e 0%,
-    #2c5a8c 30%,
+    color-mix(in srgb, var(--theme-hue, #2c5a8c) 62%, #10203a) 0%,
+    var(--sweet-sky-deep) 30%,
     #8a6a30 62%,
     #c89a50 100%
   );
@@ -167,7 +180,7 @@
   font-family: var(--sweet-serif);
   font-size: 18px;
   font-weight: 800;
-  color: #2c5a8c;
+  color: var(--sweet-sky-deep);
   letter-spacing: 0.1em;
   white-space: nowrap;
 }
@@ -261,7 +274,11 @@
   display: none; /* 宝石底座换到彩块上不需要 */
 }
 [data-arcade="sweet"] .gc-tone-sky {
-  background: linear-gradient(135deg, #6a9ec8, #4a7ab0);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--theme-hue, #6a9ec8) 70%, #3a6a94),
+    var(--sweet-sky-deep)
+  );
 }
 [data-arcade="sweet"] .gc-tone-coral {
   background: linear-gradient(135deg, #d89898, #b86868);
@@ -438,7 +455,7 @@
 }
 [data-arcade="sweet"] .arc-hd h2 {
   font-family: var(--sweet-serif);
-  color: #2c5a8c;
+  color: var(--sweet-sky-deep);
   letter-spacing: 0.08em;
 }
 [data-arcade="sweet"] .arc-crest {
@@ -477,7 +494,11 @@
 [data-arcade="sweet"] .arc-q {
   border-radius: var(--r-md);
   border: 1px solid var(--sweet-line);
-  background: linear-gradient(160deg, #fff, #eef5fc);
+  background: linear-gradient(
+    160deg,
+    #fff,
+    color-mix(in srgb, var(--theme-hue, #4a7ab0) 8%, #ffffff)
+  );
 }
 [data-arcade="sweet"] .arc-q.ready {
   border-color: var(--sweet-gold);
@@ -535,7 +556,11 @@
 [data-arcade="sweet"] .arc-goods {
   border-radius: var(--r-md);
   border: 1px solid var(--sweet-line);
-  background: linear-gradient(160deg, #fff, #eef5fc);
+  background: linear-gradient(
+    160deg,
+    #fff,
+    color-mix(in srgb, var(--theme-hue, #4a7ab0) 8%, #ffffff)
+  );
 }
 
 /* ══════ ⑧ 底部链接行：深海蓝可读色 ══════ */
@@ -621,7 +646,12 @@
     0 8px 18px rgba(74, 122, 176, 0.35);
 }
 [data-arcade="sweet"] .arc-call.sky {
-  background: linear-gradient(180deg, #d6e9fc, #8ab4dd 58%, #4a7ab0);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--theme-hue, #8ab4dd) 22%, #ffffff),
+    var(--sweet-sky) 58%,
+    var(--sweet-sky-deep)
+  );
 }
 [data-arcade="sweet"] .arc-call.sun {
   background: linear-gradient(180deg, #f7e6c0, #d4af7a 58%, #b08a4a);
@@ -659,7 +689,12 @@
    ⑩ BalanceBar 余额条：珍珠蓝雾卡（用语义化类名 .gs-balance）
    ═══════════════════════════════════════════════════════════ */
 [data-arcade="sweet"] .gs-balance {
-  background: linear-gradient(160deg, #ffffff 0%, #eef5fc 100%) !important;
+  background: linear-gradient(
+      160deg,
+      #ffffff 0%,
+      color-mix(in srgb, var(--theme-hue, #4a7ab0) 8%, #ffffff) 100%
+    )
+    !important;
   border-color: var(--sweet-line) !important;
   border-radius: var(--r-lg) !important;
   box-shadow:
@@ -860,7 +895,11 @@
 
 /* —— 宠物：舞台蓝雾 + 进度条蓝金 —— */
 [data-arcade="sweet"] .pp-stage {
-  background: radial-gradient(circle at 50% 40%, #e8f0fa, #c5dff0);
+  background: radial-gradient(
+    circle at 50% 40%,
+    var(--sky-soft),
+    var(--sweet-mist)
+  );
   border-radius: var(--r-lg);
 }
 [data-arcade="sweet"] .pp-fill.hunger {
@@ -885,12 +924,15 @@
   overflow: hidden;
 }
 [data-arcade="sweet"] .fp-pond-svg {
-  width: min(100%, calc(min(62vh, 560px) * 0.8214));
+  /* 布局优化（2026-11-23）：上限从 62vh 收到 44vh——公共头 130 +
+     游戏头 44 + 余额行 52 + 控制区 ~100 ≈ 330px 固定开销，62vh 的图
+     加上它们必超一屏。44vh 让「头 + 图 + 控制区」≤ 100vh，一屏放下。 */
+  width: min(100%, calc(min(44vh, 420px) * 0.8214));
   max-width: none;
   margin: 0 auto;
 }
 [data-arcade="sweet"] .fp-pond-svg.fp-wide {
-  width: min(100%, calc(min(56vh, 480px) * 1.6));
+  width: min(100%, calc(min(40vh, 400px) * 1.6));
 }
 [data-arcade="sweet"] .fp-pond-svg svg {
   width: 100%;
@@ -1240,9 +1282,9 @@
   border: none;
   background: linear-gradient(
     180deg,
-    #2c3e5c 0%,
-    #4a7ab0 45%,
-    #8ab4dd 82%,
+    color-mix(in srgb, var(--theme-hue, #2c3e5c) 55%, #14243c) 0%,
+    var(--sweet-sky-deep) 45%,
+    var(--sweet-sky) 82%,
     #a0c4e3 100%
   );
   box-shadow: none;
@@ -1297,11 +1339,70 @@
    ⑮ 舞台容器：珍珠蓝雾卡（.gs-stage-box）
    ═══════════════════════════════════════════════════════════ */
 [data-arcade="sweet"] .gs-stage-box {
-  background: linear-gradient(160deg, #fff, #eef5fc) !important;
+  background: linear-gradient(
+      160deg,
+      #fff,
+      color-mix(in srgb, var(--theme-hue, #4a7ab0) 8%, #ffffff)
+    )
+    !important;
   border-color: var(--sweet-line) !important;
   box-shadow:
     inset 0 0 0 1px #fff,
     var(--sweet-shadow) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ⑮a 控制区紧凑（布局优化 2026-11-23）：舞台下方控制卡此前
+   筹码行 / CTA 行 / 提示文案竖排三行（实测 170px）。桌面端改
+   「筹码左 · 主按钮右」一行布局，提示文案并入同行末尾。
+   只改摆放不改控件——通用命中所有 .gs-body 控制卡，不逐页改。
+   ═══════════════════════════════════════════════════════════ */
+@media (min-width: 1024px) {
+  [data-arcade="sweet"] .gs-body > div:first-child > .flex.flex-col.gap-3 {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 16px;
+    padding: 10px 16px;
+  }
+  /* ChipSelect：筹码 + 自定义输入本来横排，整块作为左半 */
+  [data-arcade="sweet"]
+    .gs-body
+    > div:first-child
+    > .flex.flex-col.gap-3
+    > .flex.flex-wrap {
+    flex: 1 1 320px;
+  }
+  /* CTA 行：固定内容宽靠右 */
+  [data-arcade="sweet"]
+    .gs-body
+    > div:first-child
+    > .flex.flex-col.gap-3
+    .sw-cta-row {
+    flex: 0 1 auto;
+  }
+  [data-arcade="sweet"]
+    .gs-body
+    > div:first-child
+    > .flex.flex-col.gap-3
+    .sw-cta {
+    min-height: 44px;
+    min-width: 140px;
+    padding: 0 24px;
+    white-space: nowrap;
+  }
+  /* 提示文案：独占剩余整行，压成一行小字 */
+  [data-arcade="sweet"]
+    .gs-body
+    > div:first-child
+    > .flex.flex-col.gap-3
+    > p.text-xs {
+    flex: 1 1 100%;
+    margin-top: -4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -1341,7 +1442,11 @@
   border-radius: var(--r-md);
   padding: 10px 8px;
   text-align: center;
-  background: linear-gradient(160deg, #fff, #eef5fc);
+  background: linear-gradient(
+    160deg,
+    #fff,
+    color-mix(in srgb, var(--theme-hue, #4a7ab0) 8%, #ffffff)
+  );
   box-shadow: inset 0 0 0 1px var(--sweet-line);
 }
 .sw-stat-lb {
@@ -1428,7 +1533,11 @@
   cursor: not-allowed;
 }
 .sw-cta.cta-primary {
-  background: linear-gradient(180deg, #a9c9ec, #4a7ab0);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--theme-hue, #a9c9ec) 55%, #ffffff),
+    var(--sweet-sky-deep)
+  );
   box-shadow:
     0 6px 14px -6px rgba(74, 122, 176, 0.6),
     inset 0 1px 0 rgba(255, 255, 255, 0.6);
@@ -1529,7 +1638,7 @@
   box-shadow: inset 0 0 0 1.5px var(--sweet-line);
 }
 .sw-tier.on-mint {
-  background: linear-gradient(160deg, #fff, #e8f0fa);
+  background: linear-gradient(160deg, #fff, var(--sky-soft));
   box-shadow: inset 0 0 0 2px var(--sweet-sky-deep);
 }
 .sw-tier.on-gold {
@@ -1564,7 +1673,11 @@
   max-width: 420px;
   border-radius: 20px;
   padding: 14px;
-  background: linear-gradient(160deg, #fff, #eef5fc);
+  background: linear-gradient(
+    160deg,
+    #fff,
+    color-mix(in srgb, var(--theme-hue, #4a7ab0) 8%, #ffffff)
+  );
   box-shadow:
     inset 0 0 0 1.5px var(--sweet-gold),
     0 8px 20px -10px rgba(74, 122, 176, 0.4);
@@ -1776,7 +1889,7 @@
   box-shadow: 0 6px 12px -6px rgba(74, 122, 176, 0.4);
 }
 .sw-card.sw-tone-sky {
-  background: linear-gradient(160deg, #c5dff0, #8ab4dd);
+  background: linear-gradient(160deg, var(--sweet-mist), var(--sweet-sky));
 }
 .sw-card.sw-tone-gold {
   background: linear-gradient(160deg, #e8d8b8, #d4af7a);
@@ -1802,7 +1915,7 @@
   flex: 1;
   height: 10px;
   border-radius: 999px;
-  background: #e8f0fa;
+  background: var(--sky-soft);
   overflow: hidden;
   display: block;
 }
@@ -1810,7 +1923,7 @@
   display: block;
   height: 100%;
   width: 0;
-  background: linear-gradient(90deg, #8ab4dd, #b8c8e8);
+  background: linear-gradient(90deg, var(--sweet-sky), var(--sweet-lilac));
   border-radius: 999px;
 }
 .sw-synth-row b {
@@ -1886,7 +1999,7 @@
   border-radius: var(--r-lg);
   padding: 20px;
   text-align: center;
-  background: linear-gradient(160deg, #e8f0fa, #c5dff0);
+  background: linear-gradient(160deg, var(--sky-soft), var(--sweet-mist));
   box-shadow: inset 0 0 0 1.5px var(--sweet-mist);
 }
 .pp-hero-face {
@@ -1931,7 +2044,7 @@
   display: grid;
   place-items: center;
   font-size: 28px;
-  background: linear-gradient(160deg, #fff, #e8f0fa);
+  background: linear-gradient(160deg, #fff, var(--sky-soft));
   box-shadow: inset 0 0 0 1.5px var(--sweet-mist);
 }
 .pp-pen-cell.on {
@@ -1982,7 +2095,11 @@
   border-radius: var(--r-lg);
   text-align: center;
   cursor: pointer;
-  background: linear-gradient(160deg, #fff, #eef5fc);
+  background: linear-gradient(
+    160deg,
+    #fff,
+    color-mix(in srgb, var(--theme-hue, #4a7ab0) 8%, #ffffff)
+  );
   box-shadow: inset 0 0 0 1.5px var(--sweet-mist);
   border: none;
 }
@@ -2026,7 +2143,7 @@
   border-radius: 18px;
   display: grid;
   place-items: center;
-  background: linear-gradient(160deg, #fff, #e8f0fa);
+  background: linear-gradient(160deg, #fff, var(--sky-soft));
   box-shadow:
     0 6px 16px -6px rgba(74, 122, 176, 0.3),
     inset 0 0 0 1.5px var(--sweet-mist);
@@ -2128,7 +2245,7 @@
   max-width: 460px;
   padding: 10px 14px;
   border-radius: var(--r-md);
-  background: #f4f8fd;
+  background: var(--sweet-cream);
   font-size: 12px;
   color: var(--sweet-ink-soft);
 }
@@ -2291,7 +2408,7 @@
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background: radial-gradient(circle at 32% 26%, #fff, #e8f0fa);
+  background: radial-gradient(circle at 32% 26%, #fff, var(--sky-soft));
   color: var(--sweet-sky-deep);
 }
 [data-arcade="sweet"] .sw-album-empty p {
