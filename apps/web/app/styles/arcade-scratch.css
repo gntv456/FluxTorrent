@@ -534,3 +534,89 @@
     animation: none;
   }
 }
+
+/* ════════ 页头压扁（布局优化 2026-11-23）════════
+   专注页头部（headerLayout=center）是「标题行 + 副标题行」竖排，
+   实测 53px 且上下留白多，舞台要到 301px 才起（默认布局 282）。
+   桌面端把副标题并入标题同一行——副标题是规则/赔率说明，属次要
+   信息，不值得独占一行。窄屏不动（标题本就占满宽，并排会挤）。
+   放本文件是因为它最后加载：arcade-wheel.css 的 .gs-head-mid
+   { flex-direction: column } 排在 arcade.css 之后会压过前者。 */
+@media (min-width: 1024px) {
+  .gs-head-center {
+    align-items: center;
+    gap: 8px 14px;
+  }
+  .gs-head-mid {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 4px 12px;
+  }
+  .gs-head-sub {
+    white-space: nowrap;
+  }
+}
+
+/* ── 布局优化（2026-11-23）：桌面端票卡与信息栏并排 ──
+   票卡是竖长形（460×646），原先孤零零竖在 1440 视口正中，右侧
+   700px+ 全空；统计三格与按钮再往下堆 107px，主体底边 1130 超出
+   一屏 230px。桌面端用 grid 把票卡放左、统计与按钮放右垂直居中：
+   票卡不压扁不变形，页面高度由票卡自己决定。窄屏保持纵向堆叠。
+   票卡列宽 400：刮区是 3×3 正方格（aspect-ratio:1），高度随宽度走，
+   460→400 让刮区矮 60px；再窄会挤到票档文字，不动。 */
+@media (min-width: 1024px) {
+  .scratch-promo .sp-stage-col {
+    display: grid;
+    grid-template-columns: minmax(0, 400px) minmax(280px, 1fr);
+    grid-template-areas:
+      "ticket stats"
+      "ticket cta";
+    align-content: center;
+    align-items: center;
+    justify-content: center;
+    gap: 18px 40px;
+    max-width: 920px;
+  }
+  .scratch-promo .sp-stage-col > .sp-ticket { grid-area: ticket; }
+  .scratch-promo .sp-stage-col > .sw-stat-row {
+    grid-area: stats;
+    width: 100%;
+  }
+  .scratch-promo .sp-stage-col > .sw-cta-row {
+    grid-area: cta;
+    width: 100%;
+    flex-wrap: wrap;
+  }
+  /* 右栏统计由横排三格改竖排三行——栏窄，横排每格只剩 80px 放不下数字 */
+  .scratch-promo .sp-stage-col > .sw-stat-row {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .scratch-promo .sp-stage-col > .sw-cta-row .sw-cta {
+    flex: 1 1 100%;
+  }
+}
+
+/* 布局优化（2026-11-23）续：票卡自带阴影与圆角，外层舞台盒的 28px
+   内边距是纯浪费（上下共 56px）。桌面端收到 10px。 */
+@media (min-width: 1024px) {
+  .scratch-promo .gs-stage-box {
+    padding: 4px 16px !important;
+  }
+  /* 中奖率徽标内边距 5px→3px：29px 高的徽标把页头行撑到 44px
+     （wheel/mole 的徽标 24px，页头 36px），对齐后省 8px。 */
+  .scratch-promo .sp-badge {
+    padding: 3px 12px;
+  }
+  /* 红 Banner 只收内边距（上下共 46→24px），40px 大字与蓝飘带原样保留——
+     它是红黄促销样图的视觉主体，不动尺寸只去多余留白。 */
+  .scratch-promo .sp-banner {
+    padding: 12px 18px 14px;
+  }
+  .scratch-promo .sp-ribbon {
+    margin-top: 8px;
+  }
+}
+

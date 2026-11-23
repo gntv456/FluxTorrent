@@ -169,3 +169,11 @@ export const PANEL_WARN_ORANGE =
 export const CHIP_POND_BADGE =
   "rounded-full bg-[var(--sky-soft)] px-2 py-0.5 text-[10px] "
   + "text-[var(--sky-deep)]";
+
+/** 游戏舞台下方「统计细条」：今日局数 / 票价 / 剩余次数等横排一行小字。
+ *  布局优化（2026-11-23）把原先的三格统计卡（SwStatRow，63px）压成
+ *  这一行（16px）——数值本身在余额条/侧栏已有，卡片占高不划算。
+ *  scratch/wheel/mole/bigsmall/slot/fruit/fishing 同款。 */
+export const STAGE_STAT_LINE =
+  "flex w-full flex-wrap items-center justify-center gap-x-5 gap-y-1 "
+  + "text-xs text-sub";

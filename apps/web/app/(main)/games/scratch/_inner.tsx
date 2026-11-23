@@ -1,8 +1,5 @@
 "use client";
-import {
-  BTN_RETRY_PILL,
-  PANEL_WARN_ORANGE,
-} from "@/lib/ui-classes";
+import { BTN_RETRY_PILL, PANEL_WARN_ORANGE } from "@/lib/ui-classes";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError, isRetryableNetError } from "@/lib/api-client";
@@ -15,7 +12,7 @@ import { ArcadeGlyph } from "@/components/arcade/arcade-glyph";
 import type { CoatOutcome } from "@/components/game/scratch-coat";
 import { SwTenModal } from "@/components/game/sw-panels";
 import { useTenDraw } from "@/lib/ten-draw";
-import { scratchPoolText, type ScratchPrize } from "@/lib/games";
+import type { ScratchPrize } from "@/lib/games";
 import { ScratchPlayCard } from "@/components/game/scratch-play-card";
 import { ScratchPoolPanel } from "@/components/game/scratch-pool-panel";
 import {
@@ -128,6 +125,13 @@ export default function ScratchPage({
   const winRate = prizes.length
     ? (100 - (missW / totalW) * 100).toFixed(1)
     : "—";
+  /* 页头只留下注前最该知道的两项。副标题原用 scratchPoolText 把整个奖池
+     拼成一行，与「奖池概率」标签页重复且撑高页头（布局优化 2026-11-23）。 */
+  const headSub =
+    maxMult > 0 ? `${ts.statMax} ${maxMult.toFixed(0)}x` : undefined;
+  const headBadge = (
+    <span className="sp-badge">{ts.winRate.replace("{pct}", winRate)}</span>
+  );
 
   async function buy(reuse = false) {
     setErr(null);
@@ -349,15 +353,9 @@ export default function ScratchPage({
       <GameShell
         icon={<ArcadeGlyph k="scratch" />}
         title={ts.title}
-        subtitle={
-          scratchPoolText(ov?.scratch?.prizes, ts.poolLabel) || ts.pool
-        }
+        subtitle={headSub}
         headerLayout="center"
-        badges={
-          <span className="sp-badge">
-            {ts.winRate.replace("{pct}", winRate)}
-          </span>
-        }
+        badges={headBadge}
         balance={ov?.me?.balance ?? null}
         todayNet={ov?.me?.today_net ?? null}
         limitLeft={ov?.me?.limit_left ?? null}

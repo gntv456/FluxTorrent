@@ -160,6 +160,18 @@ export default function PetFocusPage({
       balance={me?.balance ?? null}
       todayNet={me?.today_net ?? null}
       limitLeft={me?.limit_left ?? null}
+      /* 布局优化（2026-11-23）：标签条从控制卡第一行挪进 tabBar 槽
+         （与余额条同行），控制卡少占一行。 */
+      tabBar={
+        <GameTabs
+          tabs={[
+            { key: "play", label: dict.games.sub.tabPlay, icon: "🐾" },
+            { key: "records", label: dict.games.sub.tabRecords, icon: "📜" },
+          ]}
+          active={tab}
+          onChange={setTab}
+        />
+      }
       stage={
         <div className="flex w-full flex-col items-center gap-3">
           <GameStage
@@ -185,33 +197,19 @@ export default function PetFocusPage({
       }
       controls={
         <div className={PANEL_LG_COL}>
-          <GameTabs
-            tabs={[
-              { key: "play", label: dict.games.sub.tabPlay, icon: "🐾" },
-              { key: "records", label: dict.games.sub.tabRecords, icon: "📜" },
-            ]}
-            active={tab}
-            onChange={setTab}
-          />
-          {/* 当前宠物大卡（样图⑨）：名 / Lv / 亲密度口径（饱食度） */}
-          <div className="pp-hero">
-            <div className="pp-hero-face" aria-hidden>
-              {st?.species === "cat"
-                ? "🐱"
-                : st?.species === "bunny"
-                  ? "🐰"
-                  : st?.species === "drake"
-                    ? "🐲"
-                    : "🥚"}
-            </div>
-            <div className="pp-hero-name">{st?.name ?? tp.title}</div>
-            <div className="pp-hero-sub">
-              Lv.{st?.level ?? 1} · {tp.hunger} {st?.hunger ?? 0}/100
-            </div>
-          </div>
-          <div className="flex items-baseline justify-between gap-3">
-            <span className="font-display text-lg">Lv.{st?.level ?? 1}</span>
-            <span className="text-xs text-sub">
+          {/* 布局优化（2026-11-23）：原「宠物大卡 + Lv/产出行」两块与舞台
+              里的 PetPen 重复展示同一只宠物，压成一行信息条。 */}
+          <div
+            className="flex flex-wrap items-baseline justify-between gap-x-4
+              gap-y-1 text-xs text-sub"
+          >
+            <span className="font-display text-base text-ink">
+              {st?.name ?? tp.title}
+              <span className="ml-2 text-xs font-normal text-sub">
+                Lv.{st?.level ?? 1} · {tp.hunger} {st?.hunger ?? 0}/100
+              </span>
+            </span>
+            <span>
               {tp.yield.replace(
                 "{n}",
                 ((st?.yield_permille ?? 0) / 10).toFixed(0),

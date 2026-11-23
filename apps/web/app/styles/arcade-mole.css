@@ -758,3 +758,27 @@ body:has(.mole-page) .tide-header button:not(:has(img)) {
   }
   .mo-track-fill { transition: none; }
 }
+
+/* ── 布局优化（2026-11-23）：连胜/战况行与统计三格并到同一行 ──
+   原「机台 355 / 战况行 36 / 统计三格 70」纵向堆叠，主体底边 893
+   贴着视口底。两行都是横排信息条，桌面端并排（左战况右统计）留出
+   余量。DOM 不动，窄屏保持纵向堆叠。 */
+@media (min-width: 1024px) {
+  .mole-page .mo-stage {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "wrap wrap"
+      "mid  stats";
+    gap: 12px 16px;
+    align-items: center;
+  }
+  .mole-page .mo-stage > .mo-stage-wrap { grid-area: wrap; }
+  .mole-page .mo-stage > .wp-mid {
+    grid-area: mid;
+    justify-content: flex-start;
+    min-height: 0;
+  }
+  .mole-page .mo-stage > .wp-stats { grid-area: stats; width: auto; gap: 8px; }
+  .mole-page .mo-stage > .wp-stat { padding: 8px 14px; }
+}

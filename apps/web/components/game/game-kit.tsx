@@ -173,7 +173,7 @@ export function GameShell({
           )}
           {controls}
         </div>
-        {side && <div className="flex flex-col gap-4">{side}</div>}
+        {side && <div className="gs-side-col flex flex-col gap-4">{side}</div>}
       </div>
       {foot}
     </div>

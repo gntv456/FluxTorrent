@@ -858,3 +858,30 @@
     white-space: nowrap;
   }
 }
+
+/* ── 布局优化（2026-11-23）：舞台四块压三行 ──
+   原「盘 / 结果行 44 / 按钮行 48 / 统计三格 68」纵向堆叠 + 3×16 间距，
+   舞台 666px，主体底边 950 超出一屏 50px。结果行与统计行都是横排信息条，
+   桌面端用 grid 并到同一行（左结果右统计），DOM 不动——ResultFlash 的
+   开奖动画逻辑不受影响。窄屏保持纵向堆叠。 */
+@media (min-width: 1024px) {
+  .wheel-page .wp-stage {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "rig  rig"
+      "mid  stats"
+      "cta  cta";
+    gap: 12px 16px;
+    align-items: center;
+  }
+  .wheel-page .wp-stage > .lw-rig { grid-area: rig; }
+  .wheel-page .wp-stage > .wp-mid {
+    grid-area: mid;
+    justify-content: flex-start;
+    min-height: 0;
+  }
+  .wheel-page .wp-stage > .wp-cta-row { grid-area: cta; justify-self: center; }
+  .wheel-page .wp-stage > .wp-stats { grid-area: stats; width: auto; gap: 8px; }
+  .wheel-page .wp-stage > .wp-stat { padding: 8px 14px; }
+}

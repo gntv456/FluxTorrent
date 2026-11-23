@@ -4,13 +4,16 @@ import { fmtCur } from "@/i18n/config";
 import { fmtMult } from "@/lib/games";
 import { DieFace } from "@/components/game/die-face";
 import { StreakPill } from "@/components/game/streak-pill";
-import { SwStatRow } from "@/components/game/sw-panels";
-import { BTN_RETRY_PILL, PANEL_WARN_ORANGE } from "@/lib/ui-classes";
+import {
+  BTN_RETRY_PILL,
+  PANEL_WARN_ORANGE,
+  STAGE_STAT_LINE,
+} from "@/lib/ui-classes";
 import { DealerArt } from "./dealer-art";
-import { PlayerRail } from "./player-rail";
 import type { RoomState } from "./room-types";
 
-/** 房间舞台：荷官立绘 + 上期面板 + 倒计时框 + 骰子台，下方接在线头像圈。 */
+/** 房间舞台：荷官立绘 + 上期面板 + 倒计时框 + 骰子台，下方接统计细条。
+ *  （在线头像圈 PlayerRail 暂未接入，见下方注释。） */
 export function RoomStage({
   room,
   winMult,
@@ -98,20 +101,26 @@ export function RoomStage({
         </div>
       </div>
 
-      <PlayerRail />
-
-      <StreakPill n={streak} label={tg.streak} />
-      <SwStatRow
-        items={[
-          { lb: tg.bsStatPlays, vl: String(todayPlays) },
-          { lb: tg.bsStatMax, vl: `${fmtMult(winMult)}x`, tone: "gold" },
-          {
-            lb: tg.bsStatLeft,
-            vl: limitLeft != null ? String(limitLeft) : "—",
-            tone: "green",
-          },
-        ]}
-      />
+      {/* 布局优化（2026-11-23）：连胜 + 三格统计压成一行细条。原「在线
+          玩家」头像圈（PlayerRail）已移除——它是 7 个写死的演示假名，
+          房间口并无玩家列表字段，占一整行 86px 且会让人误以为是真人。
+          组件文件保留：接口日后给出真实玩家列表时按原 DOM 结构接回。 */}
+      <div className={STAGE_STAT_LINE}>
+        <StreakPill n={streak} label={tg.streak} />
+        <span>
+          {tg.bsStatPlays} <b className="num text-ink">{todayPlays}</b>
+        </span>
+        <span>
+          {tg.bsStatMax}{" "}
+          <b className="num text-[var(--warning)]">{fmtMult(winMult)}x</b>
+        </span>
+        <span>
+          {tg.bsStatLeft}{" "}
+          <b className="num text-[var(--mint)]">
+            {limitLeft != null ? String(limitLeft) : "—"}
+          </b>
+        </span>
+      </div>
       {err && <p className="text-xs text-[var(--danger-text)]">{err}</p>}
       {unknown && (
         <div className={PANEL_WARN_ORANGE}>

@@ -1,10 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { PANEL_LG } from "@/lib/ui-classes";
 import { api, ApiError } from "@/lib/api-client";
 import { apiErrorMessage, useI18n } from "@/i18n/client";
 import { HistoryStrip } from "@/components/game/game-kit-feedback";
+import { SideTabs } from "@/components/game/side-tabs";
 
 export interface PrizeChip {
   label: string;
@@ -114,95 +114,131 @@ export function FishingSide({
     : null;
 
   return (
-    <div className={PANEL_LG}>
-      {ev && (
-        <p className={`fs-event${link?.fishing_event_active ? " on" : ""}`}>
-          {ev}
-        </p>
-      )}
+    <SideTabs
+      items={[
+        {
+          key: "pool",
+          label: tf.prizePool,
+          content: (
+            <>
+              {ev && (
+                <p
+                  className={`fs-event${
+                    link?.fishing_event_active ? " on" : ""
+                  }`}
+                >
+                  {ev}
+                </p>
+              )}
+              <div className="flex flex-wrap gap-1.5">
+                {prizes.map((p, i) => (
+                  <span
+                    key={i}
+                    className={`rounded-full px-2 py-0.5 text-xs font-bold ${
+                      (p.value ?? p.payout * ticket) >= ticket * 5
+                        ? "bg-[var(--tone-warn-soft)] text-[var(--warning)]"
+                        : (p.value ?? p.payout * ticket) > ticket
+                          ? "bg-[var(--tone-success-soft)] text-[var(--mint)]"
+                          : "bg-[var(--surface-sunken)] text-sub"
+                    }`}
+                  >
+                    {p.label} {(p.weight_permille / 10).toFixed(1)}%
+                  </span>
+                ))}
+              </div>
+              <p className="mt-2 text-xs text-sub">{tf.poolNote}</p>
 
-      <h2 className="mb-2 font-display text-base">{tf.prizePool}</h2>
-      <div className="flex flex-wrap gap-1.5">
-        {prizes.map((p, i) => (
-          <span
-            key={i}
-            className={`rounded-full px-2 py-0.5 text-xs font-bold ${
-              (p.value ?? p.payout * ticket) >= ticket * 5
-                ? "bg-sun-soft text-[var(--warning)]"
-                : (p.value ?? p.payout * ticket) > ticket
-                  ? "bg-mint-soft text-[var(--mint)]"
-                  : "bg-[var(--surface-sunken)] text-sub"
-            }`}
-          >
-            {p.label} {(p.weight_permille / 10).toFixed(1)}%
-          </span>
-        ))}
-      </div>
-      <p className="mt-2 text-xs text-sub">{tf.poolNote}</p>
-
-      <h2 className="mb-2 mt-3 font-display text-base">{tf.rodTitle}</h2>
-      <div className="fs-rod">
-        <span className="fs-rod-ico" aria-hidden>
-          🎣
-        </span>
-        <span className="num fs-rod-lv">
-          {tf.rodLv.replace("{n}", String(rod?.level ?? 1))}
-          {rod && rod.level >= rod.max ? ` · ${tf.rodMax}` : ""}
-        </span>
-        <span className="num fs-rod-bonus">
-          {tf.rodBonus.replace("{n}", String(rod?.window_bonus_ms ?? 0))}
-        </span>
-        {rod && rod.level < rod.max && (
-          <button
-            type="button"
-            className="arc-call sun fs-rod-up"
-            onClick={upgrade}
-            disabled={busy}
-          >
-            {busy
-              ? tf.rodUpgrading
-              : tf.rodUpgrade
-                  .replace("{n}", String(rod.next_cost))
-                  .replace("{magic}", currency)}
-          </button>
-        )}
-      </div>
-      {err && <p className="text-xs text-[var(--danger-text)]">{err}</p>}
-
-      <h2 className="mb-2 mt-3 font-display text-base">
-        <span id="album">{tf.albumTitle}</span>
-        {album && (
-          <span className="num fs-album-n">
-            {tf.albumCount
-              .replace("{got}", String(album.got))
-              .replace("{total}", String(album.total))}
-          </span>
-        )}
-      </h2>
-      <div className="fs-album">
-        {(album?.fishes ?? []).map((f) => (
-          <div
-            key={`${f.event ? "e" : "s"}-${f.label}`}
-            className={`fs-fish${f.count > 0 ? " got" : ""} r${f.rarity}`}
-            title={`${f.label} ×${f.mult}`}
-          >
-            <span className="fs-fish-face" aria-hidden>
-              {FISH_FACE[f.rarity] ?? "🐟"}
-            </span>
-            <span className="fs-fish-name">{f.label}</span>
-            {f.event && <span className="fs-fish-ev">{tf.albumEvent}</span>}
-            <span className="num fs-fish-n">
-              {f.count > 0 ? `×${f.count}` : "—"}
-            </span>
-          </div>
-        ))}
-        {album && album.got === 0 && (
-          <p className="text-xs text-sub">{tf.albumEmpty}</p>
-        )}
-      </div>
-
-      <h2 className="mb-2 mt-3 font-display text-base">{t.history}</h2>
-      <HistoryStrip rounds={hist} />
-    </div>
+              <h2 className="mb-2 mt-3 font-display text-base">
+                {tf.rodTitle}
+              </h2>
+              <div className="fs-rod">
+                <span className="fs-rod-ico" aria-hidden>
+                  🎣
+                </span>
+                <span className="num fs-rod-lv">
+                  {tf.rodLv.replace("{n}", String(rod?.level ?? 1))}
+                  {rod && rod.level >= rod.max ? ` · ${tf.rodMax}` : ""}
+                </span>
+                <span className="num fs-rod-bonus">
+                  {tf.rodBonus.replace(
+                    "{n}",
+                    String(rod?.window_bonus_ms ?? 0),
+                  )}
+                </span>
+                {rod && rod.level < rod.max && (
+                  <button
+                    type="button"
+                    className="arc-call sun fs-rod-up"
+                    onClick={upgrade}
+                    disabled={busy}
+                  >
+                    {busy
+                      ? tf.rodUpgrading
+                      : tf.rodUpgrade
+                          .replace("{n}", String(rod.next_cost))
+                          .replace("{magic}", currency)}
+                  </button>
+                )}
+              </div>
+              {err && (
+                <p className="text-xs text-[var(--danger-text)]">{err}</p>
+              )}
+              <p
+                className="mt-3 border-t border-[var(--border-soft)] pt-3
+                  text-xs text-sub"
+              >
+                {tf.poolNote}
+              </p>            </>
+          ),
+        },
+        {
+          key: "album",
+          label: tf.albumTitle,
+          content: (
+            <>
+              <h2 className="mb-2 font-display text-base">
+                <span id="album">{tf.albumTitle}</span>
+                {album && (
+                  <span className="num fs-album-n">
+                    {tf.albumCount
+                      .replace("{got}", String(album.got))
+                      .replace("{total}", String(album.total))}
+                  </span>
+                )}
+              </h2>
+              <div className="fs-album">
+                {(album?.fishes ?? []).map((f) => (
+                  <div
+                    key={`${f.event ? "e" : "s"}-${f.label}`}
+                    className={`fs-fish${f.count > 0 ? " got" : ""}`
+                      + ` r${f.rarity}`}
+                    title={`${f.label} ×${f.mult}`}
+                  >
+                    <span className="fs-fish-face" aria-hidden>
+                      {FISH_FACE[f.rarity] ?? "🐟"}
+                    </span>
+                    <span className="fs-fish-name">{f.label}</span>
+                    {f.event && (
+                      <span className="fs-fish-ev">{tf.albumEvent}</span>
+                    )}
+                    <span className="num fs-fish-n">
+                      {f.count > 0 ? `×${f.count}` : "—"}
+                    </span>
+                  </div>
+                ))}
+                {album && album.got === 0 && (
+                  <p className="text-xs text-sub">{tf.albumEmpty}</p>
+                )}
+              </div>
+            </>
+          ),
+        },
+        {
+          key: "hist",
+          label: t.history,
+          content: <HistoryStrip rounds={hist} />,
+        },
+      ]}
+    />
   );
 }

@@ -5,6 +5,7 @@ import { apiErrorMessage, useI18n } from "@/i18n/client";
 import { fmtMult } from "@/lib/games";
 import { GameShell, PlayHint } from "@/components/game/game-kit";
 import { GameTabs } from "@/components/game/game-tabs";
+import { SideTabs } from "@/components/game/side-tabs";
 import { GameRecordsPanel } from "@/components/game/game-records";
 import { ArcadeGlyph } from "@/components/arcade/arcade-glyph";
 import { useRounds } from "@/components/game/use-rounds";
@@ -156,21 +157,23 @@ export default function BigSmallRoom({
       balance={ov?.me?.balance ?? null}
       todayNet={ov?.me?.today_net ?? null}
       limitLeft={ov?.me?.limit_left ?? null}
+      /* 布局优化（2026-11-23）：标签条从 notice 槽（独占一行）挪进
+         tabBar 槽与余额条同行，头部省一行。 */
+      tabBar={
+        <GameTabs
+          tabs={[
+            { key: "play", label: dict.games.sub.tabPlay, icon: "🎲" },
+            { key: "records", label: dict.games.sub.tabRecords, icon: "📜" },
+          ]}
+          active={tab}
+          onChange={setTab}
+        />
+      }
       notice={
-        <>
-          <GameTabs
-            tabs={[
-              { key: "play", label: dict.games.sub.tabPlay, icon: "🎲" },
-              { key: "records", label: dict.games.sub.tabRecords, icon: "📜" },
-            ]}
-            active={tab}
-            onChange={setTab}
-          />
-          <PlayHint
-            sessionPlays={sessionPlays}
-            todayNet={ov?.me?.today_net ?? null}
-          />
-        </>
+        <PlayHint
+          sessionPlays={sessionPlays}
+          todayNet={ov?.me?.today_net ?? null}
+        />
       }
       stage={
         <RoomStage
@@ -198,47 +201,61 @@ export default function BigSmallRoom({
         />
       }
       side={
-        <div className="flex flex-col gap-4">
-          <div className="side-card">
-            <h3 className="mb-2 text-xs font-bold text-sub">
-              {dict.review.bsOddsTitle}
-            </h3>
-            <div className="grid grid-cols-1 gap-1 text-xs">
-              <div className="flex justify-between">
-                <span className="text-sub">
-                  {tg.bsPickSmall} · {dict.review.bsRangeSmall}
-                </span>
-                <b className="num text-[var(--sky-deep)]">
-                  {fmtMult(winMult)}x
-                </b>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sub">
-                  {tg.bsPickBig} · {dict.review.bsRangeBig}
-                </span>
-                <b className="num text-[var(--sky-deep)]">
-                  {fmtMult(winMult)}x
-                </b>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sub">{dict.review.bsRangeTriple}</span>
-                <b className="num text-[var(--danger-text)]">
-                  {dict.review.bsTripleLose}
-                </b>
-              </div>
-            </div>
-          </div>
-          <h2 className="mb-2 font-display text-base">{t.roadmap}</h2>
-          <SwHist
-            rows={hist.slice(0, 6).map((h) => ({
-              t: (h.at ?? "").slice(11, 16) || "—",
-              txt: h.net > 0 ? tg.bsHistWin : tg.bsHistLose,
-              net: h.net,
-            }))}
-            empty={t.historyEmpty}
-          />
-          <p className="mt-2 text-xs text-sub">{tg.rule}</p>
-        </div>
+        /* 布局优化（2026-11-23）：赔率 / 战绩收成分区标签，侧栏不再
+           竖着堆两块把行高撑过舞台。 */
+        <SideTabs
+          items={[
+            {
+              key: "odds",
+              label: dict.review.bsOddsTitle,
+              content: (
+                <>
+                  <div className="grid grid-cols-1 gap-1 text-xs">
+                    <div className="flex justify-between">
+                      <span className="text-sub">
+                        {tg.bsPickSmall} · {dict.review.bsRangeSmall}
+                      </span>
+                      <b className="num text-[var(--sky-deep)]">
+                        {fmtMult(winMult)}x
+                      </b>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sub">
+                        {tg.bsPickBig} · {dict.review.bsRangeBig}
+                      </span>
+                      <b className="num text-[var(--sky-deep)]">
+                        {fmtMult(winMult)}x
+                      </b>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sub">
+                        {dict.review.bsRangeTriple}
+                      </span>
+                      <b className="num text-[var(--danger-text)]">
+                        {dict.review.bsTripleLose}
+                      </b>
+                    </div>
+                  </div>
+                  <p className="mt-3 text-xs text-sub">{tg.rule}</p>
+                </>
+              ),
+            },
+            {
+              key: "road",
+              label: t.roadmap,
+              content: (
+                <SwHist
+                  rows={hist.slice(0, 12).map((h) => ({
+                    t: (h.at ?? "").slice(11, 16) || "—",
+                    txt: h.net > 0 ? tg.bsHistWin : tg.bsHistLose,
+                    net: h.net,
+                  }))}
+                  empty={t.historyEmpty}
+                />
+              ),
+            },
+          ]}
+        />
       }
     />
     </div>

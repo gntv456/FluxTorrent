@@ -2027,3 +2027,77 @@
   .arc-node.reached,
   .arc-node.ready { width: var(--tap-min); height: var(--tap-min); }
 }
+
+/* ============ 侧栏分区标签（布局优化 2026-11-23）============
+   游戏专注页侧栏此前把奖池/图鉴/规则/战绩全堆在窄栏里竖排
+   （fishing 实测 851px，比视口高），整页被撑到 2 屏。收成分区标签：
+   ≥lg 横向小标签 + 单面板，面板内部滚动；<lg（无侧栏，side 落到
+   舞台下方）保持平铺全显示——窄屏本来就上下滚，藏标签反而多点一次。 */
+
+/* 窄屏（<lg）：平铺模式可见，标签模式隐藏 */
+.gs-side-stack { display: flex; flex-direction: column; gap: 12px; }
+.gs-side-tabbed { display: none; }
+
+@media (min-width: 1024px) {
+  .gs-side-stack { display: none; }
+  .gs-side-tabbed {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    /* 钉在舞台高度内：外层 grid 拉伸 + 这里 min-height:0 才能让
+       面板内部滚动，否则内容撑开 grid 行把整页拉长 */
+    min-height: 0;
+    height: 100%;
+    overflow: hidden;
+  }
+  .gs-side-tabbar {
+    display: flex;
+    gap: 4px;
+    padding: 3px;
+    border-radius: 99px;
+    background: var(--surface-sunken);
+    flex: none;
+  }
+  .gs-side-tab {
+    flex: 1;
+    min-height: 32px;
+    border: none;
+    border-radius: 99px;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+  }
+  .gs-side-tab.on {
+    background: var(--surface-card);
+    color: var(--sky-deep);
+    box-shadow: var(--shadow-card);
+  }
+  .gs-side-panel {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+  }
+}
+
+/* 侧栏列钉高（配合 gs-side-tabs）：grid 默认按内容撑高，侧栏里的长图鉴
+   会把整行拉到 851px。侧栏列 stretch + min-height:0 → 高度跟随舞台列，
+   内部标签面板自己滚。舞台列保持自然高。仅 lg 起有侧栏时生效。 */
+@media (min-width: 1024px) {
+  /* 侧栏列高度钉死为视口内可用高：头部约 150px，侧栏 = 视口 - 200px
+     封顶，且不超过舞台列自然高。两道闸：max-height 兜住「舞台很短但
+     侧栏内容超长」（图鉴展开），grid 自然高兜住「舞台很高」——
+     取小者，侧栏永远不成为撑高整页的那一列。 */
+  .gs-body { align-items: start; }
+  .gs-side-col {
+    align-self: stretch;
+    min-height: 0;
+    max-height: max(420px, calc(100vh - 230px));
+    overflow: hidden;
+  }
+}
+

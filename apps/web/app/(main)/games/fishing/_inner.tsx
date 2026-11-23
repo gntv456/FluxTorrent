@@ -6,6 +6,7 @@ import {
   CHIP_POND_BADGE,
   PANEL_LG_COL,
   PANEL_WARN_ORANGE,
+  STAGE_STAT_LINE,
 } from "@/lib/ui-classes";
 import { api, ApiError, isRetryableNetError } from "@/lib/api-client";
 import { apiErrorMessage, useI18n } from "@/i18n/client";
@@ -258,23 +259,6 @@ export default function FishingPage({
   }
   return (
     <>
-      <div className={`mb-3 flex flex-wrap items-center justify-between gap-3
-        rounded-xl border border-[#d8e4f2] bg-white/80 px-3 py-2.5`}>
-        <div className="min-w-0">
-          <p className="text-xs font-semibold">
-            {tf.pondTitle} · {tf.pondCrumb}
-            <span className={`ml-2 ${CHIP_POND_BADGE}`}>NEW</span>
-          </p>
-          <p className="mt-0.5 text-[11px] text-sub">{tf.pondSub}</p>
-        </div>
-        <Link
-          href="/games/fishing/pond"
-          className={`rounded-full bg-[#4a7ab0] px-3.5 py-1.5
-            text-xs font-semibold text-white`}
-        >
-          进入完整渔场 →
-        </Link>
-      </div>
       <GameShell
       icon={<ArcadeGlyph k="fishing" />}
       title={tf.title}
@@ -282,21 +266,37 @@ export default function FishingPage({
       balance={ov?.me?.balance ?? null}
       todayNet={ov?.me?.today_net ?? null}
       limitLeft={ov?.me?.limit_left ?? null}
-      notice={
+      /* 布局优化（2026-11-23）：标签条从 notice 槽（独占一行）挪进
+         tabBar 槽与余额条同行；「完整渔场」入口从舞台上方 56px 横幅
+         收成同行小按钮。头部各省一行。 */
+      tabBar={
         <>
           <GameTabs
             tabs={[
               { key: "play", label: dict.games.sub.tabPlay, icon: "🎣" },
-              { key: "records", label: dict.games.sub.tabRecords, icon: "📜" },
+              {
+                key: "records",
+                label: dict.games.sub.tabRecords,
+                icon: "📜",
+              },
             ]}
             active={tab}
             onChange={setTab}
           />
-          <PlayHint
-            sessionPlays={sessionPlays}
-            todayNet={ov?.me?.today_net ?? null}
-          />
+          <Link
+            href="/games/fishing/pond"
+            title={`${tf.pondTitle} · ${tf.pondSub}`}
+            className="arc-chip ml-auto whitespace-nowrap"
+          >
+            {tf.pondCrumb} →
+          </Link>
         </>
+      }
+      notice={
+        <PlayHint
+          sessionPlays={sessionPlays}
+          todayNet={ov?.me?.today_net ?? null}
+        />
       }
       stage={
         <div className="flex w-full flex-col items-center gap-3">
@@ -309,44 +309,31 @@ export default function FishingPage({
             biteLabel={tf.bite}
           />
           <ResultFlash kind={flash?.kind ?? null} text={flash?.text ?? null} />
-          {/* 今日收获三格（样图⑩）：条数 / 金色数 / 最佳渔获 */}
-          <SwStatRow
-            items={[
-              {
-                lb: tf.fTodayCount,
-                vl: String(hist.filter((h) => h.net > 0).length),
-              },
-              {
-                lb: tf.fTodayGold,
-                vl: String(
-                  hist.filter((h) => h.net >= (ticket ?? 100) * 5).length,
-                ),
-                tone: "gold",
-              },
-              {
-                lb: tf.fBest,
-                vl:
-                  hist.length > 0
-                    ? `+${Math.max(...hist.map((h) => h.net))}`
-                    : "—",
-                tone: "green",
-              },
-            ]}
-          />
-          {/* 今日渔获（样图⑩）：3 行历史卡 + 图鉴链接 */}
-          <SwHist
-            rows={hist.slice(0, 3).map((h) => ({
-              t: (h.at ?? "").slice(11, 16) || "—",
-              txt: h.net > 0 ? tf.histWin : tf.histLose,
-              net: h.net,
-            }))}
-            empty={dict.games.historyEmpty}
-          />
-          <SwRules
-            left={tf.poolNote}
-            linkLabel={tf.albumLink}
-            linkHref="/games/fishing#album"
-          />
+          {/* 布局优化（2026-11-23）：今日三格统计压成一行细条随舞台；
+              3 行历史 + 规则卡 + 渔场横幅全部移出舞台（历史在侧栏
+              「战绩」标签，规则在「奖池」标签底部），舞台只剩池塘本体。 */}
+          <div className={STAGE_STAT_LINE}>
+            <span>
+              {tf.fTodayCount}{" "}
+              <b className="num text-ink">
+                {hist.filter((h) => h.net > 0).length}
+              </b>
+            </span>
+            <span>
+              {tf.fTodayGold}{" "}
+              <b className="num text-[var(--warning)]">
+                {hist.filter((h) => h.net >= (ticket ?? 100) * 5).length}
+              </b>
+            </span>
+            <span>
+              {tf.fBest}{" "}
+              <b className="num text-[var(--mint)]">
+                {hist.length > 0
+                  ? `+${Math.max(...hist.map((h) => h.net))}`
+                  : "—"}
+              </b>
+            </span>
+          </div>
           {err && <p className="text-xs text-[var(--danger-text)]">{err}</p>}
           {reelUnknown && (
             <div className={PANEL_WARN_ORANGE} role="status">

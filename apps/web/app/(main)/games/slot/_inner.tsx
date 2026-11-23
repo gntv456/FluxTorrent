@@ -1,17 +1,17 @@
 "use client";
-import { BTN_RETRY_PILL, PANEL_LG, PANEL_WARN_ORANGE } from "@/lib/ui-classes";
+import {
+  BTN_RETRY_PILL,
+  PANEL_LG,
+  PANEL_WARN_ORANGE,
+  STAGE_STAT_LINE,
+} from "@/lib/ui-classes";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError, isRetryableNetError } from "@/lib/api-client";
 import { useTenDraw } from "@/lib/ten-draw";
-import { GameRules } from "@/components/game/game-rules";
+import { CapsulePoolTab } from "@/components/game/capsule-pool-tab";
+import { SideTabs } from "@/components/game/side-tabs";
 import { useRounds } from "@/components/game/use-rounds";
-import {
-  SwCtaRow,
-  SwHist,
-  SwStatRow,
-  SwTenModal,
-} from "@/components/game/sw-panels";
-import { SwPrizeStrip } from "@/components/game/sw-enrich";
+import { SwCtaRow, SwHist, SwTenModal } from "@/components/game/sw-panels";
 import { GameTabs } from "@/components/game/game-tabs";
 import { GameRecordsPanel } from "@/components/game/game-records";
 import { ArcadeGlyph } from "@/components/arcade/arcade-glyph";
@@ -125,38 +125,6 @@ export default function SlotFocusPage({
   const prizes = ov?.capsule?.prizes ?? [];
   const ticket = ov?.capsule?.ticket ?? 100;
 
-  const rarityMeters = (() => {
-    const buckets: Record<number, number> = {};
-    for (const p of prizes) {
-      const r = (p as { rarity?: number }).rarity ?? 1;
-      buckets[r] = (buckets[r] ?? 0) + p.weight_permille;
-    }
-    const total = Object.values(buckets).reduce((a, b) => a + b, 0) || 1;
-    return [2, 3, 4].map((r) => ({
-      r,
-      pct: Math.round(((buckets[r] ?? 0) / total) * 100),
-    }));
-  })();
-  const prizeStripItems = prizes
-    .slice()
-    .sort(
-      (a, b) => (b.value ?? b.payout * ticket) - (a.value ?? a.payout * ticket),
-    )
-    .slice(0, 4)
-    .map((p) => {
-      const v = p.value ?? p.payout * ticket;
-      return {
-        ic: p.kind === "item" ? (p.icon ?? "🎁") : "💎",
-        nm: p.label,
-        odds: `${(p.weight_permille / 10).toFixed(1)}%`,
-        tone:
-          v >= ticket * 10
-            ? ("gold" as const)
-            : v >= ticket * 3
-              ? ("lilac" as const)
-              : ("sky" as const),
-      };
-    });
   const ten = useTenDraw<DrawResult>({
     path: "/api/v1/games/capsule",
     onError: (msg) => setErr(msg),
@@ -253,21 +221,21 @@ export default function SlotFocusPage({
       balance={ov?.me?.balance ?? null}
       todayNet={ov?.me?.today_net ?? null}
       limitLeft={ov?.me?.limit_left ?? null}
+      tabBar={
+        <GameTabs
+          tabs={[
+            { key: "play", label: dict.games.sub.tabPlay, icon: "🎲" },
+            { key: "records", label: dict.games.sub.tabRecords, icon: "📜" },
+          ]}
+          active={tab}
+          onChange={setTab}
+        />
+      }
       notice={
-        <>
-          <GameTabs
-            tabs={[
-              { key: "play", label: dict.games.sub.tabPlay, icon: "🎲" },
-              { key: "records", label: dict.games.sub.tabRecords, icon: "📜" },
-            ]}
-            active={tab}
-            onChange={setTab}
-          />
-          <PlayHint
-            sessionPlays={sessionPlays}
-            todayNet={ov?.me?.today_net ?? null}
-          />
-        </>
+        <PlayHint
+          sessionPlays={sessionPlays}
+          todayNet={ov?.me?.today_net ?? null}
+        />
       }
       stage={
         <div className="flex w-full flex-col items-center gap-3">
@@ -294,18 +262,24 @@ export default function SlotFocusPage({
             text={flash?.text ?? (busy ? tc.drawing : null)}
           />
           <StreakPill n={streak} label={t.streakLabel} />
-          <SwStatRow
-            items={[
-              { lb: tc.statPlays, vl: String(ov?.me?.today_plays ?? 0) },
-              { lb: tc.statTicket, vl: String(ticket), tone: "gold" },
-              {
-                lb: tc.statLeft,
-                vl: ov?.me?.limit_left != null ? String(ov.me.limit_left) : "—",
-                tone: "green",
-              },
-            ]}
-          />
-          <SwPrizeStrip label={tc.prizeLb} items={prizeStripItems} />
+          {/* 布局优化（2026-11-23）：三格统计压成一行细条；奖池条移入
+              侧栏「奖池」标签（控制卡里原本还有一份，重复）。 */}
+          <div className={STAGE_STAT_LINE}>
+            <span>
+              {tc.statPlays}{" "}
+              <b className="num text-ink">{ov?.me?.today_plays ?? 0}</b>
+            </span>
+            <span>
+              {tc.statTicket}{" "}
+              <b className="num text-[var(--warning)]">{ticket}</b>
+            </span>
+            <span>
+              {tc.statLeft}{" "}
+              <b className="num text-[var(--mint)]">
+                {ov?.me?.limit_left != null ? String(ov.me.limit_left) : "—"}
+              </b>
+            </span>
+          </div>
           {err && <p className="text-xs text-[var(--danger-text)]">{err}</p>}
           {unknown && (
             <div className={PANEL_WARN_ORANGE}>
@@ -323,78 +297,52 @@ export default function SlotFocusPage({
       }
       controls={
         <div className={PANEL_LG}>
-          <h2 className="mb-2 font-display text-base">{tc.prizePool}</h2>
-          <div className="flex flex-wrap gap-1.5">
-            {prizes.map((p, i) => (
-              <span
-                key={i}
-                className={`rounded-full px-2 py-0.5 text-xs font-bold ${
-                  (p.value ?? p.payout * ticket) >= ticket * 10
-                    ? "bg-sun-soft text-[var(--warning)]"
-                    : (p.value ?? p.payout * ticket) > ticket
-                      ? "bg-mint-soft text-[var(--mint)]"
-                      : "bg-[var(--surface-sunken)] text-sub"
-                }`}
-              >
-                {p.label} {(p.weight_permille / 10).toFixed(1)}%
-              </span>
-            ))}
-          </div>
-          <p className="mt-2 text-xs text-sub">{tc.poolNote}</p>
-          <div className="sw-cap-meters">
-            {rarityMeters.map((m) => (
-              <div key={m.r} className="sw-cap-meter">
-                <span className="sw-cap-r num">
-                  {m.r >= 4 ? "SSR" : m.r === 3 ? "SR" : "R"}
-                </span>
-                <span className="sw-cap-track">
-                  <i style={{ width: `${m.pct}%` }} />
-                </span>
-                <span className="num sw-cap-pct">{m.pct}%</span>
-              </div>
-            ))}
-          </div>
-          {collect && (
-            <div className="sw-cap-collect">
-              {collect.tiers.map((tr) => (
-                <div key={tr.tier} className="sw-cap-crow">
-                  <b className="num sw-cap-ctier">{tr.tier}</b>
-                  <span className="num">
-                    {tc.collectGot
-                      .replace("{a}", String(tr.got))
-                      .replace("{b}", String(tr.total))}
-                  </span>
-                  {tr.hits > 0 && (
-                    <span className="num sw-cap-chits">×{tr.hits}</span>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-          <SwCtaRow
-            primaryLabel={`${tc.go} · ${ticket}`}
-            goldLabel={`${tc.tenBtn} · ${ticket * 10}`}
-            onPrimary={() => void draw()}
-            onGold={() => void ten.run()}
-            primaryDisabled={busy || prizes.length === 0}
-            goldDisabled={ten.busy || busy || prizes.length === 0}
-            goldBusy={ten.busy}
-          />
+          <p className="text-xs text-sub">{tc.poolNote}</p>
+              <SwCtaRow
+                primaryLabel={`${tc.go} · ${ticket}`}
+                goldLabel={`${tc.tenBtn} · ${ticket * 10}`}
+                onPrimary={() => void draw()}
+                onGold={() => void ten.run()}
+                primaryDisabled={busy || prizes.length === 0}
+                goldDisabled={ten.busy || busy || prizes.length === 0}
+                goldBusy={ten.busy}
+              />
         </div>
       }
       side={
-        <div className={PANEL_LG}>
-          <h2 className="mb-2 font-display text-base">{t.history}</h2>
-          <SwHist
-            rows={hist.slice(0, 6).map((h) => ({
-              t: (h.at ?? "").slice(11, 16) || "—",
-              txt: h.net > 0 ? tc.histWin : tc.histLose,
-              net: h.net,
-            }))}
-            empty={t.historyEmpty}
-          />
-          <GameRules game="slot" />
-        </div>
+        /* 布局优化（2026-11-23）：奖池 / 稀有度 / 收集进度从控制卡移入
+           侧栏分区标签——控制卡只留下注按钮，一眼能玩。 */
+        <SideTabs
+          items={[
+            {
+              key: "pool",
+              label: tc.prizePool,
+              content: (
+                <CapsulePoolTab
+                  game="slot"
+                  prizes={prizes}
+                  ticket={ticket}
+                  collect={collect}
+                  collectLabel={tc.collectGot}
+                />
+              ),
+            },
+            {
+              key: "hist",
+              label: t.history,
+              content: (
+                <SwHist
+                  rows={hist.slice(0, 12).map((h) => ({
+                    t: (h.at ?? "").slice(11, 16) || "—",
+                    txt: h.net > 0 ? tc.histWin : tc.histLose,
+                    net: h.net,
+                  }))}
+                  empty={t.historyEmpty}
+                />
+              ),
+            },
+          ]}
+        />
       }
       foot={
         <SwTenModal
