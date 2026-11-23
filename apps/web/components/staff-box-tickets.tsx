@@ -99,7 +99,16 @@ export function TicketPanel({
             {(ticketRows ?? []).map((m) => (
               <tr key={m.id}>
                 <td className="num">{m.id}</td>
-                <td className="font-bold">{m.subject}</td>
+                <td className="font-bold">
+                  <details>
+                    <summary className="cursor-pointer">{m.subject}</summary>
+                    {m.answer && (
+                      <p className="mt-2 whitespace-pre-wrap rounded-[var(--r-sm)] border border-dashed border-[var(--compat-line)] bg-[var(--compat-cream)] p-2 text-xs text-sub">
+                        ↩ {m.answer}
+                      </p>
+                    )}
+                  </details>
+                </td>
                 <td className="text-sky">{m.username ?? "—"}</td>
                 <td>{tk.priorityNames[m.priority] ?? m.priority}</td>
                 <td className="text-sub">{m.assigned_to ?? tk.unassigned}</td>

@@ -22,6 +22,10 @@ struct TicketRow {
     ticket_status: i16,
     created_at: chrono::DateTime<chrono::Utc>,
     answered_at: Option<chrono::DateTime<chrono::Utc>>,
+    /// 答复原文：工单视图此前整条链路不携带 answer，staff 在工单 tab
+    /// 只能改状态看不到自己/他人答复了什么（答复正文只回落在咨询
+    /// 工作台 answered=1 列表里）。
+    answer: Option<String>,
 }
 
 /// 工单列表（staff）：按状态过滤，优先级降序 + 新单在前
@@ -52,7 +56,7 @@ pub(crate) async fn ticket_list(
         .filter(|s| (0..=3).contains(s));
     let rows = sqlx::query_as::<_, TicketRow>(
         "SELECT s.id, u.username, s.subject, s.priority, a.username AS assigned_to, \
-                s.ticket_status, s.created_at, s.answered_at \
+                s.ticket_status, s.created_at, s.answered_at, s.answer \
          FROM staffmessages s \
          LEFT JOIN users u ON u.id = s.user_id \
          LEFT JOIN users a ON a.id = s.assigned_to \

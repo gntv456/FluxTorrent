@@ -39,6 +39,8 @@ export interface TicketRow {
   ticket_status: number; // 0新 1处理中 2已答复待确认 3关闭
   created_at: string;
   answered_at: string | null;
+  /** 答复原文（工单视图此前不携带，staff 在工单 tab 看不到答复内容） */
+  answer: string | null;
 }
 
 /** 咨询工作台表格（从 components/staff-box.tsx 按域拆出）：
