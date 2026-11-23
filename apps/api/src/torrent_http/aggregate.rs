@@ -29,6 +29,23 @@ struct DetailViewer {
     bookmarked: bool,
     /// 已感谢（thanks 一人一种一行，重复提交回 5002；按钮初始态）
     thanked: bool,
+    /// 保种区认领位（详情页入口提级 2026-11-23）：in_zone=在区且过审
+    /// （与保种区列表同一把尺，P-317 口径）；claimed_by_me=本人已认领；
+    /// claimed=任一人已认领（按钮转「已认领」态）。viewer 态进个人段，
+    /// 不进 30s 共享缓存。
+    #[serde(skip_serializing_if = "Option::is_none")]
+    preserve: Option<PreserveClaimState>,
+}
+
+/// 保种认领三态（seed_preserve 行缺失 = 不在区 = None）
+#[derive(Serialize, sqlx::FromRow)]
+struct PreserveClaimState {
+    in_zone: bool,
+    claimed_by_me: bool,
+    claimed: bool,
+    /// 每保满一天可得（preserve_bonus_per_day，认领按钮利益角签用；
+    /// 与保种区列表 preserve.rs:204 同一配置同一缺省）
+    bonus_per_day: i64,
 }
 
 #[derive(Serialize)]
@@ -255,6 +272,7 @@ async fn assemble(
     detail.purchased = false;
     let mut bookmarked = false;
     let mut thanked = false;
+    let mut preserve = None;
     let own: Option<(bool, bool, bool, bool)> = sqlx::query_as(
         "SELECT (t.owner_id = $2) AS is_owner, \
                 EXISTS(SELECT 1 FROM torrent_purchases p \
@@ -280,12 +298,42 @@ async fn assemble(
         bookmarked = is_bookmarked;
         thanked = is_thanked;
     }
+    // 保种认领位（详情页入口提级）：与保种区列表/认领口同一把尺
+    // （approval_status=1 + exited_at IS NULL，P-317 口径）。查询失败
+    // 降级为 None——详情页只是少一个按钮，不该整页报错。
+    // 三态表达式必须 COALESCE 成非 NULL：未认领时 claimed_by IS NULL，
+    // `claimed_by = $2` 是 NULL 不是 false，sqlx FromRow 拿 NULL 填 bool
+    // 直接报错 → 整行被 .ok() 吞成 None，按钮永远不渲染（实测踩坑）。
+    let preserve_row: Option<PreserveClaimState> = sqlx::query_as(
+        "SELECT COALESCE(t.approval_status = 1 AND sp.exited_at IS NULL, false) \
+                    AS in_zone, \
+                COALESCE(sp.claimed_by = $2, false) AS claimed_by_me, \
+                COALESCE(sp.claimed_by IS NOT NULL, false) AS claimed, \
+                COALESCE((SELECT value::bigint FROM site_settings \
+                          WHERE name = 'preserve_bonus_per_day'), 100) \
+                    AS bonus_per_day \
+         FROM torrents t \
+         LEFT JOIN seed_preserve sp ON sp.torrent_id = t.id \
+         WHERE t.id = $1 AND sp.torrent_id IS NOT NULL",
+    )
+    .bind(id)
+    .bind(uid)
+    .fetch_optional(&state.repo.db)
+    .await
+    .ok()
+    .flatten();
+    if let Some(row) = preserve_row {
+        if row.in_zone {
+            preserve = Some(row);
+        }
+    }
     Ok(TorrentAggregate {
         torrent: shared.torrent,
         detail: DetailViewer {
             detail,
             bookmarked,
             thanked,
+            preserve,
         },
         files: shared.files,
         thanks: thanks.unwrap_or_default(),

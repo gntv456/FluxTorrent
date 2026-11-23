@@ -16,6 +16,7 @@ import {
 import { TorrentTags, type TagPayload } from "@/components/torrent-tags";
 import { TorrentManageLazy } from "@/components/torrent-detail-lazy";
 import { PromoBuyButton } from "@/components/promo-buy-button";
+import { ClaimButton } from "@/components/claim-button";
 import { Descr } from "@/components/torrent-detail-parts";
 import { TorrentHead } from "@/components/torrent-detail-head";
 import type { RipLog } from "@/components/torrent-rip-logs";
@@ -58,7 +59,16 @@ interface FileItem {
 /** GET /torrents/{id}/aggregate 响应（批次三 BFF；契约收录进 domain-types 待后续批次） */
 interface Aggregate {
   torrent: TorrentListItem;
-  detail: TorrentDetailExt;
+  detail: TorrentDetailExt & {
+    /** 保种认领位（详情页入口提级 2026-11-23）：仅 viewer 态下发，
+     *  不在区（seed_preserve 无行或已移出/未过审）时缺省。 */
+    preserve?: {
+      in_zone: boolean;
+      claimed_by_me: boolean;
+      claimed: boolean;
+      bonus_per_day: number;
+    };
+  };
   files: FileItem[];
   /** 抓轨日志清单（0312；正文按碟懒加载 /torrents/{id}/logs/{ordinal}） */
   logs: RipLog[];
@@ -278,6 +288,17 @@ export default async function TorrentDetailPage({
               torrentId={t.id}
               approved={t.approval_status === 1}
             />
+            {/* 保种认领入口提级（2026-11-23）：保种模块开 + 种子在区才渲染，
+                与保种区列表同一把尺（后端 P-317 闸兜底，重复认领有明确报错） */}
+            {profile?.modules?.preserve && ext?.preserve?.in_zone && (
+              <ClaimButton
+                torrentId={t.id}
+                claimed={ext.preserve.claimed}
+                label={dict.preserve.claimAction}
+                claimedLabel={dict.preserve.claimedTag}
+                bonus={ext.preserve.bonus_per_day}
+              />
+            )}
             {(isStaff || !!ext?.is_owner) && (<TorrentManageLazy
               torrentId={t.id} name={t.name} smallDescr={t.small_descr}
               descr={ext?.descr ?? null} anonymous={t.anonymous}
