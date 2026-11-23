@@ -63,35 +63,34 @@ pub(super) async fn games_overview(
     let fpool = super::farm_egg::load_farm(&state.repo.db).await?;
     let farm_prizes = prize_rows(&fpool.entries, fpool.unit, &icons, &[]);
     let farm_ev = games::farm_total_ev(&fpool.entries, fpool.unit);
-    // 扭蛋机 / 大转盘：与九宫格同构，读同一张池表。缺池时给空池而非让整个总览
-    // 500 —— 这两池是新玩法，旧库未跑迁移时不该拖垮已有四玩法的大厅。
+    // 老虎机 / 水果机 / 大转盘：与九宫格同构，读同一张池表。缺池时给空池而非
+    // 让整个总览 500 —— 这些池是玩法池，旧库未跑迁移时不该拖垮已有玩法大厅。
     let cpool = super::pool::load_pool(&state.repo.db, "capsule")
         .await
-        .unwrap_or(super::pool::Pool {
-            ticket: 0,
-            entries: Vec::new(),
-            meta: Vec::new(),
-        });
+        .unwrap_or_default();
+    let frpool = super::pool::load_pool(&state.repo.db, "fruit")
+        .await
+        .unwrap_or_default();
     let wpool = super::pool::load_pool(&state.repo.db, "wheel")
         .await
-        .unwrap_or(super::pool::Pool {
-            ticket: 0,
-            entries: Vec::new(),
-            meta: Vec::new(),
-        });
+        .unwrap_or_default();
     let capsule_prizes =
         prize_rows(&cpool.entries, cpool.ticket, &icons, &cpool.meta);
+    let fruit_prizes =
+        prize_rows(&frpool.entries, frpool.ticket, &icons, &frpool.meta);
     let wheel_prizes =
         prize_rows(&wpool.entries, wpool.ticket, &icons, &wpool.meta);
     let fishpool = super::pool::load_pool(&state.repo.db, "fishing")
         .await
-        .unwrap_or(super::pool::Pool {
-            ticket: 0,
-            entries: Vec::new(),
-            meta: Vec::new(),
-        });
+        .unwrap_or_default();
     let fishing_prizes =
         prize_rows(&fishpool.entries, fishpool.ticket, &icons, &fishpool.meta);
+    // 打地鼠：池是「每次冒头」的档位池，公示同样逐档给概率与价值
+    let mpool = super::pool::load_pool(&state.repo.db, "mole")
+        .await
+        .unwrap_or_default();
+    let mole_prizes =
+        prize_rows(&mpool.entries, mpool.ticket, &icons, &mpool.meta);
     // 大厅玩法清单（顺序/显隐）：表空则前端兜底注册表接管
     let registry = super::arcade_games::load_registry(&state.repo.db)
         .await
@@ -107,7 +106,9 @@ pub(super) async fn games_overview(
             "bigsmall": super::helpers::minclass_of(&state, "bigsmall").await,
             "scratch": super::helpers::minclass_of(&state, "scratch").await,
             "jgg": super::helpers::minclass_of(&state, "jgg").await,
+            "mole": super::helpers::minclass_of(&state, "mole").await,
             "capsule": super::helpers::minclass_of(&state, "capsule").await,
+            "fruit": super::helpers::minclass_of(&state, "fruit").await,
             "wheel": super::helpers::minclass_of(&state, "wheel").await,
             "farm": super::helpers::minclass_of(&state, "farm").await,
             "gacha": super::helpers::minclass_of(&state, "gacha").await,
@@ -125,8 +126,11 @@ pub(super) async fn games_overview(
             "min_bet": btable.ticket,
             "win_mult": win_mult as f64 / 1000.0,
             "prizes": region_rows(&btable, &icons),
-            "expected_value": games::pool_ev(&btable.all(), btable.ticket),
-            "rule": "3-10 小 · 11-18 大 · 三同豹子判负 · 猜中按赔率派彩" },
+            // 公示 EV 按抽水后口径（2026-11-21 每局抽水 10%：只抽赢局派彩），
+            // 与实际到手的派彩一致；win_mult 仍回面板赔率原值
+            "expected_value":
+                games::bigsmall_raked_expected_value(win_mult),
+            "rule": "3-10 小 · 11-18 大 · 三同豹子判负 · 猜中按赔率派彩（每局抽水10%）" },
         "jgg": { "name": "九宫格抽奖", "ticket": pool.ticket,
             "prizes": jgg_prizes,
             "expected_value": games::pool_ev(&pool.entries, pool.ticket) },
@@ -138,12 +142,25 @@ pub(super) async fn games_overview(
             "unit": fpool.unit,
             "prizes": farm_prizes,
             "expected_value": farm_ev },
-        "capsule": { "name": "扭蛋机", "ticket": cpool.ticket,
+        "capsule": { "name": "老虎机", "ticket": cpool.ticket,
             "prizes": capsule_prizes,
             "expected_value": games::pool_ev(&cpool.entries, cpool.ticket) },
+        "fruit": { "name": "水果机", "ticket": frpool.ticket,
+            "prizes": fruit_prizes,
+            "expected_value": games::pool_ev(&frpool.entries, frpool.ticket) },
         "wheel": { "name": "大转盘", "ticket": wpool.ticket,
             "prizes": wheel_prizes,
             "expected_value": games::pool_ev(&wpool.entries, wpool.ticket) },
+        "mole": { "name": "打地鼠", "ticket": mpool.ticket,
+            "prizes": mole_prizes,
+            "expected_value": games::pool_ev(&mpool.entries, mpool.ticket),
+            // 一局冒头数 / 时长 / 炸弹：前端排程与公示页共用这份常数
+            "spawns": games::POOL_SPAWNS,
+            "bomb_spawns": games::BOMB_SPAWNS,
+            "round_ms": games::ROUND_MS,
+            "bomb_penalty": eco_i64(
+                &state, "mole_bomb_penalty",
+                games::DEFAULT_BOMB_PENALTY).await },
         "fishing": { "name": "钓鱼", "ticket": fishpool.ticket,
             "prizes": fishing_prizes,
             "expected_value": games::pool_ev(
@@ -234,21 +251,17 @@ pub(super) async fn game_history(
     Ok(ok(rows))
 }
 
-/// 我的**对局**战绩（一局一条，不是流水条）。
-///
-/// 为什么需要它：即时玩法每局写两条流水（下注为负、派彩为正），直接拿流水画路单会
-/// 一半是负一半是正、局数还翻倍，看起来像「输多赢少」。这里以「下注流水」为主体，
-/// 按幂等键前缀 LEFT JOIN 出该局的派彩，返回 `bet / payout / net`。
-/// 幂等键前缀历史遗留两种写法（`game-bs-win:` 与 `game-<ref_type>-win:`），一并兼容。
+/// 我的对局战绩（一局一条）：以扣注流水为主体，按幂等键 LEFT JOIN 派彩。
+/// value 是物品档等值；历史幂等键兼容 `game-bs-win:` 与 `game-<ref_type>-win:`。
 #[derive(sqlx::FromRow, serde::Serialize)]
 struct GameRoundRow {
     game: String,
     bet: i64,
     payout: i64,
+    value: i64,
     net: i64,
     at: chrono::DateTime<chrono::Utc>,
 }
-
 #[get("/games/rounds")]
 pub(super) async fn game_rounds(
     req: HttpRequest,
@@ -260,16 +273,19 @@ pub(super) async fn game_rounds(
         "SELECT l.ref_type AS game, \
                 l.amount AS bet, \
                 COALESCE(w.amount, 0) AS payout, \
+                COALESCE(d.value, COALESCE(w.amount, 0)) AS value, \
                 l.amount + COALESCE(w.amount, 0) AS net, \
                 l.created_at AS at \
          FROM spark_ledger l \
+         LEFT JOIN arcade_draw_results d \
+           ON d.idempotency_key = l.idempotency_key \
          LEFT JOIN spark_ledger w \
            ON w.idempotency_key IN ( \
                 'game-' || l.ref_type || '-win:' || l.idempotency_key, \
                 'game-bs-win:' || l.idempotency_key \
               ) \
          WHERE l.user_id = $1 AND l.kind = 'game' AND l.amount < 0 \
-           AND l.ref_type IN ('scratch', 'bigsmall', 'jgg', 'capsule', 'wheel', 'fishing') \
+           AND l.ref_type IN ('scratch', 'bigsmall', 'jgg', 'capsule', 'fruit', 'wheel', 'fishing', 'mole') \
            AND ($2::text IS NULL OR l.ref_type = $2) \
            AND l.created_at > now() - interval '90 days' \
          ORDER BY l.id DESC LIMIT $3",

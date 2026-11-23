@@ -11,7 +11,7 @@
 
 use rand::Rng;
 
-use super::jgg::{PoolEntry, PoolError};
+use super::jgg::{PoolEntry, PoolError, MULT_UNIT};
 use super::MAX_BET;
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -37,6 +37,29 @@ pub const BIGSMALL_WIN_MULT_PERMILLE: i64 = 1900;
 /// 猜大小期望回报（回收率）：105/216 × 赔率（豹子不付）
 pub fn bigsmall_expected_value(win_mult_permille: i64) -> f64 {
     (105.0 / 216.0) * (win_mult_permille as f64 / 1000.0)
+}
+
+/// 每局抽水（千分）：**只抽赢局派彩**——输局无派彩可抽，抽注额等于变相改赔率。
+/// 10% 抽水后有效返奖 = 48.61% × 1.9 × 0.9 ≈ 83.1%（原 92.4%），回收边 ≈ 16.9%；
+/// 面板赔率仍显示 1.9x，EV 闸（<2.07x）口径不变。
+pub const BIGSMALL_RAKE_PERMILLE: i64 = 100;
+
+/// 抽水后的等效千分倍率：面板倍率 × (1 − 抽水)，向下取整。
+/// 1900 → 1710（等效 1.71x 派彩基准）。
+pub fn raked_mult_permille(win_mult_permille: i64) -> i64 {
+    win_mult_permille.saturating_mul(1000 - BIGSMALL_RAKE_PERMILLE) / 1000
+}
+
+/// 抽水后的期望回报：105/216 × 等效倍率（用于派彩口径的单测与对账）。
+pub fn bigsmall_raked_expected_value(win_mult_permille: i64) -> f64 {
+    bigsmall_expected_value(raked_mult_permille(win_mult_permille))
+}
+
+/// 一局的实际派彩（含抽水口径）：注额 × 等效倍率（面板 × 0.9）÷ 1000，
+/// 向下取整。与房间制 `payout` 同构（只换了倍率入参），两条结算路对同一注
+/// 出同一个数；不采用「先派后抽」的两次取整，避免同一注两边差 1 魔力。
+pub fn raked_payout(bet: i64, win_mult_permille: i64) -> i64 {
+    bet.saturating_mul(raked_mult_permille(win_mult_permille)) / MULT_UNIT
 }
 
 /// 三骰掷点落在哪一区（相对玩家猜的这一侧）。

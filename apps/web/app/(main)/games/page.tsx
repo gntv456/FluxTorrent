@@ -20,10 +20,11 @@ interface PickView {
 
 interface HallOverview {
   scratch?: { ticket?: number; prizes: ScratchPrize[] };
-  jgg?: PickView;
+  mole?: PickView;
   bigsmall?: { win_mult: number };
   farm?: { unit?: number; prizes?: { payout: number; value?: number }[] };
   capsule?: PickView;
+  fruit?: PickView;
   wheel?: PickView;
   fishing?: PickView;
   /** 后端下发的大厅清单（arcade_games）；空则用前端注册表兜底 */
@@ -73,10 +74,12 @@ export default async function GamesPage() {
     api.get<{ class_id: number }>("/api/v1/me").catch(() => null),
   ]);
   const myClass = me?.class_id ?? null;
-  const lockedAt = (e: GameEntry): number =>
-    ov?.minclass?.[e.key] && myClass !== null && myClass < ov.minclass[e.key]
-      ? ov.minclass[e.key]
-      : 0;
+  const lockedAt = (e: GameEntry): number => {
+    // 门槛键以后端概览字段为准：老虎机复用旧 capsule 池键
+    const mcKey = e.badge ?? e.key;
+    const mc = ov?.minclass?.[mcKey];
+    return mc && myClass !== null && myClass < mc ? mc : 0;
+  };
 
   /** 角标要的是「最高等值」而不是「最高魔力倍数」：0245 之后物品位 payout 恒为 0，
    *  按 payout 排会把 120 倍等值的免考核卡整个漏掉。三个玩法同一把尺，只留一份算法。 */
@@ -89,8 +92,9 @@ export default async function GamesPage() {
       ? Math.max(...prizes.map((p) => (p.value ?? p.payout * tk) / tk))
       : none;
   const scratchTop = topOf(ov?.scratch?.prizes, ov?.scratch?.ticket ?? 1, 10);
-  const jggTop = topOf(ov?.jgg?.prizes, ov?.jgg?.ticket ?? 100, 50);
+  const moleTop = topOf(ov?.mole?.prizes, ov?.mole?.ticket ?? 100, 3);
   const capsuleTop = topOf(ov?.capsule?.prizes, ov?.capsule?.ticket ?? 100, 0);
+  const fruitTop = topOf(ov?.fruit?.prizes, ov?.fruit?.ticket ?? 100, 0);
   const wheelTop = topOf(ov?.wheel?.prizes, ov?.wheel?.ticket ?? 100, 0);
   const fishingTop = topOf(ov?.fishing?.prizes, ov?.fishing?.ticket ?? 100, 0);
   const farmTop = topOf(ov?.farm?.prizes, ov?.farm?.unit ?? 1, 0);
@@ -103,10 +107,12 @@ export default async function GamesPage() {
         return dict.games.bigsmall.winMult.replace("{n}", fmtMult(winMult));
       case "scratch":
         return `${fmtMult(scratchTop)}x`;
-      case "jgg":
-        return `${fmtMult(jggTop)}x`;
+      case "jgg": case "mole":
+        return `${fmtMult(moleTop)}x`;
       case "capsule":
         return capsuleTop > 0 ? `${fmtMult(capsuleTop)}x` : null;
+      case "fruit":
+        return fruitTop > 0 ? `${fmtMult(fruitTop)}x` : null;
       case "wheel":
         return wheelTop > 0 ? `${fmtMult(wheelTop)}x` : null;
       case "fishing":

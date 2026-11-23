@@ -1,22 +1,20 @@
 "use client";
-import { PANEL_LG } from "@/lib/ui-classes";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
-import { SwCtaRow, SwHist, SwStatRow } from "@/components/game/sw-panels";
 import { GameTabs } from "@/components/game/game-tabs";
 import { GameRecordsPanel } from "@/components/game/game-records";
 import { ArcadeGlyph } from "@/components/arcade/arcade-glyph";
-import { SwPrizeStrip } from "@/components/game/sw-enrich";
 import { apiErrorMessage, useI18n } from "@/i18n/client";
-import { fmtCur } from "@/i18n/config";
 import { GameShell, PlayHint } from "@/components/game/game-kit";
 import { ResultFlash } from "@/components/game/game-kit-feedback";
 import { StreakPill } from "@/components/game/streak-pill";
-import { WheelTen } from "@/components/game/wheel-ten";
-import { GameRules } from "@/components/game/game-rules";
 import { useRounds } from "@/components/game/use-rounds";
-import type { WheelPrize } from "@/components/game/lucky-wheel";
+import { useWheelPlay } from "@/components/game/use-wheel-play";
+import { WheelCtas } from "@/components/game/wheel-ctas";
+import { WheelPoolPanel } from "@/components/game/wheel-pool";
+import { prizeValue } from "@/lib/wheel-prize";
+import type { WheelPrize } from "@/lib/wheel-prize";
 import dynamic from "next/dynamic";
 import { SkeletonBlock } from "@/components/ui/skeleton";
 
@@ -24,8 +22,6 @@ import { SkeletonBlock } from "@/components/ui/skeleton";
 const LuckyWheel = dynamic(() =>
   import("@/components/game/lucky-wheel").then((m) => m.LuckyWheel),
   { loading: () => <SkeletonBlock height={300} /> });
-import { GameStage } from "@/components/game/game-stage";
-import { clientUuid } from "@/lib/client-uuid";
 
 export interface Overview {
   me?: {
@@ -35,16 +31,9 @@ export interface Overview {
   wheel?: { ticket: number; prizes: WheelPrize[] };
 }
 
-interface DrawResult {
-  index: number;
-  prize: string;
-  payout: number;
-  net: number;
-  kind?: "magic" | "item" | "fallback";
-  value?: number;
-  fell_back?: string | null;
-}
-/** 大转盘专注页：盘面旋转后停格揭晓。 */
+type Tab = "play" | "pool" | "records";
+
+/** 大转盘专注页：主玩法 / 奖池概率 / 记录 三标签（2026-11 样图定稿）。 */
 export default function WheelFocusPage({
   initialOver,
 }: {
@@ -55,22 +44,10 @@ export default function WheelFocusPage({
   const tw = dict.games.wheel;
 
   const [ov, setOv] = useState<Overview | null>(initialOver);
-  // 战绩 + 连胜（波3）：服务端算连胜，刷新不丢（use-rounds 统一消费口）
   const { hist, streak, reload: reloadRounds } = useRounds("wheel");
-  const [busy, setBusy] = useState(false);
-  const [res, setRes] = useState<DrawResult | null>(null);
-  const [flash, setFlash] = useState<{
-    kind: "win" | "lose" | "tie" | "jackpot";
-    text: string;
-  } | null>(null);
-  const [err, setErr] = useState<string | null>(null);
-  // 样图手机版：主玩法 / 记录图鉴 双 tab
-  const [tab, setTab] = useState("play");
+  const [tab, setTab] = useState<Tab>("play");
+  const [batchBusy, setBatchBusy] = useState(false);
   const [reduced, setReduced] = useState(false);
-  const [sessionPlays, setSessionPlays] = useState(0);
-  const idem = useRef<string>("");
-  // 结果未知（网络/超时/网关错误）：保留幂等键，允许原键重查
-  const [unknown, setUnknown] = useState(false);
 
   useEffect(() => {
     setReduced(window.matchMedia("(prefers-reduced-motion: reduce)").matches);
@@ -91,214 +68,201 @@ export default function WheelFocusPage({
 
   const prizes = ov?.wheel?.prizes ?? [];
   const ticket = ov?.wheel?.ticket ?? 100;
+  const poolReady = prizes.length > 0 && ticket > 0;
+  const limitLeft = ov?.me?.limit_left ?? 0;
+  const balance = ov?.me?.balance ?? 0;
+  const todayNet = ov?.me?.today_net ?? 0;
+  const totalW = prizes.reduce((s, p) => s + p.weight_permille, 0) || 1;
+  // 物品档的 payout 恒为 0（价值在 anchor×件数里），不能按 payout 判「未中」；
+  // 否则站长一配物品档，「综合中奖率」就会把它算成谢谢参与。
+  const missW = prizes.reduce(
+    (s, p) =>
+      s + (p.kind !== "item" && p.payout === 0 ? p.weight_permille : 0),
+    0,
+  );
   const winRate = prizes.length
-    ? (100 - (prizes[0]?.weight_permille ?? 0) / 10).toFixed(1) : "—";
-  // 奖池条（样图 v3 转盘屏）：等值前 4 档横排
-  const prizeStripItems = prizes
-    .slice()
-    .sort(
-      (a, b) => (b.value ?? b.payout * ticket) - (a.value ?? a.payout * ticket),
-    )
-    .slice(0, 4)
-    .map((p) => ({
-      ic: p.kind === "item" ? (p.icon ?? "🎁") : "💎",
-      nm: p.label,
-      odds: `${(p.weight_permille / 10).toFixed(1)}%`,
-      tone:
-        (p.value ?? p.payout * ticket) >= ticket * 10
-          ? ("gold" as const)
-          : (p.value ?? p.payout * ticket) >= ticket * 3
-            ? ("lilac" as const) : ("sky" as const),
-    }));
+    ? (100 - (missW / totalW) * 100).toFixed(1)
+    : "—";
+  // 最高倍率按「实际折算价值 / 票价」算，物品档才不会在统计条里显示 0x。
+  const maxMult = prizes.length && ticket > 0
+    ? Math.max(...prizes.map((p) => prizeValue(p, ticket) / ticket))
+    : 0;
+  const netTone = todayNet < 0 ? "lose" : "green";
 
-  async function draw(reuse = false) {
-    if (busy) return;
-    setBusy(true);
-    setErr(null);
-    setFlash(null);
-    setRes(null);
-    setUnknown(false);
-    // 幂等键：同一次抽奖意图复用同一 key；仅确认结算后才生成新键
-    if (!reuse || !idem.current) idem.current = clientUuid();
-    try {
-      const r = await api.post<DrawResult>("/api/v1/games/wheel", {
-        idempotency_key: idem.current,
-      });
-      setRes(r);
-    } catch (e) {
-      // 明确业务失败（code!==1000）才复位；网络/超时/网关保持 key 供重查
-      const bizFail = e instanceof ApiError && e.code !== 1000;
-      setErr(
-        e instanceof ApiError
-          ? e.code === 1002
-            ? e.message
-            : apiErrorMessage(dict, e)
-          : dict.common.networkError,
-      );
-      if (!bizFail) setUnknown(true);
-      setBusy(false);
-    }
-  }
+  const describeError = useCallback(
+    (e: unknown) => (e instanceof ApiError
+      ? e.code === 1002 ? e.message : apiErrorMessage(dict, e)
+      : dict.common.networkError),
+    [dict],
+  );
 
-  function onLanded() {
-    const r = res;
-    setBusy(false);
-    setSessionPlays((n) => n + 1);
-    if (!r) return;
-    const won = r.value ?? r.payout;
-    const kind: "win" | "lose" | "tie" | "jackpot" =
-      won >= ticket * 10 ? "jackpot"
-        : won > ticket ? "win"
-          : won === ticket ? "tie" : "lose";
-    setFlash({
-      kind,
-      text:
-        won >= ticket * 10
-          ? fmtCur(tw.jackpot, { prize: r.prize, net: won - ticket }, currency)
-          : won > ticket
-            ? fmtCur(tw.win, { prize: r.prize, net: won - ticket }, currency)
-            : won === ticket
-              ? tw.again
-              : tw.thanks,
-    });
-    void loadMeta();
-  }
+  const play = useWheelPlay({
+    ticket,
+    labels: tw,
+    currency,
+    describeError,
+    onSettled: loadMeta,
+  });
 
-  if (tab === "records") {
-    return (
-      <div className="flex flex-col gap-4">
-        <GameTabs
-          tabs={[
-            { key: "play", label: dict.games.sub.tabPlay, icon: "🎲" },
-            { key: "records", label: dict.games.sub.tabRecords, icon: "📜" },
-          ]}
-          active={tab}
-          onChange={setTab}
+  useEffect(() => {
+    if (tab !== "play") play.stopAuto();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab]);
+
+  const tabs = [
+    { key: "play", label: t.sub.tabPlay, icon: "🎲" },
+    { key: "pool", label: tw.tabPool, icon: "🎁" },
+    { key: "records", label: t.sub.tabRecords, icon: "📜" },
+  ];
+  const tabBar = (
+    <GameTabs tabs={tabs} active={tab} onChange={(k) => setTab(k as Tab)} />
+  );
+
+  const notice =
+    ov && !poolReady
+      ? tw.poolEmpty
+      : limitLeft <= 0
+        ? tw.noticeNoPlays
+        : balance < ticket
+          ? tw.noticePoor.replace("{n}", String(ticket))
+          : null;
+
+  const stage =
+    tab === "pool" ? (
+      <WheelPoolPanel
+        prizes={prizes}
+        ticket={ticket}
+        labels={{
+          picked: tw.poolPicked,
+          gridTitle: tw.poolGrid,
+          note: tw.poolNote,
+          empty: tw.poolEmpty,
+          metaItem: tw.metaItem,
+          metaItemQty: tw.metaItemQty,
+          metaMiss: tw.metaMiss,
+          metaMult: tw.metaMult,
+        }}
+      />
+    ) : tab === "records" ? (
+      <GameRecordsPanel
+        game="wheel"
+        odds={{
+          note: tw.recordsNote,
+          label: t.oddsLink,
+          onClick: () => setTab("pool"),
+        }}
+      />
+    ) : (
+      <div className="wp-stage">
+        <LuckyWheel
+          prizes={prizes}
+          ticket={ticket}
+          resultIndex={play.res?.index ?? null}
+          spinKey={play.spinSeq}
+          busy={play.busy}
+          disabled={!poolReady || batchBusy}
+          reduced={reduced}
+          onDraw={() => void play.draw()}
+          onLanded={play.landed}
+          goLabel={tw.go}
+          spinningLabel={tw.spinning}
+          tapLabel={tw.tap}
         />
-        <GameRecordsPanel game="wheel" />
-      </div>
-    );
-  }
-  return (
-    <GameShell
-      icon={<ArcadeGlyph k="wheel" />}
-      title={tw.title}
-      subtitle={`${tw.winRate.replace("{pct}", winRate)} · ${tw.sub}`}
-      balance={ov?.me?.balance ?? null}
-      todayNet={ov?.me?.today_net ?? null}
-      limitLeft={ov?.me?.limit_left ?? null}
-      notice={
-        <>
-          <GameTabs
-            tabs={[
-              { key: "play", label: dict.games.sub.tabPlay, icon: "🎲" },
-              { key: "records", label: dict.games.sub.tabRecords, icon: "📜" },
-            ]}
-            active={tab}
-            onChange={setTab}
-          />
-          <PlayHint sessionPlays={sessionPlays}
-            todayNet={ov?.me?.today_net ?? null} />
-        </>
-      }
-      stage={
-        <div className="flex w-full flex-col items-center gap-3">
-          <GameStage
-            bg="radial-gradient(120% 130% at 50% 0%, #2a2130, #120f16 72%)"
-            shjBg="var(--shj-stage-wheel)"
-            className="w-full max-w-[460px] py-6 relative jgg-scene-host"
-          >
-            <LuckyWheel
-              prizes={prizes}
-              ticket={ticket}
-              resultIndex={res?.index ?? null}
-              busy={busy}
-              disabled={prizes.length === 0}
-              reduced={reduced}
-              onDraw={draw}
-              onLanded={onLanded}
-              goLabel={tw.go}
-              spinningLabel={tw.spinning}
-              tapLabel={tw.tap}
-            />
-          </GameStage>
+        <div className="wp-mid">
           <ResultFlash
-            kind={flash?.kind ?? null}
-            text={flash?.text ?? (busy ? tw.spinning : null)}
+            kind={play.flash?.kind ?? null}
+            text={play.flash?.text ?? (play.busy ? tw.spinning : null)}
           />
           <StreakPill n={streak} label={t.streakLabel} />
-          <SwCtaRow
-            primaryLabel={`${tw.go} · ${ticket}`}
-            primaryDisabled={busy || prizes.length === 0}
-            onPrimary={() => void draw()}
-            primaryGold
-          />
-          <WheelTen ticket={ticket} disabled={busy || prizes.length === 0} />
-          <SwStatRow
-            items={[
-              { lb: tw.statLeft,
-                vl: ov?.me?.limit_left != null
-                  ? String(ov.me.limit_left) : "—" },
-              { lb: tw.statMax, tone: "gold",
-                vl: prizes.length > 0
-                  ? `${Math.max(...prizes.map((p) => p.payout)).toFixed(1)}x`
-                  : "—" },
-              { lb: tw.statNet, tone: "green",
-                vl: String(ov?.me?.today_net ?? 0) },
-            ]}
-          />
-          <SwPrizeStrip label={tw.prizeLb} items={prizeStripItems} />
-          {err && (
-            <p role="alert" className="text-xs text-[var(--danger-text)]">
-              {err}
-            </p>
-          )}
-          {unknown && (
-            <button
-              type="button"
-              onClick={() => void draw(true)}
-              className="min-h-11 rounded-full bg-sky
-                px-3 py-1 text-xs font-bold text-[var(--text-on-accent)]"
-            >
-              {dict.common.retry}
-            </button>
-          )}
         </div>
-      }
-      controls={
-        <div className={PANEL_LG}>
-          <h2 className="mb-2 font-display text-base">{tw.prizePool}</h2>
-          <div className="flex flex-wrap gap-1.5">
-            {prizes.map((p, i) => (
-              <span
-                key={i}
-                className={`rounded-full px-2 py-0.5 text-xs font-bold ${
-                  (p.value ?? p.payout * ticket) >= ticket * 10
-                    ? "bg-sun-soft text-[var(--warning)]"
-                    : (p.value ?? p.payout * ticket) > ticket
-                      ? "bg-mint-soft text-[var(--mint)]"
-                      : "bg-[var(--surface-sunken)] text-sub"}`}
-              >
-                {p.label} {(p.weight_permille / 10).toFixed(1)}%
-              </span>
-            ))}
+        <WheelCtas
+          ticket={ticket}
+          balance={balance}
+          limitLeft={limitLeft}
+          disabled={play.busy || play.auto || batchBusy || !poolReady}
+          auto={play.auto}
+          onGo={() => void play.draw()}
+          onToggleAuto={play.toggleAuto}
+          onDone={loadMeta}
+          onBusyChange={setBatchBusy}
+          describeError={describeError}
+          labels={{
+            go: tw.go,
+            ten: tw.tenGo,
+            hundred: tw.hundredGo,
+            auto: tw.autoGo,
+            autoStop: tw.autoStop,
+            batchTitle: tw.batchTitle,
+            batchTotal: tw.batchTotal,
+            partial: tw.batchRest,
+            capped: tw.batchCapped,
+          }}
+        />
+        <div className="wp-stats">
+          <div className="wp-stat">
+            <div className="wp-stat-lb">{tw.statLeft}</div>
+            <div className="wp-stat-vl num">{limitLeft}</div>
           </div>
-          <p className="mt-2 text-xs text-sub">{tw.poolNote}</p>
+          <div className="wp-stat">
+            <div className="wp-stat-lb">{tw.statMax}</div>
+            <div className="wp-stat-vl num gold">
+              {maxMult.toFixed(1)}x
+            </div>
+          </div>
+          <div className="wp-stat">
+            <div className="wp-stat-lb">{tw.statNet}</div>
+            <div className={`wp-stat-vl num ${netTone}`}>
+              {todayNet > 0 ? "+" : ""}{todayNet}
+            </div>
+          </div>
         </div>
-      }
-      side={
-        <div className={PANEL_LG}>
-          <h2 className="mb-2 font-display text-base">{t.history}</h2>
-          <SwHist
-            rows={hist.slice(0, 6).map((h) => ({
-              t: (h.at ?? "").slice(11, 16) || "—",
-              txt: h.net > 0 ? tw.histWin : tw.histLose, net: h.net,
-            }))}
-            empty={t.historyEmpty}
-          />
-          <GameRules game="wheel" />
-        </div>
-      }
-    />
+        {notice && <p className="wp-notice">{notice}</p>}
+        {play.err && (
+          <p role="alert" className="wp-error">{play.err}</p>
+        )}
+        {play.unknown && (
+          <button
+            type="button"
+            onClick={() => void play.draw(true)}
+            className="wp-retry"
+          >
+            {dict.common.retry}
+          </button>
+        )}
+      </div>
+    );
+
+  return (
+    <div className={`wheel-page tab-${tab}`}>
+      <GameShell
+        icon={<ArcadeGlyph k="wheel" />}
+        title={tw.title}
+        subtitle={tw.sub}
+        headerLayout="center"
+        badges={
+          <>
+            <span className="wp-badge">
+              {tw.winRate.replace("{pct}", winRate)}
+            </span>
+            <span className="wp-badge ticket">
+              {tw.ticketBadge.replace("{n}", String(ticket))}
+            </span>
+          </>
+        }
+        balance={ov?.me?.balance ?? null}
+        todayNet={ov?.me?.today_net ?? null}
+        limitLeft={ov?.me?.limit_left ?? null}
+        balanceVariant="chips"
+        balanceLabel={tw.balance}
+        limitLabel={tw.statLeft}
+        tabBar={tabBar}
+        notice={tab === "play" ? (
+          <PlayHint sessionPlays={play.sessionPlays} todayNet={todayNet} />
+        ) : null}
+        stage={stage}
+        stageBox={tab === "play"}
+        singleColumn
+      />
+    </div>
   );
 }

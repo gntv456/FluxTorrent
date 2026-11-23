@@ -15,7 +15,8 @@ use super::pool::{dberr, load_pool};
 type Db = web::Data<std::sync::Arc<AppState>>;
 
 /// 支持图鉴的游戏（与 arcade_pool_rounds 落表的游戏一致）
-const GAMES: [&str; 4] = ["capsule", "jgg", "scratch", "wheel"];
+const GAMES: [&str; 6] =
+    ["capsule", "fruit", "jgg", "mole", "scratch", "wheel"];
 
 #[get("/games/collection/{game}")]
 pub(super) async fn game_collection(

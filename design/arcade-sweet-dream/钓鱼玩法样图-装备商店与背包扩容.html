@@ -1,0 +1,2607 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>娱乐屋 · 钓鱼玩法样图 · 装备商店与背包扩容</title>
+<link rel="stylesheet" href="https://miaoda.feishu.cn/fonts/css2?family=Noto+Serif+SC:wght@600;700;900&family=Noto+Sans+SC:wght@400;500;700&display=swap" />
+<style>
+:root{
+  --cream:#f4f8fd; --mist:#c5dff0; --sky:#8ab4dd; --sky-deep:#4a7ab0;
+  --lilac:#b8c8e8; --lilac-deep:#6a7ab8;
+  --gold:#d4af7a; --gold-deep:#b08a4a;
+  --ink:#2c3e5c; --ink-soft:#5a6b8c; --ink-faint:#8a9ab0;
+  --line:#d8e4f2; --card:#fff;
+  --danger:#d97a7a; --success:#6fb89a;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:"Noto Sans SC",sans-serif;color:var(--ink);
+  background:
+    radial-gradient(1000px 500px at 10% -10%, #d8e8f8 0%, transparent 60%),
+    radial-gradient(900px 500px at 110% 10%, #e8eef8 0%, transparent 55%),
+    var(--cream);
+  min-height:100vh;padding:40px 20px;
+}
+h1{font-family:"Noto Serif SC",serif;text-align:center;font-size:30px;letter-spacing:.1em;
+  background:linear-gradient(120deg,var(--sky-deep),var(--gold-deep),var(--lilac-deep));
+  -webkit-background-clip:text;background-clip:text;color:transparent;}
+.sub{text-align:center;color:var(--ink-soft);margin:8px 0 12px;font-size:14px;letter-spacing:.15em}
+.note{text-align:center;color:var(--ink-faint);margin:0 auto 36px;font-size:12px;max-width:720px;line-height:1.8}
+
+/* —— SVG 图标基础 —— */
+.ic{width:1.2em;height:1.2em;display:inline-block;vertical-align:-0.2em;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.ic.fill{fill:currentColor;stroke:none}
+
+/* —— 手机外框 —— */
+.phone-wrap{display:flex;flex-wrap:wrap;gap:32px;justify-content:center;align-items:flex-start;max-width:1800px;margin:0 auto}
+.phone{
+  width:390px;flex-shrink:0;background:#fff;border-radius:44px;
+  box-shadow:0 30px 60px -20px rgba(44,62,92,.35), 0 0 0 10px #2c3e5c, 0 0 0 12px #4a7ab0;
+  overflow:hidden;position:relative;
+}
+.phone .label{
+  text-align:center;padding:10px;background:linear-gradient(90deg,var(--sky-deep),var(--lilac-deep));
+  color:#fff;font-family:"Noto Serif SC",serif;font-size:13px;letter-spacing:.2em;
+}
+.screen{min-height:720px;display:flex;flex-direction:column;background:var(--cream);position:relative;overflow:hidden}
+.phone-cap{text-align:center;margin-top:10px;font-size:12px;color:var(--ink-soft);letter-spacing:.1em;max-width:390px}
+
+.statusbar{height:32px;display:flex;justify-content:space-between;align-items:center;padding:0 20px;font-size:11px;color:var(--ink-soft);font-weight:600}
+.statusbar .sb-right{display:flex;align-items:center;gap:6px}
+.statusbar .ic{width:12px;height:12px}
+.magic-pill{display:inline-flex;align-items:center;gap:4px;background:#fff;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700;color:var(--gold-deep);box-shadow:inset 0 0 0 1px var(--line)}
+.magic-pill .ic{width:13px;height:13px}
+
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:8px 16px 12px}
+.topbar .back{width:32px;height:32px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--sky-deep);box-shadow:0 2px 6px rgba(44,62,92,.1)}
+.topbar .title{font-family:"Noto Serif SC",serif;font-size:17px;font-weight:700;letter-spacing:.1em}
+.topbar .balance{display:flex;align-items:center;gap:4px;background:#fff;padding:5px 10px;border-radius:999px;font-size:12px;font-weight:700;color:var(--gold-deep);box-shadow:inset 0 0 0 1px var(--line)}
+.topbar .balance .ic{width:13px;height:13px}
+
+/* 按钮 */
+.cta{margin:12px 16px;padding:14px;border-radius:999px;text-align:center;font-family:"Noto Serif SC",serif;font-size:15px;font-weight:700;letter-spacing:.2em;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
+.cta .ic{width:16px;height:16px}
+.cta-primary{background:linear-gradient(180deg,#c5dff0 0%,#8ab4dd 100%);color:#1f3d5c;box-shadow:0 6px 16px -6px rgba(74,122,176,.6), inset 0 1px 0 #fff}
+.cta-gold{background:linear-gradient(180deg,#f6e2b8 0%,#d4af7a 100%);color:#6b4a1a;box-shadow:0 6px 16px -6px rgba(212,175,122,.6), inset 0 1px 0 #fff}
+.cta-row{display:flex;gap:10px;margin:12px 16px}
+.cta-row .cta{flex:1;margin:0}
+
+/* —— 主钓场 —— */
+.scene-water{flex:1;position:relative;overflow:hidden}
+.scene-water .rod{position:absolute;left:-30px;bottom:0;width:230px;height:330px;z-index:3}
+.scene-water .float{position:absolute;left:54%;bottom:44%;width:10px;height:24px;border-radius:5px 5px 2px 2px;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25);z-index:2}
+.scene-water .float::before{content:"";position:absolute;top:-8px;left:50%;transform:translateX(-50%);width:14px;height:10px;border-radius:6px 6px 0 0;background:var(--danger)}
+.bubble{position:absolute;left:24%;bottom:40%;background:#fff;border-radius:16px;padding:12px 16px;font-size:13px;font-weight:700;color:var(--ink);box-shadow:0 4px 14px rgba(44,62,92,.18);z-index:4}
+.bubble::after{content:"";position:absolute;left:-8px;bottom:10px;border:6px solid transparent;border-right-color:#fff}
+.order-card{position:absolute;top:14px;left:14px;width:172px;background:rgba(255,255,255,.92);border-radius:16px;padding:12px;box-shadow:0 8px 20px -8px rgba(44,62,92,.3);z-index:5}
+.order-card .oc-t{font-family:"Noto Serif SC",serif;font-size:13px;font-weight:900;color:var(--sky-deep);margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
+.order-card .oc-t .back{width:20px;height:20px;border-radius:50%;background:var(--cream);display:grid;place-items:center;color:var(--sky-deep)}
+.order-row{display:flex;align-items:center;gap:8px;padding:7px 0;border-top:1px solid var(--line)}
+.order-row .or-ic{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;font-size:16px;flex-shrink:0}
+.order-row .or-nm{flex:1;font-size:11px;font-weight:700;line-height:1.2}
+.order-row .or-pr{font-size:10px;color:var(--success);font-weight:700}
+.order-card .oc-more{margin-top:6px;font-size:10px;color:var(--sky-deep)}
+.fab-col{position:absolute;right:14px;bottom:24px;display:flex;flex-direction:column;gap:14px;z-index:5}
+.fab{width:52px;display:flex;flex-direction:column;align-items:center;gap:2px}
+.fab .fb-ic{width:46px;height:46px;border-radius:16px;background:#fff;display:grid;place-items:center;color:var(--sky-deep);box-shadow:0 4px 12px -4px rgba(44,62,92,.3);position:relative}
+.fab .fb-lb{font-size:9px;color:var(--ink-soft)}
+.fab .fb-lock{position:absolute;top:-4px;right:-4px;width:16px;height:16px;border-radius:50%;background:var(--ink);color:#fff;display:grid;place-items:center;font-size:9px}
+.fab .fb-infinity{position:absolute;top:-4px;right:-6px;font-size:10px;color:var(--gold-deep);font-weight:900}
+
+/* 已装备五件套 + 场景槽 */
+.gear-strip{display:flex;gap:8px;padding:10px 14px;background:#fff;border-top:1px solid var(--line)}
+.gslot{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;border-radius:12px;padding:6px 2px;background:var(--cream);box-shadow:inset 0 0 0 1px var(--line);cursor:pointer}
+.gslot .gs-ic{width:30px;height:30px;border-radius:10px;display:grid;place-items:center;color:#fff}
+.gslot .gs-lb{font-size:9px;color:var(--ink-soft)}
+.gslot .gs-dot{width:5px;height:5px;border-radius:50%}
+
+/* 底部导航 */
+.tabbar{height:58px;background:#fff;display:flex;border-top:1px solid var(--line)}
+.tabbar .tb{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:10px;color:var(--ink-faint);cursor:pointer}
+.tabbar .tb.on{color:var(--sky-deep);font-weight:700}
+.tabbar .tb .ic{width:20px;height:20px}
+
+/* —— 商店：分类 Tab —— */
+.shop-tabs{display:flex;gap:6px;padding:10px 16px;overflow-x:auto;scrollbar-width:none}
+.shop-tabs::-webkit-scrollbar{display:none}
+.stab{flex-shrink:0;padding:7px 13px;border-radius:999px;font-size:11px;font-weight:700;color:var(--ink-soft);background:#fff;box-shadow:inset 0 0 0 1px var(--line);cursor:pointer;white-space:nowrap}
+.stab.on{color:#fff;background:linear-gradient(180deg,var(--sky),var(--sky-deep));box-shadow:0 4px 10px -4px rgba(74,122,176,.5)}
+.shop-head{display:flex;justify-content:space-between;align-items:center;padding:2px 20px 8px}
+.shop-head .sh-t{font-size:12px;font-weight:700;color:var(--ink-soft)}
+.shop-head .sh-r{font-size:10px;color:var(--ink-faint)}
+
+/* 物品卡 */
+.item-list{padding:0 16px 16px;display:flex;flex-direction:column;gap:10px}
+.item-card{background:#fff;border-radius:16px;padding:12px;display:flex;align-items:center;gap:12px;box-shadow:0 3px 10px -4px rgba(44,62,92,.12);border:1px solid #fff}
+.item-card .ic-box{width:54px;height:54px;border-radius:14px;display:grid;place-items:center;color:#fff;flex-shrink:0}
+.item-card .ic-box .ic{width:28px;height:28px}
+.item-card .ic-box .em{font-size:26px}
+.item-meta{flex:1;min-width:0}
+.item-meta .im-top{display:flex;align-items:center;gap:6px;margin-bottom:3px}
+.item-meta .im-nm{font-size:13px;font-weight:900}
+.item-meta .im-attr{font-size:10px;color:var(--ink-soft);line-height:1.5}
+.item-meta .im-own{font-size:9px;color:var(--ink-faint);margin-top:2px}
+.act{flex-shrink:0;min-width:76px;text-align:center;border-radius:12px;padding:9px 10px;font-size:11px;font-weight:900;cursor:pointer}
+.act.equipped{background:#eef7f2;color:var(--success);box-shadow:inset 0 0 0 1.5px var(--success)}
+.act.owned{background:#eef4fb;color:var(--sky-deep);box-shadow:inset 0 0 0 1.5px var(--sky)}
+.act.buy{background:linear-gradient(180deg,#f6e2b8,#d4af7a);color:#6b4a1a;box-shadow:0 4px 10px -4px rgba(212,175,122,.6)}
+.act.buy .ic{width:12px;height:12px;vertical-align:-1px}
+.act.locked{background:var(--cream);color:var(--ink-faint);box-shadow:inset 0 0 0 1px var(--line)}
+
+/* 稀有度标签 */
+.rar{font-size:9px;font-weight:700;padding:1px 7px;border-radius:6px}
+.r-common{background:#eef1f5;color:var(--ink-faint)}
+.r-fine{background:#e8f0fa;color:var(--sky-deep)}
+.r-rare{background:#eeeaf8;color:var(--lilac-deep)}
+.r-epic{background:#f8f0e0;color:var(--gold-deep)}
+.r-legend{background:#fbeaea;color:#b86868}
+
+/* —— 场景选择 —— */
+.scene-grid{padding:12px 16px;display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.scene-card{border-radius:18px;overflow:hidden;background:#fff;box-shadow:0 4px 12px -6px rgba(44,62,92,.2)}
+.scene-thumb{height:110px;position:relative;display:flex;align-items:flex-end;padding:10px}
+.scene-thumb .st-em{font-size:26px}
+.scene-thumb .st-lock{position:absolute;top:8px;right:8px;width:24px;height:24px;border-radius:50%;background:rgba(0,0,0,.35);color:#fff;display:grid;place-items:center}
+.scene-thumb .st-lock .ic{width:12px;height:12px}
+.scene-body{padding:10px 12px}
+.scene-body .sb-nm{font-size:12px;font-weight:900;margin-bottom:2px}
+.scene-body .sb-attr{font-size:10px;color:var(--ink-soft);line-height:1.5;min-height:30px}
+.scene-body .sb-act{margin-top:8px}
+
+/* —— 背包 —— */
+.cap-card{margin:12px 16px 0;background:#fff;border-radius:16px;padding:14px;box-shadow:0 3px 10px -4px rgba(44,62,92,.12)}
+.cap-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.cap-top .ct-t{font-family:"Noto Serif SC",serif;font-size:14px;font-weight:900}
+.cap-top .ct-n{font-size:12px;font-weight:900;color:var(--sky-deep)}
+.cap-bar{height:10px;border-radius:999px;background:#e8eef8;overflow:hidden}
+.cap-bar > div{height:100%;border-radius:999px;background:linear-gradient(90deg,var(--sky),var(--sky-deep))}
+.cap-sub{display:flex;gap:14px;margin-top:8px;font-size:10px;color:var(--ink-faint)}
+.cap-sub b{color:var(--ink-soft)}
+
+.fish-grid{padding:12px 16px 0;display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.fish-cell{aspect-ratio:1;border-radius:12px;background:#fff;box-shadow:0 2px 6px rgba(44,62,92,.08);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;position:relative}
+.fish-cell .fc-em{font-size:22px}
+.fish-cell .fc-nm{font-size:8px;color:var(--ink-soft)}
+.fish-cell .fc-rar{position:absolute;top:5px;left:5px;width:6px;height:6px;border-radius:50%}
+.fish-cell.empty{background:var(--cream);box-shadow:inset 1.5px dashed var(--line)}
+.fish-cell.empty .fc-q{font-size:14px;color:var(--line)}
+
+.exp-card{margin:12px 16px;background:linear-gradient(160deg,#fff,#f8f4e8);border-radius:16px;padding:14px;box-shadow:inset 0 0 0 1px var(--gold)}
+.exp-card .ec-t{font-size:12px;font-weight:900;color:var(--gold-deep);margin-bottom:10px;display:flex;justify-content:space-between}
+.exp-tier{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px dashed var(--gold)}
+.exp-tier .et-ic{width:34px;height:34px;border-radius:10px;background:#fff;display:grid;place-items:center;color:var(--gold-deep);flex-shrink:0}
+.exp-tier .et-ic .ic{width:18px;height:18px}
+.exp-tier .et-meta{flex:1}
+.exp-tier .et-nm{font-size:11px;font-weight:700}
+.exp-tier .et-pri{font-size:10px;color:var(--ink-faint)}
+.exp-tier .et-act{flex-shrink:0}
+
+/* —— 详情弹窗 —— */
+.modal-mask{position:absolute;inset:0;background:rgba(28,40,64,.55);z-index:20;display:flex;align-items:flex-end}
+.modal-card{width:100%;background:#fff;border-radius:24px 24px 0 0;padding:20px 20px 18px;animation:up .25s ease}
+@keyframes up{from{transform:translateY(40px);opacity:0}to{transform:translateY(0);opacity:1}}
+.modal-card .mc-close{width:28px;height:28px;border-radius:50%;background:var(--cream);display:grid;place-items:center;color:var(--ink-soft);float:right;cursor:pointer}
+.modal-hero{display:flex;align-items:center;gap:14px;margin-bottom:14px}
+.modal-hero .mh-box{width:72px;height:72px;border-radius:20px;background:linear-gradient(160deg,#c5dff0,#8ab4dd);display:grid;place-items:center;color:#fff;flex-shrink:0}
+.modal-hero .mh-box .ic{width:38px;height:38px}
+.modal-hero .mh-nm{font-family:"Noto Serif SC",serif;font-size:18px;font-weight:900;display:flex;align-items:center;gap:8px}
+.modal-hero .mh-sub{font-size:11px;color:var(--ink-faint);margin-top:3px}
+.attr-list{background:var(--cream);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
+.attr-list .al-t{font-size:10px;color:var(--ink-faint);letter-spacing:.15em;font-weight:700}
+.attr-row{display:flex;justify-content:space-between;font-size:11px}
+.attr-row .ar-k{color:var(--ink-soft)}
+.attr-row .ar-v{font-weight:700;color:var(--sky-deep)}
+.attr-row .ar-v.up{color:var(--success)}
+.compare{font-size:10px;color:var(--ink-faint);margin-bottom:12px}
+.compare b{color:var(--ink-soft)}
+
+/* —— 桌面端双栏 —— */
+.desktop-frame{width:1000px;flex-shrink:0;background:#fff;border-radius:16px;box-shadow:0 30px 60px -20px rgba(44,62,92,.35), 0 0 0 10px #2c3e5c, 0 0 0 12px #4a7ab0;overflow:hidden}
+.desktop-frame .label{text-align:center;padding:10px;background:linear-gradient(90deg,var(--sky-deep),var(--lilac-deep));color:#fff;font-family:"Noto Serif SC",serif;font-size:13px;letter-spacing:.2em}
+.desk-screen{height:620px;display:flex;flex-direction:column;background:var(--cream)}
+.desk-nav{height:52px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;padding:0 24px;gap:24px}
+.desk-nav .logo{font-family:"Noto Serif SC",serif;font-weight:900;font-size:17px;color:var(--sky-deep)}
+.desk-nav .nav-items{display:flex;gap:18px;font-size:12px;color:var(--ink-soft)}
+.desk-nav .nav-items .on{color:var(--sky-deep);font-weight:700;border-bottom:2px solid var(--sky);padding-bottom:4px}
+.desk-nav .right{margin-left:auto;display:flex;gap:10px;align-items:center}
+.desk-body{flex:1;display:flex;overflow:hidden}
+.desk-scene{flex:1;position:relative;background:linear-gradient(180deg,#7ec8f0 0%,#4aa8d8 45%,#2a88c0 100%)}
+.desk-side{width:300px;background:#fff;border-left:1px solid var(--line);padding:16px;overflow-y:auto;display:flex;flex-direction:column;gap:12px}
+.slot-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:14px;background:var(--cream);box-shadow:inset 0 0 0 1px var(--line)}
+.slot-row .sr-ic{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;color:#fff;flex-shrink:0}
+.slot-row .sr-ic .ic{width:20px;height:20px}
+.slot-row .sr-meta{flex:1;min-width:0}
+.slot-row .sr-k{font-size:10px;color:var(--ink-faint)}
+.slot-row .sr-v{font-size:12px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.slot-row .sr-chg{font-size:10px;color:var(--sky-deep);font-weight:700;flex-shrink:0}
+.side-card{background:#fff;border-radius:14px;box-shadow:inset 0 0 0 1px var(--line);padding:12px}
+.side-card .sc-t{font-size:11px;font-weight:900;color:var(--sky-deep);margin-bottom:8px}
+
+/* —— 钓鱼过程：咬钩 / 溜鱼 —— */
+.reel-stage{flex:1;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:20px}
+.reel-ring{position:relative;width:168px;height:168px}
+.reel-ring svg{transform:rotate(-90deg)}
+.reel-ring .rr-track{fill:none;stroke:rgba(255,255,255,.35);stroke-width:10}
+.reel-ring .rr-prog{fill:none;stroke:#fff;stroke-width:10;stroke-linecap:round;stroke-dasharray:427;stroke-dashoffset:128}
+.reel-ring .rr-inner{position:absolute;inset:22px;border-radius:50%;background:rgba(255,255,255,.18);display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;gap:2px}
+.reel-ring .rr-inner .ic{width:34px;height:34px}
+.reel-ring .rr-txt{font-family:"Noto Serif SC",serif;font-size:15px;font-weight:900;letter-spacing:.1em}
+.tension{width:230px}
+.tension .tn-label{display:flex;justify-content:space-between;font-size:10px;color:#fff;margin-bottom:6px;font-weight:700}
+.tension .tn-bar{height:12px;border-radius:999px;background:rgba(255,255,255,.3);overflow:hidden;position:relative}
+.tension .tn-fill{height:100%;width:62%;border-radius:999px;background:linear-gradient(90deg,#6fb89a,#e8c878,#d97a7a)}
+.tension .tn-needle{position:absolute;top:-3px;left:62%;width:4px;height:18px;border-radius:2px;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.3)}
+.stage-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.92);border-radius:999px;padding:8px 16px;font-size:13px;font-weight:900;color:var(--sky-deep);box-shadow:0 6px 16px -6px rgba(44,62,92,.4)}
+.stage-badge .ic{width:15px;height:15px}
+
+/* —— 渔获结算 —— */
+.catch-hero{width:104px;height:104px;border-radius:50%;background:linear-gradient(160deg,#c5dff0,#4a7ab0);display:grid;place-items:center;color:#fff;margin:0 auto 12px;box-shadow:0 12px 28px -10px rgba(74,122,176,.6)}
+.catch-hero .ic{width:52px;height:52px}
+.catch-title{text-align:center;font-family:"Noto Serif SC",serif;font-size:19px;font-weight:900;display:flex;align-items:center;justify-content:center;gap:8px}
+.catch-sub{text-align:center;font-size:11px;color:var(--ink-faint);margin:4px 0 14px}
+.reward-list{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+.reward-row{display:flex;align-items:center;gap:10px;background:var(--cream);border-radius:13px;padding:11px 13px}
+.reward-row .rw-ic{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;color:#fff;flex-shrink:0}
+.reward-row .rw-ic .ic{width:18px;height:18px}
+.reward-row .rw-meta{flex:1}
+.reward-row .rw-k{font-size:10px;color:var(--ink-faint)}
+.reward-row .rw-v{font-size:12px;font-weight:900}
+.reward-row .rw-n{font-size:12px;font-weight:900;color:var(--gold-deep)}
+
+/* —— 图鉴 —— */
+.album-summary{margin:12px 16px 0;background:#fff;border-radius:16px;padding:14px;box-shadow:0 3px 10px -4px rgba(44,62,92,.12)}
+.album-summary .as-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.album-summary .as-t{font-family:"Noto Serif SC",serif;font-size:14px;font-weight:900}
+.album-summary .as-n{font-size:12px;font-weight:900;color:var(--lilac-deep)}
+.album-grid{padding:12px 16px;display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.album-cell{aspect-ratio:1;border-radius:12px;background:#fff;box-shadow:0 2px 6px rgba(44,62,92,.08);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;position:relative}
+.album-cell .ac-em{width:26px;height:26px;color:var(--sky-deep)}
+.album-cell .ac-nm{font-size:8px;color:var(--ink-soft)}
+.album-cell.locked{background:var(--cream);box-shadow:inset 1.5px dashed var(--line)}
+.album-cell.locked .ac-em{color:var(--line)}
+.album-cell.locked .ac-nm{color:var(--line)}
+.album-cell .ac-lock{position:absolute;top:5px;right:5px;width:14px;height:14px;color:var(--ink-faint)}
+
+/* —— 订单详情 —— */
+.order-big{margin:12px 16px 0;background:#fff;border-radius:16px;padding:14px;box-shadow:0 3px 10px -4px rgba(44,62,92,.12)}
+.order-big .ob-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.order-big .ob-t{font-family:"Noto Serif SC",serif;font-size:14px;font-weight:900;color:var(--sky-deep)}
+.order-big .ob-refresh{font-size:10px;color:var(--ink-faint)}
+.goal-row{display:flex;align-items:center;gap:11px;padding:11px 0;border-top:1px solid var(--line)}
+.goal-row .gr-ic{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;color:#fff;flex-shrink:0}
+.goal-row .gr-ic .ic{width:21px;height:21px}
+.goal-row .gr-meta{flex:1;min-width:0}
+.goal-row .gr-nm{font-size:12px;font-weight:900}
+.goal-row .gr-pri{font-size:10px;color:var(--ink-faint)}
+.goal-row .gr-prog{font-size:11px;font-weight:900;color:var(--sky-deep)}
+.reward-chip{display:inline-flex;align-items:center;gap:5px;background:#f8f0e0;color:var(--gold-deep);border-radius:9px;padding:6px 10px;font-size:11px;font-weight:900}
+.reward-chip .ic{width:13px;height:13px}
+
+/* —— 临时鱼缸 —— */
+.aqua-note{margin:12px 16px 0;background:linear-gradient(160deg,#eef4fb,#e8f0fa);border-radius:14px;padding:12px 14px;font-size:11px;color:var(--ink-soft);line-height:1.7;display:flex;gap:10px;align-items:flex-start}
+.aqua-note .ic{width:18px;height:18px;color:var(--sky-deep);flex-shrink:0;margin-top:1px}
+.aqua-list{padding:12px 16px 0;display:flex;flex-direction:column;gap:10px}
+.aqua-row{display:flex;align-items:center;gap:11px;background:#fff;border-radius:15px;padding:11px 13px;box-shadow:0 2px 8px rgba(44,62,92,.08)}
+.aqua-row .ar-ic{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;color:#fff;flex-shrink:0}
+.aqua-row .ar-ic .ic{width:22px;height:22px}
+.aqua-row .ar-meta{flex:1;min-width:0}
+.aqua-row .ar-nm{font-size:12px;font-weight:900}
+.aqua-row .ar-pri{font-size:10px;color:var(--ink-faint)}
+.aqua-row .ar-acts{display:flex;gap:6px;flex-shrink:0}
+.mini-act{border-radius:10px;padding:7px 10px;font-size:10px;font-weight:900;cursor:pointer}
+.mini-act.keep{background:#eef4fb;color:var(--sky-deep);box-shadow:inset 0 0 0 1.5px var(--sky)}
+.mini-act.free{background:var(--cream);color:var(--ink-faint);box-shadow:inset 0 0 0 1px var(--line)}
+
+/* —— 装备对比页 —— */
+.cmp-duo{display:flex;gap:10px;margin:12px 16px 0;align-items:stretch}
+.cmp-card{flex:1;background:#fff;border-radius:16px;padding:12px;box-shadow:0 3px 10px -4px rgba(44,62,92,.12);position:relative}
+.cmp-card.cur{box-shadow:inset 0 0 0 1.5px var(--line)}
+.cmp-card.win{box-shadow:inset 0 0 0 1.5px var(--gold)}
+.cmp-card .cc-tag{position:absolute;top:10px;right:10px;font-size:9px;font-weight:900;padding:2px 8px;border-radius:6px}
+.cmp-card .cc-ic{width:46px;height:46px;border-radius:13px;display:grid;place-items:center;color:#fff;margin-bottom:8px}
+.cmp-card .cc-ic .ic{width:24px;height:24px}
+.cmp-card .cc-nm{font-size:12px;font-weight:900}
+.cmp-card .cc-sub{font-size:9px;color:var(--ink-faint);margin-top:2px}
+.cmp-vs{display:flex;align-items:center;justify-content:center;font-family:"Noto Serif SC",serif;font-weight:900;color:var(--ink-faint);font-size:12px;padding:0 2px}
+.cmp-list{margin:12px 16px 0;background:#fff;border-radius:16px;padding:6px 14px;box-shadow:0 3px 10px -4px rgba(44,62,92,.12)}
+.cmp-row{display:grid;grid-template-columns:1fr 84px 1fr;align-items:center;gap:8px;padding:11px 0;border-top:1px solid var(--line)}
+.cmp-row:first-child{border-top:none}
+.cmp-row .cr-side{font-size:11px;font-weight:900;text-align:center}
+.cmp-row .cr-side.l{color:var(--ink-soft)}
+.cmp-row .cr-side.r{color:var(--sky-deep)}
+.cmp-row .cr-side.up{color:var(--success)}
+.cmp-row .cr-k{text-align:center;font-size:10px;color:var(--ink-faint)}
+.cmp-row .cr-bar{height:6px;border-radius:999px;background:var(--cream);margin-top:4px;overflow:hidden}
+.cmp-row .cr-bar > div{height:100%;border-radius:999px;background:linear-gradient(90deg,var(--sky),var(--sky-deep))}
+
+/* —— 场景时段 / 天气态 —— */
+.mode-switch{display:flex;gap:6px;padding:10px 16px}
+.mode-preview{margin:0 16px;border-radius:18px;overflow:hidden;position:relative;height:170px}
+.mode-preview .mp-tag{position:absolute;top:10px;left:10px;background:rgba(255,255,255,.9);border-radius:10px;padding:5px 10px;font-size:10px;font-weight:900;color:var(--ink)}
+.mode-list{padding:12px 16px 0;display:flex;flex-direction:column;gap:10px}
+.mode-row{display:flex;align-items:center;gap:11px;background:#fff;border-radius:15px;padding:11px 13px;box-shadow:0 2px 8px rgba(44,62,92,.08)}
+.mode-row .mr-ic{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;color:#fff;flex-shrink:0}
+.mode-row .mr-ic .ic{width:20px;height:20px}
+.mode-row .mr-meta{flex:1;min-width:0}
+.mode-row .mr-nm{font-size:12px;font-weight:900}
+.mode-row .mr-pri{font-size:10px;color:var(--ink-soft)}
+.mode-row .mr-bonus{font-size:10px;font-weight:900;color:var(--gold-deep);text-align:right}
+
+/* —— 多尾结算 —— */
+.batch-head{text-align:center;margin-bottom:12px}
+.batch-head .bh-t{font-family:"Noto Serif SC",serif;font-size:19px;font-weight:900}
+.batch-head .bh-s{font-size:11px;color:var(--ink-faint);margin-top:3px}
+.batch-list{display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
+.batch-row{display:flex;align-items:center;gap:11px;background:var(--cream);border-radius:13px;padding:10px 12px}
+.batch-row .br-ic{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;color:#fff;flex-shrink:0}
+.batch-row .br-ic .ic{width:20px;height:20px}
+.batch-row .br-meta{flex:1;min-width:0}
+.batch-row .br-nm{font-size:12px;font-weight:900;display:flex;align-items:center;gap:6px}
+.batch-row .br-pri{font-size:10px;color:var(--ink-faint)}
+.batch-row .br-new{font-size:8px;font-weight:900;color:#fff;background:var(--gold-deep);border-radius:5px;padding:1px 6px}
+.batch-row .br-n{font-size:11px;font-weight:900}
+.batch-sum{display:flex;justify-content:space-between;align-items:center;background:#f8f0e0;border-radius:13px;padding:12px 14px;margin-bottom:12px}
+.batch-sum .bs-k{font-size:11px;font-weight:900;color:var(--gold-deep)}
+.batch-sum .bs-v{font-size:15px;font-weight:900;color:var(--gold-deep)}
+
+/* —— 装备养成 / 强化 —— */
+.grow-hero{margin:12px 16px 0;background:#fff;border-radius:18px;padding:16px;display:flex;align-items:center;gap:14px;box-shadow:0 3px 10px -4px rgba(44,62,92,.12)}
+.grow-hero .gh-box{width:64px;height:64px;border-radius:18px;background:linear-gradient(160deg,#9a8ac8,#6a5a98);display:grid;place-items:center;color:#fff;flex-shrink:0}
+.grow-hero .gh-box .ic{width:34px;height:34px}
+.grow-hero .gh-meta{flex:1}
+.grow-hero .gh-nm{font-family:"Noto Serif SC",serif;font-size:16px;font-weight:900;display:flex;align-items:center;gap:8px}
+.grow-hero .gh-lv{font-size:10px;font-weight:900;color:#fff;background:var(--lilac-deep);border-radius:6px;padding:2px 8px}
+.grow-hero .gh-sub{font-size:10px;color:var(--ink-faint);margin-top:3px}
+.grow-stars{display:flex;gap:2px;margin-top:5px;color:var(--gold)}
+.grow-stars .ic{width:13px;height:13px}
+.exp-card{margin:12px 16px 0;background:#fff;border-radius:16px;padding:14px;box-shadow:0 3px 10px -4px rgba(44,62,92,.12)}
+.exp-card .ec-top{display:flex;justify-content:space-between;font-size:11px;font-weight:900;margin-bottom:8px}
+.grow-stats{display:flex;flex-direction:column;gap:9px;margin-top:4px}
+.gstat{display:grid;grid-template-columns:1fr 64px 1fr;align-items:center;gap:8px}
+.gstat .gs-k{font-size:10px;color:var(--ink-faint);text-align:center}
+.gstat .gs-v{font-size:11px;font-weight:900;text-align:center}
+.gstat .gs-v.cur{color:var(--ink-soft)}
+.gstat .gs-v.next{color:var(--success)}
+.grow-next{margin:12px 16px 0;background:linear-gradient(160deg,#fff,#f8f4e8);border:1px dashed var(--gold);border-radius:16px;padding:13px 14px;display:flex;align-items:center;gap:11px}
+.grow-next .gn-ic{width:40px;height:40px;border-radius:12px;background:#fff;display:grid;place-items:center;color:var(--gold-deep);flex-shrink:0}
+.grow-next .gn-ic .ic{width:21px;height:21px}
+.grow-next .gn-meta{flex:1}
+.grow-next .gn-nm{font-size:12px;font-weight:900;color:var(--gold-deep)}
+.grow-next .gn-pri{font-size:10px;color:var(--ink-faint)}
+
+/* —— 排行榜 —— */
+.rank-summary{margin:12px 16px 0;background:linear-gradient(135deg,var(--sky-deep),var(--lilac-deep));border-radius:16px;padding:14px;color:#fff;display:flex;justify-content:space-between;align-items:center}
+.rank-summary .rs-t{font-family:"Noto Serif SC",serif;font-size:14px;font-weight:900}
+.rank-summary .rs-s{font-size:10px;opacity:.85;margin-top:3px}
+.rank-summary .rs-me{text-align:right}
+.rank-summary .rs-me .rs-r{font-family:"Noto Serif SC",serif;font-size:20px;font-weight:900}
+.rank-list{padding:12px 16px 0;display:flex;flex-direction:column;gap:9px}
+.rank-row{display:flex;align-items:center;gap:11px;background:#fff;border-radius:15px;padding:11px 13px;box-shadow:0 2px 8px rgba(44,62,92,.08)}
+.rank-row.me{box-shadow:inset 0 0 0 1.5px var(--sky)}
+.rank-row .rr-no{width:30px;font-family:"Noto Serif SC",serif;font-weight:900;font-size:14px;text-align:center;color:var(--ink-soft);flex-shrink:0}
+.rank-row .rr-no.top1{color:var(--gold-deep)}
+.rank-row .rr-no.top2{color:var(--ink-faint)}
+.rank-row .rr-no.top3{color:#b07838}
+.rank-row .rr-avatar{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:900;font-size:14px;flex-shrink:0}
+.rank-row .rr-meta{flex:1;min-width:0}
+.rank-row .rr-nm{font-size:12px;font-weight:900;display:flex;align-items:center;gap:6px}
+.rank-row .rr-pri{font-size:10px;color:var(--ink-faint)}
+.rank-row .rr-val{text-align:right}
+.rank-row .rr-v{font-size:12px;font-weight:900;color:var(--sky-deep)}
+.rank-row .rr-rw{font-size:9px;color:var(--gold-deep);font-weight:700}
+
+/* —— 图鉴分区 —— */
+.group-head{display:flex;align-items:center;gap:8px;padding:14px 16px 8px}
+.group-head .gh-ic{width:26px;height:26px;border-radius:9px;display:grid;place-items:center;color:#fff}
+.group-head .gh-ic .ic{width:14px;height:14px}
+.group-head .gh-t{font-family:"Noto Serif SC",serif;font-size:13px;font-weight:900;color:var(--sky-deep)}
+.group-head .gh-n{font-size:10px;color:var(--ink-faint)}
+.group-note{padding:0 16px;font-size:10px;color:var(--ink-faint);line-height:1.6}
+
+/* —— 渔具套装加成 —— */
+.set-hero{margin:12px 16px 0;border-radius:18px;padding:16px;color:#fff;background:linear-gradient(135deg,var(--sky-deep),var(--lilac-deep));box-shadow:0 10px 24px -10px rgba(74,122,176,.6)}
+.set-hero .sh-top{display:flex;align-items:center;gap:12px}
+.set-hero .sh-ic{width:52px;height:52px;border-radius:15px;background:rgba(255,255,255,.18);display:grid;place-items:center;flex-shrink:0}
+.set-hero .sh-ic .ic{width:28px;height:28px}
+.set-hero .sh-meta{flex:1}
+.set-hero .sh-name{font-family:"Noto Serif SC",serif;font-size:17px;font-weight:900;display:flex;align-items:center;gap:8px}
+.set-hero .sh-sub{font-size:10px;opacity:.85;margin-top:3px}
+.set-hero .sh-state{font-size:10px;font-weight:900;background:#fff;color:var(--success);border-radius:9px;padding:5px 10px;flex-shrink:0}
+.set-bonuses{display:flex;flex-direction:column;gap:7px;margin-top:13px}
+.set-bonus{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700;background:rgba(255,255,255,.14);border-radius:10px;padding:8px 11px}
+.set-bonus .ic{width:14px;height:14px;flex-shrink:0}
+.set-slots{display:flex;gap:7px;padding:12px 16px 0}
+.set-slot{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px}
+.set-slot .ss-ic{width:36px;height:36px;border-radius:11px;display:grid;place-items:center;color:#fff}
+.set-slot .ss-ic .ic{width:18px;height:18px}
+.set-slot.miss .ss-ic{background:var(--cream);color:var(--ink-faint);box-shadow:inset 1.5px dashed var(--line)}
+.set-slot .ss-lb{font-size:8px;color:var(--ink-soft)}
+.set-list{padding:12px 16px 0;display:flex;flex-direction:column;gap:11px}
+.set-card{background:#fff;border-radius:16px;padding:13px;box-shadow:0 3px 10px -4px rgba(44,62,92,.12)}
+.set-card.active{box-shadow:inset 0 0 0 1.5px var(--gold)}
+.set-card .sc-top{display:flex;align-items:center;gap:11px}
+.set-card .sc-ic{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;color:#fff;flex-shrink:0}
+.set-card .sc-ic .ic{width:22px;height:22px}
+.set-card .sc-meta{flex:1;min-width:0}
+.set-card .sc-name{font-size:13px;font-weight:900;display:flex;align-items:center;gap:7px}
+.set-card .sc-pri{font-size:10px;color:var(--ink-faint);margin-top:2px}
+.set-card .sc-count{font-family:"Noto Serif SC",serif;font-size:15px;font-weight:900;color:var(--sky-deep);flex-shrink:0}
+.set-card .sc-bonuses{display:flex;flex-direction:column;gap:5px;margin:10px 0 0;padding-top:10px;border-top:1px solid var(--line)}
+.set-card .sc-bonus{display:flex;align-items:center;gap:7px;font-size:10px;color:var(--ink-soft)}
+.set-card .sc-bonus .ic{width:12px;height:12px;color:var(--success);flex-shrink:0}
+.set-card .sc-foot{display:flex;justify-content:space-between;align-items:center;margin-top:10px}
+.set-card .sc-hint{font-size:10px;color:var(--ink-faint)}
+
+/* —— 体力 / 签到 —— */
+.stamina-card{margin:12px 16px 0;background:linear-gradient(135deg,#6a9ec8,#4a7ab0);border-radius:18px;padding:16px;color:#fff;display:flex;align-items:center;gap:14px}
+.stamina-card .st-ic{width:52px;height:52px;border-radius:15px;background:rgba(255,255,255,.18);display:grid;place-items:center;flex-shrink:0}
+.stamina-card .st-ic .ic{width:28px;height:28px}
+.stamina-card .st-meta{flex:1}
+.stamina-card .st-nm{font-family:"Noto Serif SC",serif;font-size:16px;font-weight:900}
+.stamina-card .st-val{font-size:12px;opacity:.9;margin-top:3px}
+.stamina-card .st-buy{background:#f6e2b8;color:#6b4a1a;border-radius:11px;padding:9px 12px;font-size:11px;font-weight:900;flex-shrink:0}
+.sign-wrap{margin:12px 16px 0;background:#fff;border-radius:16px;padding:14px;box-shadow:0 3px 10px -4px rgba(44,62,92,.12)}
+.sign-wrap .sw-t{font-family:"Noto Serif SC",serif;font-size:13px;font-weight:900;color:var(--sky-deep);margin-bottom:10px;display:flex;justify-content:space-between}
+.sign-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.sign-day{border-radius:12px;padding:8px 4px;display:flex;flex-direction:column;align-items:center;gap:4px;background:var(--cream)}
+.sign-day.done{background:#eef7f2}
+.sign-day.today{background:#f8f0e0;box-shadow:inset 0 0 0 1.5px var(--gold)}
+.sign-day .sd-d{font-size:9px;color:var(--ink-faint);font-weight:700}
+.sign-day .sd-rw{font-size:11px}
+.sign-day .sd-rw .ic{width:14px;height:14px}
+.sign-day .sd-tag{font-size:8px;font-weight:900}
+.sign-day.done .sd-tag{color:var(--success)}
+.sign-day.today .sd-tag{color:var(--gold-deep)}
+
+/* —— 好友鱼塘 —— */
+.friend-bar{margin:12px 16px 0;background:#fff;border-radius:16px;padding:13px 14px;box-shadow:0 3px 10px -4px rgba(44,62,92,.12);display:flex;gap:10px}
+.friend-bar .fb-box{flex:1;border-radius:12px;background:var(--cream);padding:10px;text-align:center}
+.friend-bar .fb-n{font-family:"Noto Serif SC",serif;font-size:16px;font-weight:900;color:var(--sky-deep)}
+.friend-bar .fb-k{font-size:9px;color:var(--ink-faint);margin-top:2px}
+.friend-list{padding:12px 16px 0;display:flex;flex-direction:column;gap:10px}
+.friend-row{display:flex;align-items:center;gap:11px;background:#fff;border-radius:15px;padding:12px 13px;box-shadow:0 2px 8px rgba(44,62,92,.08)}
+.friend-row .fr-avatar{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:900;font-size:15px;flex-shrink:0;position:relative}
+.friend-row .fr-avatar .online{position:absolute;bottom:1px;right:1px;width:10px;height:10px;border-radius:50%;background:var(--success);border:2px solid #fff}
+.friend-row .fr-meta{flex:1;min-width:0}
+.friend-row .fr-nm{font-size:12px;font-weight:900;display:flex;align-items:center;gap:6px}
+.friend-row .fr-pri{font-size:10px;color:var(--ink-faint);margin-top:2px}
+.friend-row .fr-acts{display:flex;gap:6px;flex-shrink:0}
+
+/* —— 成就徽章墙 —— */
+.ach-summary{margin:12px 16px 0;background:#fff;border-radius:16px;padding:14px;box-shadow:0 3px 10px -4px rgba(44,62,92,.12)}
+.ach-summary .as-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.ach-summary .as-t{font-family:"Noto Serif SC",serif;font-size:14px;font-weight:900}
+.ach-summary .as-n{font-size:12px;font-weight:900;color:var(--gold-deep)}
+.ach-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:12px 16px 0}
+.ach-badge{display:flex;flex-direction:column;align-items:center;gap:5px}
+.ach-badge .ab-ic{width:50px;height:50px;border-radius:50%;display:grid;place-items:center;color:#fff;box-shadow:0 4px 10px -4px rgba(44,62,92,.3)}
+.ach-badge .ab-ic .ic{width:25px;height:25px}
+.ach-badge.locked .ab-ic{background:var(--cream);color:var(--line);box-shadow:inset 1.5px dashed var(--line)}
+.ach-badge .ab-nm{font-size:8px;color:var(--ink-soft);text-align:center;line-height:1.2}
+.ach-badge.locked .ab-nm{color:var(--line)}
+.ach-rows{padding:12px 16px 0;display:flex;flex-direction:column;gap:10px}
+.ach-row{display:flex;align-items:center;gap:11px;background:#fff;border-radius:14px;padding:11px 13px;box-shadow:0 2px 8px rgba(44,62,92,.08)}
+.ach-row .ar-ic{width:36px;height:36px;border-radius:11px;display:grid;place-items:center;color:#fff;flex-shrink:0}
+.ach-row .ar-ic .ic{width:19px;height:19px}
+.ach-row .ar-meta{flex:1;min-width:0}
+.ach-row .ar-nm{font-size:12px;font-weight:900}
+.ach-row .ar-prog{font-size:10px;color:var(--ink-faint);margin-top:3px}
+.ach-row .ar-bar{height:6px;border-radius:999px;background:var(--cream);margin-top:5px;overflow:hidden}
+.ach-row .ar-bar > div{height:100%;border-radius:999px;background:linear-gradient(90deg,var(--gold),var(--gold-deep))}
+.ach-row .ar-rw{font-size:10px;font-weight:900;color:var(--gold-deep);text-align:right;flex-shrink:0}
+
+/* —— 规则表 —— */
+.rules-wrap{max-width:1100px;margin:48px auto 0}
+.rules-wrap h2{font-family:"Noto Serif SC",serif;font-size:20px;color:var(--sky-deep);letter-spacing:.15em;text-align:center;margin-bottom:18px}
+table.rule{width:100%;border-collapse:collapse;background:#fff;border-radius:16px;overflow:hidden;font-size:12px;box-shadow:0 4px 16px -8px rgba(44,62,92,.15)}
+table.rule th{background:linear-gradient(90deg,var(--sky-deep),var(--lilac-deep));color:#fff;padding:12px 14px;text-align:left;font-size:11px;letter-spacing:.08em}
+table.rule td{padding:12px 14px;border-top:1px solid var(--line);vertical-align:top;line-height:1.6}
+table.rule td:first-child{font-weight:900;color:var(--sky-deep);white-space:nowrap}
+table.rule .pri{color:var(--gold-deep);font-weight:700}
+.tone-sky{background:linear-gradient(135deg,#6a9ec8,#4a7ab0)}
+.tone-sun{background:linear-gradient(135deg,#e8c878,#c89848)}
+.tone-lilac{background:linear-gradient(135deg,#9a8ac8,#6a5a98)}
+.tone-mint{background:linear-gradient(135deg,#78b898,#4a8868)}
+.tone-coral{background:linear-gradient(135deg,#d89898,#b86868)}
+.tone-deep{background:linear-gradient(135deg,#3a4a7c,#1c2a4c)}
+
+/* —— 断点对照框：平板 / 折叠屏 / 三折叠 / 宽屏 —— */
+.bp-frame{flex-shrink:0;background:#fff;border-radius:14px;box-shadow:0 20px 40px -16px rgba(44,62,92,.3),0 0 0 6px #2c3e5c,0 0 0 8px #4a7ab0;overflow:hidden}
+.bp-frame .bp-label{text-align:center;padding:8px;background:linear-gradient(90deg,var(--sky-deep),var(--lilac-deep));color:#fff;font-family:"Noto Serif SC",serif;font-size:11px;letter-spacing:.15em}
+.bp-screen{height:480px;display:flex;flex-direction:column;background:var(--cream);overflow:hidden}
+.bp-nav{height:40px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;padding:0 14px;gap:14px;font-size:12px;flex-shrink:0}
+.bp-nav .lg{font-family:"Noto Serif SC",serif;font-weight:900;color:var(--sky-deep);font-size:14px}
+.bp-nav .nav-items{display:flex;gap:14px;color:var(--ink-soft)}
+.bp-nav .nav-items .on{color:var(--sky-deep);font-weight:700}
+.bp-nav .bal{margin-left:auto;display:flex;gap:8px;align-items:center;font-size:11px;color:var(--ink-soft)}
+.bp-body{flex:1;padding:12px;overflow:hidden;display:flex;gap:12px;min-height:0}
+.bp-col{display:flex;flex-direction:column;gap:10px;min-width:0;min-height:0}
+.bp-scene{position:relative;border-radius:14px;overflow:hidden;background:linear-gradient(180deg,#7ec8f0 0%,#4aa8d8 45%,#2a88c0 100%);flex:1;min-height:0}
+.bp-side{background:#fff;border-radius:14px;box-shadow:inset 0 0 0 1px var(--line);padding:12px;overflow-y:auto;display:flex;flex-direction:column;gap:8px}
+.bp-cap{text-align:center;font-size:11px;color:var(--ink-soft);margin-top:6px;letter-spacing:.08em}
+.bp-row{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:12px;background:var(--cream)}
+.bp-row .br-ic{width:30px;height:30px;border-radius:10px;display:grid;place-items:center;color:#fff;flex-shrink:0}
+.bp-row .br-ic .ic{width:16px;height:16px}
+.bp-row .br-meta{flex:1;min-width:0}
+.bp-row .br-k{font-size:9px;color:var(--ink-faint)}
+.bp-row .br-v{font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bp-row .br-chg{font-size:10px;color:var(--sky-deep);font-weight:700;flex-shrink:0}
+.bp-mini-order{position:absolute;top:12px;left:12px;background:rgba(255,255,255,.92);border-radius:14px;padding:10px 12px;width:190px;box-shadow:0 8px 20px -8px rgba(44,62,92,.3)}
+.bp-mini-order .mo-t{font-weight:900;color:var(--sky-deep);font-size:12px;margin-bottom:6px}
+.bp-mini-order .mo-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-top:1px solid var(--line);font-size:11px;font-weight:700}
+.bp-mini-order .mo-row .mo-pr{margin-left:auto;color:var(--success);font-size:10px}
+.bp-cta{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);display:flex;gap:10px}
+.bp-cta .cta{margin:0;padding:11px 22px;font-size:13px}
+.bp-float{position:absolute;bottom:46%;left:52%;width:10px;height:22px;background:#fff;border-radius:5px 5px 2px 2px;box-shadow:0 2px 10px rgba(0,0,0,.25)}
+.bp-bubble{position:absolute;right:24px;bottom:36%;background:#fff;border-radius:16px;padding:10px 14px;font-size:12px;font-weight:700;box-shadow:0 4px 14px rgba(44,62,92,.18)}
+.bp-tabs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
+.bp-tabs::-webkit-scrollbar{display:none}
+.bp-tabs .stab{flex-shrink:0;padding:6px 11px;border-radius:999px;font-size:10px;font-weight:700;color:var(--ink-soft);background:var(--cream);box-shadow:inset 0 0 0 1px var(--line);white-space:nowrap}
+.bp-tabs .stab.on{color:#fff;background:linear-gradient(180deg,var(--sky),var(--sky-deep))}
+.bp-item{background:#fff;border-radius:12px;padding:10px;display:flex;align-items:center;gap:10px;box-shadow:inset 0 0 0 1px var(--line)}
+.bp-item .bi-ic{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;color:#fff;flex-shrink:0}
+.bp-item .bi-ic .ic{width:20px;height:20px}
+.bp-item .bi-meta{flex:1;min-width:0}
+.bp-item .bi-nm{font-size:11px;font-weight:900}
+.bp-item .bi-attr{font-size:9px;color:var(--ink-soft)}
+.bp-item .bi-act{flex-shrink:0}
+.bp-side.compact .bp-row{padding:5px 8px;gap:7px}
+.bp-side.compact .br-ic{width:26px;height:26px}
+.bp-side.compact{gap:5px}
+</style>
+</head>
+<body>
+
+<!-- ============ SVG 图标库 ============ -->
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <symbol id="i-sparkle" viewBox="0 0 24 24"><path d="M12 2 L14 10 L22 12 L14 14 L12 22 L10 14 L2 12 L10 10 Z"/></symbol>
+    <symbol id="i-fish" viewBox="0 0 24 24"><path d="M3 12 Q8 6 15 8 Q20 9 21 12 Q20 15 15 16 Q8 18 3 12 Z"/><path d="M21 12 L23 9 L23 15 Z"/><circle cx="9" cy="11" r="1" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M9 6 L15 12 L9 18"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="6" y="11" width="12" height="9" rx="1.5"/><path d="M9 11 L9 8 Q9 5 12 5 Q15 5 15 8 L15 11"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5 L12 19 M5 12 L19 12"/></symbol>
+    <symbol id="i-bag" viewBox="0 0 24 24"><path d="M6 8 Q6 5 12 5 Q18 5 18 8 L19 20 Q19 21 18 21 L6 21 Q5 21 5 20 Z"/><path d="M9 8 Q9 3 12 3 Q15 3 15 8"/><rect x="9" y="13" width="6" height="4" rx="1"/></symbol>
+    <symbol id="i-shop" viewBox="0 0 24 24"><path d="M4 9 L5 5 L19 5 L20 9"/><path d="M4 9 Q4 11 6 11 Q8 11 8 9 Q8 11 10 11 Q12 11 12 9 Q12 11 14 11 Q16 11 16 9 Q16 11 18 11 Q20 11 20 9"/><path d="M5 11 L5 20 L19 20 L19 11"/><path d="M10 20 L10 15 L14 15 L14 20"/></symbol>
+    <symbol id="i-album" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 15 Q11 12 13 14 L15 16"/><circle cx="9.5" cy="9" r="1.4" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2 L13.5 5 L16 4.5 L16.5 7 L19 8 L18.5 10.5 L21 12 L18.5 13.5 L19 16 L16.5 17 L16 19.5 L13.5 19 L12 22 L10.5 19 L8 19.5 L7.5 17 L5 16 L5.5 13.5 L3 12 L5.5 10.5 L5 8 L7.5 7 L8 4.5 L10.5 5 Z"/></symbol>
+    <symbol id="i-aqua" viewBox="0 0 24 24"><path d="M5 8 Q5 5 12 5 Q19 5 19 8 L19 17 Q19 20 12 20 Q5 20 5 17 Z"/><path d="M5 11 Q8 9 12 11 Q16 13 19 11"/></symbol>
+    <symbol id="i-chest" viewBox="0 0 24 24"><rect x="4" y="9" width="16" height="11" rx="2"/><path d="M4 11 Q4 6 12 6 Q20 6 20 11"/><rect x="10" y="12" width="4" height="4" rx="1"/></symbol>
+    <!-- 鱼竿 -->
+    <symbol id="i-rod" viewBox="0 0 24 24"><path d="M3 21 L17 7"/><path d="M17 7 L21 3"/><circle cx="8" cy="16" r="1.3" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/><path d="M5 21 L7 19"/></symbol>
+    <!-- 鱼饵（蚯蚓） -->
+    <symbol id="i-bait" viewBox="0 0 24 24"><path d="M5 19 Q3 15 7 13 Q11 11 9 7 Q8 4 12 4 Q16 4 15 8 Q14 12 18 13 Q21 14 19 18"/></symbol>
+    <!-- 鱼钩 -->
+    <symbol id="i-hook" viewBox="0 0 24 24"><circle cx="12" cy="5" r="2"/><path d="M12 7 L12 14 Q12 18 15 18 Q18 18 18 15"/><path d="M18 15 L18 12"/></symbol>
+    <!-- 鱼线 -->
+    <symbol id="i-line" viewBox="0 0 24 24"><path d="M12 3 Q8 7 12 11 Q16 15 12 19 Q10 21 12 21"/></symbol>
+    <!-- 鱼漂 -->
+    <symbol id="i-float" viewBox="0 0 24 24"><path d="M12 3 Q15 6 14 10 L13 17 Q13 19 12 19 Q11 19 11 17 L10 10 Q9 6 12 3 Z"/><path d="M10 10 L14 10"/></symbol>
+    <!-- 场景（山水） -->
+    <symbol id="i-scene" viewBox="0 0 24 24"><path d="M3 18 L8 8 L12 14 L15 9 L21 18 Z"/><path d="M3 20 L21 20"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12 L10 17 L19 7"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 3 L14.5 9 L21 9.5 L16 13.5 L17.5 20 L12 16.5 L6.5 20 L8 13.5 L3 9.5 L9.5 9 Z"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6 L18 18 M18 6 L6 18"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5 L12 12 L15.5 14"/></symbol>
+    <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2 L5 13 L11 13 L10 22 L19 10 L13 10 Z"/></symbol>
+    <symbol id="i-gift" viewBox="0 0 24 24"><rect x="4" y="9" width="16" height="11" rx="2"/><path d="M4 13 L20 13"/><path d="M12 9 L12 20"/><path d="M12 9 Q8 9 7 6 Q7 4 9 4 Q12 4 12 9 Z"/><path d="M12 9 Q16 9 17 6 Q17 4 15 4 Q12 4 12 9 Z"/></symbol>
+    <symbol id="i-frog" viewBox="0 0 24 24"><circle cx="8" cy="7" r="2.2"/><circle cx="16" cy="7" r="2.2"/><path d="M5 12 Q5 7 12 7 Q19 7 19 12 Q19 17 12 17 Q5 17 5 12 Z"/><circle cx="8" cy="7" r=".7" fill="currentColor" stroke="none"/><circle cx="16" cy="7" r=".7" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-palm" viewBox="0 0 24 24"><path d="M12 21 L12 11"/><path d="M12 11 Q7 10 4 6 Q9 6 12 9 Q15 6 20 6 Q17 10 12 11 Z"/><path d="M12 11 Q8 13 6 17 Q10 15 12 12"/><path d="M12 11 Q16 13 18 17 Q14 15 12 12"/></symbol>
+    <symbol id="i-net" viewBox="0 0 24 24"><circle cx="10" cy="10" r="6"/><path d="M14.5 14.5 L20 20"/><path d="M6 10 L14 10 M7.5 6.5 L12.5 13.5 M12.5 6.5 L7.5 13.5"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2 L12 5 M12 19 L12 22 M2 12 L5 12 M19 12 L22 12 M4.5 4.5 L6.5 6.5 M17.5 17.5 L19.5 19.5 M19.5 4.5 L17.5 6.5 M6.5 17.5 L4.5 19.5"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14 Q14 20 8 14 Q4 10 6 4 Q12 6 14 12 Q16 16 20 14 Z"/></symbol>
+    <symbol id="i-rain" viewBox="0 0 24 24"><path d="M7 14 Q4 14 4 11 Q4 8 7 8 Q8 5 12 5 Q16 5 17 8 Q20 8 20 11 Q20 14 17 14 Z"/><path d="M8 17 L7 20 M12 17 L11 21 M16 17 L15 20"/></symbol>
+    <symbol id="i-new" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7 L12 12 L15.5 14"/></symbol>
+    <symbol id="i-trophy" viewBox="0 0 24 24"><path d="M7 4 L17 4 L17 10 Q17 14 12 14 Q7 14 7 10 Z"/><path d="M7 5 H4 Q4 9 7 10"/><path d="M17 5 H20 Q20 9 17 10"/><path d="M12 14 L12 17"/><path d="M8 20 L16 20 L15 17 L9 17 Z"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21 Q4 15 12 15 Q20 15 20 21"/></symbol>
+    <symbol id="i-set" viewBox="0 0 24 24"><path d="M12 3 L19 7.5 L12 12 L5 7.5 Z"/><path d="M5 12 L12 16.5 L19 12"/><path d="M5 16.5 L12 21 L19 16.5"/></symbol>
+    <symbol id="i-friend" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20 Q3.5 14.5 9 14.5 Q14.5 14.5 14.5 20"/><circle cx="17" cy="9" r="2.4"/><path d="M15.5 14.6 Q19.5 15 20.5 19.5"/></symbol>
+    <symbol id="i-medal" viewBox="0 0 24 24"><circle cx="12" cy="10" r="5.5"/><path d="M9 14.5 L7 21 L12 18.5 L17 21 L15 14.5"/><circle cx="12" cy="10" r="1.8" fill="currentColor" stroke="none"/></symbol>
+  </defs>
+</svg>
+
+<h1>娱乐屋 · 钓鱼玩法样图</h1>
+<div class="sub">FISHING MODULE · 装备可换 · 魔力购买 · 背包扩容</div>
+<div class="note">可更换元素：场景 / 鱼竿 / 鱼饵 / 鱼钩 / 鱼线 / 鱼漂，六类装备均以「魔力」购买或解锁；渔获与渔具共用背包容量，容量档位同样以魔力扩容。样图覆盖钓场、商店、装备对比、装备养成、渔具套装、场景时段天气、背包、详情、咬钩溜鱼、单尾 / 多尾结算、图鉴分区、订单、临时鱼缸、赛季排行、体力签到、好友互赠、成就徽章完整闭环，并给出手机 / 折叠 / 横屏 / 平板 / 桌面全端断点。视觉沿用甜梦奇境蓝-金-紫设计系统。</div>
+
+<div class="phone-wrap">
+
+  <!-- ============ ① 主钓场 ============ -->
+  <div>
+  <div class="phone">
+    <div class="label">① 主钓场 · 热带海湾</div>
+    <div class="screen">
+      <div class="statusbar">
+        <span>9:41</span>
+        <span class="sb-right"><span class="magic-pill"><svg class="ic"><use href="#i-sparkle"/></svg>12,480</span></span>
+      </div>
+      <div class="topbar">
+        <div class="back"><svg class="ic" style="width:16px;height:16px"><use href="#i-arrow"/></svg></div>
+        <div class="title">海湾钓场</div>
+        <div class="balance"><svg class="ic"><use href="#i-fish"/></svg>× 8</div>
+      </div>
+
+      <div class="scene-water" style="background:linear-gradient(180deg,#7ec8f0 0%,#4aa8d8 45%,#2a88c0 100%)">
+        <!-- 太阳 / 云 /  palms 装饰 -->
+        <div style="position:absolute;top:18px;right:70px;width:34px;height:34px;border-radius:50%;background:#fff;opacity:.85;box-shadow:0 0 24px #fff"></div>
+        <div style="position:absolute;top:44px;left:150px;width:60px;height:14px;background:#fff;border-radius:999px;opacity:.5"></div>
+        <div style="position:absolute;top:90px;right:20px;color:#3a8a5c;opacity:.8"><svg class="ic" style="width:30px;height:30px"><use href="#i-palm"/></svg></div>
+        <div style="position:absolute;bottom:120px;left:24px;color:#3a8a5c;opacity:.7"><svg class="ic" style="width:26px;height:26px"><use href="#i-palm"/></svg></div>
+        <!-- 鱼影 -->
+        <div style="position:absolute;bottom:34%;left:30%;opacity:.35"><svg class="ic" style="width:30px;height:30px;color:#fff"><use href="#i-fish"/></svg></div>
+        <div style="position:absolute;bottom:52%;right:30%;opacity:.25"><svg class="ic" style="width:22px;height:22px;color:#fff"><use href="#i-fish"/></svg></div>
+
+        <!-- 鱼竿（装饰） -->
+        <svg class="rod" viewBox="0 0 230 330">
+          <path d="M20 320 L150 60" stroke="#b07838" stroke-width="12" stroke-linecap="round"/>
+          <path d="M20 320 L150 60" stroke="#d89858" stroke-width="6" stroke-linecap="round"/>
+          <circle cx="70" cy="220" r="6" fill="#6a4a28"/>
+          <circle cx="105" cy="150" r="6" fill="#6a4a28"/>
+          <circle cx="135" cy="90" r="6" fill="#6a4a28"/>
+          <path d="M150 60 L190 150" stroke="#2c3e5c" stroke-width="1.6"/>
+          <circle cx="34" cy="296" r="20" fill="#8ab4dd" stroke="#4a7ab0" stroke-width="4"/>
+          <circle cx="34" cy="296" r="8" fill="#4a7ab0"/>
+        </svg>
+        <div class="float"></div>
+        <div class="bubble">正在钓鱼中…</div>
+
+        <!-- 每日订单 -->
+        <div class="order-card">
+          <div class="oc-t">每日订单 <span class="back"><svg class="ic" style="width:12px;height:12px"><use href="#i-arrow"/></svg></span></div>
+          <div class="order-row">
+            <div class="or-ic" style="background:#e8f0fa;color:var(--sky-deep)"><svg class="ic" style="width:18px;height:18px"><use href="#i-fish"/></svg></div>
+            <div class="or-nm">柠檬灯鱼</div>
+            <div class="or-pr">0/1</div>
+          </div>
+          <div class="order-row">
+            <div class="or-ic" style="background:#eef7f2;color:var(--success)"><svg class="ic" style="width:18px;height:18px"><use href="#i-frog"/></svg></div>
+            <div class="or-nm">青蛙</div>
+            <div class="or-pr">0/2</div>
+          </div>
+          <div class="oc-more">订单详情 ›</div>
+        </div>
+
+        <!-- 右侧悬浮按钮 -->
+        <div class="fab-col">
+          <div class="fab"><div class="fb-ic"><svg class="ic"><use href="#i-gear"/></svg></div><div class="fb-lb">自动</div><span class="fb-lock"><svg class="ic"><use href="#i-lock"/></svg></span></div>
+          <div class="fab"><div class="fb-ic" style="color:var(--gold-deep)"><svg class="ic"><use href="#i-bait"/></svg></div><div class="fb-lb">鱼饵</div><span class="fb-infinity">∞</span></div>
+          <div class="fab"><div class="fb-ic" style="color:var(--lilac-deep)"><svg class="ic"><use href="#i-aqua"/></svg></div><div class="fb-lb">鱼缸</div></div>
+        </div>
+      </div>
+
+      <!-- 已装备槽 -->
+      <div class="gear-strip">
+        <div class="gslot"><div class="gs-ic tone-sky"><svg class="ic"><use href="#i-scene"/></svg></div><div class="gs-lb">场景</div><span class="gs-dot" style="background:var(--success)"></span></div>
+        <div class="gslot"><div class="gs-ic tone-sun"><svg class="ic"><use href="#i-rod"/></svg></div><div class="gs-lb">鱼竿</div><span class="gs-dot" style="background:var(--success)"></span></div>
+        <div class="gslot"><div class="gs-ic tone-mint"><svg class="ic"><use href="#i-bait"/></svg></div><div class="gs-lb">鱼饵</div><span class="gs-dot" style="background:var(--success)"></span></div>
+        <div class="gslot"><div class="gs-ic tone-coral"><svg class="ic"><use href="#i-hook"/></svg></div><div class="gs-lb">鱼钩</div><span class="gs-dot" style="background:var(--success)"></span></div>
+        <div class="gslot"><div class="gs-ic tone-lilac"><svg class="ic"><use href="#i-line"/></svg></div><div class="gs-lb">鱼线</div><span class="gs-dot" style="background:var(--success)"></span></div>
+        <div class="gslot"><div class="gs-ic tone-sky"><svg class="ic"><use href="#i-float"/></svg></div><div class="gs-lb">鱼漂</div><span class="gs-dot" style="background:var(--success)"></span></div>
+      </div>
+
+      <div class="cta-row">
+        <div class="cta cta-primary"><svg class="ic"><use href="#i-rod"/></svg>抛竿</div>
+        <div class="cta cta-gold">更换装备</div>
+      </div>
+
+      <div class="tabbar">
+        <div class="tb on"><svg class="ic"><use href="#i-scene"/></svg>渔场</div>
+        <div class="tb"><svg class="ic"><use href="#i-album"/></svg>图鉴</div>
+        <div class="tb"><svg class="ic"><use href="#i-rod"/></svg>渔具</div>
+        <div class="tb"><svg class="ic"><use href="#i-bag"/></svg>背包</div>
+        <div class="tb"><svg class="ic"><use href="#i-shop"/></svg>商店</div>
+      </div>
+    </div>
+  </div>
+  <div class="phone-cap">① 主钓场：魔力余额 + 每日订单 + 六格已装备槽（点选进入对应分类商店）+ 底部导航</div>
+  </div>
+
+  <!-- ============ ② 渔具商店 · 鱼竿 / 鱼饵 ============ -->
+  <div>
+  <div class="phone">
+    <div class="label">② 渔具商店 · 鱼竿 / 鱼饵</div>
+    <div class="screen">
+      <div class="statusbar">
+        <span>9:41</span>
+        <span class="sb-right"><span class="magic-pill"><svg class="ic"><use href="#i-sparkle"/></svg>12,480</span></span>
+      </div>
+      <div class="topbar">
+        <div class="back"><svg class="ic" style="width:16px;height:16px"><use href="#i-arrow"/></svg></div>
+        <div class="title">渔具商店</div>
+        <div class="balance"><svg class="ic"><use href="#i-sparkle"/></svg>✦</div>
+      </div>
+
+      <div class="shop-tabs">
+        <div class="stab">场景</div>
+        <div class="stab on">鱼竿</div>
+        <div class="stab">鱼饵</div>
+        <div class="stab">鱼钩</div>
+        <div class="stab">鱼线</div>
+        <div class="stab">鱼漂</div>
+      </div>
+
+      <div class="shop-head"><span class="sh-t">鱼竿 · 4 款</span><span class="sh-r">起竿窗口 / 稀有鱼概率</span></div>
+      <div class="item-list">
+        <div class="item-card">
+          <div class="ic-box tone-sun"><svg class="ic"><use href="#i-rod"/></svg></div>
+          <div class="item-meta">
+            <div class="im-top"><span class="im-nm">竹节手竿</span><span class="rar r-common">普通</span></div>
+            <div class="im-attr">起竿窗口标准 · 新手入门</div>
+            <div class="im-own">默认装备</div>
+          </div>
+          <div class="act equipped">使用中</div>
+        </div>
+        <div class="item-card">
+          <div class="ic-box tone-sky"><svg class="ic"><use href="#i-rod"/></svg></div>
+          <div class="item-meta">
+            <div class="im-top"><span class="im-nm">星尘碳素竿</span><span class="rar r-fine">精良</span></div>
+            <div class="im-attr">起竿窗口 +200ms · 不易弯竿</div>
+            <div class="im-own">已拥有</div>
+          </div>
+          <div class="act owned">装备</div>
+        </div>
+        <div class="item-card">
+          <div class="ic-box tone-lilac"><svg class="ic"><use href="#i-rod"/></svg></div>
+          <div class="item-meta">
+            <div class="im-top"><span class="im-nm">月光传说竿</span><span class="rar r-epic">史诗</span></div>
+            <div class="im-attr">起竿窗口 +400ms · 稀有鱼概率 +5%</div>
+          </div>
+          <div class="act buy"><svg class="ic"><use href="#i-sparkle"/></svg>1,200</div>
+        </div>
+        <div class="item-card">
+          <div class="ic-box tone-coral"><svg class="ic"><use href="#i-rod"/></svg></div>
+          <div class="item-meta">
+            <div class="im-top"><span class="im-nm">沧海龙鳞竿</span><span class="rar r-legend">传说</span></div>
+            <div class="im-attr">窗口 +600ms · 大鱼拉力 -15% · 传说鱼 +3%</div>
+          </div>
+          <div class="act buy"><svg class="ic"><use href="#i-sparkle"/></svg>2,800</div>
+        </div>
+      </div>
+
+      <div class="shop-head" style="margin-top:4px"><span class="sh-t">鱼饵 · 4 款</span><span class="sh-r">咬钩速度 / 稀有吸引</span></div>
+      <div class="item-list">
+        <div class="item-card">
+          <div class="ic-box tone-mint"><svg class="ic"><use href="#i-bait"/></svg></div>
+          <div class="item-meta">
+            <div class="im-top"><span class="im-nm">面包屑</span><span class="rar r-common">普通</span></div>
+            <div class="im-attr">吸引常见鱼 · 常备饵料</div>
+            <div class="im-own">默认装备</div>
+          </div>
+          <div class="act equipped">使用中</div>
+        </div>
+        <div class="item-card">
+          <div class="ic-box tone-mint"><svg class="ic"><use href="#i-bait"/></svg></div>
+          <div class="item-meta">
+            <div class="im-top"><span class="im-nm">蚯蚓饵</span><span class="rar r-fine">精良</span></div>
+            <div class="im-attr">咬钩速度 +15%</div>
+          </div>
+          <div class="act buy"><svg class="ic"><use href="#i-sparkle"/></svg>120</div>
+        </div>
+        <div class="item-card">
+          <div class="ic-box tone-lilac"><svg class="ic"><use href="#i-bait"/></svg></div>
+          <div class="item-meta">
+            <div class="im-top"><span class="im-nm">荧光虾饵</span><span class="rar r-rare">稀有</span></div>
+            <div class="im-attr">夜间 / 深水咬钩 +25%</div>
+          </div>
+          <div class="act buy"><svg class="ic"><use href="#i-sparkle"/></svg>380</div>
+        </div>
+        <div class="item-card">
+          <div class="ic-box tone-sun"><svg class="ic"><use href="#i-bait"/></svg></div>
+          <div class="item-meta">
+            <div class="im-top"><span class="im-nm">魔法花蜜饵</span><span class="rar r-epic">史诗</span></div>
+            <div class="im-attr">全水域稀有鱼概率 +8%</div>
+          </div>
+          <div class="act buy"><svg class="ic"><use href="#i-sparkle"/></svg>900</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="phone-cap">② 商店列表：物品卡含稀有度 / 属性 / 状态（使用中 · 装备 · ✦魔力购买），分类 Tab 横滑切换</div>
+  </div>
+
+  <!-- ============ ③ 渔具商店 · 鱼钩 / 鱼线 / 鱼漂 ============ -->
+  <div>
+  <div class="phone">
+    <div class="label">③ 渔具商店 · 鱼钩 / 鱼线 / 鱼漂</div>
+    <div class="screen">
+      <div class="statusbar">
+        <span>9:41</span>
+        <span class="sb-right"><span class="magic-pill"><svg class="ic"><use href="#i-sparkle"/></svg>12,480</span></span>
+      </div>
+      <div class="topbar">
+        <div class="back"><svg class="ic" style="width:16px;height:16px"><use href="#i-arrow"/></svg></div>
+        <div class="title">渔具商店</div>
+        <div class="balance"><svg class="ic"><use href="#i-sparkle"/></svg>✦</div>
+      </div>
+
+      <div class="shop-tabs">
+        <div class="stab">场景</div>
+        <div class="stab">鱼竿</div>
+        <div class="stab">鱼饵</div>
+        <div class="stab on">鱼钩</div>
+        <div class="stab">鱼线</div>
+        <div class="stab">鱼漂</div>
+      </div>
+
+      <div class="shop-head"><span class="sh-t">鱼钩 · 4 款</span><span class="sh-r">中钩率 / 脱钩率</span></div>
+      <div class="item-list">
+        <div class="item-card">
+          <div class="ic-box tone-coral"><svg class="ic"><use href="#i-hook"/></svg></div>
+          <div class="item-meta">
+            <div class="im-top"><span class="im-nm">铁制直钩</span><span class="rar r-common">普通</span></div>
+            <div class="im-attr">标准中钩率 · 不易伤鱼</div>
+            <div class="im-own">默认装备</div>
+          </div>
+          <div class="act equipped">使用中</div>
+        </div>
+        <div class="item-card">
+          <div class="ic-box tone-sky"><svg class="ic"><use href="#i-hook"/></svg></div>
+          <div class="item-meta">
+            <div class="im-top"><span class="im-nm">精钢倒刺钩</span><span class="rar r-fine">精良</span></div>
+            <div class="im-attr">脱钩率 -10%</div>
+          </div>
+          <div class="act buy"><svg class="ic"><use href="#i-sparkle"/></svg>150</div>
+        </div>
+        <div class="item-card">
+          <div class="ic-box tone-lilac"><svg class="ic"><use href="#i-hook"/></svg></div>
+          <div class="item-meta">
+            <div class="im-top"><span class="im-nm">幻影细钩</span><span class="rar r-rare">稀有</span></div>
+            <div class="im-attr">小型鱼中钩率 +20%</div>
+          </div>
+          <div class="act buy"><svg class="ic"><use href="#i-sparkle"/></svg>420</div>
+        </div>
+        <div class="item-card">
+          <div class="ic-box tone-coral"><svg class="ic"><use href="#i-hook"/></svg></div>
+          <div class="item-meta">
+            <div class="im-top"><span class="im-nm">龙牙巨钩</span><span class="rar r-epic">史诗</span></div>
+            <div class="im-attr">大鱼中钩率 +25% · 可钓传说级</div>
+          </div>
+          <div class="act buy"><svg class="ic"><use href="#i-sparkle"/></svg>1,000</div>
+        </div>
+      </div>
+
+      <div class="shop-head" style="margin-top:4px"><span class="sh-t">鱼线 · 4 款</span><span class="sh-r">拉力 / 警觉 / 断线</span></div>
+      <div class="item-list">
+        <div class="item-card">
+          <div class="ic-box tone-lilac"><svg class="ic"><use href="#i-line"/></svg></div>
+          <div class="item-meta">
+            <div class="im-top"><span class="im-nm">棉麻线</span><span class="rar r-common">普通</span></div>
+            <div class="im-attr">标准拉力 · 新手常备</div>
+            <div class="im-own">默认装备</div>
+          </div>
+          <div class="act equipped">使用中</div>
+        </div>
+        <div class="item-card">
+          <div class="ic-box tone-sky"><svg class="ic"><use href="#i-line"/></svg></div>
+          <div class="item-meta">
+            <div class="im-top"><span class="im-nm">尼龙主线</span><span class="rar r-fine">精良</span></div>
+            <div class="im-attr">拉力 +20%</div>
+          </div>
+          <div class="act buy"><svg class="ic"><use href="#i-sparkle"/></svg>100</div>
+        </div>
+        <div class="item-card">
+          <div class="ic-box tone-lilac"><svg class="ic"><use href="#i-line"/></svg></div>
+          <div class="item-meta">
+            <div class="im-top"><span class="im-nm">蛛丝隐身线</span><span class="rar r-rare">稀有</span></div>
+            <div class="im-attr">鱼群警觉 -15%</div>
+          </div>
+          <div class="act buy"><svg class="ic"><use href="#i-sparkle"/></svg>360</div>
+        </div>
+        <div class="item-card">
+          <div class="ic-box tone-sun"><svg class="ic"><use href="#i-line"/></svg></div>
+          <div class="item-meta">
+            <div class="im-top"><span class="im-nm">流光金线</span><span class="rar r-epic">史诗</span></div>
+            <div class="im-attr">拉力 +40% · 断线率 -30%</div>
+          </div>
+          <div class="act buy"><svg class="ic"><use href="#i-sparkle"/></svg>880</div>
+        </div>
+      </div>
+
+      <div class="shop-head" style="margin-top:4px"><span class="sh-t">鱼漂 · 4 款</span><span class="sh-r">灵敏度 / 咬钩信号</span></div>
+      <div class="item-list">
+        <div class="item-card">
+          <div class="ic-box tone-sky"><svg class="ic"><use href="#i-float"/></svg></div>
+          <div class="item-meta">
+            <div class="im-top"><span class="im-nm">芦苇浮漂</span><span class="rar r-common">普通</span></div>
+            <div class="im-attr">标准灵敏度 · 入门鱼漂</div>
+            <div class="im-own">默认装备</div>
+          </div>
+          <div class="act equipped">使用中</div>
+        </div>
+        <div class="item-card">
+          <div class="ic-box tone-sky"><svg class="ic"><use href="#i-float"/></svg></div>
+          <div class="item-meta">
+            <div class="im-top"><span class="im-nm">巴尔杉立式漂</span><span class="rar r-fine">精良</span></div>
+            <div class="im-attr">咬钩信号 +10%</div>
+          </div>
+          <div class="act buy"><svg class="ic"><use href="#i-sparkle"/></svg>130</div>
+        </div>
+        <div class="item-card">
+          <div class="ic-box tone-lilac"><svg class="ic"><use href="#i-float"/></svg></div>
+          <div class="item-meta">
+            <div class="im-top"><span class="im-nm">夜光感应漂</span><span class="rar r-rare">稀有</span></div>
+            <div class="im-attr">夜钓信号 +25%</div>
+          </div>
+          <div class="act buy"><svg class="ic"><use href="#i-sparkle"/></svg>400</div>
+        </div>
+        <div class="item-card">
+          <div class="ic-box tone-sun"><svg class="ic"><use href="#i-float"/></svg></div>
+          <div class="item-meta">
+            <div class="im-top"><span class="im-nm">水晶星轨漂</span><span class="rar r-epic">史诗</span></div>
+            <div class="im-attr">信号 +20% · 稀有咬钩震动提示</div>
+          </div>
+          <div class="act buy"><svg class="ic"><use href="#i-sparkle"/></svg>950</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="phone-cap">③ 鱼钩 / 鱼线 / 鱼漂：同套物品卡结构，价格与属性按槽位区分，默认款显示「使用中」</div>
+  </div>
+
+  <!-- ============ ④ 场景选择 ============ -->
+  <div>
+  <div class="phone">
+    <div class="label">④ 场景选择 · 魔力解锁</div>
+    <div class="screen">
+      <div class="statusbar">
+        <span>9:41</span>
+        <span class="sb-right"><span class="magic-pill"><svg class="ic"><use href="#i-sparkle"/></svg>12,480</span></span>
+      </div>
+      <div class="topbar">
+        <div class="back"><svg class="ic" style="width:16px;height:16px"><use href="#i-arrow"/></svg></div>
+        <div class="title">选择钓场场景</div>
+        <div class="balance"><svg class="ic"><use href="#i-scene"/></svg>4</div>
+      </div>
+
+      <div class="scene-grid">
+        <div class="scene-card">
+          <div class="scene-thumb" style="background:linear-gradient(160deg,#7ec8f0,#2a88c0)">
+            <svg class="ic" style="width:26px;height:26px;color:#fff"><use href="#i-scene"/></svg>
+          </div>
+          <div class="scene-body">
+            <div class="sb-nm">热带海湾 <span class="rar r-fine">精良</span></div>
+            <div class="sb-attr">新手友好，常见鱼成群出没</div>
+            <div class="sb-act"><div class="act equipped" style="display:block">✓ 使用中</div></div>
+          </div>
+        </div>
+
+        <div class="scene-card">
+          <div class="scene-thumb" style="background:linear-gradient(160deg,#6a8ab8,#8ab8d8)">
+            <svg class="ic" style="width:26px;height:26px;color:#fff"><use href="#i-scene"/></svg>
+            <span class="st-lock"><svg class="ic"><use href="#i-lock"/></svg></span>
+          </div>
+          <div class="scene-body">
+            <div class="sb-nm">冰雪峡谷 <span class="rar r-rare">稀有</span></div>
+            <div class="sb-attr">冷水鱼概率提升 · 需 Lv.2 鱼竿</div>
+            <div class="sb-act"><div class="act buy" style="display:block"><svg class="ic"><use href="#i-sparkle"/></svg> 600 魔力解锁</div></div>
+          </div>
+        </div>
+
+        <div class="scene-card">
+          <div class="scene-thumb" style="background:linear-gradient(160deg,#1c2a4c,#5a6a9c)">
+            <svg class="ic" style="width:26px;height:26px;color:#fff"><use href="#i-sparkle"/></svg>
+            <span class="st-lock"><svg class="ic"><use href="#i-lock"/></svg></span>
+          </div>
+          <div class="scene-body">
+            <div class="sb-nm">月夜深潭 <span class="rar r-epic">史诗</span></div>
+            <div class="sb-attr">月光鱼 / 深水鱼出没 · 夜钓加成</div>
+            <div class="sb-act"><div class="act buy" style="display:block"><svg class="ic"><use href="#i-sparkle"/></svg> 1,500 魔力解锁</div></div>
+          </div>
+        </div>
+
+        <div class="scene-card">
+          <div class="scene-thumb" style="background:linear-gradient(160deg,#c88ab8,#4a7ab0)">
+            <svg class="ic" style="width:26px;height:26px;color:#fff"><use href="#i-gem"/></svg>
+            <span class="st-lock"><svg class="ic"><use href="#i-lock"/></svg></span>
+          </div>
+          <div class="scene-body">
+            <div class="sb-nm">珊瑚秘境 <span class="rar r-legend">传说</span></div>
+            <div class="sb-attr">珊瑚鱼 ×2 · 传说鱼概率提升</div>
+            <div class="sb-act"><div class="act buy" style="display:block"><svg class="ic"><use href="#i-sparkle"/></svg> 3,000 魔力解锁</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin:12px 16px;background:#f4f8fd;border-radius:12px;padding:10px 14px;font-size:10px;color:var(--ink-soft);line-height:1.6">
+        提示 · 场景决定可钓鱼种池与天气特效；解锁后永久拥有，可在主钓场随时切换。
+      </div>
+    </div>
+  </div>
+  <div class="phone-cap">④ 场景页：2×2 场景预览，未解锁显示锁形标记与魔力解锁价，已解锁显示「使用中」</div>
+  </div>
+
+  <!-- ============ ⑤ 背包 · 渔获与魔力扩容 ============ -->
+  <div>
+  <div class="phone">
+    <div class="label">⑤ 背包 · 渔获与容量扩容</div>
+    <div class="screen">
+      <div class="statusbar">
+        <span>9:41</span>
+        <span class="sb-right"><span class="magic-pill"><svg class="ic"><use href="#i-sparkle"/></svg>12,480</span></span>
+      </div>
+      <div class="topbar">
+        <div class="back"><svg class="ic" style="width:16px;height:16px"><use href="#i-arrow"/></svg></div>
+        <div class="title">我的背包</div>
+        <div class="balance"><svg class="ic"><use href="#i-bag"/></svg>24/30</div>
+      </div>
+
+      <!-- 容量总览 -->
+      <div class="cap-card">
+        <div class="cap-top">
+          <span class="ct-t">背包容量</span>
+          <span class="ct-n">24 / 30 格</span>
+        </div>
+        <div class="cap-bar"><div style="width:80%"></div></div>
+        <div class="cap-sub">
+          <span>渔获 <b>18</b> 格</span>
+          <span>渔具 <b>6</b> 格</span>
+          <span>空余 <b>6</b> 格</span>
+        </div>
+      </div>
+
+      <!-- 渔获网格 -->
+      <div class="fish-grid">
+        <div class="fish-cell"><span class="fc-rar" style="background:var(--sky-deep)"></span><svg class="ic" style="width:22px;height:22px;color:var(--sky-deep)"><use href="#i-fish"/></svg><span class="fc-nm">蓝带鱼</span></div>
+        <div class="fish-cell"><span class="fc-rar" style="background:var(--gold-deep)"></span><svg class="ic" style="width:22px;height:22px;color:var(--gold-deep)"><use href="#i-fish"/></svg><span class="fc-nm">月光鱼</span></div>
+        <div class="fish-cell"><span class="fc-rar" style="background:var(--ink-faint)"></span><svg class="ic" style="width:22px;height:22px;color:var(--ink-faint)"><use href="#i-fish"/></svg><span class="fc-nm">河豚</span></div>
+        <div class="fish-cell"><span class="fc-rar" style="background:var(--sky-deep)"></span><svg class="ic" style="width:22px;height:22px;color:var(--sky-deep)"><use href="#i-fish"/></svg><span class="fc-nm">磷虾</span></div>
+        <div class="fish-cell"><span class="fc-rar" style="background:var(--lilac-deep)"></span><svg class="ic" style="width:22px;height:22px;color:var(--lilac-deep)"><use href="#i-fish"/></svg><span class="fc-nm">紫章鱼</span></div>
+        <div class="fish-cell"><span class="fc-rar" style="background:var(--gold-deep)"></span><svg class="ic" style="width:22px;height:22px;color:var(--gold-deep)"><use href="#i-fish"/></svg><span class="fc-nm">晶母水母</span></div>
+        <div class="fish-cell"><span class="fc-rar" style="background:var(--ink-faint)"></span><svg class="ic" style="width:22px;height:22px;color:var(--ink-faint)"><use href="#i-fish"/></svg><span class="fc-nm">海螺</span></div>
+        <div class="fish-cell"><span class="fc-rar" style="background:var(--sky-deep)"></span><svg class="ic" style="width:22px;height:22px;color:var(--sky-deep)"><use href="#i-fish"/></svg><span class="fc-nm">小鳄龟</span></div>
+        <div class="fish-cell"><span class="fc-rar" style="background:var(--ink-faint)"></span><svg class="ic" style="width:22px;height:22px;color:var(--ink-faint)"><use href="#i-fish"/></svg><span class="fc-nm">沙蟹</span></div>
+        <div class="fish-cell"><span class="fc-rar" style="background:var(--lilac-deep)"></span><svg class="ic" style="width:22px;height:22px;color:var(--lilac-deep)"><use href="#i-fish"/></svg><span class="fc-nm">幼龙鱼</span></div>
+        <div class="fish-cell empty"><span class="fc-q">＋</span></div>
+        <div class="fish-cell empty"><span class="fc-q">＋</span></div>
+        <div class="fish-cell empty"><span class="fc-q">＋</span></div>
+        <div class="fish-cell empty"><span class="fc-q">＋</span></div>
+        <div class="fish-cell empty"><span class="fc-q">＋</span></div>
+        <div class="fish-cell empty"><span class="fc-q">＋</span></div>
+      </div>
+
+      <!-- 扩容档位 -->
+      <div class="exp-card">
+        <div class="ec-t"><span><svg class="ic" style="width:13px;height:13px;vertical-align:-2px;margin-right:5px"><use href="#i-chest"/></svg>容量扩容</span><span>魔力支付</span></div>
+        <div class="exp-tier">
+          <div class="et-ic"><svg class="ic"><use href="#i-chest"/></svg></div>
+          <div class="et-meta">
+            <div class="et-nm">当前档位 · 30 格</div>
+            <div class="et-pri">渔获 + 渔具共用</div>
+          </div>
+          <div class="et-act"><div class="act equipped" style="min-width:64px">已开启</div></div>
+        </div>
+        <div class="exp-tier">
+          <div class="et-ic" style="color:var(--sky-deep)"><svg class="ic"><use href="#i-plus"/></svg></div>
+          <div class="et-meta">
+            <div class="et-nm">扩容至 50 格</div>
+            <div class="et-pri">下一阶 · 立即生效</div>
+          </div>
+          <div class="et-act"><div class="act buy" style="min-width:84px"><svg class="ic"><use href="#i-sparkle"/></svg>800</div></div>
+        </div>
+        <div class="exp-tier">
+          <div class="et-ic" style="color:var(--lilac-deep)"><svg class="ic"><use href="#i-plus"/></svg></div>
+          <div class="et-meta">
+            <div class="et-nm">扩容至 80 格</div>
+            <div class="et-pri">需先达成 50 格档位</div>
+          </div>
+          <div class="et-act"><div class="act locked" style="min-width:84px">✦ 2,000</div></div>
+        </div>
+        <div class="exp-tier">
+          <div class="et-ic" style="color:var(--gold-deep)"><svg class="ic"><use href="#i-star"/></svg></div>
+          <div class="et-meta">
+            <div class="et-nm">满阶 · 120 格</div>
+            <div class="et-pri">传说容量 · 含专属背包皮肤</div>
+          </div>
+          <div class="et-act"><div class="act locked" style="min-width:84px">✦ 5,000</div></div>
+        </div>
+      </div>
+
+      <div style="text-align:center;font-size:10px;color:var(--ink-faint);padding:10px 16px 14px">背包满后新渔获将进入临时鱼缸，清空后自动取回</div>
+    </div>
+  </div>
+  <div class="phone-cap">⑤ 背包：容量进度条 + 渔获网格 + 三阶魔力扩容（50 / 80 / 120 格），高阶档位按顺序解锁</div>
+  </div>
+
+  <!-- ============ ⑥ 装备详情弹窗 ============ -->
+  <div>
+  <div class="phone">
+    <div class="label">⑥ 装备详情 · 购买并装备</div>
+    <div class="screen" style="background:linear-gradient(180deg,#7ec8f0 0%,#4aa8d8 45%,#2a88c0 100%)">
+      <div class="statusbar" style="color:#fff">
+        <span>9:41</span>
+        <span class="sb-right"><span class="magic-pill"><svg class="ic"><use href="#i-sparkle"/></svg>12,480</span></span>
+      </div>
+      <div style="flex:1;position:relative">
+        <div style="position:absolute;top:60px;left:24px;color:#fff;opacity:.9;font-size:15px;font-weight:700">海湾钓场 · 已装备预览</div>
+        <svg class="ic" style="position:absolute;bottom:50px;left:36px;width:40px;height:40px;color:#fff;opacity:.7"><use href="#i-rod"/></svg>
+      </div>
+
+      <div class="modal-mask">
+        <div class="modal-card">
+          <div class="mc-close"><svg class="ic" style="width:14px;height:14px"><use href="#i-x"/></svg></div>
+          <div class="modal-hero">
+            <div class="mh-box"><svg class="ic"><use href="#i-rod"/></svg></div>
+            <div>
+              <div class="mh-nm">月光传说竿 <span class="rar r-epic">史诗</span></div>
+              <div class="mh-sub">鱼竿槽位 · 夜钓 / 深水适配</div>
+            </div>
+          </div>
+
+          <div class="attr-list">
+            <div class="al-t">属性面板</div>
+            <div class="attr-row"><span class="ar-k">起竿窗口</span><span class="ar-v up">+400ms</span></div>
+            <div class="attr-row"><span class="ar-k">稀有鱼概率</span><span class="ar-v up">+5%</span></div>
+            <div class="attr-row"><span class="ar-k">大鱼拉力承受</span><span class="ar-v">标准</span></div>
+            <div class="attr-row"><span class="ar-k">适配场景</span><span class="ar-v">深潭 / 秘境</span></div>
+          </div>
+
+          <div class="compare">当前装备：<b>竹节手竿</b>（普通 · 窗口标准），购买后自动替换并放入背包。</div>
+
+          <div class="cta-row">
+            <div class="cta cta-primary" style="flex:0 0 34%;font-size:13px">取消</div>
+            <div class="cta cta-gold" style="flex:1;font-size:13px;letter-spacing:.08em"><svg class="ic"><use href="#i-sparkle"/></svg>1,200 · 购买并装备</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="phone-cap">⑥ 详情弹窗：大件图标 + 稀有度 + 属性对比 + 魔力价格，支持「购买并装备」一步完成</div>
+  </div>
+
+  <!-- ============ ⑦ 咬钩溜鱼 · 过程状态 ============ -->
+  <div>
+  <div class="phone">
+    <div class="label">⑦ 钓鱼过程 · 咬钩溜鱼</div>
+    <div class="screen" style="background:linear-gradient(180deg,#3a5a8c 0%,#2a4a7c 40%,#1c3a64 100%)">
+      <div class="statusbar" style="color:#fff">
+        <span>9:41</span>
+        <span class="sb-right"><span class="magic-pill"><svg class="ic"><use href="#i-sparkle"/></svg>12,480</span></span>
+      </div>
+      <div class="topbar">
+        <div class="back" style="background:rgba(255,255,255,.15);color:#fff"><svg class="ic" style="width:16px;height:16px"><use href="#i-arrow"/></svg></div>
+        <div class="title" style="color:#fff">溜鱼中</div>
+        <div class="balance" style="background:rgba(255,255,255,.15);color:#fff"><svg class="ic"><use href="#i-clock"/></svg>0:08</div>
+      </div>
+
+      <div class="reel-stage">
+        <div class="stage-badge"><svg class="ic" style="color:var(--danger)"><use href="#i-bolt"/></svg>鱼儿咬钩 · 稳住节奏收线</div>
+        <div class="reel-ring">
+          <svg viewBox="0 0 168 168" width="168" height="168">
+            <circle class="rr-track" cx="84" cy="84" r="68"/>
+            <circle class="rr-prog" cx="84" cy="84" r="68"/>
+          </svg>
+          <div class="rr-inner">
+            <svg class="ic"><use href="#i-fish"/></svg>
+            <div class="rr-txt">提竿时机</div>
+          </div>
+        </div>
+        <div class="tension">
+          <div class="tn-label"><span>拉力</span><span>62% · 可控</span></div>
+          <div class="tn-bar"><div class="tn-fill"></div><div class="tn-needle"></div></div>
+        </div>
+      </div>
+
+      <div class="cta-row">
+        <div class="cta cta-primary" style="font-size:13px">松线泄力</div>
+        <div class="cta cta-gold" style="font-size:13px">收线提竿</div>
+      </div>
+    </div>
+  </div>
+  <div class="phone-cap">⑦ 钓鱼过程：咬钩时机环 + 拉力条（拉力过高会脱钩断线），泄力 / 收线双操作，倒计时内完成溜鱼</div>
+  </div>
+
+  <!-- ============ ⑧ 渔获结算弹窗 ============ -->
+  <div>
+  <div class="phone">
+    <div class="label">⑧ 渔获结算 · 入包与奖励</div>
+    <div class="screen" style="background:linear-gradient(180deg,#7ec8f0 0%,#4aa8d8 45%,#2a88c0 100%)">
+      <div class="statusbar" style="color:#fff">
+        <span>9:41</span>
+        <span class="sb-right"><span class="magic-pill"><svg class="ic"><use href="#i-sparkle"/></svg>12,480</span></span>
+      </div>
+      <div style="flex:1;position:relative">
+        <svg class="ic" style="position:absolute;bottom:40px;left:36px;width:40px;height:40px;color:#fff;opacity:.7"><use href="#i-rod"/></svg>
+      </div>
+
+      <div class="modal-mask">
+        <div class="modal-card">
+          <div class="catch-hero"><svg class="ic"><use href="#i-fish"/></svg></div>
+          <div class="catch-title">月光鱼 <span class="rar r-epic">史诗</span></div>
+          <div class="catch-sub">体长 28.6cm · 重量 1.2kg · 热带海湾钓获</div>
+
+          <div class="reward-list">
+            <div class="reward-row">
+              <div class="rw-ic tone-sky"><svg class="ic"><use href="#i-fish"/></svg></div>
+              <div class="rw-meta"><div class="rw-k">渔获入包</div><div class="rw-v">月光鱼 ×1</div></div>
+              <div class="rw-n">背包 25/30</div>
+            </div>
+            <div class="reward-row">
+              <div class="rw-ic tone-sun"><svg class="ic"><use href="#i-sparkle"/></svg></div>
+              <div class="rw-meta"><div class="rw-k">魔力奖励</div><div class="rw-v">稀有鱼加成</div></div>
+              <div class="rw-n">✦ +60</div>
+            </div>
+            <div class="reward-row">
+              <div class="rw-ic tone-lilac"><svg class="ic"><use href="#i-album"/></svg></div>
+              <div class="rw-meta"><div class="rw-k">图鉴收录</div><div class="rw-v">新鱼种已解锁图鉴页</div></div>
+              <div class="rw-n">18/36</div>
+            </div>
+          </div>
+
+          <div class="cta-row">
+            <div class="cta cta-primary" style="flex:0 0 34%;font-size:13px">查看背包</div>
+            <div class="cta cta-gold" style="flex:1;font-size:13px;letter-spacing:.08em">继续垂钓</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="phone-cap">⑧ 结算弹窗：鱼种 / 体型 / 重量 + 入包、魔力奖励、图鉴收录三项反馈；背包满时改入临时鱼缸</div>
+  </div>
+
+  <!-- ============ ⑨ 图鉴收集页 ============ -->
+  <div>
+  <div class="phone">
+    <div class="label">⑨ 图鉴 · 鱼种收集</div>
+    <div class="screen">
+      <div class="statusbar">
+        <span>9:41</span>
+        <span class="sb-right"><span class="magic-pill"><svg class="ic"><use href="#i-sparkle"/></svg>12,480</span></span>
+      </div>
+      <div class="topbar">
+        <div class="back"><svg class="ic" style="width:16px;height:16px"><use href="#i-arrow"/></svg></div>
+        <div class="title">渔获图鉴</div>
+        <div class="balance"><svg class="ic"><use href="#i-album"/></svg>18/36</div>
+      </div>
+
+      <div class="album-summary">
+        <div class="as-top"><span class="as-t">收集进度</span><span class="as-n">50%</span></div>
+        <div class="cap-bar"><div style="width:50%"></div></div>
+        <div class="cap-sub">
+          <span>普通 <b>10</b></span><span>精良 <b>5</b></span><span>稀有 <b>2</b></span><span>史诗 <b>1</b></span>
+        </div>
+      </div>
+
+      <div class="shop-tabs">
+        <div class="stab on">全部</div>
+        <div class="stab">常见</div>
+        <div class="stab">珍稀</div>
+        <div class="stab">传说</div>
+      </div>
+
+      <div class="album-grid">
+        <div class="album-cell"><svg class="ic ac-em" style="color:var(--sky-deep)"><use href="#i-fish"/></svg><span class="ac-nm">蓝带鱼</span></div>
+        <div class="album-cell"><svg class="ic ac-em" style="color:var(--gold-deep)"><use href="#i-fish"/></svg><span class="ac-nm">月光鱼</span></div>
+        <div class="album-cell"><svg class="ic ac-em" style="color:var(--ink-faint)"><use href="#i-fish"/></svg><span class="ac-nm">河豚</span></div>
+        <div class="album-cell"><svg class="ic ac-em" style="color:var(--sky-deep)"><use href="#i-fish"/></svg><span class="ac-nm">磷虾</span></div>
+        <div class="album-cell"><svg class="ic ac-em" style="color:var(--lilac-deep)"><use href="#i-fish"/></svg><span class="ac-nm">紫章鱼</span></div>
+        <div class="album-cell"><svg class="ic ac-em" style="color:var(--gold-deep)"><use href="#i-fish"/></svg><span class="ac-nm">晶母水母</span></div>
+        <div class="album-cell locked"><svg class="ic ac-em"><use href="#i-lock"/></svg><span class="ac-nm">？？？</span></div>
+        <div class="album-cell locked"><svg class="ic ac-em"><use href="#i-lock"/></svg><span class="ac-nm">？？？</span></div>
+        <div class="album-cell"><svg class="ic ac-em" style="color:var(--ink-faint)"><use href="#i-fish"/></svg><span class="ac-nm">海螺</span></div>
+        <div class="album-cell"><svg class="ic ac-em" style="color:var(--sky-deep)"><use href="#i-fish"/></svg><span class="ac-nm">小鳄龟</span></div>
+        <div class="album-cell locked"><svg class="ic ac-em"><use href="#i-lock"/></svg><span class="ac-nm">？？？</span></div>
+        <div class="album-cell locked"><svg class="ic ac-em"><use href="#i-lock"/></svg><span class="ac-nm">？？？</span></div>
+      </div>
+
+      <div style="text-align:center;font-size:10px;color:var(--ink-faint);padding:10px 16px 14px">未收录鱼种需在对应场景 / 用对应鱼饵钓获；图鉴里程碑可领取魔力奖励</div>
+    </div>
+  </div>
+  <div class="phone-cap">⑨ 图鉴：总进度 + 稀有度分组筛选；已收录显示鱼种，未收录为剪影锁定，点击查看钓获条件</div>
+  </div>
+
+  <!-- ============ ⑩ 订单详情页 ============ -->
+  <div>
+  <div class="phone">
+    <div class="label">⑩ 每日订单 · 目标与奖励</div>
+    <div class="screen">
+      <div class="statusbar">
+        <span>9:41</span>
+        <span class="sb-right"><span class="magic-pill"><svg class="ic"><use href="#i-sparkle"/></svg>12,480</span></span>
+      </div>
+      <div class="topbar">
+        <div class="back"><svg class="ic" style="width:16px;height:16px"><use href="#i-arrow"/></svg></div>
+        <div class="title">每日订单</div>
+        <div class="balance"><svg class="ic"><use href="#i-clock"/></svg>06:24:18</div>
+      </div>
+
+      <div class="order-big">
+        <div class="ob-head">
+          <span class="ob-t">进行中 · 2/3</span>
+          <span class="ob-refresh">今日 0 点刷新</span>
+        </div>
+        <div class="goal-row">
+          <div class="gr-ic tone-sky"><svg class="ic"><use href="#i-fish"/></svg></div>
+          <div class="gr-meta"><div class="gr-nm">柠檬灯鱼</div><div class="gr-pri">热带海湾 · 白天常见</div></div>
+          <div class="gr-prog">0/1</div>
+          <div class="reward-chip"><svg class="ic"><use href="#i-sparkle"/></svg>120</div>
+        </div>
+        <div class="goal-row">
+          <div class="gr-ic tone-mint"><svg class="ic"><use href="#i-frog"/></svg></div>
+          <div class="gr-meta"><div class="gr-nm">青蛙</div><div class="gr-pri">浅水草丛 · 雨天概率提升</div></div>
+          <div class="gr-prog">0/2</div>
+          <div class="reward-chip"><svg class="ic"><use href="#i-sparkle"/></svg>90</div>
+        </div>
+        <div class="goal-row">
+          <div class="gr-ic tone-lilac"><svg class="ic"><use href="#i-fish"/></svg></div>
+          <div class="gr-meta"><div class="gr-nm">月光鱼</div><div class="gr-pri">月夜深潭 · 需夜光感应漂</div></div>
+          <div class="gr-prog">0/1</div>
+          <div class="reward-chip"><svg class="ic"><use href="#i-sparkle"/></svg>260</div>
+        </div>
+      </div>
+
+      <div class="cap-card">
+        <div class="cap-top"><span class="ct-t">完成全部订单</span><span class="ct-n">额外 ✦ 300</span></div>
+        <div class="cap-bar"><div style="width:33%"></div></div>
+        <div class="cap-sub"><span>已完成 <b>1</b> 单</span><span>累计可得 <b>✦ 770</b></span></div>
+      </div>
+
+      <div class="cta-row">
+        <div class="cta cta-primary"><svg class="ic"><use href="#i-scene"/></svg>前往钓场</div>
+      </div>
+
+      <div style="text-align:center;font-size:10px;color:var(--ink-faint);padding:0 16px 14px">订单鱼种与场景、鱼饵挂钩；完成后奖励魔力直接入账，未完成订单次日重置</div>
+    </div>
+  </div>
+  <div class="phone-cap">⑩ 订单详情：目标鱼种 / 钓获条件 / 进度 / 单笔魔力奖励 + 全单额外奖励；倒计时刷新，次日重置</div>
+  </div>
+
+  <!-- ============ ⑪ 临时鱼缸 ============ -->
+  <div>
+  <div class="phone">
+    <div class="label">⑪ 临时鱼缸 · 满包暂存</div>
+    <div class="screen">
+      <div class="statusbar">
+        <span>9:41</span>
+        <span class="sb-right"><span class="magic-pill"><svg class="ic"><use href="#i-sparkle"/></svg>12,480</span></span>
+      </div>
+      <div class="topbar">
+        <div class="back"><svg class="ic" style="width:16px;height:16px"><use href="#i-arrow"/></svg></div>
+        <div class="title">临时鱼缸</div>
+        <div class="balance"><svg class="ic"><use href="#i-aqua"/></svg>暂存 4</div>
+      </div>
+
+      <div class="aqua-note">
+        <svg class="ic"><use href="#i-aqua"/></svg>
+        <span>背包已满（30/30），新渔获暂存于此。取回将占用背包格；放生不返还魔力，空出的暂存位可继续垂钓。</span>
+      </div>
+
+      <div class="aqua-list">
+        <div class="aqua-row">
+          <div class="ar-ic tone-sky"><svg class="ic"><use href="#i-fish"/></svg></div>
+          <div class="ar-meta"><div class="ar-nm">蓝带鱼 ×1</div><div class="ar-pri">精良 · 热带海湾</div></div>
+          <div class="ar-acts"><div class="mini-act keep">取回</div><div class="mini-act free">放生</div></div>
+        </div>
+        <div class="aqua-row">
+          <div class="ar-ic tone-sun"><svg class="ic"><use href="#i-fish"/></svg></div>
+          <div class="ar-meta"><div class="ar-nm">月光鱼 ×1</div><div class="ar-pri">史诗 · 月夜深潭</div></div>
+          <div class="ar-acts"><div class="mini-act keep">取回</div><div class="mini-act free">放生</div></div>
+        </div>
+        <div class="aqua-row">
+          <div class="ar-ic tone-lilac"><svg class="ic"><use href="#i-fish"/></svg></div>
+          <div class="ar-meta"><div class="ar-nm">紫章鱼 ×1</div><div class="ar-pri">稀有 · 珊瑚秘境</div></div>
+          <div class="ar-acts"><div class="mini-act keep">取回</div><div class="mini-act free">放生</div></div>
+        </div>
+        <div class="aqua-row">
+          <div class="ar-ic" style="background:linear-gradient(135deg,#9aa8bc,#6a7a8c)"><svg class="ic"><use href="#i-fish"/></svg></div>
+          <div class="ar-meta"><div class="ar-nm">河豚 ×2</div><div class="ar-pri">普通 · 浅水沙底</div></div>
+          <div class="ar-acts"><div class="mini-act keep">取回</div><div class="mini-act free">放生</div></div>
+        </div>
+      </div>
+
+      <div class="cta-row">
+        <div class="cta cta-gold"><svg class="ic"><use href="#i-bag"/></svg>一键取回 · 需 4 格空位</div>
+      </div>
+      <div style="text-align:center;font-size:10px;color:var(--ink-faint);padding:0 16px 14px">先扩容背包或放生部分渔获，再取回暂存鱼种；临时鱼缸容量随背包档位同步</div>
+    </div>
+  </div>
+  <div class="phone-cap">⑪ 临时鱼缸：满包兜底暂存，逐条 / 一键取回，可放生；取回受背包空位限制，与扩容档位联动</div>
+  </div>
+
+  <!-- ============ ⑫ 装备对比页 ============ -->
+  <div>
+  <div class="phone">
+    <div class="label">⑫ 装备对比 · 当前 vs 候选</div>
+    <div class="screen">
+      <div class="statusbar">
+        <span>9:41</span>
+        <span class="sb-right"><span class="magic-pill"><svg class="ic"><use href="#i-sparkle"/></svg>12,480</span></span>
+      </div>
+      <div class="topbar">
+        <div class="back"><svg class="ic" style="width:16px;height:16px"><use href="#i-arrow"/></svg></div>
+        <div class="title">鱼竿 · 属性对比</div>
+        <div class="balance"><svg class="ic"><use href="#i-sparkle"/></svg>✦</div>
+      </div>
+
+      <div class="cmp-duo">
+        <div class="cmp-card cur">
+          <div class="cc-tag" style="background:#eef1f5;color:var(--ink-faint)">当前装备</div>
+          <div class="cc-ic tone-sun"><svg class="ic"><use href="#i-rod"/></svg></div>
+          <div class="cc-nm">竹节手竿</div>
+          <div class="cc-sub">普通 · 新手入门</div>
+        </div>
+        <div class="cmp-vs">VS</div>
+        <div class="cmp-card win">
+          <div class="cc-tag" style="background:#f8f0e0;color:var(--gold-deep)">候选</div>
+          <div class="cc-ic tone-lilac"><svg class="ic"><use href="#i-rod"/></svg></div>
+          <div class="cc-nm">月光传说竿</div>
+          <div class="cc-sub">史诗 · 夜钓 / 深水</div>
+        </div>
+      </div>
+
+      <div class="cmp-list">
+        <div class="cmp-row">
+          <div class="cr-side l">标准</div>
+          <div class="cr-k">起竿窗口</div>
+          <div class="cr-side r up">+400ms</div>
+        </div>
+        <div class="cmp-row">
+          <div class="cr-side l">标准</div>
+          <div class="cr-k">稀有鱼概率</div>
+          <div class="cr-side r up">+5%</div>
+        </div>
+        <div class="cmp-row">
+          <div class="cr-side l">标准</div>
+          <div class="cr-k">大鱼拉力承受</div>
+          <div class="cr-side r">标准</div>
+        </div>
+        <div class="cmp-row">
+          <div class="cr-side l">浅滩</div>
+          <div class="cr-k">适配场景</div>
+          <div class="cr-side r">深潭 / 秘境</div>
+        </div>
+      </div>
+
+      <div class="cap-card">
+        <div class="cap-sub" style="margin-top:0"><span>购买后原装备自动回到<b>背包</b>，可随时换回</span></div>
+      </div>
+
+      <div class="cta-row">
+        <div class="cta cta-primary" style="flex:0 0 34%;font-size:13px">保持当前</div>
+        <div class="cta cta-gold" style="flex:1;font-size:13px;letter-spacing:.08em"><svg class="ic"><use href="#i-sparkle"/></svg>1,200 · 购买并装备</div>
+      </div>
+    </div>
+  </div>
+  <div class="phone-cap">⑫ 对比页：左右双卡并置，属性逐项对照（提升项标绿），底部一步购买并装备，原装备回背包可换回</div>
+  </div>
+
+  <!-- ============ ⑬ 场景时段 / 天气态 ============ -->
+  <div>
+  <div class="phone">
+    <div class="label">⑬ 场景 · 时段与天气态</div>
+    <div class="screen">
+      <div class="statusbar">
+        <span>9:41</span>
+        <span class="sb-right"><span class="magic-pill"><svg class="ic"><use href="#i-sparkle"/></svg>12,480</span></span>
+      </div>
+      <div class="topbar">
+        <div class="back"><svg class="ic" style="width:16px;height:16px"><use href="#i-arrow"/></svg></div>
+        <div class="title">场景与天气</div>
+        <div class="balance"><svg class="ic"><use href="#i-scene"/></svg>3 态</div>
+      </div>
+
+      <div class="mode-switch">
+        <div class="stab"><svg class="ic" style="width:12px;height:12px;vertical-align:-1px;margin-right:4px"><use href="#i-sun"/></svg>白天</div>
+        <div class="stab on"><svg class="ic" style="width:12px;height:12px;vertical-align:-1px;margin-right:4px"><use href="#i-moon"/></svg>夜钓</div>
+        <div class="stab"><svg class="ic" style="width:12px;height:12px;vertical-align:-1px;margin-right:4px"><use href="#i-rain"/></svg>阴雨</div>
+      </div>
+
+      <div class="mode-preview" style="background:linear-gradient(180deg,#2a2a5c 0%,#3a3a7c 45%,#1c2a5c 100%)">
+        <div class="mp-tag">夜钓 · 月夜深潭</div>
+        <svg class="ic" style="position:absolute;top:18px;right:24px;width:30px;height:30px;color:#f6e2b8"><use href="#i-moon"/></svg>
+        <div style="position:absolute;bottom:46%;left:52%;width:10px;height:24px;border-radius:5px 5px 2px 2px;background:#fff;box-shadow:0 0 12px #f6e2b8"></div>
+        <div style="position:absolute;left:24px;bottom:30%;background:rgba(255,255,255,.92);border-radius:14px;padding:9px 13px;font-size:11px;font-weight:700;color:var(--lilac-deep)">夜钓加成中 · 稀有概率 +8%</div>
+        <svg class="ic" style="position:absolute;bottom:20px;left:30px;width:44px;height:44px;color:#fff;opacity:.6"><use href="#i-rod"/></svg>
+      </div>
+
+      <div class="mode-list">
+        <div class="mode-row">
+          <div class="mr-ic tone-sky"><svg class="ic"><use href="#i-sun"/></svg></div>
+          <div class="mr-meta"><div class="mr-nm">白天 · 热带海湾</div><div class="mr-pri">常见鱼群活跃，视野明亮</div></div>
+          <div class="mr-bonus">无特殊加成</div>
+        </div>
+        <div class="mode-row">
+          <div class="mr-ic tone-deep"><svg class="ic"><use href="#i-moon"/></svg></div>
+          <div class="mr-meta"><div class="mr-nm">夜钓 · 月夜深潭</div><div class="mr-pri">月光鱼 / 深水鱼出没，需夜光感应漂</div></div>
+          <div class="mr-bonus">稀有 +8%</div>
+        </div>
+        <div class="mode-row">
+          <div class="mr-ic tone-lilac"><svg class="ic"><use href="#i-rain"/></svg></div>
+          <div class="mr-meta"><div class="mr-nm">阴雨 · 浅水草丛</div><div class="mr-pri">青蛙 / 底栖鱼概率提升</div></div>
+          <div class="mr-bonus">咬钩 +10%</div>
+        </div>
+      </div>
+
+      <div style="text-align:center;font-size:10px;color:var(--ink-faint);padding:10px 16px 14px">时段与天气随场景刷新轮换；部分鱼种仅在特定态出没，图鉴页可查看对应条件</div>
+    </div>
+  </div>
+  <div class="phone-cap">⑬ 场景态：白天 / 夜钓 / 阴雨三态切换，预览氛围与夜光鱼漂随态变化；列表标明鱼群倾向与加成幅度</div>
+  </div>
+
+  <!-- ============ ⑭ 多尾汇总结算 ============ -->
+  <div>
+  <div class="phone">
+    <div class="label">⑭ 一竿三尾 · 汇总结算</div>
+    <div class="screen" style="background:linear-gradient(180deg,#7ec8f0 0%,#4aa8d8 45%,#2a88c0 100%)">
+      <div class="statusbar" style="color:#fff">
+        <span>9:41</span>
+        <span class="sb-right"><span class="magic-pill"><svg class="ic"><use href="#i-sparkle"/></svg>12,480</span></span>
+      </div>
+      <div style="flex:1;position:relative">
+        <svg class="ic" style="position:absolute;bottom:40px;left:36px;width:40px;height:40px;color:#fff;opacity:.7"><use href="#i-rod"/></svg>
+      </div>
+
+      <div class="modal-mask">
+        <div class="modal-card">
+          <div class="batch-head">
+            <div class="bh-t">本次收获 · 3 尾</div>
+            <div class="bh-s">热带海湾 · 一竿三尾 · 背包 27/30</div>
+          </div>
+
+          <div class="batch-list">
+            <div class="batch-row">
+              <div class="br-ic tone-lilac"><svg class="ic"><use href="#i-fish"/></svg></div>
+              <div class="br-meta"><div class="br-nm">月光鱼 <span class="rar r-epic">史诗</span> <span class="br-new">新鱼种</span></div><div class="br-pri">28.6cm · 1.2kg</div></div>
+              <div class="br-n">✦ +60</div>
+            </div>
+            <div class="batch-row">
+              <div class="br-ic tone-sky"><svg class="ic"><use href="#i-fish"/></svg></div>
+              <div class="br-meta"><div class="br-nm">蓝带鱼 <span class="rar r-fine">精良</span></div><div class="br-pri">16.2cm · 0.4kg</div></div>
+              <div class="br-n">✦ +20</div>
+            </div>
+            <div class="batch-row">
+              <div class="br-ic" style="background:linear-gradient(135deg,#9aa8bc,#6a7a8c)"><svg class="ic"><use href="#i-fish"/></svg></div>
+              <div class="br-meta"><div class="br-nm">河豚 <span class="rar r-common">普通</span></div><div class="br-pri">12.4cm · 0.2kg</div></div>
+              <div class="br-n">✦ +10</div>
+            </div>
+          </div>
+
+          <div class="batch-sum">
+            <span class="bs-k">合计魔力 · 图鉴 +1</span>
+            <span class="bs-v">✦ +90</span>
+          </div>
+
+          <div class="cta-row">
+            <div class="cta cta-primary" style="flex:0 0 34%;font-size:13px">查看背包</div>
+            <div class="cta cta-gold" style="flex:1;font-size:13px;letter-spacing:.08em">继续垂钓</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="phone-cap">⑭ 多尾结算：一竿连续上鱼汇总为列表，逐尾显示体型 / 稀有度 / 单笔魔力，新鱼种打标，底部合计入账</div>
+  </div>
+
+  <!-- ============ ⑯ 装备养成 / 强化 ============ -->
+  <div>
+  <div class="phone">
+    <div class="label">⑯ 装备养成 · 魔力升级</div>
+    <div class="screen">
+      <div class="statusbar">
+        <span>9:41</span>
+        <span class="sb-right"><span class="magic-pill"><svg class="ic"><use href="#i-sparkle"/></svg>12,480</span></span>
+      </div>
+      <div class="topbar">
+        <div class="back"><svg class="ic" style="width:16px;height:16px"><use href="#i-arrow"/></svg></div>
+        <div class="title">装备养成</div>
+        <div class="balance"><svg class="ic"><use href="#i-rod"/></svg>鱼竿</div>
+      </div>
+
+      <div class="grow-hero">
+        <div class="gh-box"><svg class="ic"><use href="#i-rod"/></svg></div>
+        <div class="gh-meta">
+          <div class="gh-nm">月光传说竿 <span class="gh-lv">Lv.3</span></div>
+          <div class="gh-sub">史诗 · 夜钓 / 深水适配</div>
+          <div class="grow-stars">
+            <svg class="ic fill"><use href="#i-star"/></svg><svg class="ic fill"><use href="#i-star"/></svg><svg class="ic fill"><use href="#i-star"/></svg><svg class="ic" style="color:var(--line)"><use href="#i-star"/></svg>
+          </div>
+        </div>
+      </div>
+
+      <div class="exp-card">
+        <div class="ec-top"><span>养成经验</span><span>1,240 / 2,000</span></div>
+        <div class="cap-bar"><div style="width:62%"></div></div>
+        <div class="grow-stats" style="margin-top:12px">
+          <div class="gstat"><span class="gs-v cur">+400ms</span><span class="gs-k">起竿窗口</span><span class="gs-v next">+520ms</span></div>
+          <div class="gstat"><span class="gs-v cur">+5%</span><span class="gs-k">稀有鱼概率</span><span class="gs-v next">+7%</span></div>
+          <div class="gstat"><span class="gs-v cur">标准</span><span class="gs-k">大鱼承受</span><span class="gs-v next">强化</span></div>
+        </div>
+      </div>
+
+      <div class="grow-next">
+        <div class="gn-ic"><svg class="ic"><use href="#i-arrow"/></svg></div>
+        <div class="gn-meta">
+          <div class="gn-nm">下一阶 · Lv.4 月光传说竿·改</div>
+          <div class="gn-pri">解锁夜钓限定竿身光效 · 拉力再 +10%</div>
+        </div>
+      </div>
+
+      <div class="cta-row">
+        <div class="cta cta-gold"><svg class="ic"><use href="#i-sparkle"/></svg>600 · 魔力升级</div>
+      </div>
+      <div style="text-align:center;font-size:10px;color:var(--ink-faint);padding:0 16px 14px">升级保留已装备状态；强化不掉级、不碎装备，消耗魔力即时生效；高等级档位逐级解锁</div>
+    </div>
+  </div>
+  <div class="phone-cap">⑯ 养成页：等级 / 星级 / 经验条 + 属性当前→升级后对照，下一阶预览；魔力升级，不掉级不碎装，逐级解锁</div>
+  </div>
+
+  <!-- ============ ⑰ 渔场排行榜 ============ -->
+  <div>
+  <div class="phone">
+    <div class="label">⑰ 渔场排行榜 · 赛季奖励</div>
+    <div class="screen">
+      <div class="statusbar">
+        <span>9:41</span>
+        <span class="sb-right"><span class="magic-pill"><svg class="ic"><use href="#i-sparkle"/></svg>12,480</span></span>
+      </div>
+      <div class="topbar">
+        <div class="back"><svg class="ic" style="width:16px;height:16px"><use href="#i-arrow"/></svg></div>
+        <div class="title">渔场排行</div>
+        <div class="balance"><svg class="ic"><use href="#i-trophy"/></svg>赛季</div>
+      </div>
+
+      <div class="shop-tabs">
+        <div class="stab">好友榜</div>
+        <div class="stab on">全服榜</div>
+      </div>
+
+      <div class="rank-summary">
+        <div>
+          <div class="rs-t">本赛季 · 夜钓季</div>
+          <div class="rs-s">剩余 5 天 12:40 后重置</div>
+        </div>
+        <div class="rs-me"><div class="rs-r">#128</div><div class="rs-s">渔获 86 尾</div></div>
+      </div>
+
+      <div class="rank-list">
+        <div class="rank-row">
+          <div class="rr-no top1">1</div>
+          <div class="rr-avatar tone-sun">潮</div>
+          <div class="rr-meta"><div class="rr-nm">潮汐猎人</div><div class="rr-pri">月光传说竿 · 月夜深潭</div></div>
+          <div class="rr-val"><div class="rr-v">312 尾</div><div class="rr-rw">✦ 500</div></div>
+        </div>
+        <div class="rank-row">
+          <div class="rr-no top2">2</div>
+          <div class="rr-avatar tone-sky">月</div>
+          <div class="rr-meta"><div class="rr-nm">月下钓客</div><div class="rr-pri">星尘碳素竿 · 珊瑚秘境</div></div>
+          <div class="rr-val"><div class="rr-v">287 尾</div><div class="rr-rw">✦ 300</div></div>
+        </div>
+        <div class="rank-row">
+          <div class="rr-no top3">3</div>
+          <div class="rr-avatar tone-lilac">潭</div>
+          <div class="rr-meta"><div class="rr-nm">深潭老叟</div><div class="rr-pri">沧海龙鳞竿 · 月夜深潭</div></div>
+          <div class="rr-val"><div class="rr-v">264 尾</div><div class="rr-rw">✦ 200</div></div>
+        </div>
+        <div class="rank-row">
+          <div class="rr-no">4</div>
+          <div class="rr-avatar tone-mint">晚</div>
+          <div class="rr-meta"><div class="rr-nm">晚风垂钓</div><div class="rr-pri">竹节手竿 · 热带海湾</div></div>
+          <div class="rr-val"><div class="rr-v">231 尾</div><div class="rr-rw">✦ 120</div></div>
+        </div>
+        <div class="rank-row">
+          <div class="rr-no">5</div>
+          <div class="rr-avatar tone-coral">萤</div>
+          <div class="rr-meta"><div class="rr-nm">河畔萤火</div><div class="rr-pri">荧光虾饵 · 冰雪峡谷</div></div>
+          <div class="rr-val"><div class="rr-v">198 尾</div><div class="rr-rw">✦ 120</div></div>
+        </div>
+        <div class="rank-row me">
+          <div class="rr-no">128</div>
+          <div class="rr-avatar tone-deep">我</div>
+          <div class="rr-meta"><div class="rr-nm">我的渔场</div><div class="rr-pri">距上一名还差 12 尾</div></div>
+          <div class="rr-val"><div class="rr-v">86 尾</div><div class="rr-rw">待结算</div></div>
+        </div>
+      </div>
+
+      <div style="text-align:center;font-size:10px;color:var(--ink-faint);padding:10px 16px 14px">赛季结束按名次发放魔力奖励；排行榜仅统计本赛季渔获，历史成绩不入榜</div>
+    </div>
+  </div>
+  <div class="phone-cap">⑰ 排行榜：好友 / 全服切换，前三名金银铜标识，自己一行高亮；赛季倒计时与名次魔力奖励，结束重置</div>
+  </div>
+
+  <!-- ============ ⑱ 图鉴分区 · 场景 / 天气 ============ -->
+  <div>
+  <div class="phone">
+    <div class="label">⑱ 图鉴分区 · 按场景天气</div>
+    <div class="screen">
+      <div class="statusbar">
+        <span>9:41</span>
+        <span class="sb-right"><span class="magic-pill"><svg class="ic"><use href="#i-sparkle"/></svg>12,480</span></span>
+      </div>
+      <div class="topbar">
+        <div class="back"><svg class="ic" style="width:16px;height:16px"><use href="#i-arrow"/></svg></div>
+        <div class="title">图鉴分区</div>
+        <div class="balance"><svg class="ic"><use href="#i-album"/></svg>18/36</div>
+      </div>
+
+      <div class="group-head">
+        <div class="gh-ic tone-sky"><svg class="ic"><use href="#i-sun"/></svg></div>
+        <span class="gh-t">白天 · 热带海湾</span><span class="gh-n">已收录 6/10</span>
+      </div>
+      <div class="group-note">常见浅水鱼种，白天不限鱼饵即可钓获。</div>
+      <div class="album-grid">
+        <div class="album-cell"><svg class="ic ac-em" style="color:var(--sky-deep)"><use href="#i-fish"/></svg><span class="ac-nm">蓝带鱼</span></div>
+        <div class="album-cell"><svg class="ic ac-em" style="color:var(--ink-faint)"><use href="#i-fish"/></svg><span class="ac-nm">河豚</span></div>
+        <div class="album-cell"><svg class="ic ac-em" style="color:var(--sky-deep)"><use href="#i-fish"/></svg><span class="ac-nm">磷虾</span></div>
+        <div class="album-cell"><svg class="ic ac-em" style="color:var(--ink-faint)"><use href="#i-fish"/></svg><span class="ac-nm">海螺</span></div>
+        <div class="album-cell locked"><svg class="ic ac-em"><use href="#i-lock"/></svg><span class="ac-nm">？？？</span></div>
+        <div class="album-cell locked"><svg class="ic ac-em"><use href="#i-lock"/></svg><span class="ac-nm">？？？</span></div>
+      </div>
+
+      <div class="group-head">
+        <div class="gh-ic tone-deep"><svg class="ic"><use href="#i-moon"/></svg></div>
+        <span class="gh-t">夜钓 · 月夜深潭</span><span class="gh-n">已收录 2/6</span>
+      </div>
+      <div class="group-note">20:00–05:00 出没；需装备夜光感应漂，深水层钓获。</div>
+      <div class="album-grid">
+        <div class="album-cell"><svg class="ic ac-em" style="color:var(--gold-deep)"><use href="#i-fish"/></svg><span class="ac-nm">月光鱼</span></div>
+        <div class="album-cell"><svg class="ic ac-em" style="color:var(--gold-deep)"><use href="#i-fish"/></svg><span class="ac-nm">晶母水母</span></div>
+        <div class="album-cell locked"><svg class="ic ac-em"><use href="#i-lock"/></svg><span class="ac-nm">？？？</span></div>
+        <div class="album-cell locked"><svg class="ic ac-em"><use href="#i-lock"/></svg><span class="ac-nm">？？？</span></div>
+      </div>
+
+      <div class="group-head">
+        <div class="gh-ic tone-lilac"><svg class="ic"><use href="#i-rain"/></svg></div>
+        <span class="gh-t">阴雨 · 浅水草丛</span><span class="gh-n">已收录 1/5</span>
+      </div>
+      <div class="group-note">雨天概率提升；底栖与两栖类，浅水草丛下竿。</div>
+      <div class="album-grid">
+        <div class="album-cell"><svg class="ic ac-em" style="color:var(--success)"><use href="#i-frog"/></svg><span class="ac-nm">青蛙</span></div>
+        <div class="album-cell locked"><svg class="ic ac-em"><use href="#i-lock"/></svg><span class="ac-nm">？？？</span></div>
+        <div class="album-cell locked"><svg class="ic ac-em"><use href="#i-lock"/></svg><span class="ac-nm">？？？</span></div>
+        <div class="album-cell locked"><svg class="ic ac-em"><use href="#i-lock"/></svg><span class="ac-nm">？？？</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="phone-cap">⑱ 图鉴分区：按场景 / 时段 / 天气分组陈列，每组标注收录数与出没条件；锁定剪影点击可查看对应钓获要求</div>
+  </div>
+
+  <!-- ============ ⑲ 渔具套装 · 加成总览 ============ -->
+  <div>
+  <div class="phone">
+    <div class="label">⑲ 渔具套装 · 齐套加成</div>
+    <div class="screen">
+      <div class="statusbar">
+        <span>9:41</span>
+        <span class="sb-right"><span class="magic-pill"><svg class="ic"><use href="#i-sparkle"/></svg>12,480</span></span>
+      </div>
+      <div class="topbar">
+        <div class="back"><svg class="ic" style="width:16px;height:16px"><use href="#i-arrow"/></svg></div>
+        <div class="title">渔具套装</div>
+        <div class="balance"><svg class="ic"><use href="#i-set"/></svg>1 套激活</div>
+      </div>
+
+      <!-- 当前激活套装 -->
+      <div class="set-hero">
+        <div class="sh-top">
+          <div class="sh-ic"><svg class="ic"><use href="#i-set"/></svg></div>
+          <div class="sh-meta">
+            <div class="sh-name">海湾新手套 <span class="rar r-fine">精良</span></div>
+            <div class="sh-sub">六件齐备 · 套装加成已生效</div>
+          </div>
+          <div class="sh-state">已激活</div>
+        </div>
+        <div class="set-bonuses">
+          <div class="set-bonus"><svg class="ic"><use href="#i-check"/></svg>咬钩速度 +5%</div>
+          <div class="set-bonus"><svg class="ic"><use href="#i-check"/></svg>常见鱼概率 +5%</div>
+        </div>
+      </div>
+
+      <!-- 六件进度 -->
+      <div class="set-slots">
+        <div class="set-slot"><div class="ss-ic tone-sky"><svg class="ic"><use href="#i-scene"/></svg></div><span class="ss-lb">场景</span></div>
+        <div class="set-slot"><div class="ss-ic tone-sun"><svg class="ic"><use href="#i-rod"/></svg></div><span class="ss-lb">鱼竿</span></div>
+        <div class="set-slot"><div class="ss-ic tone-mint"><svg class="ic"><use href="#i-bait"/></svg></div><span class="ss-lb">鱼饵</span></div>
+        <div class="set-slot"><div class="ss-ic tone-coral"><svg class="ic"><use href="#i-hook"/></svg></div><span class="ss-lb">鱼钩</span></div>
+        <div class="set-slot"><div class="ss-ic tone-lilac"><svg class="ic"><use href="#i-line"/></svg></div><span class="ss-lb">鱼线</span></div>
+        <div class="set-slot"><div class="ss-ic tone-sky"><svg class="ic"><use href="#i-float"/></svg></div><span class="ss-lb">鱼漂</span></div>
+      </div>
+
+      <div class="shop-head" style="margin-top:14px"><span class="sh-t">全部套装 · 按稀有度成套</span><span class="sh-r">六件齐套激活</span></div>
+
+      <div class="set-list">
+        <div class="set-card active">
+          <div class="sc-top">
+            <div class="sc-ic tone-sky"><svg class="ic"><use href="#i-set"/></svg></div>
+            <div class="sc-meta"><div class="sc-name">海湾新手套 <span class="rar r-fine">精良</span></div><div class="sc-pri">热带海湾 · 浅水常见鱼</div></div>
+            <div class="sc-count">6/6</div>
+          </div>
+          <div class="sc-bonuses">
+            <div class="sc-bonus"><svg class="ic"><use href="#i-check"/></svg>咬钩速度 +5% · 常见鱼概率 +5%</div>
+          </div>
+          <div class="sc-foot"><span class="sc-hint">当前穿着中</span><div class="act equipped" style="min-width:64px">已激活</div></div>
+        </div>
+
+        <div class="set-card">
+          <div class="sc-top">
+            <div class="sc-ic tone-sun"><svg class="ic"><use href="#i-set"/></svg></div>
+            <div class="sc-meta"><div class="sc-name">星尘精良套 <span class="rar r-fine">精良</span></div><div class="sc-pri">冰雪峡谷 · 稳健中钩</div></div>
+            <div class="sc-count">3/6</div>
+          </div>
+          <div class="sc-bonuses">
+            <div class="sc-bonus"><svg class="ic"><use href="#i-check"/></svg>起竿窗口 +150ms</div>
+            <div class="sc-bonus"><svg class="ic"><use href="#i-check"/></svg>中钩率 +8% · 脱钩率 -6%</div>
+          </div>
+          <div class="sc-foot"><span class="sc-hint">还差 3 件即可激活</span><div class="act owned" style="min-width:64px">去收集</div></div>
+        </div>
+
+        <div class="set-card">
+          <div class="sc-top">
+            <div class="sc-ic tone-lilac"><svg class="ic"><use href="#i-set"/></svg></div>
+            <div class="sc-meta"><div class="sc-name">月夜史诗套 <span class="rar r-epic">史诗</span></div><div class="sc-pri">月夜深潭 · 夜钓专精</div></div>
+            <div class="sc-count">2/6</div>
+          </div>
+          <div class="sc-bonuses">
+            <div class="sc-bonus"><svg class="ic"><use href="#i-check"/></svg>夜钓稀有鱼 +10%</div>
+            <div class="sc-bonus"><svg class="ic"><use href="#i-check"/></svg>深水鱼概率 +12%</div>
+          </div>
+          <div class="sc-foot"><span class="sc-hint">还差 4 件即可激活</span><div class="act owned" style="min-width:64px">去收集</div></div>
+        </div>
+
+        <div class="set-card">
+          <div class="sc-top">
+            <div class="sc-ic tone-coral"><svg class="ic"><use href="#i-set"/></svg></div>
+            <div class="sc-meta"><div class="sc-name">沧海传说套 <span class="rar r-legend">传说</span></div><div class="sc-pri">珊瑚秘境 · 大鱼传说</div></div>
+            <div class="sc-count">0/6</div>
+          </div>
+          <div class="sc-bonuses">
+            <div class="sc-bonus"><svg class="ic"><use href="#i-check"/></svg>传说鱼 +5% · 大鱼拉力 -15%</div>
+            <div class="sc-bonus"><svg class="ic"><use href="#i-check"/></svg>全属性 +5%</div>
+          </div>
+          <div class="sc-foot"><span class="sc-hint">需先购入史诗套进阶解锁</span><div class="act locked" style="min-width:64px">未解锁</div></div>
+        </div>
+      </div>
+
+      <div style="text-align:center;font-size:10px;color:var(--ink-faint);padding:10px 16px 14px">六件同套齐备即激活套装加成；单件更换不改变套装归属；套装加成与装备养成等级叠加生效</div>
+    </div>
+  </div>
+  <div class="phone-cap">⑲ 套装页：当前激活套装 + 六件进度，下方按稀有度列出全部套装，显示件数门槛与齐套 buff；传说套需进阶解锁</div>
+  </div>
+
+  <!-- ============ ⑳ 魔力体力 · 每日签到 ============ -->
+  <div>
+  <div class="phone">
+    <div class="label">⑳ 体力系统 · 七日签到</div>
+    <div class="screen">
+      <div class="statusbar">
+        <span>9:41</span>
+        <span class="sb-right"><span class="magic-pill"><svg class="ic"><use href="#i-sparkle"/></svg>12,480</span></span>
+      </div>
+      <div class="topbar">
+        <div class="back"><svg class="ic" style="width:16px;height:16px"><use href="#i-arrow"/></svg></div>
+        <div class="title">体力与签到</div>
+        <div class="balance"><svg class="ic"><use href="#i-bolt"/></svg>8/12</div>
+      </div>
+
+      <div class="stamina-card">
+        <div class="st-ic"><svg class="ic"><use href="#i-bolt"/></svg></div>
+        <div class="st-meta">
+          <div class="st-nm">垂钓体力 · 8 / 12</div>
+          <div class="st-val">每 6 分钟恢复 1 点 · 下一帧 03:12</div>
+        </div>
+        <div class="st-buy"><svg class="ic" style="width:12px;height:12px;vertical-align:-1px"><use href="#i-sparkle"/></svg>40 补满</div>
+      </div>
+
+      <div class="cap-card">
+        <div class="cap-sub" style="margin-top:0"><span>体力用于抛竿垂钓，离线也缓慢恢复；体力满后不再累积，可用魔力购买补满。</span></div>
+      </div>
+
+      <div class="sign-wrap">
+        <div class="sw-t"><span>七日签到 · 今日第 3 天</span><span>循环重置</span></div>
+        <div class="sign-grid">
+          <div class="sign-day done"><span class="sd-d">D1</span><span class="sd-rw"><svg class="ic" style="color:var(--gold-deep)"><use href="#i-sparkle"/></svg></span><span class="sd-tag">✦20</span></div>
+          <div class="sign-day done"><span class="sd-d">D2</span><span class="sd-rw"><svg class="ic" style="color:var(--sky-deep)"><use href="#i-bolt"/></svg></span><span class="sd-tag">体力+2</span></div>
+          <div class="sign-day today"><span class="sd-d">D3</span><span class="sd-rw"><svg class="ic" style="color:var(--gold-deep)"><use href="#i-sparkle"/></svg></span><span class="sd-tag">✦80</span></div>
+          <div class="sign-day"><span class="sd-d">D4</span><span class="sd-rw"><svg class="ic" style="color:var(--success)"><use href="#i-bait"/></svg></span><span class="sd-tag">鱼饵</span></div>
+          <div class="sign-day"><span class="sd-d">D5</span><span class="sd-rw"><svg class="ic" style="color:var(--sky-deep)"><use href="#i-bolt"/></svg></span><span class="sd-tag">体力+3</span></div>
+          <div class="sign-day"><span class="sd-d">D6</span><span class="sd-rw"><svg class="ic" style="color:var(--gold-deep)"><use href="#i-sparkle"/></svg></span><span class="sd-tag">✦150</span></div>
+          <div class="sign-day"><span class="sd-d">D7</span><span class="sd-rw"><svg class="ic" style="color:var(--lilac-deep)"><use href="#i-chest"/></svg></span><span class="sd-tag">饵箱</span></div>
+        </div>
+      </div>
+
+      <div style="text-align:center;font-size:10px;color:var(--ink-faint);padding:10px 16px 14px">签到每日 0 点重置，第 7 天大奖后进入下一轮循环；漏签不补发，签到奖励直接入账</div>
+    </div>
+  </div>
+  <div class="phone-cap">⑳ 体力系统：体力上限 / 自然恢复倒计时 / 魔力补满；七日签到循环，逐日发魔力、体力、鱼饵与饵箱大奖</div>
+  </div>
+
+  <!-- ============ ㉑ 好友鱼塘 · 互赠鱼饵 ============ -->
+  <div>
+  <div class="phone">
+    <div class="label">㉑ 好友鱼塘 · 互赠鱼饵</div>
+    <div class="screen">
+      <div class="statusbar">
+        <span>9:41</span>
+        <span class="sb-right"><span class="magic-pill"><svg class="ic"><use href="#i-sparkle"/></svg>12,480</span></span>
+      </div>
+      <div class="topbar">
+        <div class="back"><svg class="ic" style="width:16px;height:16px"><use href="#i-arrow"/></svg></div>
+        <div class="title">好友鱼塘</div>
+        <div class="balance"><svg class="ic"><use href="#i-friend"/></svg>12 位</div>
+      </div>
+
+      <div class="friend-bar">
+        <div class="fb-box"><div class="fb-n">3</div><div class="fb-k">待收鱼饵</div></div>
+        <div class="fb-box"><div class="fb-n">5</div><div class="fb-k">今日可赠</div></div>
+        <div class="fb-box"><div class="fb-n">12</div><div class="fb-k">好友数</div></div>
+      </div>
+
+      <div class="friend-list">
+        <div class="friend-row">
+          <div class="fr-avatar tone-sky">潮<span class="online"></span></div>
+          <div class="fr-meta"><div class="fr-nm">潮汐猎人</div><div class="fr-pri">在线 · 月光传说竿 · 月夜深潭</div></div>
+          <div class="fr-acts"><div class="mini-act keep">拜访</div><div class="mini-act keep">赠饵</div></div>
+        </div>
+        <div class="friend-row">
+          <div class="fr-avatar tone-lilac">月</div>
+          <div class="fr-meta"><div class="fr-nm">月下钓客</div><div class="fr-pri">离线 2h · 星尘碳素竿 · 珊瑚秘境</div></div>
+          <div class="fr-acts"><div class="mini-act buy" style="background:#f8f0e0;color:var(--gold-deep)">收取</div><div class="mini-act free">拜访</div></div>
+        </div>
+        <div class="friend-row">
+          <div class="fr-avatar tone-sun">潭<span class="online"></span></div>
+          <div class="fr-meta"><div class="fr-nm">深潭老叟</div><div class="fr-pri">在线 · 沧海龙鳞竿 · 月夜深潭</div></div>
+          <div class="fr-acts"><div class="mini-act keep">拜访</div><div class="mini-act keep">赠饵</div></div>
+        </div>
+        <div class="friend-row">
+          <div class="fr-avatar tone-mint">晚</div>
+          <div class="fr-meta"><div class="fr-nm">晚风垂钓</div><div class="fr-pri">离线 1 天 · 竹节手竿 · 热带海湾</div></div>
+          <div class="fr-acts"><div class="mini-act free">拜访</div><div class="mini-act free">赠饵</div></div>
+        </div>
+      </div>
+
+      <div style="text-align:center;font-size:10px;color:var(--ink-faint);padding:10px 16px 14px">每日可赠饵 5 次；互赠不消耗自己背包鱼饵；拜访可参观对方鱼塘陈列与在售装备</div>
+    </div>
+  </div>
+  <div class="phone-cap">㉑ 好友鱼塘：待收 / 可赠汇总，好友在线态与当前装备鱼塘；支持拜访参观、赠送与收取鱼饵，每日赠饵次数上限</div>
+  </div>
+
+  <!-- ============ ㉒ 成就徽章墙 ============ -->
+  <div>
+  <div class="phone">
+    <div class="label">㉒ 成就徽章墙</div>
+    <div class="screen">
+      <div class="statusbar">
+        <span>9:41</span>
+        <span class="sb-right"><span class="magic-pill"><svg class="ic"><use href="#i-sparkle"/></svg>12,480</span></span>
+      </div>
+      <div class="topbar">
+        <div class="back"><svg class="ic" style="width:16px;height:16px"><use href="#i-arrow"/></svg></div>
+        <div class="title">成就徽章</div>
+        <div class="balance"><svg class="ic"><use href="#i-medal"/></svg>23/40</div>
+      </div>
+
+      <div class="ach-summary">
+        <div class="as-top"><span class="as-t">徽章收集进度</span><span class="as-n">57% · ✦1,200 待领</span></div>
+        <div class="cap-bar"><div style="width:57%"></div></div>
+      </div>
+
+      <div class="ach-grid">
+        <div class="ach-badge"><div class="ab-ic tone-sky"><svg class="ic"><use href="#i-fish"/></svg></div><span class="ab-nm">初钓者</span></div>
+        <div class="ach-badge"><div class="ab-ic tone-sun"><svg class="ic"><use href="#i-fish"/></svg></div><span class="ab-nm">垂钓百尾</span></div>
+        <div class="ach-badge"><div class="ab-ic tone-lilac"><svg class="ic"><use href="#i-star"/></svg></div><span class="ab-nm">稀有猎手</span></div>
+        <div class="ach-badge"><div class="ab-ic tone-deep"><svg class="ic"><use href="#i-album"/></svg></div><span class="ab-nm">图鉴达人</span></div>
+        <div class="ach-badge locked"><div class="ab-ic"><svg class="ic"><use href="#i-moon"/></svg></div><span class="ab-nm">深夜行者</span></div>
+        <div class="ach-badge locked"><div class="ab-ic"><svg class="ic"><use href="#i-bolt"/></svg></div><span class="ab-nm">大鱼克星</span></div>
+        <div class="ach-badge locked"><div class="ab-ic"><svg class="ic"><use href="#i-sparkle"/></svg></div><span class="ab-nm">富甲一方</span></div>
+        <div class="ach-badge locked"><div class="ab-ic"><svg class="ic"><use href="#i-friend"/></svg></div><span class="ab-nm">社交达人</span></div>
+      </div>
+
+      <div class="ach-rows">
+        <div class="ach-row">
+          <div class="ar-ic tone-sky"><svg class="ic"><use href="#i-fish"/></svg></div>
+          <div class="ar-meta"><div class="ar-nm">累计垂钓</div><div class="ar-prog">326 / 500 尾</div><div class="ar-bar"><div style="width:65%"></div></div></div>
+          <div class="ar-rw">✦100</div>
+        </div>
+        <div class="ach-row">
+          <div class="ar-ic tone-deep"><svg class="ic"><use href="#i-album"/></svg></div>
+          <div class="ar-meta"><div class="ar-nm">图鉴收录</div><div class="ar-prog">18 / 36 种</div><div class="ar-bar"><div style="width:50%"></div></div></div>
+          <div class="ar-rw">✦150</div>
+        </div>
+        <div class="ach-row">
+          <div class="ar-ic tone-mint"><svg class="ic"><use href="#i-friend"/></svg></div>
+          <div class="ar-meta"><div class="ar-nm">好友互赠</div><div class="ar-prog">7 / 20 次</div><div class="ar-bar"><div style="width:35%"></div></div></div>
+          <div class="ar-rw">✦80</div>
+        </div>
+      </div>
+
+      <div style="text-align:center;font-size:10px;color:var(--ink-faint);padding:10px 16px 14px">成就进度实时累计；里程碑达成一次性领取魔力奖励，重复达成不重复发奖</div>
+    </div>
+  </div>
+  <div class="phone-cap">㉒ 徽章墙：已解锁 / 锁定徽章网格 + 关键成就进度条与里程碑魔力；分组覆盖垂钓、图鉴、社交、财力方向</div>
+  </div>
+
+</div>
+
+<!-- ============ ⑦ 桌面端双栏 ============ -->
+<div class="phone-wrap" style="margin-top:40px">
+  <div class="desktop-frame">
+    <div class="label">⑮ 桌面端 · 钓场 + 装备侧栏（1024px+）</div>
+    <div class="desk-screen">
+      <div class="desk-nav">
+        <div class="logo">甜梦奇境</div>
+        <div class="nav-items">
+          <span>娱乐屋</span><span class="on">星夜钓鱼</span><span>图鉴</span><span>商店</span>
+        </div>
+        <div class="right">
+          <div class="balance magic-pill"><svg class="ic"><use href="#i-sparkle"/></svg>12,480 魔力</div>
+          <div class="balance"><svg class="ic"><use href="#i-fish"/></svg>× 8</div>
+        </div>
+      </div>
+      <div class="desk-body">
+        <!-- 左：钓场 -->
+        <div class="desk-scene">
+          <div style="position:absolute;top:20px;left:20px;background:rgba(255,255,255,.92);border-radius:16px;padding:14px;width:220px;box-shadow:0 8px 20px -8px rgba(44,62,92,.3)">
+            <div style="font-family:'Noto Serif SC',serif;font-weight:900;color:var(--sky-deep);font-size:14px;margin-bottom:8px">每日订单</div>
+            <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid var(--line)">
+              <svg class="ic" style="width:18px;height:18px;color:var(--sky-deep)"><use href="#i-fish"/></svg><span style="flex:1;font-size:12px;font-weight:700">柠檬灯鱼</span><span style="font-size:11px;color:var(--success);font-weight:700">0/1</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid var(--line)">
+              <svg class="ic" style="width:18px;height:18px;color:var(--success)"><use href="#i-frog"/></svg><span style="flex:1;font-size:12px;font-weight:700">青蛙</span><span style="font-size:11px;color:var(--success);font-weight:700">0/2</span>
+            </div>
+          </div>
+          <svg class="ic" style="position:absolute;bottom:50px;left:40px;width:72px;height:72px;color:#fff;opacity:.85"><use href="#i-rod"/></svg>
+          <div style="position:absolute;bottom:46%;left:52%;width:12px;height:28px;background:#fff;border-radius:6px 6px 2px 2px;box-shadow:0 2px 10px rgba(0,0,0,.25)"></div>
+          <div style="position:absolute;right:60px;bottom:36%;background:#fff;border-radius:18px;padding:14px 18px;font-size:14px;font-weight:700">等待鱼儿上钩…</div>
+          <div style="position:absolute;bottom:20px;left:50%;transform:translateX(-50%);display:flex;gap:12px">
+            <div class="cta cta-primary" style="margin:0"><svg class="ic"><use href="#i-rod"/></svg>抛竿</div>
+            <div class="cta cta-gold" style="margin:0">更换装备</div>
+          </div>
+        </div>
+
+        <!-- 右：装备槽 + 背包扩容 -->
+        <div class="desk-side">
+          <div class="side-card">
+            <div class="sc-t">已装备六件套</div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div class="slot-row">
+                <div class="sr-ic tone-sky"><svg class="ic"><use href="#i-scene"/></svg></div>
+                <div class="sr-meta"><div class="sr-k">场景</div><div class="sr-v">热带海湾</div></div>
+                <div class="sr-chg">更换 ›</div>
+              </div>
+              <div class="slot-row">
+                <div class="sr-ic tone-sun"><svg class="ic"><use href="#i-rod"/></svg></div>
+                <div class="sr-meta"><div class="sr-k">鱼竿</div><div class="sr-v">竹节手竿</div></div>
+                <div class="sr-chg">更换 ›</div>
+              </div>
+              <div class="slot-row">
+                <div class="sr-ic tone-mint"><svg class="ic"><use href="#i-bait"/></svg></div>
+                <div class="sr-meta"><div class="sr-k">鱼饵</div><div class="sr-v">面包屑</div></div>
+                <div class="sr-chg">更换 ›</div>
+              </div>
+              <div class="slot-row">
+                <div class="sr-ic tone-coral"><svg class="ic"><use href="#i-hook"/></svg></div>
+                <div class="sr-meta"><div class="sr-k">鱼钩</div><div class="sr-v">铁制直钩</div></div>
+                <div class="sr-chg">更换 ›</div>
+              </div>
+              <div class="slot-row">
+                <div class="sr-ic tone-lilac"><svg class="ic"><use href="#i-line"/></svg></div>
+                <div class="sr-meta"><div class="sr-k">鱼线</div><div class="sr-v">棉麻线</div></div>
+                <div class="sr-chg">更换 ›</div>
+              </div>
+              <div class="slot-row">
+                <div class="sr-ic tone-sky"><svg class="ic"><use href="#i-float"/></svg></div>
+                <div class="sr-meta"><div class="sr-k">鱼漂</div><div class="sr-v">芦苇浮漂</div></div>
+                <div class="sr-chg">更换 ›</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="side-card">
+            <div class="sc-t">背包容量 · 24/30</div>
+            <div class="cap-bar" style="margin-bottom:10px"><div style="width:80%"></div></div>
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span style="font-size:11px;color:var(--ink-soft)">下一阶：扩容至 50 格</span>
+              <div class="act buy" style="min-width:84px"><svg class="ic"><use href="#i-sparkle"/></svg>800</div>
+            </div>
+          </div>
+
+          <div class="side-card" style="background:linear-gradient(160deg,#fff,#f8f4e8);box-shadow:inset 0 0 0 1px var(--gold)">
+            <div class="sc-t" style="color:var(--gold-deep)"><svg class="ic" style="width:14px;height:14px;vertical-align:-2px;margin-right:5px"><use href="#i-shop"/></svg>渔具商店</div>
+            <div style="font-size:11px;color:var(--ink-soft);line-height:1.6;margin-bottom:10px">六类装备与新场景持续更新，全部以魔力购买。</div>
+            <div class="cta cta-gold" style="margin:0;padding:11px">进入商店 ›</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ ⑧ 全端断点适配：平板 / 折叠屏 / 三折叠 / 宽屏 ============ -->
+<div style="width:100%;text-align:center;margin-top:44px;padding-top:20px;border-top:2px solid var(--line)">
+  <div style="font-family:'Noto Serif SC',serif;font-size:20px;color:var(--sky-deep);letter-spacing:.2em;margin-bottom:6px">全端断点适配样图</div>
+  <div style="font-size:12px;color:var(--ink-faint);letter-spacing:.1em">280 / 390 / 横屏 844 / 680 / 768 / 880 / 1024 / 1440+ · 同一套装备与魔力经济体系</div>
+</div>
+
+<div class="phone-wrap" style="margin-top:24px">
+
+  <!-- ⑧-a 平板 768px 双栏 -->
+  <div>
+  <div class="bp-frame" style="width:768px">
+    <div class="bp-label">iPad 平板 · 768–1024px · 双栏钓场</div>
+    <div class="bp-screen" style="height:520px">
+      <div class="bp-nav">
+        <div class="lg">甜梦奇境</div>
+        <div class="nav-items"><span>娱乐屋</span><span class="on">星夜钓鱼</span><span>图鉴</span><span>商店</span></div>
+        <div class="bal"><span class="magic-pill"><svg class="ic"><use href="#i-sparkle"/></svg>12,480 魔力</span><span><svg class="ic" style="width:13px;height:13px"><use href="#i-fish"/></svg>× 8</span></div>
+      </div>
+      <div class="bp-body">
+        <div class="bp-col" style="flex:1.4">
+          <div class="bp-scene">
+            <div class="bp-mini-order">
+              <div class="mo-t">每日订单</div>
+              <div class="mo-row"><svg class="ic" style="width:15px;height:15px;color:var(--sky-deep)"><use href="#i-fish"/></svg>柠檬灯鱼<span class="mo-pr">0/1</span></div>
+              <div class="mo-row"><svg class="ic" style="width:15px;height:15px;color:var(--success)"><use href="#i-frog"/></svg>青蛙<span class="mo-pr">0/2</span></div>
+            </div>
+            <svg class="ic" style="position:absolute;bottom:36px;left:30px;width:64px;height:64px;color:#fff;opacity:.85"><use href="#i-rod"/></svg>
+            <div class="bp-float"></div>
+            <div class="bp-bubble">等待鱼儿上钩…</div>
+            <div class="bp-cta">
+              <div class="cta cta-primary"><svg class="ic"><use href="#i-rod"/></svg>抛竿</div>
+              <div class="cta cta-gold">更换装备</div>
+            </div>
+          </div>
+        </div>
+        <div class="bp-col" style="width:264px">
+          <div class="bp-side" style="flex:1">
+            <div style="font-size:11px;font-weight:900;color:var(--sky-deep)">已装备六件套</div>
+            <div class="bp-row"><div class="br-ic tone-sky"><svg class="ic"><use href="#i-scene"/></svg></div><div class="br-meta"><div class="br-k">场景</div><div class="br-v">热带海湾</div></div><div class="br-chg">更换 ›</div></div>
+            <div class="bp-row"><div class="br-ic tone-sun"><svg class="ic"><use href="#i-rod"/></svg></div><div class="br-meta"><div class="br-k">鱼竿</div><div class="br-v">竹节手竿</div></div><div class="br-chg">更换 ›</div></div>
+            <div class="bp-row"><div class="br-ic tone-mint"><svg class="ic"><use href="#i-bait"/></svg></div><div class="br-meta"><div class="br-k">鱼饵</div><div class="br-v">面包屑</div></div><div class="br-chg">更换 ›</div></div>
+            <div class="bp-row"><div class="br-ic tone-coral"><svg class="ic"><use href="#i-hook"/></svg></div><div class="br-meta"><div class="br-k">鱼钩</div><div class="br-v">铁制直钩</div></div><div class="br-chg">更换 ›</div></div>
+            <div class="bp-row"><div class="br-ic tone-lilac"><svg class="ic"><use href="#i-line"/></svg></div><div class="br-meta"><div class="br-k">鱼线</div><div class="br-v">棉麻线</div></div><div class="br-chg">更换 ›</div></div>
+            <div class="bp-row"><div class="br-ic tone-sky"><svg class="ic"><use href="#i-float"/></svg></div><div class="br-meta"><div class="br-k">鱼漂</div><div class="br-v">芦苇浮漂</div></div><div class="br-chg">更换 ›</div></div>
+          </div>
+          <div class="bp-side">
+            <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:11px;font-weight:900;color:var(--sky-deep)">背包容量</span><span style="font-size:11px;font-weight:900;color:var(--sky-deep)">24/30</span></div>
+            <div class="cap-bar"><div style="width:80%"></div></div>
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span style="font-size:10px;color:var(--ink-soft)">下一阶 · 50 格</span>
+              <div class="act buy" style="min-width:76px"><svg class="ic"><use href="#i-sparkle"/></svg>800</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="bp-cap">平板 768：左钓场 + 右侧装备/背包栏；订单卡悬浮钓场左上，装备行不堆叠、不拥挤</div>
+  </div>
+
+  <!-- ⑧-b 折叠屏 · 外屏态 280px -->
+  <div>
+  <div class="bp-frame" style="width:280px">
+    <div class="bp-label">折叠屏 · 外屏态 280px</div>
+    <div class="bp-screen">
+      <div class="bp-nav" style="gap:8px;padding:0 10px">
+        <div class="lg" style="font-size:12px">海湾钓场</div>
+        <div class="bal"><span class="magic-pill"><svg class="ic"><use href="#i-sparkle"/></svg>12,480</span></div>
+      </div>
+      <div class="bp-body" style="padding:10px;flex-direction:column;gap:8px">
+        <div class="bp-scene">
+          <div class="bp-float" style="left:50%"></div>
+          <div class="bp-bubble" style="right:14px;bottom:30%;font-size:11px;padding:8px 10px">上钩中…</div>
+          <div class="bp-cta" style="bottom:12px"><div class="cta cta-primary" style="padding:10px 18px;font-size:12px">抛竿</div></div>
+        </div>
+        <div style="display:flex;gap:6px;justify-content:space-between">
+          <div style="width:38px;height:38px;border-radius:11px;background:var(--cream);display:grid;place-items:center;color:var(--sky-deep)"><svg class="ic" style="width:18px;height:18px"><use href="#i-scene"/></svg></div>
+          <div style="width:38px;height:38px;border-radius:11px;background:var(--cream);display:grid;place-items:center;color:var(--gold-deep)"><svg class="ic" style="width:18px;height:18px"><use href="#i-rod"/></svg></div>
+          <div style="width:38px;height:38px;border-radius:11px;background:var(--cream);display:grid;place-items:center;color:var(--success)"><svg class="ic" style="width:18px;height:18px"><use href="#i-bait"/></svg></div>
+          <div style="width:38px;height:38px;border-radius:11px;background:var(--cream);display:grid;place-items:center;color:#b86868"><svg class="ic" style="width:18px;height:18px"><use href="#i-hook"/></svg></div>
+          <div style="width:38px;height:38px;border-radius:11px;background:var(--cream);display:grid;place-items:center;color:var(--lilac-deep)"><svg class="ic" style="width:18px;height:18px"><use href="#i-line"/></svg></div>
+          <div style="width:38px;height:38px;border-radius:11px;background:var(--cream);display:grid;place-items:center;color:var(--sky-deep)"><svg class="ic" style="width:18px;height:18px"><use href="#i-float"/></svg></div>
+        </div>
+        <div style="display:flex;justify-content:space-around;padding:6px 0 2px;border-top:1px solid var(--line)">
+          <svg class="ic" style="width:19px;height:19px;color:var(--sky-deep)"><use href="#i-scene"/></svg>
+          <svg class="ic" style="width:19px;height:19px;color:var(--ink-faint)"><use href="#i-album"/></svg>
+          <svg class="ic" style="width:19px;height:19px;color:var(--ink-faint)"><use href="#i-rod"/></svg>
+          <svg class="ic" style="width:19px;height:19px;color:var(--ink-faint)"><use href="#i-bag"/></svg>
+          <svg class="ic" style="width:19px;height:19px;color:var(--ink-faint)"><use href="#i-shop"/></svg>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="bp-cap">外屏 280：导航与装备槽仅留图标，订单折叠为入口，底部 Tab 去文字</div>
+  </div>
+
+  <!-- ⑧-b2 手机横屏 844×390 -->
+  <div>
+  <div class="bp-frame" style="width:844px">
+    <div class="bp-label">手机横屏 · 844×390px · 钓场 + 右侧装备栏</div>
+    <div class="bp-screen" style="height:400px">
+      <div class="bp-nav">
+        <div class="lg">甜梦奇境</div>
+        <div class="nav-items"><span>娱乐屋</span><span class="on">星夜钓鱼</span><span>图鉴</span><span>商店</span></div>
+        <div class="bal"><span class="magic-pill"><svg class="ic"><use href="#i-sparkle"/></svg>12,480 魔力</span><span><svg class="ic" style="width:13px;height:13px"><use href="#i-fish"/></svg>× 8</span></div>
+      </div>
+      <div class="bp-body" style="gap:10px;padding:10px">
+        <div class="bp-col" style="flex:1">
+          <div class="bp-scene">
+            <div class="bp-mini-order" style="width:176px">
+              <div class="mo-t">每日订单</div>
+              <div class="mo-row"><svg class="ic" style="width:15px;height:15px;color:var(--sky-deep)"><use href="#i-fish"/></svg>柠檬灯鱼<span class="mo-pr">0/1</span></div>
+              <div class="mo-row"><svg class="ic" style="width:15px;height:15px;color:var(--success)"><use href="#i-frog"/></svg>青蛙<span class="mo-pr">0/2</span></div>
+            </div>
+            <svg class="ic" style="position:absolute;bottom:28px;left:26px;width:56px;height:56px;color:#fff;opacity:.85"><use href="#i-rod"/></svg>
+            <div class="bp-float"></div>
+            <div class="bp-bubble" style="bottom:32%">等待鱼儿上钩…</div>
+            <div class="bp-cta" style="bottom:12px">
+              <div class="cta cta-primary"><svg class="ic"><use href="#i-rod"/></svg>抛竿</div>
+              <div class="cta cta-gold">更换装备</div>
+            </div>
+          </div>
+        </div>
+        <div class="bp-col" style="width:196px">
+          <div class="bp-side compact" style="flex:1;gap:6px">
+            <div style="font-size:11px;font-weight:900;color:var(--sky-deep)">已装备六件套</div>
+            <div class="bp-row"><div class="br-ic tone-sky"><svg class="ic"><use href="#i-scene"/></svg></div><div class="br-meta"><div class="br-v">热带海湾</div></div></div>
+            <div class="bp-row"><div class="br-ic tone-sun"><svg class="ic"><use href="#i-rod"/></svg></div><div class="br-meta"><div class="br-v">竹节手竿</div></div></div>
+            <div class="bp-row"><div class="br-ic tone-mint"><svg class="ic"><use href="#i-bait"/></svg></div><div class="br-meta"><div class="br-v">面包屑</div></div></div>
+            <div class="bp-row"><div class="br-ic tone-coral"><svg class="ic"><use href="#i-hook"/></svg></div><div class="br-meta"><div class="br-v">铁制直钩</div></div></div>
+            <div class="bp-row"><div class="br-ic tone-lilac"><svg class="ic"><use href="#i-line"/></svg></div><div class="br-meta"><div class="br-v">棉麻线</div></div></div>
+            <div class="bp-row"><div class="br-ic tone-sky"><svg class="ic"><use href="#i-float"/></svg></div><div class="br-meta"><div class="br-v">芦苇浮漂</div></div></div>
+          </div>
+        </div>
+      </div>
+      <div style="height:44px;background:#fff;border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-around;flex-shrink:0">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:1px;color:var(--sky-deep);font-weight:700;font-size:9px"><svg class="ic" style="width:17px;height:17px"><use href="#i-scene"/></svg>渔场</div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:1px;color:var(--ink-faint);font-size:9px"><svg class="ic" style="width:17px;height:17px"><use href="#i-album"/></svg>图鉴</div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:1px;color:var(--ink-faint);font-size:9px"><svg class="ic" style="width:17px;height:17px"><use href="#i-rod"/></svg>渔具</div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:1px;color:var(--ink-faint);font-size:9px"><svg class="ic" style="width:17px;height:17px"><use href="#i-bag"/></svg>背包</div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:1px;color:var(--ink-faint);font-size:9px"><svg class="ic" style="width:17px;height:17px"><use href="#i-shop"/></svg>商店</div>
+      </div>
+    </div>
+  </div>
+  <div class="bp-cap">横屏 844：钓场居左、装备栏居右，底部保留横排 Tab；订单卡与 CTA 不被长条装备栏挤压</div>
+  </div>
+
+  <!-- ⑧-c 折叠屏 · 展开态 680px -->
+  <div>
+  <div class="bp-frame" style="width:680px">
+    <div class="bp-label">折叠屏 · 展开态 680px · 钓场 + 窄栏</div>
+    <div class="bp-screen">
+      <div class="bp-nav">
+        <div class="lg">甜梦奇境</div>
+        <div class="nav-items"><span>娱乐屋</span><span class="on">星夜钓鱼</span><span>图鉴</span><span>商店</span></div>
+        <div class="bal"><span class="magic-pill"><svg class="ic"><use href="#i-sparkle"/></svg>12,480 魔力</span></div>
+      </div>
+      <div class="bp-body">
+        <div class="bp-col" style="flex:1.6">
+          <div class="bp-scene">
+            <div class="bp-mini-order" style="width:170px">
+              <div class="mo-t">每日订单</div>
+              <div class="mo-row"><svg class="ic" style="width:15px;height:15px;color:var(--sky-deep)"><use href="#i-fish"/></svg>柠檬灯鱼<span class="mo-pr">0/1</span></div>
+              <div class="mo-row"><svg class="ic" style="width:15px;height:15px;color:var(--success)"><use href="#i-frog"/></svg>青蛙<span class="mo-pr">0/2</span></div>
+            </div>
+            <svg class="ic" style="position:absolute;bottom:36px;left:30px;width:60px;height:60px;color:#fff;opacity:.85"><use href="#i-rod"/></svg>
+            <div class="bp-float"></div>
+            <div class="bp-bubble">等待鱼儿上钩…</div>
+            <div class="bp-cta">
+              <div class="cta cta-primary"><svg class="ic"><use href="#i-rod"/></svg>抛竿</div>
+              <div class="cta cta-gold">更换装备</div>
+            </div>
+          </div>
+        </div>
+        <div class="bp-col" style="width:184px">
+          <div class="bp-side" style="flex:1">
+            <div style="font-size:11px;font-weight:900;color:var(--sky-deep)">装备栏</div>
+            <div class="bp-row"><div class="br-ic tone-sky"><svg class="ic"><use href="#i-scene"/></svg></div><div class="br-meta"><div class="br-v">热带海湾</div></div></div>
+            <div class="bp-row"><div class="br-ic tone-sun"><svg class="ic"><use href="#i-rod"/></svg></div><div class="br-meta"><div class="br-v">竹节手竿</div></div></div>
+            <div class="bp-row"><div class="br-ic tone-mint"><svg class="ic"><use href="#i-bait"/></svg></div><div class="br-meta"><div class="br-v">面包屑</div></div></div>
+            <div class="bp-row"><div class="br-ic tone-coral"><svg class="ic"><use href="#i-hook"/></svg></div><div class="br-meta"><div class="br-v">铁制直钩</div></div></div>
+            <div class="bp-row"><div class="br-ic tone-lilac"><svg class="ic"><use href="#i-line"/></svg></div><div class="br-meta"><div class="br-v">棉麻线</div></div></div>
+            <div class="bp-row"><div class="br-ic tone-sky"><svg class="ic"><use href="#i-float"/></svg></div><div class="br-meta"><div class="br-v">芦苇浮漂</div></div></div>
+          </div>
+          <div class="bp-side">
+            <div style="display:flex;justify-content:space-between;font-size:10px"><span style="font-weight:900;color:var(--sky-deep)">背包</span><span>24/30</span></div>
+            <div class="cap-bar"><div style="width:80%"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="bp-cap">展开 680：钓场加宽 + 右侧 180px 紧凑装备栏，介于手机与平板之间，无底部大 Tab</div>
+  </div>
+
+  <!-- ⑧-d 三折叠 · 全展开 880px 三栏 -->
+  <div>
+  <div class="bp-frame" style="width:880px">
+    <div class="bp-label">三折叠 · 全展开 880px · 钓场 / 商店 / 背包三栏</div>
+    <div class="bp-screen">
+      <div class="bp-nav">
+        <div class="lg">甜梦奇境</div>
+        <div class="nav-items"><span>娱乐屋</span><span class="on">星夜钓鱼</span><span>图鉴</span><span>商店</span></div>
+        <div class="bal"><span class="magic-pill"><svg class="ic"><use href="#i-sparkle"/></svg>12,480 魔力</span><span><svg class="ic" style="width:13px;height:13px"><use href="#i-fish"/></svg>× 8</span></div>
+      </div>
+      <div class="bp-body">
+        <!-- 栏1 钓场 -->
+        <div class="bp-col" style="flex:1.2">
+          <div class="bp-scene">
+            <div class="bp-mini-order">
+              <div class="mo-t">每日订单</div>
+              <div class="mo-row"><svg class="ic" style="width:15px;height:15px;color:var(--sky-deep)"><use href="#i-fish"/></svg>柠檬灯鱼<span class="mo-pr">0/1</span></div>
+              <div class="mo-row"><svg class="ic" style="width:15px;height:15px;color:var(--success)"><use href="#i-frog"/></svg>青蛙<span class="mo-pr">0/2</span></div>
+            </div>
+            <svg class="ic" style="position:absolute;bottom:36px;left:30px;width:60px;height:60px;color:#fff;opacity:.85"><use href="#i-rod"/></svg>
+            <div class="bp-float"></div>
+            <div class="bp-bubble">等待鱼儿上钩…</div>
+            <div class="bp-cta">
+              <div class="cta cta-primary"><svg class="ic"><use href="#i-rod"/></svg>抛竿</div>
+              <div class="cta cta-gold">更换装备</div>
+            </div>
+          </div>
+        </div>
+        <!-- 栏2 商店 -->
+        <div class="bp-col" style="width:272px">
+          <div class="bp-side" style="flex:1">
+            <div style="font-size:11px;font-weight:900;color:var(--sky-deep)">渔具商店</div>
+            <div class="bp-tabs">
+              <div class="stab">场景</div><div class="stab on">鱼竿</div><div class="stab">鱼饵</div><div class="stab">鱼钩</div><div class="stab">鱼线</div><div class="stab">鱼漂</div>
+            </div>
+            <div class="bp-item">
+              <div class="bi-ic tone-lilac"><svg class="ic"><use href="#i-rod"/></svg></div>
+              <div class="bi-meta"><div class="bi-nm">月光传说竿 <span class="rar r-epic">史诗</span></div><div class="bi-attr">窗口 +400ms · 稀有鱼 +5%</div></div>
+              <div class="bi-act"><div class="act buy" style="min-width:72px"><svg class="ic"><use href="#i-sparkle"/></svg>1,200</div></div>
+            </div>
+            <div class="bp-item">
+              <div class="bi-ic tone-sun"><svg class="ic"><use href="#i-bait"/></svg></div>
+              <div class="bi-meta"><div class="bi-nm">魔法花蜜饵 <span class="rar r-epic">史诗</span></div><div class="bi-attr">全水域稀有鱼 +8%</div></div>
+              <div class="bi-act"><div class="act buy" style="min-width:72px"><svg class="ic"><use href="#i-sparkle"/></svg>900</div></div>
+            </div>
+            <div class="bp-item">
+              <div class="bi-ic tone-sky"><svg class="ic"><use href="#i-rod"/></svg></div>
+              <div class="bi-meta"><div class="bi-nm">星尘碳素竿 <span class="rar r-fine">精良</span></div><div class="bi-attr">窗口 +200ms</div></div>
+              <div class="bi-act"><div class="act owned" style="min-width:64px">装备</div></div>
+            </div>
+          </div>
+        </div>
+        <!-- 栏3 背包 -->
+        <div class="bp-col" style="width:236px">
+          <div class="bp-side" style="flex:1">
+            <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:11px;font-weight:900;color:var(--sky-deep)">渔获背包</span><span style="font-size:11px;font-weight:900;color:var(--sky-deep)">24/30</span></div>
+            <div class="cap-bar"><div style="width:80%"></div></div>
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
+              <div class="fish-cell" style="aspect-ratio:1"><svg class="ic" style="width:18px;height:18px;color:var(--sky-deep)"><use href="#i-fish"/></svg></div>
+              <div class="fish-cell" style="aspect-ratio:1"><svg class="ic" style="width:18px;height:18px;color:var(--gold-deep)"><use href="#i-fish"/></svg></div>
+              <div class="fish-cell" style="aspect-ratio:1"><svg class="ic" style="width:18px;height:18px;color:var(--ink-faint)"><use href="#i-fish"/></svg></div>
+              <div class="fish-cell" style="aspect-ratio:1"><svg class="ic" style="width:18px;height:18px;color:var(--lilac-deep)"><use href="#i-fish"/></svg></div>
+              <div class="fish-cell" style="aspect-ratio:1"><svg class="ic" style="width:18px;height:18px;color:var(--sky-deep)"><use href="#i-fish"/></svg></div>
+              <div class="fish-cell" style="aspect-ratio:1"><svg class="ic" style="width:18px;height:18px;color:var(--gold-deep)"><use href="#i-fish"/></svg></div>
+              <div class="fish-cell empty" style="aspect-ratio:1"><span class="fc-q">＋</span></div>
+              <div class="fish-cell empty" style="aspect-ratio:1"><span class="fc-q">＋</span></div>
+            </div>
+            <div style="border-top:1px dashed var(--gold);padding-top:8px;display:flex;justify-content:space-between;align-items:center">
+              <div><div style="font-size:11px;font-weight:700">扩容至 50 格</div><div style="font-size:9px;color:var(--ink-faint)">下一阶 · 立即生效</div></div>
+              <div class="act buy" style="min-width:72px"><svg class="ic"><use href="#i-sparkle"/></svg>800</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="bp-cap">三折叠 880：钓场 / 商店 / 背包三栏各司其职；窄于 1024px 不挂左侧导航栏，商店与背包并入主区</div>
+  </div>
+
+  <!-- ⑧-e 宽屏桌面 1440px+ -->
+  <div>
+  <div class="bp-frame" style="width:1100px">
+    <div class="bp-label">宽屏桌面 · 1440px+ · 导航栏 + 钓场 + 装备侧栏</div>
+    <div class="bp-screen" style="height:540px">
+      <div class="bp-nav">
+        <div class="lg">甜梦奇境</div>
+        <div class="nav-items"><span>娱乐屋</span><span class="on">星夜钓鱼</span><span>图鉴</span><span>商店</span><span>背包</span></div>
+        <div class="bal"><span class="magic-pill"><svg class="ic"><use href="#i-sparkle"/></svg>12,480 魔力</span><span><svg class="ic" style="width:13px;height:13px"><use href="#i-fish"/></svg>× 8</span></div>
+      </div>
+      <div class="bp-body">
+        <div class="bp-side" style="width:150px;flex-shrink:0;gap:6px">
+          <div class="bp-row" style="background:#e8f0fa"><div class="br-ic tone-sky"><svg class="ic"><use href="#i-scene"/></svg></div><div class="br-meta"><div class="br-v" style="color:var(--sky-deep)">钓场</div></div></div>
+          <div class="bp-row"><div class="br-ic tone-lilac"><svg class="ic"><use href="#i-album"/></svg></div><div class="br-meta"><div class="br-v">图鉴</div></div></div>
+          <div class="bp-row"><div class="br-ic tone-sun"><svg class="ic"><use href="#i-rod"/></svg></div><div class="br-meta"><div class="br-v">渔具</div></div></div>
+          <div class="bp-row"><div class="br-ic tone-mint"><svg class="ic"><use href="#i-bag"/></svg></div><div class="br-meta"><div class="br-v">背包</div></div></div>
+          <div class="bp-row"><div class="br-ic tone-coral"><svg class="ic"><use href="#i-shop"/></svg></div><div class="br-meta"><div class="br-v">商店</div></div></div>
+        </div>
+        <div class="bp-col" style="flex:1.3">
+          <div class="bp-scene">
+            <div class="bp-mini-order">
+              <div class="mo-t">每日订单</div>
+              <div class="mo-row"><svg class="ic" style="width:15px;height:15px;color:var(--sky-deep)"><use href="#i-fish"/></svg>柠檬灯鱼<span class="mo-pr">0/1</span></div>
+              <div class="mo-row"><svg class="ic" style="width:15px;height:15px;color:var(--success)"><use href="#i-frog"/></svg>青蛙<span class="mo-pr">0/2</span></div>
+            </div>
+            <svg class="ic" style="position:absolute;bottom:36px;left:30px;width:68px;height:68px;color:#fff;opacity:.85"><use href="#i-rod"/></svg>
+            <div class="bp-float"></div>
+            <div class="bp-bubble">等待鱼儿上钩…</div>
+            <div class="bp-cta">
+              <div class="cta cta-primary"><svg class="ic"><use href="#i-rod"/></svg>抛竿</div>
+              <div class="cta cta-gold">更换装备</div>
+            </div>
+          </div>
+        </div>
+        <div class="bp-col" style="width:272px">
+          <div class="bp-side" style="flex:1">
+            <div style="font-size:11px;font-weight:900;color:var(--sky-deep)">已装备六件套</div>
+            <div class="bp-row"><div class="br-ic tone-sky"><svg class="ic"><use href="#i-scene"/></svg></div><div class="br-meta"><div class="br-k">场景</div><div class="br-v">热带海湾</div></div><div class="br-chg">更换 ›</div></div>
+            <div class="bp-row"><div class="br-ic tone-sun"><svg class="ic"><use href="#i-rod"/></svg></div><div class="br-meta"><div class="br-k">鱼竿</div><div class="br-v">竹节手竿</div></div><div class="br-chg">更换 ›</div></div>
+            <div class="bp-row"><div class="br-ic tone-mint"><svg class="ic"><use href="#i-bait"/></svg></div><div class="br-meta"><div class="br-k">鱼饵</div><div class="br-v">面包屑</div></div><div class="br-chg">更换 ›</div></div>
+            <div class="bp-row"><div class="br-ic tone-coral"><svg class="ic"><use href="#i-hook"/></svg></div><div class="br-meta"><div class="br-k">鱼钩</div><div class="br-v">铁制直钩</div></div><div class="br-chg">更换 ›</div></div>
+            <div class="bp-row"><div class="br-ic tone-lilac"><svg class="ic"><use href="#i-line"/></svg></div><div class="br-meta"><div class="br-k">鱼线</div><div class="br-v">棉麻线</div></div><div class="br-chg">更换 ›</div></div>
+            <div class="bp-row"><div class="br-ic tone-sky"><svg class="ic"><use href="#i-float"/></svg></div><div class="br-meta"><div class="br-k">鱼漂</div><div class="br-v">芦苇浮漂</div></div><div class="br-chg">更换 ›</div></div>
+          </div>
+          <div class="bp-side" style="background:linear-gradient(160deg,#fff,#f8f4e8);box-shadow:inset 0 0 0 1px var(--gold)">
+            <div style="font-size:11px;font-weight:900;color:var(--gold-deep)">背包容量 · 24/30</div>
+            <div class="cap-bar"><div style="width:80%"></div></div>
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span style="font-size:10px;color:var(--ink-soft)">下一阶 · 50 格</span>
+              <div class="act buy" style="min-width:76px"><svg class="ic"><use href="#i-sparkle"/></svg>800</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="bp-cap">宽屏 1440+：左侧导航栏 + 钓场 + 右侧装备/背包栏；信息密度最高，商店可开独立抽屉页</div>
+  </div>
+
+</div>
+
+<!-- ============ 规则与价格体系 ============ -->
+<div class="rules-wrap">
+  <h2>玩法规则与魔力价格体系（开发对接）</h2>
+  <table class="rule">
+    <thead>
+      <tr><th>元素槽位</th><th>默认装备</th><th>可购买档位（示例 · 魔力）</th><th>作用维度</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><svg class="ic" style="width:14px;height:14px;vertical-align:-2px;margin-right:6px;color:var(--sky-deep)"><use href="#i-scene"/></svg>场景</td>
+        <td>热带海湾（精良 · 永久拥有）</td>
+        <td><span class="pri">✦ 600</span> 冰雪峡谷 ／ <span class="pri">✦ 1,500</span> 月夜深潭 ／ <span class="pri">✦ 3,000</span> 珊瑚秘境</td>
+        <td>决定鱼种池、天气特效与夜钓/深水加成；解锁后永久拥有，可随时切换。</td>
+      </tr>
+      <tr>
+        <td><svg class="ic" style="width:14px;height:14px;vertical-align:-2px;margin-right:6px;color:var(--lilac-deep)"><use href="#i-moon"/></svg>时段 / 天气</td>
+        <td>白天（默认）</td>
+        <td>夜钓 ／ 阴雨 两态随场景轮换，无需魔力购买</td>
+        <td>夜钓提升月光鱼 / 深水鱼概率 +8%；阴雨提升青蛙 / 底栖鱼概率，咬钩速度 +10%；部分鱼种仅特定态出没。</td>
+      </tr>
+      <tr>
+        <td><svg class="ic" style="width:14px;height:14px;vertical-align:-2px;margin-right:6px;color:var(--gold-deep)"><use href="#i-rod"/></svg>鱼竿</td>
+        <td>竹节手竿（普通）</td>
+        <td><span class="pri">✦ 300</span> 星尘碳素竿 ／ <span class="pri">✦ 1,200</span> 月光传说竿 ／ <span class="pri">✦ 2,800</span> 沧海龙鳞竿</td>
+        <td>起竿窗口、稀有鱼概率、大鱼拉力承受。</td>
+      </tr>
+      <tr>
+        <td><svg class="ic" style="width:14px;height:14px;vertical-align:-2px;margin-right:6px;color:var(--success)"><use href="#i-bait"/></svg>鱼饵</td>
+        <td>面包屑（普通）</td>
+        <td><span class="pri">✦ 120</span> 蚯蚓饵 ／ <span class="pri">✦ 380</span> 荧光虾饵 ／ <span class="pri">✦ 900</span> 魔法花蜜饵</td>
+        <td>咬钩速度、夜间/深水吸引、稀有鱼概率。</td>
+      </tr>
+      <tr>
+        <td><svg class="ic" style="width:14px;height:14px;vertical-align:-2px;margin-right:6px;color:#b86868"><use href="#i-hook"/></svg>鱼钩</td>
+        <td>铁制直钩（普通）</td>
+        <td><span class="pri">✦ 150</span> 精钢倒刺钩 ／ <span class="pri">✦ 420</span> 幻影细钩 ／ <span class="pri">✦ 1,000</span> 龙牙巨钩</td>
+        <td>中钩率、脱钩率、小型/大鱼适配、传说级解锁。</td>
+      </tr>
+      <tr>
+        <td><svg class="ic" style="width:14px;height:14px;vertical-align:-2px;margin-right:6px;color:var(--lilac-deep)"><use href="#i-line"/></svg>鱼线</td>
+        <td>棉麻线（普通）</td>
+        <td><span class="pri">✦ 100</span> 尼龙主线 ／ <span class="pri">✦ 360</span> 蛛丝隐身线 ／ <span class="pri">✦ 880</span> 流光金线</td>
+        <td>拉力、鱼群警觉、断线率。</td>
+      </tr>
+      <tr>
+        <td><svg class="ic" style="width:14px;height:14px;vertical-align:-2px;margin-right:6px;color:var(--sky-deep)"><use href="#i-float"/></svg>鱼漂</td>
+        <td>芦苇浮漂（普通）</td>
+        <td><span class="pri">✦ 130</span> 巴尔杉立式漂 ／ <span class="pri">✦ 400</span> 夜光感应漂 ／ <span class="pri">✦ 950</span> 水晶星轨漂</td>
+        <td>灵敏度、咬钩信号、夜钓提示、稀有咬钩震动。</td>
+      </tr>
+      <tr>
+        <td><svg class="ic" style="width:14px;height:14px;vertical-align:-2px;margin-right:6px;color:var(--gold-deep)"><use href="#i-bag"/></svg>背包扩容</td>
+        <td>30 格（渔获 + 渔具共用）</td>
+        <td><span class="pri">✦ 800</span> → 50 格 ／ <span class="pri">✦ 2,000</span> → 80 格 ／ <span class="pri">✦ 5,000</span> → 120 格（满阶含专属皮肤）</td>
+        <td>按顺序解锁；满包后新渔获进入临时鱼缸，清空后自动取回。</td>
+      </tr>
+      <tr>
+        <td><svg class="ic" style="width:14px;height:14px;vertical-align:-2px;margin-right:6px;color:var(--sky-deep)"><use href="#i-clock"/></svg>每日订单</td>
+        <td>每日 3 单 · 0 点刷新重置</td>
+        <td>单笔 <span class="pri">✦ 90–260</span> ／ 全单完成额外 <span class="pri">✦ 300</span></td>
+        <td>目标鱼种绑定场景 / 天气 / 鱼饵条件；进度跨天清零，奖励魔力即时入账。</td>
+      </tr>
+      <tr>
+        <td><svg class="ic" style="width:14px;height:14px;vertical-align:-2px;margin-right:6px;color:var(--lilac-deep)"><use href="#i-album"/></svg>图鉴里程碑</td>
+        <td>首次收录即永久登记</td>
+        <td>收录 10 尾 <span class="pri">✦ 200</span> ／ 20 尾 <span class="pri">✦ 500</span> ／ 36 尾 <span class="pri">✦ 1,200</span></td>
+        <td>未收录鱼种以剪影隐藏；里程碑奖励一次性领取，重复钓获不重复发奖。</td>
+      </tr>
+      <tr>
+        <td><svg class="ic" style="width:14px;height:14px;vertical-align:-2px;margin-right:6px;color:#4a8868"><use href="#i-aqua"/></svg>临时鱼缸</td>
+        <td>满包兜底 · 免费暂存</td>
+        <td>容量随背包档位（30 / 50 / 80 / 120 格联动）</td>
+        <td>取回占用背包格；放生不返还魔力；背包清空后可一键取回暂存鱼种。</td>
+      </tr>
+      <tr>
+        <td><svg class="ic" style="width:14px;height:14px;vertical-align:-2px;margin-right:6px;color:var(--gold-deep)"><use href="#i-star"/></svg>装备养成</td>
+        <td>购入装备即 Lv.1</td>
+        <td>逐级 <span class="pri">✦ 600 / 1,200 / 2,000</span> 升级，高等级逐级解锁</td>
+        <td>等级提升窗口 / 稀有概率 / 拉力；不掉级、不碎装备，升级保留已装备状态。</td>
+      </tr>
+      <tr>
+        <td><svg class="ic" style="width:14px;height:14px;vertical-align:-2px;margin-right:6px;color:var(--lilac-deep)"><use href="#i-trophy"/></svg>赛季排行</td>
+        <td>免费参与 · 按渔获排名</td>
+        <td>前 3 名 <span class="pri">✦ 500 / 300 / 200</span>，4–5 名 <span class="pri">✦ 120</span></td>
+        <td>仅统计本赛季渔获；赛季结束按名次发魔力奖励，历史成绩不入榜，到期重置。</td>
+      </tr>
+      <tr>
+        <td><svg class="ic" style="width:14px;height:14px;vertical-align:-2px;margin-right:6px;color:var(--gold-deep)"><use href="#i-set"/></svg>套装加成</td>
+        <td>海湾新手套（精良 · 6/6 已激活）</td>
+        <td>星尘精良套 ／ 月夜史诗套 ／ 沧海传说套，六件同套齐套激活，不单独售卖</td>
+        <td>齐套提供咬钩 / 窗口 / 稀有鱼 / 拉力等组合 buff；单件更换不改套装归属；套装加成与装备养成等级叠加。传说套需购入史诗套后进阶解锁。</td>
+      </tr>
+      <tr>
+        <td><svg class="ic" style="width:14px;height:14px;vertical-align:-2px;margin-right:6px;color:var(--sky-deep)"><use href="#i-bolt"/></svg>体力</td>
+        <td>上限 12 点 · 抛竿消耗 1 点</td>
+        <td><span class="pri">✦ 40</span> 魔力补满；每 6 分钟自然恢复 1 点</td>
+        <td>离线缓慢恢复，满后不再累积；体力不足时引导购买，不可用渔获兑换。</td>
+      </tr>
+      <tr>
+        <td><svg class="ic" style="width:14px;height:14px;vertical-align:-2px;margin-right:6px;color:var(--gold-deep)"><use href="#i-gift"/></svg>每日签到</td>
+        <td>7 日循环 · 每日 0 点重置</td>
+        <td>D1 ✦20 ／ D3 ✦80 ／ D6 ✦150，D7 传说饵箱；穿插体力与鱼饵</td>
+        <td>漏签不补发；第 7 天大奖后进入下一轮，奖励直接入账。</td>
+      </tr>
+      <tr>
+        <td><svg class="ic" style="width:14px;height:14px;vertical-align:-2px;margin-right:6px;color:var(--success)"><use href="#i-friend"/></svg>好友互赠</td>
+        <td>免费社交 · 每日赠饵 5 次</td>
+        <td>拜访参观鱼塘陈列；互赠鱼饵不消耗自己背包库存</td>
+        <td>收取好友赠送有上限留存；离线好友赠饵保留至下次上线收取。</td>
+      </tr>
+      <tr>
+        <td><svg class="ic" style="width:14px;height:14px;vertical-align:-2px;margin-right:6px;color:var(--lilac-deep)"><use href="#i-medal"/></svg>成就徽章</td>
+        <td>40 枚 · 分垂钓 / 图鉴 / 社交 / 财力</td>
+        <td>里程碑一次性 <span class="pri">✦ 80–150</span>，墙满额另有 <span class="pri">✦ 1,200</span></td>
+        <td>进度实时累计；达成后一次性领取，重复达成不重复发奖。</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 style="margin-top:36px">断点适配规则（开发对接）</h2>
+  <table class="rule">
+    <thead>
+      <tr><th>设备 / 形态</th><th>宽度断点</th><th>布局结构</th><th>关键适配</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>手机竖屏</td><td>390px</td>
+        <td>单栏：钓场 + 六格装备槽 + 底部五 Tab</td>
+        <td>商店分类 Tab 横滑；装备槽图标 + 文字；订单卡悬浮左上。</td>
+      </tr>
+      <tr>
+        <td>手机横屏</td><td>844×390px</td>
+        <td>钓场居左 + 右侧 196px 装备栏 + 底部横排 Tab</td>
+        <td>装备槽由底部横条改为右侧栏；订单卡与抛竿 CTA 居左不被挤压；高度受限，详情走弹窗。</td>
+      </tr>
+      <tr>
+        <td>折叠屏 · 外屏态</td><td>280px</td>
+        <td>单栏压缩：钓场 + 纯图标装备行 + 纯图标底栏</td>
+        <td>导航与装备槽去文字；订单折叠为入口；CTA 只保留抛竿。</td>
+      </tr>
+      <tr>
+        <td>折叠屏 · 展开态</td><td>680px</td>
+        <td>钓场加宽 + 右侧 180px 紧凑装备栏</td>
+        <td>介于手机与平板之间；不挂左侧导航，无底部大 Tab。</td>
+      </tr>
+      <tr>
+        <td>iPad 平板</td><td>768–1024px</td>
+        <td>双栏：左钓场 + 右装备/背包栏（264px）</td>
+        <td>装备行不堆叠；背包扩容卡并入右侧栏；订单卡悬浮钓场左上。</td>
+      </tr>
+      <tr>
+        <td>三折叠 · 全展开</td><td>880px</td>
+        <td>三栏：钓场 / 渔具商店 / 渔获背包</td>
+        <td>窄于 1024px 不挂左侧导航；商店与背包并入主区三栏各司其职。</td>
+      </tr>
+      <tr>
+        <td>宽屏桌面</td><td>1024px / 1440px+</td>
+        <td>左侧导航栏 + 钓场 + 右侧装备/背包栏（272px）</td>
+        <td>信息密度最高；商店可开独立抽屉页；魔力余额与渔获数常驻顶栏。</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+</body>
+</html>

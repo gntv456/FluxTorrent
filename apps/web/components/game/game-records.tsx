@@ -16,6 +16,8 @@ export interface RoundRow {
   game: string;
   bet: number;
   payout: number;
+  /** 派彩等值：物品档是 anchor×件数，普通档等于 payout（旧服务端无此列） */
+  value?: number;
   net: number;
   at: string;
 }
@@ -37,8 +39,15 @@ const RAR_TONE: Record<number, string> = {
 };
 
 /** 面板形态：嵌入各游戏主页的「记录/图鉴」tab（无页面头/返回键） */
-export function GameRecordsPanel({ game }: { game: string }) {
-  return <GameRecords game={game} embedded />;
+export function GameRecordsPanel({
+  game,
+  odds,
+}: {
+  game: string;
+  /** 对局列表下方的概率公示入口（大转盘用：切回奖池标签） */
+  odds?: { note: string; label: string; onClick: () => void };
+}) {
+  return <GameRecords game={game} embedded odds={odds} />;
 }
 
 export function GameRecordsPage({ game }: { game: string }) {
@@ -48,9 +57,11 @@ export function GameRecordsPage({ game }: { game: string }) {
 function GameRecords({
   game,
   embedded = false,
+  odds,
 }: {
   game: string;
   embedded?: boolean;
+  odds?: { note: string; label: string; onClick: () => void };
 }) {
   const { dict, currency } = useI18n();
   const t = dict.games.sub;
@@ -78,7 +89,7 @@ function GameRecords({
         setFailed(true);
       });
     // 钓鱼的图鉴在专属端点（标准塘 + 渔汛塘合并）。通用端点只认
-    // capsule/jgg/scratch/wheel，对 fishing 回 400——旧写法让这块图鉴
+    // capsule(老虎机)/fruit/jgg/mole/scratch/wheel，对 fishing 回 400——旧写法让这块图鉴
     // 永远静默消失，而页面文案写的是「对局记录 + 奖档图鉴整页」。
     const collUrl =
       game === "fishing"
@@ -104,14 +115,19 @@ function GameRecords({
   const stats = useMemo(() => {
     if (!rows) return null;
     const plays = rows.length;
-    const wins = rows.filter((r) => r.net > 0).length;
-    const best = rows.reduce((m, r) => Math.max(m, r.payout), 0);
+    // 「中奖」按派彩等值判断：0.5x 返本和物品档都可能 net<0，但并非未中。
+    const wins = rows.filter((r) => (r.value ?? r.payout) > 0).length;
+    const best = rows.reduce((m, r) => Math.max(m, r.value ?? r.payout), 0);
     const net = rows.reduce((s, r) => s + r.net, 0);
     return { plays, wins, best, net };
   }, [rows]);
 
+  // 流水键 → 路由键：老虎机后端复用旧 capsule 池键（历史流水/图鉴不断档），
+  // 但页面路由是 /games/slot，返回键与标题都须落在 slot 上，否则链到已删的
+  // /games/capsule（404）、标题回退成裸键名「capsule」。
+  const routeKey = game === "capsule" ? "slot" : game;
   const gameTitle =
-    (dict.games.cards as Record<string, { title: string }>)[game]?.title ??
+    (dict.games.cards as Record<string, { title: string }>)[routeKey]?.title ??
     game;
   const albumTitle =
     game === "fishing" ? dict.games.fishing.albumTitle : t.albumTitle;
@@ -121,7 +137,7 @@ function GameRecords({
       {!embedded && (
         <div className="flex flex-wrap items-center gap-2">
           <Link
-            href={`/games/${game}`}
+            href={`/games/${routeKey}`}
             className="min-h-11 rounded-full border border-line px-3 text-xs font-bold text-sub"
           >
             ← {gameTitle}
@@ -160,7 +176,7 @@ function GameRecords({
       )}
 
       {/* 记录列表 */}
-      <section className={PANEL_LG}>
+      <section className={PANEL_LG + " gr-panel"}>
         <h2 className="mb-3 font-display text-base">{t.recentTitle}</h2>
         {rows === null ? (
           <p className="text-sm text-sub">{dict.common.loading ?? "…"}</p>
@@ -173,7 +189,7 @@ function GameRecords({
             {rows.map((r, i) => (
               <div
                 key={i}
-                className="flex items-center gap-3 rounded-[10px] bg-[var(--surface-raised)] px-3 py-2 text-xs"
+                className="gr-row flex items-center gap-3 rounded-[10px] bg-[var(--surface-raised)] px-3 py-2 text-xs"
               >
                 <span className="num shrink-0 text-sub">
                   {new Date(r.at).toLocaleString()}
@@ -184,7 +200,7 @@ function GameRecords({
                 <span
                   className={`num w-20 shrink-0 text-right font-bold ${
                     r.net > 0
-                      ? "text-mint"
+                      ? "text-[var(--mint)]"
                       : r.net < 0
                         ? "text-[var(--danger-text)]"
                         : "text-sub"
@@ -199,9 +215,18 @@ function GameRecords({
         )}
       </section>
 
+      {odds && (
+        <div className="wp-odds-bar">
+          <span>{odds.note}</span>
+          <button type="button" onClick={odds.onClick}>
+            {odds.label}
+          </button>
+        </div>
+      )}
+
       {/* 图鉴（奖池档位 × 命中）：无图鉴端点的游戏静默隐藏 */}
       {coll && coll.total > 0 && (
-        <section className={PANEL_LG}>
+        <section className={PANEL_LG + " gr-panel"}>
           <div className="mb-3 flex items-baseline justify-between gap-2">
             <h2 className="font-display text-base">{albumTitle}</h2>
             <span className="num text-xs text-sub">
@@ -212,7 +237,7 @@ function GameRecords({
             {coll.entries.map((e) => (
               <div
                 key={e.label}
-                className={`flex flex-col items-center gap-1 rounded-[12px] border-2 bg-[var(--surface-card)] p-2 text-center ${
+                className={`gr-album flex flex-col items-center gap-1 rounded-[12px] border-2 bg-[var(--surface-card)] p-2 text-center ${
                   e.count > 0
                     ? (RAR_TONE[e.rarity] ?? "border-line")
                     : "border-dashed border-[var(--border-deep)] opacity-55"
@@ -222,7 +247,7 @@ function GameRecords({
                   {e.count > 0 ? e.label : "???"}
                 </span>
                 <span className="num text-xs text-sub">
-                  {e.mult > 0 ? `×${e.mult}` : "物品"} · {t.countLabel}{" "}
+                  {e.mult > 0 ? `×${e.mult}` : t.itemWord} · {t.countLabel}{" "}
                   {e.count}
                 </span>
               </div>

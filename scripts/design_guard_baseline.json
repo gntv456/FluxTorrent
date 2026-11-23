@@ -1085,9 +1085,9 @@
  },
  "app/(main)/games/page.tsx": {
   "h1": [],
-  "h1First": 145,
+  "h1First": 151,
   "palette": [
-   265
+   271
   ],
   "color": []
  },
@@ -1197,9 +1197,9 @@
  },
  "app/(main)/games/odds/page.tsx": {
   "h1": [],
-  "h1First": 221,
+  "h1First": 230,
   "palette": [
-   228
+   237
   ],
   "color": []
  },
@@ -2328,8 +2328,8 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   201,
-   235
+   202,
+   236
   ],
   "color": []
  },
@@ -5446,9 +5446,8 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   34,
    36,
-   187
+   38
   ],
   "color": []
  },
@@ -5739,6 +5738,64 @@
   "palette": [
    40
   ],
+  "color": []
+ },
+ "app/(main)/games/slot/_inner.tsx": {
+  "h1": [],
+  "h1First": null,
+  "palette": [
+   333,
+   335
+  ],
+  "color": [
+   275
+  ]
+ },
+ "app/(main)/games/fruit/_inner.tsx": {
+  "h1": [],
+  "h1First": null,
+  "palette": [
+   331,
+   333
+  ],
+  "color": [
+   272
+  ]
+ },
+ "components/game/slot-symbols.tsx": {
+  "h1": [],
+  "h1First": null,
+  "palette": [],
+  "color": [
+   28,
+   31,
+   32,
+   33,
+   34,
+   35,
+   36,
+   37,
+   42,
+   47,
+   50,
+   51,
+   52,
+   53,
+   54,
+   55,
+   62
+  ]
+ },
+ "components/game/slot-machine.tsx": {
+  "h1": [],
+  "h1First": null,
+  "palette": [],
+  "color": []
+ },
+ "components/game/fruit-machine.tsx": {
+  "h1": [],
+  "h1First": null,
+  "palette": [],
   "color": []
  }
 }

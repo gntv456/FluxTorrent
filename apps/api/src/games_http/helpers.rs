@@ -176,13 +176,18 @@ pub(super) async fn limit_used(
     farm: bool,
 ) -> Option<i64> {
     use redis::AsyncCommands;
-    let key = if farm {
+    let key = rate_key(user_id, farm);
+    let mut conn = state.redis.clone();
+    conn.get::<_, Option<i64>>(&key).await.ok().flatten()
+}
+
+/// 限流键（批量连抽要 INCR 同一条小时窗，键规则收拢到一处）。
+pub(super) fn rate_key(user_id: i64, farm: bool) -> String {
+    if farm {
         RateScope::Farm.redis_key(user_id)
     } else {
         RateScope::Instant.redis_key(user_id)
-    };
-    let mut conn = state.redis.clone();
-    conn.get::<_, Option<i64>>(&key).await.ok().flatten()
+    }
 }
 
 /// 下注校验（上限走设置键 games_max_bet）

@@ -1,0 +1,860 @@
+/* ══════════════════════════════════════════════════════════════
+   大转盘专注页（2026-11-21）：样图定稿的落地产。
+   只挂在 .wheel-page 下，不碰其它玩法；令牌优先用全局语义色，
+   夜场/山海经换肤时跟着走，盘面金环仍由 --mood-wheel-* 供色。
+   ══════════════════════════════════════════════════════════════ */
+
+.wheel-page {
+  --wp-gold-1: #ffe9b8;
+  --wp-gold-2: #f0c878;
+  --wp-gold-3: #d49a4a;
+  --wp-gold-ink: #4a3312;
+  --wp-sky: #9fd2ff;
+  --wp-violet: #c4a8ff;
+  --wp-coral: #ff8f8a;
+  /* 盘面：浅彩扇区落在紫夜舞台上（比深色扇区更接近样图的宝石感） */
+  --mood-wheel-gold-a: #ffe9b8;
+  --mood-wheel-gold-b: #f0d192;
+  --mood-wheel-violet-a: #e2d7f7;
+  --mood-wheel-violet-b: #c9b4ec;
+  --mood-wheel-blue-a: #cfe4fa;
+  --mood-wheel-blue-b: #a6ccf2;
+  --mood-wheel-mist-a: #f8fbff;
+  --mood-wheel-mist-b: #e6eff7;
+  --mood-wheel-rim-a: #e8c888;
+  --mood-wheel-rim-b: #8a6428;
+  --mood-wheel-disc-ink: #2c4a74;
+  --mood-wheel-disc-bg: #fffaf0;
+  --mood-wheel-disc-line: #d4af7a;
+  --mood-wheel-lamp: #ffd700;
+  --mood-wheel-lamp-b: #f7e2b2;
+  width: 100%;
+  max-width: 1180px;
+  margin-inline: auto;
+  padding-top: 10px;
+}
+/* 外壳本身不再套夜场卡片：页头/余额/标签直接落在紫夜页面上 */
+.wheel-page .gs-shell {
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+/* 页面氛围：紫夜游戏厅（样图的暖紫，不是夜场默认的藏蓝） */
+[data-arcade="sweet"] main:has(.wheel-page) {
+  background:
+    radial-gradient(
+      1100px 560px at 50% -12%,
+      rgba(126, 80, 172, 0.5),
+      transparent 70%
+    ),
+    linear-gradient(180deg, #1d1229 0%, #0f0a19 100%) !important;
+}
+
+/* ── 页头：返回在左、标题徽章居中、音效在右 ── */
+.gs-head-center {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 10px;
+}
+.gs-head-mid {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  text-align: center;
+}
+.gs-head-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-width: 0;
+}
+.gs-head-badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+}
+.gs-head-sub {
+  font-size: 12px;
+  color: var(--text-sub);
+}
+.sfx-state {
+  margin-left: 4px;
+  font-size: 11px;
+  font-weight: 800;
+}
+.wheel-page .gs-title {
+  color: var(--wp-gold-1);
+  letter-spacing: 0.03em;
+  text-shadow: 0 0 18px rgba(240, 200, 120, 0.35);
+}
+.wheel-page .gs-title::before,
+.wheel-page .gs-title::after {
+  content: "✦";
+  display: inline-block;
+  margin: 0 6px;
+  color: var(--wp-gold-2);
+  font-size: 0.7em;
+  vertical-align: 0.15em;
+  text-shadow: 0 0 10px rgba(240, 200, 120, 0.6);
+}
+.wheel-page .gs-title-ic {
+  color: var(--wp-gold-2);
+}
+.wheel-page .gs-back {
+  border-color: rgba(240, 200, 120, 0.34);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.82);
+}
+.wheel-page .gs-head-center .gs-back,
+.wheel-page .gs-head-center > button {
+  min-height: 36px;
+  padding: 0 11px;
+  font-size: 11.5px;
+}
+.wp-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(212, 175, 122, 0.4);
+  background: rgba(212, 175, 122, 0.12);
+  color: var(--mood-wheel-text-gold);
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.wp-badge.ticket {
+  border-color: rgba(159, 210, 255, 0.34);
+  background: rgba(159, 210, 255, 0.1);
+  color: var(--wp-sky);
+}
+
+/* 三标签压在深色页头上：默认 .gtabs 是浅蓝渐变，夜场会像一条白胶带 */
+.wheel-page .gtabs {
+  background: linear-gradient(
+    160deg,
+    rgba(255, 255, 255, 0.07),
+    rgba(255, 255, 255, 0.03)
+  );
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+.wheel-page .gtab {
+  color: rgba(255, 255, 255, 0.62);
+}
+.wheel-page .gtab.on {
+  background: linear-gradient(160deg, #ffe7b2, #eec26a);
+  color: #3b2a10;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.55),
+    0 4px 12px -6px rgba(238, 194, 106, 0.55);
+}
+.wheel-page .gtab:not(.on):hover {
+  color: #fff;
+}
+
+/* 奖池顶部精选条：默认米黄缎面在夜场像一块白板，换暗玻璃 */
+.wheel-page .sw-prize-strip {
+  background: linear-gradient(
+    160deg,
+    rgba(255, 255, 255, 0.09),
+    rgba(255, 255, 255, 0.035)
+  );
+  box-shadow: inset 0 0 0 1px rgba(232, 184, 78, 0.35);
+}
+.wheel-page .sw-prize-lb {
+  color: var(--wp-gold-2);
+  text-align: center;
+}
+.wheel-page .sw-prize-nm {
+  color: #fff;
+}
+.wheel-page .sw-prize-odds {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+/* 奖池页：精选条与概率网格共用一张面板（样图同一张紫夜卡） */
+.wheel-page .wp-pool {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 18px;
+  border-radius: 20px;
+  border: 1px solid rgba(240, 200, 120, 0.2);
+  background: linear-gradient(160deg, #2a1b45, #1d1433);
+  box-shadow: var(--shadow-card);
+}
+.wheel-page .wp-pool .sw-prize-strip {
+  padding: 0 0 14px;
+  border-radius: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+  background: transparent;
+  box-shadow: none;
+}
+.wheel-page .wp-pool-panel {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* ── 余额三卡 + 标签同排 ── */
+.gs-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.wp-bal-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  flex: 0 1 460px;
+  max-width: 400px;
+}
+.wp-bal-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px 12px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-card);
+}
+.wp-bal-ic {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  flex: none;
+  border-radius: 9px;
+  background: rgba(212, 175, 122, 0.14);
+  font-size: 13px;
+}
+.wp-bal-mid {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.wp-bal-lb {
+  font-size: 10.5px;
+  color: var(--text-sub);
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.wp-bal-vl {
+  font-size: 15px;
+  font-weight: 900;
+  color: var(--text-strong);
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wp-bal-vl.win { color: var(--mint); }
+.wp-bal-vl.lose { color: var(--danger-text); }
+
+/* ── 舞台卡：紫夜游戏厅（与样图同一氛围） ── */
+.wheel-page .gs-body {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+[data-arcade="sweet"] .wheel-page .gs-stage-box {
+  position: relative;
+  overflow: hidden;
+  padding: 30px 20px 22px;
+  gap: 16px;
+  border-radius: 24px;
+  border-color: rgba(240, 200, 120, 0.24) !important;
+  background:
+    radial-gradient(120% 120% at 50% 0%, #322053 0%, #1a1130 68%,
+      #120c1f 100%) !important;
+  box-shadow:
+    0 24px 50px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -20px 40px rgba(8, 5, 18, 0.45) !important;
+}
+.wp-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+}
+
+/* ── 转盘：光环 / 放射 / 反光 + 400px 盘面 ── */
+.wheel-page .lw-rig {
+  max-width: 440px;
+}
+.wp-lw-rig {
+  isolation: isolate;
+}
+.wp-halo {
+  position: absolute;
+  inset: -6%;
+  z-index: 0;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(255, 216, 120, 0.24),
+    rgba(196, 168, 255, 0.1) 42%,
+    transparent 64%
+  );
+  filter: blur(14px);
+  opacity: 0.8;
+  animation: wp-breathe 5.6s ease-in-out infinite;
+}
+.wp-rays {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 0;
+  width: 112%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  background: repeating-conic-gradient(
+    from 0deg,
+    rgba(247, 226, 178, 0.14) 0deg 7deg,
+    transparent 7deg 30deg
+  );
+  mask-image: radial-gradient(
+    circle,
+    transparent 34%,
+    #000 58%,
+    transparent 82%
+  );
+  opacity: 0.5;
+  pointer-events: none;
+  animation: wp-rays-spin 30s linear infinite;
+}
+.wp-reflect {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  z-index: 0;
+  width: 62%;
+  height: 16%;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(212, 158, 74, 0.3),
+    transparent 70%
+  );
+  filter: blur(12px);
+}
+.wheel-page .lw-disc-wrap {
+  position: relative;
+  z-index: 1;
+  width: min(400px, 82vw);
+  max-width: 100%;
+  padding: 12px;
+  background:
+    radial-gradient(circle at 36% 26%, #f7e6c0, #d4af7a 55%, #8a6428 100%);
+  box-shadow:
+    0 22px 44px rgba(4, 3, 14, 0.62),
+    0 0 38px rgba(212, 158, 74, 0.36),
+    inset 0 2px 0 rgba(255, 255, 255, 0.65),
+    inset 0 -6px 12px rgba(90, 60, 18, 0.5);
+}
+.wheel-page .lw-pointer {
+  top: -11px;
+  z-index: 4;
+  border-left-width: 14px;
+  border-right-width: 14px;
+  border-top-width: 30px;
+  border-top-color: #f2683f;
+  filter: drop-shadow(0 5px 7px rgba(3, 6, 16, 0.65));
+}
+.wheel-page .lw-pointer::after {
+  content: "";
+  position: absolute;
+  left: -7px;
+  top: -30px;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff3c8, #ffd700 70%);
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.9);
+}
+.lw-disc-rotor {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+}
+.lw-disc-rotor.spin {
+  transition: transform 4s cubic-bezier(0.16, 0.72, 0.2, 1);
+  will-change: transform;
+}
+.wheel-page .lw-hub {
+  width: 104px;
+  height: 104px;
+  border-width: 3px;
+  font-size: 17px;
+  line-height: 1.1;
+  color: #2c4a74;
+  background: radial-gradient(
+    circle at 35% 28%,
+    #ffffff,
+    #eef4fb 62%,
+    #dbe7f4
+  );
+  box-shadow:
+    0 8px 16px rgba(176, 138, 74, 0.45),
+    inset 0 1px 3px rgba(255, 255, 255, 0.9),
+    0 0 20px rgba(255, 255, 255, 0.28);
+}
+.wheel-page .lw-hub::before {
+  content: "";
+  position: absolute;
+  inset: -9px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 215, 0, 0.5);
+  pointer-events: none;
+  animation: wp-hub-ring 2s ease-in-out infinite;
+}
+@keyframes wp-hub-ring {
+  0% { transform: scale(0.9); opacity: 0.8; }
+  70% { transform: scale(1.18); opacity: 0; }
+  100% { opacity: 0; }
+}
+@keyframes wp-rays-spin {
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+.wheel-page .lw-hub .lw-go {
+  font-size: 19px;
+  letter-spacing: 0.04em;
+}
+.wheel-page .lw-hub small {
+  font-size: 10px;
+  font-weight: 700;
+  opacity: 0.78;
+  margin-top: 1px;
+}
+@keyframes wp-breathe {
+  0%, 100% { opacity: 0.55; transform: scale(0.99); }
+  50% { opacity: 0.85; transform: scale(1.03); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wheel-page .lw-disc-rotor.spin { transition: none; }
+  .wp-halo { animation: none; }
+  .wp-rays { animation: none; }
+  .wheel-page .lw-hub::before { animation: none; }
+}
+
+/* ── 闪字 + 连胜 ── */
+.wp-mid {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 36px;
+  width: 100%;
+}
+.wheel-page .wp-mid .streak-pill {
+  border: 1px solid rgba(255, 201, 60, 0.4);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 201, 60, 0.2),
+    rgba(255, 122, 107, 0.07)
+  );
+  color: #ffd98a;
+  box-shadow: 0 0 16px rgba(255, 201, 60, 0.18);
+}
+
+/* ── 四入口一排等分（样图：按钮上不带价格） ── */
+.wp-cta-row {
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+}
+.wp-cta-row .sw-cta {
+  flex: 1 1 0;
+  width: 0;
+  min-width: 0;
+  min-height: 48px;
+  border-radius: 999px;
+  font-size: 15px;
+  box-shadow:
+    0 6px 14px -6px rgba(176, 138, 74, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+.wp-chip {
+  flex: 1 1 0;
+  width: 0;
+  min-width: 0;
+  min-height: 48px;
+  border-radius: 999px;
+  border: 1px solid rgba(106, 182, 240, 0.4);
+  background: rgba(106, 182, 240, 0.1);
+  color: var(--wp-sky);
+  font-weight: 800;
+  font-size: 13px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  white-space: nowrap;
+  transition: transform 0.14s ease, filter 0.14s ease;
+}
+.wp-chip.purple {
+  border-color: rgba(196, 168, 255, 0.42);
+  background: rgba(196, 168, 255, 0.12);
+  color: var(--wp-violet);
+}
+.wp-chip.auto {
+  border-color: rgba(255, 143, 138, 0.42);
+  background: rgba(255, 143, 138, 0.12);
+  color: var(--wp-coral);
+}
+.wp-chip.auto.on {
+  background: rgba(255, 143, 138, 0.26);
+  box-shadow: 0 0 0 2px rgba(255, 143, 138, 0.28) inset;
+}
+.wp-chip:active:not(:disabled) { transform: scale(0.97); }
+.wp-chip:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  filter: saturate(0.6);
+}
+.wp-auto-ic {
+  font-size: 10px;
+  line-height: 1;
+}
+
+/* ── 三统计 ── */
+.wp-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  width: 100%;
+}
+.wp-stat {
+  min-width: 0;
+  padding: 12px 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.055);
+  text-align: center;
+}
+.wp-stat-lb {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.62);
+  white-space: nowrap;
+}
+.wp-stat-vl {
+  margin-top: 2px;
+  font-size: 18px;
+  font-weight: 900;
+  color: #fff;
+}
+.wp-stat-vl.gold { color: var(--mood-wheel-gold-a); }
+.wp-stat-vl.green { color: #7ee2b8; }
+.wp-stat-vl.lose { color: #ff9a9a; }
+
+/* ── 提示 / 错误 ── */
+.wp-notice {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 196, 92, 0.24);
+  background: rgba(255, 196, 92, 0.08);
+  color: #f4d8a8;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.wp-error {
+  width: 100%;
+  color: #ff9a9a;
+  font-size: 12px;
+  text-align: center;
+}
+.wp-retry {
+  padding: 7px 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* 奖池顶部精选条铺满面板：默认件有 max-width，留白会歪在左边 */
+.wheel-page .sw-prize-strip {
+  width: 100%;
+  max-width: none;
+}
+
+/* ── 奖池概率页 ── */
+.wp-pool {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  max-width: 860px;
+  margin: 0 auto;
+}
+.wp-pool-panel {
+  padding: 18px;
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-card);
+}
+.wp-h2 {
+  font-family: var(--font-display, inherit);
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text-strong);
+}
+.wp-pool-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(196px, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+.wp-pool-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  padding: 9px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.055);
+}
+.wp-pool-item.gold {
+  border-color: rgba(255, 201, 60, 0.38);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 201, 60, 0.16),
+    rgba(212, 158, 74, 0.06)
+  );
+}
+.wp-pool-item.mint {
+  border-color: rgba(70, 211, 164, 0.32);
+  background: rgba(70, 211, 164, 0.09);
+}
+.wp-pool-item.mist {
+  background: rgba(255, 255, 255, 0.035);
+}
+.wp-pool-item.gold .wp-pi-prob { color: #ffd166; }
+.wp-pool-item.mint .wp-pi-prob { color: #7ee2b8; }
+.wp-pool-item.mist .wp-pi-prob {
+  color: rgba(255, 255, 255, 0.55);
+}
+.wp-pi-ic {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex: none;
+  border-radius: 9px;
+  font-size: 15px;
+  background: rgba(120, 150, 190, 0.12);
+}
+.wp-pi-ic.gold { background: rgba(212, 175, 122, 0.18); }
+.wp-pi-ic.mint { background: rgba(67, 205, 168, 0.14); }
+.wp-pi-ic.mist { background: rgba(255, 255, 255, 0.08); }
+.wp-pi-mid { flex: 1; min-width: 0; }
+.wp-pi-nm {
+  font-size: 12.5px;
+  font-weight: 800;
+  color: var(--text-strong);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wp-pi-meta {
+  font-size: 10.5px;
+  color: var(--text-sub);
+  line-height: 1.4;
+}
+.wp-pi-prob {
+  flex: none;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--text-strong);
+}
+.wp-pool-note {
+  margin-top: 12px;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--text-sub);
+}
+.wp-pool-empty {
+  padding: 28px;
+  text-align: center;
+  color: var(--text-sub);
+}
+
+/* ── 记录页：对局列表下方的概率公示入口 ── */
+.wp-odds-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 11px 14px;
+  border-radius: 12px;
+  border: 1px dashed var(--line);
+  background: var(--surface-card);
+  color: var(--text-sub);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+.wp-odds-bar button {
+  min-height: 32px;
+  padding: 0 8px;
+  border: 0;
+  background: none;
+  color: var(--text-strong);
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.wheel-page .sw-stat-row {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+/* 连抽浮层说明（只展示前 20 笔时的合计口径） */
+.sw-ten-note {
+  margin-top: 8px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-sub);
+}
+
+/* ── 平板 / 手机 ── */
+@media (max-width: 1024px) {
+  .wp-bal-row { flex: 1 1 100%; max-width: none; }
+  .gs-meta-row { align-items: stretch; }
+  .gs-meta-row .gtabs { flex: 1 1 100%; }
+}
+@media (max-width: 768px) {
+  .gs-head-center { gap: 6px; }
+  .gs-head-center .gs-back {
+    padding: 0 8px;
+    font-size: 11px;
+  }
+  .wheel-page .gs-title { font-size: 21px; white-space: nowrap; }
+  [data-arcade="sweet"] .wheel-page .gs-stage-box {
+    padding: 26px 12px 16px;
+    gap: 14px;
+  }
+  .wheel-page .lw-rig { max-width: 340px; }
+  .wheel-page .lw-disc-wrap { width: min(330px, 84vw); }
+  .wheel-page .lw-hub { width: 88px; height: 88px; font-size: 15px; }
+  .wp-cta-row { gap: 6px; }
+  .wp-cta-row .sw-cta { font-size: 13px; min-height: 46px; }
+  .wp-chip { font-size: 11.5px; min-height: 46px; padding: 0 4px; gap: 3px; }
+  .wp-stats { gap: 8px; }
+  .wp-stat { padding: 9px 6px; }
+  .wp-stat-vl { font-size: 15px; }
+  .wp-pool-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .wp-pool-panel { padding: 14px; }
+  .wheel-page .sw-stat-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (min-width: 640px) and (max-width: 768px) {
+  .wheel-page .lw-rig { max-width: 390px; }
+  .wheel-page .lw-disc-wrap { width: min(380px, 80vw); }
+}
+@media (max-width <= 380px) {
+  .wheel-page .lw-rig { max-width: 320px; }
+  .wheel-page .lw-disc-wrap { width: min(300px, 90vw); }
+  .wp-mid { gap: 6px; }
+  .wp-mid > :first-child { font-size: 13px; min-height: 30px; }
+  .wp-mid .streak-pill { font-size: 10.5px; padding: 4px 8px; }
+  .wp-cta-row { gap: 4px; }
+  .wp-cta-row .sw-cta { font-size: 12.5px; padding-inline: 4px; }
+  .wp-cta-row .wp-chip { padding-inline: 3px; gap: 2px; }
+  .wp-pool-grid { grid-template-columns: minmax(0, 1fr); }
+  .wp-chip { font-size: 10.5px; }
+  .wp-bal-chip { padding: 7px 8px; gap: 6px; }
+  .wp-bal-ic { width: 22px; height: 22px; }
+}
+@media (max-width <= 340px) {
+  .wp-bal-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .wp-bal-row > :last-child { grid-column: 1 / -1; }
+}
+/* 三折外屏（219/240）：页头拆两行，盘与按钮降一档 */
+@media (max-width <= 260px) {
+  .gs-head-center {
+    grid-template-columns: auto auto;
+    grid-template-areas:
+      "back sfx"
+      "mid mid";
+    align-items: center;
+    gap: 4px;
+  }
+  .gs-head-center .gs-back {
+    grid-area: back;
+    justify-self: start;
+    min-height: 32px;
+    padding: 0 4px;
+    font-size: 10px;
+    white-space: nowrap;
+  }
+  .gs-head-center > button {
+    grid-area: sfx;
+    justify-self: end;
+    padding: 0 6px;
+    font-size: 10px;
+    white-space: nowrap;
+  }
+  .wheel-page .sfx-state { display: none; }
+  .gs-head-center .gs-head-mid { grid-area: mid; }
+  .wheel-page .gs-title { font-size: 18px; }
+  .gs-head-sub { font-size: 11px; }
+  [data-arcade="sweet"] .wheel-page .gs-stage-box {
+    padding: 18px 6px 12px;
+    gap: 10px;
+  }
+  .wheel-page .lw-rig { max-width: 190px; }
+  .wheel-page .lw-disc-wrap { width: min(170px, 88vw); }
+  .wheel-page .lw-hub { width: 64px; height: 64px; font-size: 13px; }
+  .wheel-page .wp-mid {
+    flex-direction: column;
+    gap: 4px;
+    align-items: center;
+  }
+  .wp-cta-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .wp-cta-row .sw-cta,
+  .wp-cta-row .wp-chip {
+    width: auto;
+    flex: none;
+    min-height: 40px;
+    padding: 0;
+    font-size: 11px;
+  }
+  .wp-bal-vl { font-size: 13px; }
+  .wp-bal-lb { font-size: 9.5px; }
+  .wp-bal-row { grid-template-columns: minmax(0, 1fr); }
+  .wp-bal-row > :last-child { grid-column: auto; }
+  .wp-pool-grid { grid-template-columns: minmax(0, 1fr); }
+  .wheel-page .gtab-ic { display: none; }
+  .wheel-page .gtab {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 6px 2px;
+    font-size: 10px;
+    white-space: nowrap;
+  }
+}

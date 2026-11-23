@@ -22,12 +22,14 @@ use crate::state::AppState;
 /// 周常归属玩法的合法值。口径 = `arcade_meta.rs` 周常进度按 `spark_ledger.ref_type`
 /// 分组计数 —— 只有**会产生下注流水**的 ref_type 配进来才有进度。农场全链
 /// （plant/water/fertilize/craft/land/up）与牧场/宠物喂食都在下注侧。
-const QUEST_REFS: [&str; 15] = [
+const QUEST_REFS: [&str; 17] = [
     "*",
     "scratch",
     "bigsmall",
     "jgg",
+    "mole",
     "capsule",
+    "fruit",
     "wheel",
     "fishing",
     "farm_plant",

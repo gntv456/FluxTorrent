@@ -1,8 +1,6 @@
 "use client";
 import {
   BTN_RETRY_PILL,
-  PANEL_LG,
-  PANEL_LG_COL,
   PANEL_WARN_ORANGE,
 } from "@/lib/ui-classes";
 
@@ -14,19 +12,16 @@ import { GameShell, PlayHint } from "@/components/game/game-kit";
 import { GameTabs } from "@/components/game/game-tabs";
 import { GameRecordsPanel } from "@/components/game/game-records";
 import { ArcadeGlyph } from "@/components/arcade/arcade-glyph";
-import { ResultFlash } from "@/components/game/game-kit-feedback";
-import { ScratchCoat, type CoatOutcome } from "@/components/game/scratch-coat";
-import { SceneScratch } from "@/components/game/scene-a";
-import {
-  SwCtaRow,
-  SwHist,
-  SwStatRow,
-  SwTenModal,
-  type SwHistRow,
-} from "@/components/game/sw-panels";
+import type { CoatOutcome } from "@/components/game/scratch-coat";
+import { SwTenModal } from "@/components/game/sw-panels";
 import { useTenDraw } from "@/lib/ten-draw";
 import { scratchPoolText, type ScratchPrize } from "@/lib/games";
-import { SwPrizeStrip } from "@/components/game/sw-enrich";
+import { ScratchPlayCard } from "@/components/game/scratch-play-card";
+import { ScratchPoolPanel } from "@/components/game/scratch-pool-panel";
+import {
+  ScratchWinModal,
+  type ScratchWinKind,
+} from "@/components/game/scratch-win-modal";
 import { GameRules } from "@/components/game/game-rules";
 import { useRounds } from "@/components/game/use-rounds";
 import { clientUuid } from "@/lib/client-uuid";
@@ -48,7 +43,9 @@ interface ScratchResp {
   prize: string;
 }
 
-/** 星尘信封（样图②）：票种三档 → 3×2 涂层格揭开 → 命中高亮。
+type Tab = "play" | "pool" | "records";
+
+/** 星尘信封：票种三档 → 3×2 涂层格揭开 → 命中高亮。
  *  一局仍是一次真实单抽（服务端买卡时定死结果），六格只是揭开仪式。 */
 export default function ScratchPage({
   initialOver,
@@ -60,13 +57,13 @@ export default function ScratchPage({
   const ts = dict.games.scratch;
 
   const [ov, setOv] = useState<Overview | null>(initialOver);
-  // 战绩（波3）：use-rounds 统一消费口（连胜由有连胜 pill 的页面取）
-  const { hist, reload: reloadRounds } = useRounds("scratch");
+  const { reload: reloadRounds } = useRounds("scratch");
   const [bet, setBet] = useState(100);
   const [phase, setPhase] = useState<
     "idle" | "buying" | "scratchable" | "done"
   >("idle");
   const [outcome, setOutcome] = useState<CoatOutcome | null>(null);
+  const outcomeRef = useRef<CoatOutcome | null>(null);
   const [hitIndex, setHitIndex] = useState<number | null>(null);
   const [revealed, setRevealed] = useState<number[]>([]);
   const [round, setRound] = useState(0);
@@ -75,12 +72,19 @@ export default function ScratchPage({
     text: string;
   } | null>(null);
   const [err, setErr] = useState<string | null>(null);
-  // 样图手机版：主玩法 / 记录图鉴 双 tab
-  const [tab, setTab] = useState("play");
+  const [tab, setTab] = useState<Tab>("play");
   const [sessionPlays, setSessionPlays] = useState(0);
   const idem = useRef<string>("");
-  // P0-5：网络错误后保留幂等键，提供「原键重试」而非重新下注
   const [unknown, setUnknown] = useState(false);
+  const [auto, setAuto] = useState(false);
+  const autoRef = useRef(false);
+  const autoTimer = useRef<number | null>(null);
+  const buyRef = useRef<() => void>(() => {});
+  const [winModal, setWinModal] = useState<{
+    open: boolean;
+    kind: ScratchWinKind;
+    amount: string;
+  }>({ open: false, kind: "lose", amount: "0" });
 
   const loadMeta = useCallback(async () => {
     try {
@@ -91,38 +95,44 @@ export default function ScratchPage({
     void reloadRounds();
   }, [reloadRounds]);
 
+  const stopAuto = useCallback(() => {
+    autoRef.current = false;
+    setAuto(false);
+    if (autoTimer.current !== null) {
+      window.clearTimeout(autoTimer.current);
+      autoTimer.current = null;
+    }
+  }, []);
+
+  useEffect(
+    () => () => {
+      if (autoTimer.current !== null) window.clearTimeout(autoTimer.current);
+    },
+    [],
+  );
+
   useEffect(() => {
     void loadMeta();
   }, [loadMeta]);
 
   const prizes = ov?.scratch?.prizes ?? [];
-  // payout 即票价倍数（0.5x/2x/...），物品位 payout=0 不进最高倍率
-  const maxMult = prizes.length ? Math.max(...prizes.map((p) => p.payout)) : 0;
-  // 奖池条（样图② prize-strip）：按等值取前 4 档，千分权重换算成 %
-  const prizeStripItems = prizes
-    .slice()
-    .sort((a, b) => (b.value ?? b.payout) - (a.value ?? a.payout))
-    .slice(0, 4)
-    .map((p) => ({
-      ic: p.kind === "item" ? "🎁" : "💎",
-      nm: p.label,
-      odds: `${(p.weight_permille / 10 || 0).toFixed(1)}%`,
-      tone:
-        (p.rarity ?? 0) >= 4
-          ? ("gold" as const)
-          : (p.rarity ?? 0) >= 3
-            ? ("lilac" as const)
-            : ("sky" as const),
-    }));
-  const histRows: SwHistRow[] = hist.slice(0, 6).map((h) => ({
-    t: (h.at ?? "").slice(11, 16) || "—",
-    txt: h.net > 0 ? ts.histWin : ts.histLose,
-    net: h.net,
-  }));
+  const maxBet = ov?.max_bet ?? 1000;
+  const betAllowed = bet <= maxBet;
+  const maxMult = prizes.length
+    ? Math.max(...prizes.map((p) => p.payout)) : 0;
+  const totalW = prizes.reduce((s, p) => s + p.weight_permille, 0) || 1;
+  const missW = prizes.reduce(
+    (s, p) => s + (p.kind !== "item" && p.payout === 0 ? p.weight_permille : 0),
+    0,
+  );
+  const winRate = prizes.length
+    ? (100 - (missW / totalW) * 100).toFixed(1)
+    : "—";
 
   async function buy(reuse = false) {
     setErr(null);
     setFlash(null);
+    setWinModal((m) => ({ ...m, open: false }));
     setPhase("buying");
     setUnknown(false);
     if (!reuse || !idem.current) idem.current = clientUuid();
@@ -132,20 +142,23 @@ export default function ScratchPage({
         idempotency_key: idem.current,
       });
       const meta = prizes.find((p) => p.label === r.prize);
-      setOutcome({
+      const next: CoatOutcome = {
         mult: r.multiplier,
         icon: meta?.icon,
         rarity: meta?.rarity ?? 1,
         net: r.net,
-      });
+      };
+      setOutcome(next);
+      outcomeRef.current = next;
       setHitIndex(Math.floor(Math.random() * 6));
       setRevealed([]);
       setRound((n) => n + 1);
       setPhase("scratchable");
       idem.current = "";
-      // 买票扣款后立即刷新余额条（此前要刮完 6 格才 loadMeta，
-      // 中途离开会一直停在扣款前的数字）
       void loadMeta();
+      if (autoRef.current) {
+        autoTimer.current = window.setTimeout(() => revealAll(), 500);
+      }
     } catch (e) {
       setErr(
         e instanceof ApiError
@@ -154,12 +167,14 @@ export default function ScratchPage({
             : apiErrorMessage(dict, e)
           : dict.common.networkError,
       );
-      if (isRetryableNetError(e)) {
-        setUnknown(true); // 结果未知，保留键供原键重试
-      }
+      if (isRetryableNetError(e)) setUnknown(true);
+      stopAuto();
       setPhase("idle");
     }
   }
+  buyRef.current = () => {
+    void buy();
+  };
 
   const ten = useTenDraw<ScratchResp>({
     path: "/api/v1/games/scratch",
@@ -174,11 +189,11 @@ export default function ScratchPage({
   });
 
   function finishTicket() {
-    const o = outcome;
+    const o = outcomeRef.current;
     setPhase("done");
     setSessionPlays((n) => n + 1);
     if (!o) return;
-    const kind: "win" | "lose" | "tie" | "jackpot" =
+    const kind: ScratchWinKind =
       o.mult >= 2
         ? "jackpot"
         : o.net > 0
@@ -186,193 +201,232 @@ export default function ScratchPage({
           : o.net === 0
             ? "tie"
             : "lose";
-    setFlash({
-      kind,
-      text:
-        o.mult >= 2
-          ? fmtCur(ts.jackpot, { mult: o.mult, net: o.net }, currency)
-          : o.net > 0
-            ? fmtCur(ts.win, { mult: o.mult, net: o.net }, currency)
-            : o.net === 0
-              ? ts.breakeven
-              : fmtCur(ts.lose, { net: -o.net }, currency),
-    });
+    const text =
+      o.mult >= 2
+        ? fmtCur(ts.jackpot, { mult: o.mult, net: o.net }, currency)
+        : o.net > 0
+          ? fmtCur(ts.win, { mult: o.mult, net: o.net }, currency)
+          : o.net === 0
+            ? ts.breakeven
+            : fmtCur(ts.lose, { net: -o.net }, currency);
+    setFlash({ kind, text });
+    // 手动单张结算弹独立浮层；自动连刮进行中不打断循环。
+    if (!autoRef.current) {
+      setWinModal({
+        open: true,
+        kind,
+        amount: o.net > 0 ? `+${o.net}` : String(o.net),
+      });
+    }
     void loadMeta();
+    if (autoRef.current) {
+      autoTimer.current = window.setTimeout(() => buyRef.current(), 1300);
+    }
+  }
+
+  function revealAll() {
+    setRevealed([0, 1, 2, 3, 4, 5]);
+    finishTicket();
   }
 
   function onReveal(i: number) {
-    // updater 必须纯净（StrictMode 会双调用）：只算下一个集合，
-    // 「第 6 格 → 结算」的副作用在 setState 外面判（2026-10 审计 P2）
     const next = revealed.includes(i) ? revealed : [...revealed, i];
     setRevealed(next);
     if (next.length >= 6) finishTicket();
   }
 
-  if (tab === "records") {
-    return (
-      <div className="flex flex-col gap-4">
-        <GameTabs
-          tabs={[
-            { key: "play", label: dict.games.sub.tabPlay, icon: "🎲" },
-            { key: "records", label: dict.games.sub.tabRecords, icon: "📜" },
-          ]}
-          active={tab}
-          onChange={setTab}
+  const toggleAuto = useCallback(() => {
+    const next = !autoRef.current;
+    autoRef.current = next;
+    setAuto(next);
+    if (next && (phase === "idle" || phase === "done")) buyRef.current();
+  }, [phase]);
+
+  const tabs = [
+    { key: "play", label: t.sub.tabPlay, icon: "🎲" },
+    { key: "pool", label: ts.tabPool, icon: "🎁" },
+    { key: "records", label: t.sub.tabRecords, icon: "📜" },
+  ];
+
+  const closeModal = useCallback(() => {
+    setWinModal((m) => ({ ...m, open: false }));
+  }, []);
+
+  const stage =
+    tab === "pool" ? (
+      <>
+        <ScratchPoolPanel
+          prizes={prizes}
+          labels={{
+            gridTitle: ts.prizeLb,
+            note: ts.poolNote,
+            empty: t.historyEmpty,
+            metaMiss: ts.coatDecoy,
+          }}
         />
-        <GameRecordsPanel game="scratch" />
-      </div>
+        <GameRules game="scratch" />
+      </>
+    ) : tab === "records" ? (
+      <GameRecordsPanel
+        game="scratch"
+        odds={{
+          note: ts.poolNote,
+          label: t.oddsLink,
+          onClick: () => setTab("pool"),
+        }}
+      />
+    ) : (
+      <ScratchPlayCard
+        bet={bet}
+        onBet={setBet}
+        maxBet={maxBet}
+        phase={phase}
+        outcome={outcome}
+        hitIndex={hitIndex}
+        revealed={revealed}
+        onReveal={onReveal}
+        onRevealAll={revealAll}
+        headTicket={ts.headTicket
+          .replace("{n}", String(round + 1))
+          .replace("{bet}", String(bet))}
+        tierMaxText={ts.tierMax.replace("{n}", maxMult.toFixed(0))}
+        coatProgress={ts.coatProgress
+          .replace("{a}", String(revealed.length))
+          .replace("{b}", "6")}
+        decoyLabel={ts.coatDecoy}
+        autoScratchLabel={ts.autoScratch}
+        stats={{
+          playsLb: ts.statPlays,
+          playsVal: String(ov?.me?.today_plays ?? 0),
+          maxLb: ts.statMax,
+          maxVal: maxMult > 0 ? `${maxMult.toFixed(0)}x` : "—",
+          leftLb: ts.statLeft,
+          leftVal: ov?.me?.limit_left != null ? String(ov.me.limit_left) : "—",
+        }}
+        cta={{
+          primaryLabel: ts.buy.replace("{n}", String(bet)),
+          goldLabel: `${ts.tenBtn} · ${bet * 10}`,
+          onPrimary: () => void buy(),
+          onGold: ten.run,
+          primaryDisabled:
+            phase === "buying" ||
+            phase === "scratchable" ||
+            !betAllowed ||
+            auto,
+          goldDisabled:
+            ten.busy ||
+            phase === "buying" ||
+            phase === "scratchable" ||
+            !betAllowed ||
+            auto,
+          goldBusy: ten.busy,
+          autoLabel: auto ? ts.autoStop : ts.autoGo,
+          autoActive: auto,
+          autoDisabled:
+            auto
+              ? false
+              : phase === "buying" || phase === "scratchable" || !betAllowed,
+          onAuto: toggleAuto,
+        }}
+        flash={flash}
+        bannerTitle={ts.title}
+        tagline={ts.bannerTagline}
+        currency={currency}
+      />
     );
-  }
+
+  const modalTitle =
+    winModal.kind === "jackpot"
+      ? ts.mJackpot
+      : winModal.kind === "win"
+        ? ts.mWin
+        : winModal.kind === "tie"
+          ? ts.mTie
+          : ts.mLose;
+
   return (
-    <GameShell
-      icon={<ArcadeGlyph k="scratch" />}
-      title={ts.title}
-      subtitle={scratchPoolText(ov?.scratch?.prizes, ts.poolLabel) || ts.pool}
-      balance={ov?.me?.balance ?? null}
-      todayNet={ov?.me?.today_net ?? null}
-      limitLeft={ov?.me?.limit_left ?? null}
-      notice={
-        <>
+    <div className={`scratch-promo tab-${tab}`}>
+      <GameShell
+        icon={<ArcadeGlyph k="scratch" />}
+        title={ts.title}
+        subtitle={
+          scratchPoolText(ov?.scratch?.prizes, ts.poolLabel) || ts.pool
+        }
+        headerLayout="center"
+        badges={
+          <span className="sp-badge">
+            {ts.winRate.replace("{pct}", winRate)}
+          </span>
+        }
+        balance={ov?.me?.balance ?? null}
+        todayNet={ov?.me?.today_net ?? null}
+        limitLeft={ov?.me?.limit_left ?? null}
+        balanceVariant="chips"
+        tabBar={
           <GameTabs
-            tabs={[
-              { key: "play", label: dict.games.sub.tabPlay, icon: "🎲" },
-              { key: "records", label: dict.games.sub.tabRecords, icon: "📜" },
-            ]}
+            tabs={tabs}
             active={tab}
-            onChange={setTab}
+            onChange={(k) => {
+              setTab(k as Tab);
+              if (k !== "play") stopAuto();
+            }}
           />
-          <PlayHint
-            sessionPlays={sessionPlays}
-            todayNet={ov?.me?.today_net ?? null}
-          />
-        </>
-      }
-      stage={
-        <div className="flex w-full flex-col items-center gap-3">
-          <SceneScratch className="gs-artsvg" />
-          <div className="sw-envelope">
-            <div className="sw-env-head">
-              <span>
-                {ts.headTicket
-                  .replace("{n}", String(round + 1))
-                  .replace("{bet}", String(bet))}
-              </span>
-              <span className="num">
-                {ts.tierMax.replace("{n}", maxMult.toFixed(0))}
-              </span>
-            </div>
-            <ScratchCoat
-              outcome={phase === "idle" ? null : outcome}
-              hitIndex={hitIndex}
-              revealed={revealed}
-              onReveal={onReveal}
-              decoyLabel={ts.coatDecoy}
-              disabled={phase !== "scratchable"}
+        }
+        notice={
+          tab === "play" ? (
+            <PlayHint
+              sessionPlays={sessionPlays}
+              todayNet={ov?.me?.today_net ?? null}
             />
-            <div className="sw-env-info">
-              <span>
-                {ts.coatProgress
-                  .replace("{a}", String(revealed.length))
-                  .replace("{b}", "6")}
-              </span>
-              {phase === "scratchable" && (
-                <button
-                  type="button"
-                  className="sw-reveal-all"
-                  onClick={() => {
-                    for (let i = 0; i < 6; i++) onReveal(i);
-                  }}
-                >
-                  {ts.autoScratch}
-                </button>
-              )}
-            </div>
-          </div>
-          <ResultFlash kind={flash?.kind ?? null} text={flash?.text ?? null} />
-          {err && <p className="text-xs text-[var(--danger-text)]">{err}</p>}
-          {unknown && (
-            <div className={PANEL_WARN_ORANGE}>
-              <p>{dict.review.resultUnknownBody}</p>
-              <button
-                type="button"
-                className={BTN_RETRY_PILL}
-                onClick={() => void buy(true)}
-              >
-                {dict.review.retrySameKey}
-              </button>
-            </div>
-          )}
+          ) : null
+        }
+        stage={stage}
+        stageBox={tab === "play"}
+        singleColumn
+      />
+      {tab === "play" && err && (
+        <p className="sp-error" role="alert">
+          {err}
+        </p>
+      )}
+      {tab === "play" && unknown && (
+        <div className={PANEL_WARN_ORANGE}>
+          <p>{dict.review.resultUnknownBody}</p>
+          <button
+            type="button"
+            className={BTN_RETRY_PILL}
+            onClick={() => void buy(true)}
+          >
+            {dict.review.retrySameKey}
+          </button>
         </div>
-      }
-      controls={
-        <div className={PANEL_LG_COL}>
-          {/* 票种三档（样图②）：10 / 100 / 1000 */}
-          <div className="sw-tiers">
-            {[10, 100, 1000].map((v) => (
-              <button
-                key={v}
-                type="button"
-                onClick={() => setBet(v)}
-                disabled={phase === "buying" || phase === "scratchable"}
-                aria-pressed={bet === v}
-                className={`sw-tier${
-                  bet === v ? (v === 1000 ? " on-gold" : " on-mint") : ""
-                }`}
-              >
-                <div className="sw-tier-b num">
-                  {v} {currency}
-                </div>
-                <div className="sw-tier-s">
-                  {ts.tierMax.replace("{n}", maxMult.toFixed(0))}
-                </div>
-              </button>
-            ))}
-          </div>
-          <SwStatRow
-            items={[
-              { lb: ts.statPlays, vl: String(ov?.me?.today_plays ?? 0) },
-              {
-                lb: ts.statMax,
-                vl: maxMult > 0 ? `${maxMult.toFixed(0)}x` : "—",
-                tone: "gold",
-              },
-              {
-                lb: ts.statLeft,
-                vl: ov?.me?.limit_left != null ? String(ov.me.limit_left) : "—",
-                tone: "green",
-              },
-            ]}
-          />
-          <SwPrizeStrip label={ts.prizeLb} items={prizeStripItems} />
-          <SwCtaRow
-            primaryLabel={`${ts.buy.replace("{n}", String(bet))}`}
-            goldLabel={`${ts.tenBtn} · ${bet * 10}`}
-            onPrimary={() => void buy()}
-            onGold={ten.run}
-            primaryDisabled={phase === "buying" || phase === "scratchable"}
-            goldDisabled={
-              ten.busy || phase === "buying" || phase === "scratchable"
-            }
-            goldBusy={ten.busy}
-          />
-        </div>
-      }
-      side={
-        <div className={PANEL_LG}>
-          <h2 className="mb-2 font-display text-base">{t.history}</h2>
-          <SwHist rows={histRows} empty={t.historyEmpty} />
-          <GameRules game="scratch" />
-        </div>
-      }
-      foot={
-        <SwTenModal
-          open={ten.open}
-          title={ts.tenTitle}
-          rows={ten.rows}
-          totalLabel={ts.tenTotal.replace("{magic}", currency)}
-          onClose={ten.close}
-        />
-      }
-    />
+      )}
+      <SwTenModal
+        open={ten.open}
+        title={ts.tenTitle}
+        rows={ten.rows}
+        totalLabel={ts.tenTotal.replace("{magic}", currency)}
+        onClose={ten.close}
+      />
+      <ScratchWinModal
+        open={winModal.open}
+        kind={winModal.kind}
+        title={modalTitle}
+        desc={flash?.text ?? ""}
+        amount={winModal.amount}
+        amountSuffix={currency}
+        againLabel={ts.mAgain}
+        tenLabel={ts.tenBtn}
+        onAgain={() => {
+          closeModal();
+          void buy();
+        }}
+        onTen={() => {
+          closeModal();
+          ten.run();
+        }}
+        onClose={closeModal}
+      />
+    </div>
   );
 }

@@ -1,6 +1,6 @@
 import { api } from "@/lib/api-client";
 import { requireModule } from "@/components/module-gate";
-import CapsulePage, { type Overview } from "./_inner";
+import SlotPage, { type Overview } from "./_inner";
 
 export default async function Page() {
   const gate = await requireModule("games");
@@ -8,5 +8,5 @@ export default async function Page() {
   const initialOver = await api
     .get<Overview>("/api/v1/games")
     .catch(() => null);
-  return <CapsulePage initialOver={initialOver} />;
+  return <SlotPage initialOver={initialOver} />;
 }

@@ -132,6 +132,8 @@ pub(super) async fn grant_item_tx(
 }
 
 /// 奖池：票价 + 档位。两者同源一行，避免「票价在表里、档位在表里、却各读一处」。
+/// `Default` 是「空池」：新玩法未跑迁移时读池失败，总览给空档位而非 500。
+#[derive(Default)]
 pub(super) struct Pool {
     pub ticket: i64,
     pub entries: Vec<games::PoolEntry>,

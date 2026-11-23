@@ -37,24 +37,27 @@ export interface GameEntry {
   badge?:
     | "scratch"
     | "jgg"
+    | "mole"
     | "bigsmall"
     | "farm"
     | "capsule"
+    | "fruit"
     | "wheel"
     | "fishing";
   /** 大厅首屏「热门」标记 */
   hot?: boolean;
 }
 
-/** 九款玩法：4 即时（猜大小/刮刮乐/九宫格）+ 2 台面（扭蛋/大转盘）
- *  + 4 养成（农场/抽卡/宠物/钓鱼）。顺序即大厅展示顺序。 */
+/** 娱乐屋玩法清单：即时开奖（猜大小/刮刮乐/打地鼠/老虎机/水果机/大转盘）
+ *  + 养成（农场/抽卡/宠物/钓鱼）。顺序即大厅展示顺序。
+ *  旧扭蛋入口已替换为老虎机 + 水果机；老虎机后端复用旧 capsule 池键。 */
 export const GAMES: GameEntry[] = [
   {
     key: "bigsmall",
     href: "/games/bigsmall",
     icon: "🎯",
     tone: "sky",
-    group: "instant",
+    group: "session",
     live: true,
     badge: "bigsmall",
     hot: true,
@@ -70,22 +73,33 @@ export const GAMES: GameEntry[] = [
     hot: true,
   },
   {
-    key: "jgg",
-    href: "/games/jgg",
-    icon: "🎰",
+    key: "mole",
+    href: "/games/mole",
+    icon: "🐹",
     tone: "candy",
     group: "instant",
     live: true,
-    badge: "jgg",
+    badge: "mole",
+    hot: true,
   },
   {
-    key: "capsule",
-    href: "/games/capsule",
-    icon: "🥚",
-    tone: "violet",
+    key: "slot",
+    href: "/games/slot",
+    icon: "🎰",
+    tone: "indigo",
     group: "instant",
     live: true,
     badge: "capsule",
+    hot: true,
+  },
+  {
+    key: "fruit",
+    href: "/games/fruit",
+    icon: "🍒",
+    tone: "coral",
+    group: "instant",
+    live: true,
+    badge: "fruit",
   },
   {
     key: "wheel",

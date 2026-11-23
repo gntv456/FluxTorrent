@@ -28,6 +28,7 @@ pub(super) async fn np_user_json(
         chrono::DateTime<chrono::Utc>,
         i64,
         i64,
+        i64,
     )> = sqlx::query_as(
         "SELECT u.id, u.username, u.uploaded, u.downloaded, \
          COALESCE(u.spark_balance,0), u.class_id, \
@@ -35,6 +36,8 @@ pub(super) async fn np_user_json(
          (SELECT count(*) FROM snatches s \
            WHERE s.user_id = u.id AND s.seeding), \
          (SELECT COALESCE(sum(s.seeded_seconds), 0) / 3600 FROM snatches s \
+           WHERE s.user_id = u.id), \
+         (SELECT COALESCE(sum(s.seeded_seconds), 0) FROM snatches s \
            WHERE s.user_id = u.id) \
          FROM users u WHERE u.id = $1 AND u.status < 2",
     )
@@ -53,6 +56,7 @@ pub(super) async fn np_user_json(
         join_at,
         seeding,
         seed_points,
+        seed_seconds,
     )) = row
     else {
         return Err(DomainError::Unauthorized);
@@ -111,6 +115,13 @@ pub(super) async fn np_user_json(
         "seeding": seeding,
         "seeding_size": seeding_size,
         "seedingSize": seeding_size,
+        // 累计做种时长（秒）：等级门槛「做种小时」同一口径
+        // （snatches.seeded_seconds 合计，未除 3600 的原始秒数）。PT-depiler
+        // 的等级进度卡按 seedingTime（秒）比较，缺这个字段它只能按 0 算，
+        // 「下一等级剩余做种时长」恒等于门槛全额（#用户反馈 10M2W6D 不动）。
+        // NP 生态既有叫法是 seeding_time（NexusPHP userdetails 口径）。
+        "seeding_time": seed_seconds,
+        "seedingTime": seed_seconds,
         "join_at": join_str.as_str(),
         "joinTime": join_str.as_str(),
     }))

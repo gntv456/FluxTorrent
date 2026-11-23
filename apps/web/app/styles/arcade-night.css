@@ -154,6 +154,8 @@
   --mood-wheel-blue-b: #4a6cae;
   --mood-wheel-mist-a: #2a3a64;
   --mood-wheel-mist-b: #344672;
+  /* 盘面读数：夜场深底扇区上不能用 UI 的深墨色，单独给亮字 */
+  --mood-wheel-disc-ink: #f4f8ff;
   --mood-bright: #0c1424;
 }
 /* 骰面：象牙白 + 金边在深底上更「实体」 */
@@ -306,4 +308,34 @@
   [data-arcade="sweet"] .gc-hero-cta:hover {
     box-shadow: none;
   }
+}
+
+/* ── ⑦ 甜梦浅色组件补覆盖（visual-judge 2026-11-21 实测揪出）：
+   .gtabs 标签条 / .sw-stat 三格统计 / .sw-hrow 历史行 / .sw-prize-strip
+   奖池条原为白底浅蓝渐变（sweet 层 902/1340/1370/2070），夜场域内
+   与金线夜色面板冲突，统一压成夜色面板家族。 ── */
+[data-arcade="sweet"] .gtabs {
+  background: linear-gradient(165deg, #1e2a44 0%, #182238 100%);
+  box-shadow: inset 0 0 0 1.5px #3a4a72;
+}
+[data-arcade="sweet"] .sw-stat {
+  background: linear-gradient(165deg, #1e2a44 0%, #182238 100%);
+  box-shadow: inset 0 0 0 1px #3a4a72;
+}
+[data-arcade="sweet"] .sw-stat-lb {
+  color: #8fa0c5;
+}
+[data-arcade="sweet"] .sw-hrow {
+  border: 1px solid #3a4a72;
+  background: #1a2438;
+}
+[data-arcade="sweet"] .sw-htime {
+  color: #8fa0c5;
+}
+[data-arcade="sweet"] .sw-prize-strip {
+  background: linear-gradient(165deg, #1e2a44 0%, #182238 100%);
+  box-shadow: inset 0 0 0 1px var(--sweet-gold);
+}
+[data-arcade="sweet"] .sw-prize-lb {
+  color: var(--sun);
 }

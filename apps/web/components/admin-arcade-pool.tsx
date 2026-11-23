@@ -49,8 +49,10 @@ const POOLS = [
   { game: "jgg", key: "jgg_default", labelKey: "labelJgg" },
   { game: "scratch", key: "scratch_default", labelKey: "labelScratch" },
   { game: "bigsmall", key: "bigsmall_default", labelKey: "labelBigsmall" },
-  { game: "capsule", key: "capsule_default", labelKey: "labelCapsule" },
+  { game: "capsule", key: "capsule_default", labelKey: "labelSlot" },
+  { game: "fruit", key: "fruit_default", labelKey: "labelFruit" },
   { game: "wheel", key: "wheel_default", labelKey: "labelWheel" },
+  { game: "mole", key: "mole_default", labelKey: "labelMole" },
   { game: "fishing", key: "fishing_default", labelKey: "labelFishing" },
   {
     game: "farm",
@@ -80,6 +82,7 @@ export function AdminArcadePool({
   const [busy, setBusy] = useState(false);
   const [game, setGame] = useState<string>("jgg");
   const pool = POOLS.find((p) => p.game === game) ?? POOLS[0];
+  const totalWeight = rows.reduce((s, r) => s + r.weight_permille, 0);
   // 农场的倍数按种子价折算，「票价」是作物表算出来的，不给手填
   const derived = "unitDerived" in pool && pool.unitDerived;
   // 出厂态 = 表上只有一档倍率 0：不是「坏了」，而是「站长还没开彩蛋」
@@ -189,16 +192,33 @@ export function AdminArcadePool({
       <AdminArcadePoolRows
         rows={rows}
         catalog={catalog}
+        totalWeight={totalWeight}
         showSide={pool.game === "bigsmall"}
         valueColLabel={derived ? t.colValueFarm : undefined}
         onSet={set}
+        onMove={(i, dir) =>
+          setRows((rs) => {
+            const j = i + dir;
+            if (j < 0 || j >= rs.length) return rs;
+            const next = [...rs];
+            [next[i], next[j]] = [next[j], next[i]];
+            return next;
+          })
+        }
+        onDel={(i) => setRows((rs) => rs.filter((_, k) => k !== i))}
       />
+
+      {rows.length > 0 && (
+        <p className="text-xs text-sub">
+          {t.probNote.replace("{n}", String(totalWeight))}
+        </p>
+      )}
 
       <div className="flex items-center gap-3">
         <button
           type="button"
           className={
-            "rounded-full bg-coral px-4 py-2 text-xs font-bold " +
+            "rounded-full bg-[var(--coral)] px-4 py-2 text-xs font-bold " +
             "text-white disabled:opacity-60"
           }
           disabled={busy || rows.length === 0}
@@ -232,7 +252,9 @@ export function AdminArcadePool({
       {msg && (
         <p
           className={`rounded-[var(--r-sm)] p-2 text-xs ${
-            msg === t.saved ? "bg-mint-soft text-ink" : "bg-sun-soft text-ink"
+            msg === t.saved
+              ? "bg-[var(--mint-soft)] text-ink"
+              : "bg-[var(--sun-soft)] text-ink"
           }`}
         >
           {msg}

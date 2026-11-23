@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FluxTorrent · 刮刮乐 · 娱乐屋样图</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='3' y='7' width='18' height='12' rx='2' fill='%23f4433a'/%3E%3C/svg%3E">
+<style>
+:root{
+  --bg0:#0c0916; --bg1:#171129;
+  --gold1:#f7e2b2; --gold2:#d4af7a; --gold3:#a87f3c;
+  --violet:#c3b4e6; --blue:#a3c4e8;
+  --ink:#f6f0ff; --sub:#c3b3e0; --faint:#9080b0;
+  --panel:rgba(44,30,72,.5); --line:rgba(247,226,178,.16);
+  --mint:#46d3a4; --coral:#ff7a6b; --sun:#ffd700; --sky:#6ab6f0;
+  /* 票面促销色 */
+  --red1:#f4433a; --red2:#c81f1f; --red3:#a81616;
+  --yel1:#ffe057; --yel2:#ffc93a; --yel3:#f5b52a;
+  --orange:#f59e2e; --ribbon:#35a3d8; --ribbon-d:#2386bd;
+  --coat:#c7cad0; --coat-d:#aeb2ba;
+  --r-md:12px; --r-lg:18px;
+  --font:"Noto Serif SC","Songti SC","Microsoft YaHei",serif;
+  --num:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:var(--font);color:var(--ink);font-size:13px;line-height:1.5;min-height:100vh;
+  background:
+    radial-gradient(120% 80% at 50% -12%, #3a2564 0%, transparent 55%),
+    radial-gradient(70% 50% at 90% 20%, rgba(106,182,240,.14), transparent 60%),
+    radial-gradient(60% 50% at 6% 24%, rgba(255,67,58,.12), transparent 60%),
+    radial-gradient(140% 110% at 50% 115%, #171129 25%, #0c0916 100%),
+    var(--bg0);
+  overflow-x:hidden;
+}
+button{font-family:inherit}
+.num{font-variant-numeric:tabular-nums;font-family:var(--num)}
+
+.bg-stars{position:fixed;inset:0;pointer-events:none;z-index:0;animation:starTw 4s ease-in-out infinite alternate;
+  background-image:
+    radial-gradient(1.5px 1.5px at 12% 30%, rgba(255,255,255,.7),transparent),
+    radial-gradient(1px 1px at 28% 62%, rgba(255,255,255,.5),transparent),
+    radial-gradient(1.5px 1.5px at 46% 16%, rgba(255,215,0,.6),transparent),
+    radial-gradient(1px 1px at 64% 40%, rgba(255,255,255,.55),transparent),
+    radial-gradient(1.5px 1.5px at 80% 68%, rgba(195,180,230,.6),transparent),
+    radial-gradient(1px 1px at 92% 26%, rgba(255,255,255,.5),transparent),
+    radial-gradient(1px 1px at 36% 84%, rgba(255,255,255,.4),transparent),
+    radial-gradient(1.5px 1.5px at 70% 90%, rgba(255,215,0,.5),transparent);
+}
+@keyframes starTw{from{opacity:.5}to{opacity:1}}
+
+.wrap{position:relative;z-index:1;max-width:1180px;margin:0 auto;padding:14px 18px}
+
+/* ===== 顶栏 ===== */
+.topbar{display:flex;align-items:center;gap:14px;margin-bottom:12px}
+.game-btn{min-height:36px;border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--sub);border-radius:999px;padding:0 14px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:7px;backdrop-filter:blur(6px)}
+.game-btn:hover{color:var(--ink);border-color:rgba(247,226,178,.4)}
+.head{flex:1;text-align:center}
+.head h1{display:inline-flex;align-items:center;gap:10px;font-size:22px;font-weight:900;letter-spacing:5px;
+  background:linear-gradient(180deg,#fff6dd 10%,#f0cd86 55%,#c89848 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.star{width:11px;height:11px;background:var(--sun);clip-path:polygon(50% 0,62% 38%,100% 50%,62% 62%,50% 100%,38% 62%,0 50%,38% 38%);filter:drop-shadow(0 0 6px rgba(255,215,0,.8))}
+.head .sub{display:block;font-size:11.5px;color:var(--sub);letter-spacing:.04em;margin-top:2px}
+.head .badges{display:inline-flex;gap:8px;margin-left:10px}
+.badge{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:5px 12px;font-size:11.5px;color:var(--sub)}
+.badge .hl{color:var(--gold1);font-weight:800}
+.badge.ticket .hl{color:var(--sun)}
+
+/* ===== meta 行 ===== */
+.meta-row{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+.bal-row{display:flex;flex-wrap:wrap;gap:10px}
+.bal-chip{display:flex;align-items:center;gap:9px;padding:8px 14px;border-radius:var(--r-md);background:var(--panel);border:1px solid var(--line);backdrop-filter:blur(8px)}
+.bal-ic{width:30px;height:30px;border-radius:10px;display:grid;place-items:center;font-size:15px;background:linear-gradient(180deg,rgba(255,215,0,.22),rgba(212,158,74,.1));border:1px solid rgba(255,215,0,.28)}
+.bal-meta{display:flex;flex-direction:column}
+.bal-lb{font-size:10.5px;color:var(--faint);letter-spacing:.1em}
+.bal-vl{font-family:var(--num);font-size:15px;font-weight:900}
+.win{color:var(--mint)} .lose{color:var(--coral)}
+
+.gs-tabs{display:inline-flex;gap:5px;padding:4px;border:1px solid var(--line);background:var(--panel);border-radius:999px;backdrop-filter:blur(8px)}
+.gs-tab{border:0;background:none;border-radius:999px;padding:7px 16px;font-size:12px;font-weight:700;color:var(--faint);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .18s ease}
+.gs-tab:hover:not(.on){color:var(--sub)}
+.gs-tab.on{background:linear-gradient(180deg,#f0cd86,#c89848);color:#2a1b08;box-shadow:0 4px 14px -4px rgba(212,158,74,.7);font-weight:900}
+
+.notice-bar{display:none;max-width:520px;margin:0 auto 12px;align-items:center;gap:9px;border-radius:var(--r-md);padding:9px 14px;font-size:12px;font-weight:700;border:1px solid}
+.notice-bar.show{display:flex}
+.notice-bar.warn{background:rgba(255,201,60,.1);border-color:rgba(255,201,60,.35);color:var(--sun)}
+.notice-bar.danger{background:rgba(255,122,107,.1);border-color:rgba(255,122,107,.35);color:var(--coral)}
+
+.layout{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;align-items:start}
+.panel{border:1px solid var(--line);background:var(--panel);border-radius:var(--r-lg);padding:14px;backdrop-filter:blur(10px)}
+.panel h2{font-size:13px;font-weight:900;letter-spacing:2px;margin-bottom:11px;color:var(--gold1);display:flex;align-items:center;gap:7px}
+.panel h2::before{content:"◆";font-size:8px;color:var(--gold2)}
+
+/* ============ 刮刮乐票卡 ============ */
+.stage-card{position:relative;border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden;
+  background:radial-gradient(120% 120% at 50% 0%,#322053 0%,#1a1130 68%,#120c1f 100%);
+  box-shadow:0 24px 50px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.08);
+  padding:18px 16px 20px;display:flex;flex-direction:column;align-items:center;gap:14px}
+
+.ticket-card{width:100%;max-width:460px;border-radius:22px;overflow:hidden;box-shadow:0 26px 50px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.08);
+  background:linear-gradient(180deg,var(--yel1) 0%,var(--yel2) 58%,var(--yel3) 100%)}
+
+/* 红色 Banner */
+.banner{position:relative;padding:20px 18px 30px;background:
+  radial-gradient(120% 140% at 50% -20%,#ff6a5e 0%,var(--red1) 42%,var(--red2) 100%);
+  text-align:center;overflow:hidden}
+.banner::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:22px;
+  background:radial-gradient(circle at 14px 0, var(--red1) 12px, transparent 13px) repeat-x;background-size:28px 22px;opacity:.9}
+.deco{position:absolute;font-size:20px;filter:drop-shadow(0 2px 2px rgba(0,0,0,.3));z-index:1}
+.deco.d1{top:14px;left:12px;transform:rotate(-14deg)}
+.deco.d2{top:8px;left:52px;font-size:16px}
+.deco.d3{top:16px;right:54px;font-size:18px}
+.deco.d4{top:10px;left:96px;font-size:17px}
+.deco.d5{bottom:18px;left:10px;font-size:16px}
+.deco.d6{bottom:20px;right:12px;font-size:18px}
+.deco.d7{top:46%;left:6px;font-size:13px}
+.deco.d8{top:52%;right:8px;font-size:13px}
+
+.rule-btn{position:absolute;top:14px;right:14px;z-index:3;width:46px;height:46px;border-radius:50%;border:2px solid rgba(255,255,255,.85);
+  background:#1d1410;color:#fff;font-size:13px;font-weight:900;letter-spacing:2px;cursor:pointer;display:grid;place-items:center;
+  box-shadow:0 4px 10px rgba(0,0,0,.35);transition:transform .14s ease}
+.rule-btn:hover{transform:scale(1.06)}
+.rule-btn:active{transform:scale(.95)}
+
+.banner-title{position:relative;z-index:2;font-family:"Microsoft YaHei","PingFang SC",sans-serif;font-weight:900;line-height:1.05;letter-spacing:.04em}
+.banner-title .row1{display:block;font-size:15px;color:#ffe9a8;letter-spacing:.35em;text-shadow:0 2px 0 rgba(0,0,0,.25)}
+.banner-title .row2{display:block;font-size:44px;margin-top:2px;color:var(--yel1);
+  -webkit-text-stroke:2.5px var(--red3);text-shadow:0 3px 0 var(--red3),0 6px 12px rgba(0,0,0,.35);transform:rotate(-2deg)}
+.banner-title .row2 em{font-style:normal;color:#fff;-webkit-text-stroke:2.5px var(--red3)}
+
+.ribbon{position:relative;z-index:2;display:inline-flex;align-items:center;gap:8px;margin:14px auto 0;padding:8px 26px;
+  background:linear-gradient(180deg,var(--ribbon),var(--ribbon-d));color:#fff;font-weight:900;font-size:15px;letter-spacing:.12em;
+  border-radius:6px;box-shadow:0 5px 12px rgba(0,0,0,.28)}
+.ribbon::before,.ribbon::after{content:"";position:absolute;top:0;border:14px solid transparent}
+.ribbon::before{left:-16px;border-right-color:var(--ribbon-d)}
+.ribbon::after{right:-16px;border-left-color:var(--ribbon-d)}
+
+/* 票面主体 */
+.stage{padding:16px 16px 14px}
+
+/* 票种 */
+.ticket-types{display:flex;gap:8px;margin-bottom:14px}
+.tt{flex:1;border:2px solid rgba(120,72,10,.18);background:rgba(255,255,255,.55);border-radius:12px;padding:8px 4px;text-align:center;cursor:pointer;transition:all .16s ease}
+.tt .tt-p{font-weight:900;font-size:13px;color:#5a3a10}
+.tt .tt-m{font-size:10px;color:#9a7a3a;margin-top:2px}
+.tt.on{background:#fff;border-color:var(--red1);box-shadow:0 6px 14px -6px rgba(200,31,31,.55)}
+.tt.on .tt-p{color:var(--red2)}
+.tt.on.gold{border-color:var(--gold3)}
+.tt.on.gold .tt-p{color:var(--gold3)}
+
+/* 邮票齿孔框 */
+.scratch-frame{position:relative;border-radius:20px;padding:13px;background:linear-gradient(160deg,var(--orange),#e8891a);
+  box-shadow:0 12px 24px -10px rgba(180,100,10,.6),inset 0 2px 0 rgba(255,255,255,.35)}
+.scratch-frame::before{content:"";position:absolute;inset:6px;border-radius:14px;border:2px dashed rgba(60,30,0,.55);pointer-events:none;z-index:3}
+
+.scratch-grid{position:relative;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;border-radius:12px;background:#f3ead2;padding:10px;z-index:1}
+.cell{position:relative;aspect-ratio:1/1;border-radius:10px;overflow:hidden;background:#fff7e8;display:grid;place-items:center}
+.cell .sym{font-size:30px;z-index:1;filter:drop-shadow(0 2px 3px rgba(0,0,0,.18))}
+.cell.hit{background:linear-gradient(180deg,#fff3c8,#ffe6a0);box-shadow:inset 0 0 0 2.5px var(--sun)}
+.cell canvas{position:absolute;inset:0;width:100%;height:100%;z-index:2;touch-action:none;cursor:crosshair}
+.cell.locked canvas{cursor:default}
+
+.scratch-mid{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:rgba(199,202,208,.0)}
+.scratch-mid.cover{background:rgba(199,202,208,.0)}
+.start-btn{border:0;cursor:pointer;padding:14px 38px;border-radius:999px;font-size:18px;font-weight:900;letter-spacing:.1em;color:#fff;
+  background:linear-gradient(180deg,#ff6a5e,var(--red1) 55%,var(--red2));
+  box-shadow:0 10px 22px -6px rgba(200,31,31,.8),inset 0 2px 0 rgba(255,255,255,.45),inset 0 -3px 6px rgba(120,10,10,.4);
+  transition:transform .14s ease}
+.start-btn:active:not(:disabled){transform:scale(.96)}
+.start-btn:disabled{filter:saturate(.5) brightness(.85);cursor:not-allowed}
+.mid-hint{font-size:12px;color:#7a6a55;font-weight:700;letter-spacing:.05em}
+
+.scratch-info{display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding:0 4px;font-size:12px;font-weight:700;color:#6b4a12}
+.scratch-info b{font-family:var(--num)}
+.flash-line{margin-top:8px;text-align:center;font-size:13px;font-weight:900;min-height:20px;letter-spacing:.02em}
+.flash-line .f-win{color:#1f8a5f}
+.flash-line .f-jackpot{color:var(--red2)}
+.flash-line .f-lose{color:#8a7a5a}
+.flash-line .f-tie{color:#6b4a12}
+
+/* 大奖抢先看 */
+.preview{margin-top:14px}
+.preview-lb{text-align:center;font-family:"Microsoft YaHei",sans-serif;font-weight:900;font-size:17px;color:#4a2c08;letter-spacing:.08em;margin-bottom:10px}
+.preview-lb .small{font-size:12px;color:#8a6a2a;margin-left:6px;letter-spacing:.05em}
+.preview-row{display:flex;gap:10px;justify-content:center}
+.pv-item{flex:1;max-width:92px;border:2px dashed rgba(120,72,10,.35);background:rgba(255,255,255,.6);border-radius:14px;padding:10px 6px;text-align:center}
+.pv-ic{font-size:26px}
+.pv-nm{font-size:11px;font-weight:800;color:#5a3a10;margin-top:4px}
+.pv-odds{font-size:10px;color:#9a7a3a;font-family:var(--num);margin-top:1px}
+
+/* 统计 */
+.stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:100%}
+.stat{border-radius:var(--r-md);padding:12px 10px;text-align:center;background:var(--panel);border:1px solid var(--line)}
+.stat-lb{font-size:11px;font-weight:700;color:var(--faint);letter-spacing:.06em}
+.stat-vl{font-family:var(--num);font-size:15px;font-weight:900;margin-top:2px}
+.stat-vl.gold{color:var(--sun)} .stat-vl.green{color:var(--mint)}
+
+/* CTA */
+.cta-row{display:flex;flex-wrap:nowrap;justify-content:center;gap:10px;width:100%}
+.sw-cta{position:relative;overflow:hidden;flex:1 1 0;min-width:0;min-height:48px;border:0;cursor:pointer;border-radius:999px;color:#fff;font-weight:900;font-size:15px;letter-spacing:.06em;
+  background:linear-gradient(180deg,#ff6a5e,var(--red1) 55%,var(--red2));
+  box-shadow:0 10px 24px -6px rgba(200,31,31,.75),inset 0 2px 0 rgba(255,255,255,.5),inset 0 -3px 6px rgba(120,10,10,.35);
+  transition:transform .14s ease,filter .14s ease}
+.sw-cta::after{content:"";position:absolute;top:0;left:-60%;width:40%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.5),transparent);transform:skewX(-20deg);animation:sheen 3.2s ease-in-out infinite}
+@keyframes sheen{0%{left:-60%}55%,100%{left:130%}}
+.sw-cta:active:not(:disabled){transform:scale(.97)}
+.sw-cta:disabled{opacity:.5;cursor:not-allowed;filter:grayscale(.3)}
+.arc-chip{flex:1 1 0;min-width:0;min-height:48px;border:1px solid rgba(106,182,240,.4);background:rgba(106,182,240,.08);color:var(--sky);border-radius:999px;padding:0 10px;font-weight:800;font-size:13px;cursor:pointer;backdrop-filter:blur(6px);display:inline-flex;align-items:center;justify-content:center;gap:6px;transition:all .15s ease;white-space:nowrap}
+.arc-chip:hover:not(:disabled){background:rgba(106,182,240,.18)}
+.arc-chip:disabled{opacity:.45;cursor:not-allowed}
+.arc-chip.gold{border-color:rgba(240,200,120,.5);background:linear-gradient(180deg,rgba(240,200,120,.2),rgba(212,158,74,.12));color:var(--gold1)}
+.arc-chip.gold:hover:not(:disabled){background:rgba(240,200,120,.28)}
+.arc-chip.auto{border-color:rgba(255,122,107,.45);background:rgba(255,122,107,.1);color:var(--coral)}
+.arc-chip.auto.on{background:linear-gradient(180deg,#ff8a7a,#e05a4a);border-color:#ff8a7a;color:#fff;box-shadow:0 6px 18px -6px rgba(255,122,107,.7)}
+
+.rules{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:12px;padding:10px 12px;border-radius:var(--r-md);background:rgba(106,182,240,.08);font-size:11px;color:var(--sub)}
+.rules a{color:var(--sky);font-weight:700;white-space:nowrap;cursor:pointer}
+
+/* ===== 奖池 tab ===== */
+.pool-note{margin-top:10px;font-size:11px;color:var(--faint);line-height:1.6}
+.pool-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
+.pool-item{display:flex;align-items:center;gap:10px;border-radius:12px;padding:10px 12px;border:1px solid transparent;background:rgba(255,255,255,.05);min-width:0}
+.pi-ic{width:36px;height:36px;flex:none;border-radius:11px;display:grid;place-items:center;font-size:17px;color:#fff;background:var(--tone,#4a7ab0);box-shadow:0 4px 10px -3px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.35)}
+.pi-mid{flex:1;min-width:0}
+.pi-nm{font-size:12.5px;font-weight:800;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pi-meta{font-size:10.5px;color:var(--faint);margin-top:2px}
+.pi-prob{font-family:var(--num);font-size:13px;font-weight:900;flex:none}
+.pool-item.gold{background:linear-gradient(180deg,rgba(255,201,60,.2),rgba(212,158,74,.08));border-color:rgba(255,201,60,.35)}
+.pool-item.gold .pi-prob{color:var(--sun)}
+.pool-item.mint{background:rgba(70,211,164,.1);border-color:rgba(70,211,164,.25)}
+.pool-item.mint .pi-prob{color:var(--mint)}
+.pool-item.mist{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.1)}
+.pool-item.mist .pi-prob{color:var(--sub)}
+
+.jackpot-card{margin-top:12px;background:linear-gradient(160deg,rgba(255,201,60,.16),rgba(212,158,74,.06));border:1px solid rgba(255,201,60,.35);border-radius:var(--r-md);padding:12px 14px}
+.jackpot-card .jc-lb{font-size:11px;font-weight:800;color:var(--gold1);letter-spacing:.1em}
+.jackpot-card .jc-vl{font-family:var(--num);font-size:18px;font-weight:900;color:var(--sun);margin-top:2px}
+.jackpot-card .jc-note{font-size:10.5px;color:var(--faint);margin-top:2px}
+
+/* ===== 战绩 tab ===== */
+.rec-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
+@media(max-width:760px){.rec-stats{grid-template-columns:repeat(2,1fr)}}
+.record-list{display:flex;flex-direction:column;gap:6px}
+.record-empty{padding:24px;text-align:center;color:var(--faint);font-size:13px}
+.rec-row{display:grid;grid-template-columns:92px 1fr auto;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;background:rgba(255,255,255,.05);font-size:12px}
+.rec-row .htime{color:var(--faint);font-weight:700;font-family:var(--num)}
+.rec-row .r-bet{color:var(--faint);font-family:var(--num);text-align:right}
+.rec-row .r-net{font-weight:900;font-family:var(--num);min-width:84px;text-align:right}
+.r-net.win{color:var(--mint)} .r-net.lose{color:var(--coral)} .r-net.tie{color:var(--sub)}
+
+.album-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:10px}
+@media(max-width:760px){.album-grid{grid-template-columns:repeat(3,1fr)}}
+.album-card{display:flex;flex-direction:column;align-items:center;gap:5px;border-radius:12px;border:2px solid var(--line);background:rgba(255,255,255,.04);padding:10px 6px;text-align:center}
+.album-card .a-ic{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;font-size:16px;color:#fff;background:var(--tone,#4a7ab0)}
+.album-card .a-nm{font-size:12px;font-weight:800;line-height:1.2}
+.album-card .a-meta{font-size:10.5px;color:var(--faint);font-family:var(--num)}
+.album-card.r5{border-color:rgba(255,215,0,.65);box-shadow:0 0 14px rgba(255,215,0,.16)}
+.album-card.r4{border-color:rgba(195,180,230,.55)}
+.album-card.r3{border-color:rgba(163,196,232,.5)}
+.album-card.r1,.album-card.r2{border-color:rgba(255,255,255,.14)}
+.album-card.locked{border-style:dashed;border-color:rgba(255,255,255,.14);opacity:.55;background:rgba(255,255,255,.02)}
+.album-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:11px}
+.album-head h2{margin-bottom:0}
+.album-got{font-size:11.5px;color:var(--sub);font-family:var(--num)}
+
+/* ===== 浮层 ===== */
+.overlay{position:fixed;inset:0;z-index:95;display:none;place-items:center;padding:16px;background:rgba(8,5,16,.78);backdrop-filter:blur(6px)}
+.overlay.open{display:grid}
+.dialog{width:min(440px,92vw);max-height:82vh;overflow:auto;border-radius:var(--r-lg);background:linear-gradient(180deg,#2a1b47,#1a1130);border:1px solid var(--line);padding:18px;box-shadow:0 30px 70px rgba(0,0,0,.6)}
+.dlg-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:13px}
+.dlg-hd h4{font-size:16px;font-weight:900;letter-spacing:3px;color:var(--gold1)}
+.dlg-x{border:0;background:none;color:var(--sub);font-size:18px;cursor:pointer}
+
+/* 中奖弹窗 */
+.win-dialog{text-align:center}
+.win-ic{width:84px;height:84px;margin:6px auto 10px;border-radius:26px;display:grid;place-items:center;font-size:42px;
+  background:linear-gradient(160deg,#fff3c8,#e8c878);box-shadow:0 14px 30px -8px rgba(212,158,74,.7),inset 0 2px 0 rgba(255,255,255,.7)}
+.win-dialog.jackpot .win-ic{animation:pop .5s ease}
+@keyframes pop{0%{transform:scale(.6)}60%{transform:scale(1.12)}100%{transform:scale(1)}}
+.win-title{font-size:19px;font-weight:900;letter-spacing:.06em}
+.win-title.jackpot{color:var(--sun);text-shadow:0 0 16px rgba(255,215,0,.5)}
+.win-desc{font-size:12.5px;color:var(--sub);margin-top:6px}
+.win-amt{font-family:var(--num);font-size:26px;font-weight:900;margin-top:10px;color:var(--mint)}
+.win-amt small{font-size:12px;color:var(--faint);margin-left:4px}
+.win-btns{display:flex;gap:10px;margin-top:16px}
+.win-btns .sw-cta,.win-btns .arc-chip{min-height:44px}
+
+/* 十连列表 */
+.ten-list{display:flex;flex-direction:column;gap:6px}
+.ten-row{display:flex;justify-content:space-between;padding:8px 12px;border-radius:10px;background:rgba(255,255,255,.05);font-size:13px}
+.ten-row.win{color:var(--mint);background:rgba(70,211,164,.1)}
+.ten-total{margin-top:13px;text-align:center;font-weight:900;font-size:15px;font-family:var(--num);color:var(--gold1)}
+
+/* 规则弹窗 */
+.rule-body{font-size:12.5px;color:var(--sub);line-height:1.8}
+.rule-body h5{color:var(--gold1);font-size:13px;margin:12px 0 6px;letter-spacing:.08em}
+.rule-body h5:first-child{margin-top:0}
+.rule-body ul{padding-left:18px}
+.rule-body table{width:100%;border-collapse:collapse;font-size:12px;margin-top:6px}
+.rule-body th,.rule-body td{padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.1);text-align:left}
+.rule-body td.num{font-family:var(--num);text-align:right}
+
+@media(max-width:760px){
+  .wrap{padding:12px 10px}
+  .topbar{gap:8px;flex-wrap:wrap}
+  .head h1{font-size:18px;letter-spacing:3px}
+  .head .badges{display:inline-flex;margin-left:0;margin-top:4px;flex-wrap:wrap;justify-content:center}
+  .meta-row{display:block}
+  .bal-row{display:flex;justify-content:space-between;gap:8px;margin-bottom:10px}
+  .bal-chip{flex:1 1 0;min-width:0;justify-content:center;padding:8px 10px}
+  .gs-tabs{display:flex;width:100%}
+  .gs-tab{flex:1 1 0;min-width:0;padding:10px 12px;font-size:13px}
+  .panel{padding:12px 10px}
+  .banner-title .row2{font-size:34px}
+  .preview-row{gap:6px}
+  .arc-chip{font-size:12px;padding:0 8px;gap:5px}
+  .cta-row{gap:8px}
+  .sw-cta{font-size:13px;letter-spacing:.02em;padding:0 6px}
+  .pool-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .rec-row{grid-template-columns:1fr auto;gap:8px;padding:9px 10px}
+  .rec-row .r-bet{display:none}
+  .rec-row .r-net{min-width:0}
+}
+</style>
+</head>
+<body>
+<div class="bg-stars" aria-hidden></div>
+<div class="wrap">
+
+  <div class="topbar">
+    <button class="game-btn">← 返回娱乐屋</button>
+    <div class="head">
+      <h1><span class="star"></span>刮刮乐<span class="star"></span></h1>
+      <div class="badges">
+        <span class="badge">中奖率 <span class="hl num" id="winRate">39.3%</span></span>
+        <span class="badge ticket">免费剩 <span class="hl num" id="freeLeft">3</span> 张</span>
+      </div>
+      <span class="sub">星尘信封 · 刮开涂层，三连同奖</span>
+    </div>
+    <button class="game-btn" id="sfxBtn"><span>🔊</span><span>已开</span></button>
+  </div>
+
+  <div class="meta-row">
+    <div class="bal-row">
+      <div class="bal-chip"><div class="bal-ic">✨</div><div class="bal-meta"><span class="bal-lb">火花余额</span><span class="bal-vl num" id="balance">12,480</span></div></div>
+      <div class="bal-chip"><div class="bal-ic">💰</div><div class="bal-meta"><span class="bal-lb">今日净收</span><span class="bal-vl num win" id="todayNet">+320</span></div></div>
+      <div class="bal-chip"><div class="bal-ic">🎫</div><div class="bal-meta"><span class="bal-lb">剩余张数</span><span class="bal-vl num" id="limitLeft">18</span></div></div>
+    </div>
+    <div class="gs-tabs">
+      <button class="gs-tab on" data-tab="play"><span>🎫</span> 主玩法</button>
+      <button class="gs-tab" data-tab="pool"><span>🎁</span> 奖池概率</button>
+      <button class="gs-tab" data-tab="records"><span>📜</span> 战绩</button>
+    </div>
+  </div>
+
+  <div class="notice-bar" id="noticeBar" role="alert"></div>
+
+  <!-- ============ 主玩法 ============ -->
+  <div id="colPlay">
+    <div class="layout">
+      <div class="stage-card">
+
+        <div class="ticket-card">
+          <!-- 红色 Banner -->
+          <div class="banner">
+            <span class="deco d1">📣</span>
+            <span class="deco d2">✨</span>
+            <span class="deco d3">🎁</span>
+            <span class="deco d4">🎀</span>
+            <span class="deco d5">⭐</span>
+            <span class="deco d6">💋</span>
+            <span class="deco d7">🖤</span>
+            <span class="deco d8">🤍</span>
+            <button class="rule-btn" id="ruleBtn">规则</button>
+            <div class="banner-title">
+              <span class="row1">大家都来</span>
+              <span class="row2">刮<em>刮</em>乐</span>
+            </div>
+            <div class="ribbon">刮奖刮到手抽筋</div>
+          </div>
+
+          <!-- 票面 -->
+          <div class="stage">
+            <div class="ticket-types" id="ticketTypes"></div>
+
+            <div class="scratch-frame">
+              <div class="scratch-grid" id="scratchGrid"></div>
+              <div class="scratch-mid cover" id="scratchMid">
+                <button class="start-btn" id="startBtn">开始刮奖</button>
+                <div class="mid-hint" id="midHint">今日开奖：<span class="num" id="todayLeft">6</span> 次</div>
+              </div>
+            </div>
+
+            <div class="scratch-info">
+              <span>第 <b id="ticketNo">1</b> 张 / 共 <b>3</b> 张</span>
+              <span>投注 <b id="betShow">100</b></span>
+              <span>已刮 <b id="scratchedCount">0/6</b> 格</span>
+            </div>
+            <p class="flash-line" id="flash" role="status" aria-live="polite"></p>
+
+            <div class="preview">
+              <div class="preview-lb">大奖抢先看<span class="small">本期头奖实物</span></div>
+              <div class="preview-row" id="previewRow"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="stat-row">
+          <div class="stat"><div class="stat-lb">今日剩余</div><div class="stat-vl num" id="statLeft">3 张</div></div>
+          <div class="stat"><div class="stat-lb">累计中奖</div><div class="stat-vl gold num" id="statWin">12 次</div></div>
+          <div class="stat"><div class="stat-lb">最高倍数</div><div class="stat-vl green num" id="statBest">86x</div></div>
+        </div>
+
+        <div class="cta-row">
+          <button class="sw-cta" id="ctaBtn">刮开下一张</button>
+          <button class="arc-chip gold" id="tenBtn">十连刮</button>
+          <button class="arc-chip auto" id="autoBtn"><span>▶</span><span id="autoLb">一直刮</span></button>
+        </div>
+
+        <div class="rules">
+          <span>每张票独立随机 · 后台奖池同源同步</span>
+          <a id="oddsLink">概率公示 ›</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 奖池概率 ============ -->
+  <div id="colPool" style="display:none">
+    <div class="layout" style="grid-template-columns:minmax(0,1fr)">
+      <div class="panel" style="max-width:860px;margin:0 auto;width:100%">
+        <div class="ticket-types" id="poolTypes" style="max-width:520px;margin:0 auto 14px"></div>
+        <h2>刮刮乐奖池 · 概率公示</h2>
+        <div class="pool-grid" id="poolChips"></div>
+        <div class="jackpot-card">
+          <div class="jc-lb">🏆 本期累积奖池</div>
+          <div class="jc-vl num">8,560 魔力</div>
+          <div class="jc-note">每张票累积 5% 注入奖池 · 头奖独得全部 · 站长改档位后此处自动同步</div>
+        </div>
+        <p class="pool-note">概率按权重实时归一化计算；三档票种共用同一符号体系，倍率随票种档位放大。前端展示概率与后端开奖结果同源，可在后台核对每一笔记录。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 战绩 ============ -->
+  <div id="colRecords" style="display:none">
+    <div class="layout" style="grid-template-columns:minmax(0,1fr)">
+
+      <div class="panel" style="max-width:760px;margin:0 auto;width:100%">
+        <div class="rec-stats">
+          <div class="stat"><div class="stat-lb">今日刮</div><div class="stat-vl num">12 张</div></div>
+          <div class="stat"><div class="stat-lb">中奖率</div><div class="stat-vl num">35%</div></div>
+          <div class="stat"><div class="stat-lb">单场最佳</div><div class="stat-vl gold num">500x</div></div>
+          <div class="stat"><div class="stat-lb">累计净收</div><div class="stat-vl green num">+520</div></div>
+        </div>
+      </div>
+
+      <div class="panel" style="max-width:760px;margin:0 auto;width:100%">
+        <h2>最近战绩</h2>
+        <div class="record-list" id="recordList"></div>
+        <div class="rules">
+          <span>战绩保留 30 天 · 可导出 CSV</span>
+          <a href="#" id="oddsLink2">概率公示 ›</a>
+        </div>
+      </div>
+
+      <div class="panel" style="max-width:760px;margin:0 auto;width:100%">
+        <div class="album-head">
+          <h2>奖档图鉴</h2>
+          <span class="album-got">已点亮 <span class="num" id="albumGot">4/5</span></span>
+        </div>
+        <div class="album-grid" id="albumGrid"></div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- 中奖弹窗 -->
+<div class="overlay" id="winOverlay" role="presentation">
+  <div class="dialog win-dialog" role="dialog" aria-modal="true" aria-labelledby="winTitle">
+    <div class="win-ic" id="winIc">💎</div>
+    <div class="win-title" id="winTitle">恭喜命中</div>
+    <div class="win-desc" id="winDesc"></div>
+    <div class="win-amt" id="winAmt">+0<small>火花</small></div>
+    <div class="win-btns">
+      <button class="arc-chip" id="winAgain">再刮一张</button>
+      <button class="sw-cta" id="winTen">十连刮</button>
+    </div>
+  </div>
+</div>
+
+<!-- 十连弹窗 -->
+<div class="overlay" id="tenOverlay" role="presentation">
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="tenTitle">
+    <div class="dlg-hd"><h4 id="tenTitle">十连刮 · 星尘信封</h4><button class="dlg-x" id="tenClose" aria-label="关闭">✕</button></div>
+    <div class="ten-list" id="tenList"></div>
+    <div class="ten-total num" id="tenTotal"></div>
+  </div>
+</div>
+
+<!-- 规则弹窗 -->
+<div class="overlay" id="ruleOverlay" role="presentation">
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="ruleTitle">
+    <div class="dlg-hd"><h4 id="ruleTitle">刮刮乐 · 玩法规则</h4><button class="dlg-x" id="ruleClose" aria-label="关闭">✕</button></div>
+    <div class="rule-body">
+      <h5>🎫 怎么玩</h5>
+      <ul>
+        <li>选择票种后点击「开始刮奖」，获得一张 6 格涂层信封；按住刮开灰色涂层。</li>
+        <li>6 格中出现 <b>3 个相同符号</b> 即命中对应奖档；刮开超过一半涂层后自动揭晓全部。</li>
+        <li>每张票独立随机，开奖结果与后端奖池同源，可在战绩中逐笔核对。</li>
+      </ul>
+      <h5>🎁 票种与倍率</h5>
+      <table>
+        <tr><th>票种</th><th>票价</th><th>最高倍率</th><th>适合人群</th></tr>
+        <tr><td>轻体验</td><td class="num">10 火花</td><td class="num">50x</td><td>试水手气</td></tr>
+        <tr><td>标准场</td><td class="num">100 火花</td><td class="num">500x</td><td>日常娱乐</td></tr>
+        <tr><td>高端场</td><td class="num">1000 火花</td><td class="num">5000x</td><td>冲击头奖</td></tr>
+      </table>
+      <h5>🏆 奖池与保底</h5>
+      <ul>
+        <li>每张票注入 5% 火花至累积奖池，头奖（水晶三连）独得当期奖池。</li>
+        <li>连续未中达到保底次数后，下一张必中 2x 及以上奖档。</li>
+        <li>每日免费张数用完后，可消耗火花继续刮；战绩保留 30 天。</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ================= 数据 ================= */
+const TICKETS = [
+  { id:10,   price:10,   max:"50x",   mults:[50, 5,   1,  0.5, 0] },
+  { id:100,  price:100,  max:"500x",  mults:[500,50,  10, 2,   0] },
+  { id:1000, price:1000, max:"5000x", mults:[5000,500,100,20,  0] },
+];
+// 与 mults 顺序对应：gem / star / bow / ticket / none
+const POOL = [
+  { key:"gem",    icon:"💎", name:"水晶三连", weight:1,   tone:"gold",  rarity:5, sym:"💎" },
+  { key:"star",   icon:"✨", name:"星光闪耀", weight:12,  tone:"violet",rarity:4, sym:"✨" },
+  { key:"bow",    icon:"🎀", name:"蝴蝶结",   weight:80,  tone:"mint",  rarity:3, sym:"🎀" },
+  { key:"ticket", icon:"🎫", name:"票券返还", weight:300, tone:"blue",  rarity:2, sym:"🎫" },
+  { key:"none",   icon:"🍀", name:"谢谢参与", weight:607, tone:"mist",  rarity:1, sym:"🍀" },
+];
+const TOTAL_W = POOL.reduce((s,p)=>s+p.weight,0);
+POOL.forEach(p=>{ p.prob = p.weight/TOTAL_W*100; });
+
+const PREVIEW = [
+  { icon:"💄", nm:"限定口红", odds:"头奖" },
+  { icon:"🧴", nm:"香氛礼盒", odds:"0.1%" },
+  { icon:"⌚", nm:"星尘腕表", odds:"1.2%" },
+  { icon:"🍊", nm:"鲜果礼包", odds:"8.0%" },
+];
+
+const GRAD = {
+  gold:   "linear-gradient(135deg,#e8c878,#b08a4a)",
+  violet: "linear-gradient(135deg,#dccff3,#9a82c8)",
+  mint:   "linear-gradient(135deg,#8fdcB4,#46a87e)",
+  blue:   "linear-gradient(135deg,#a9cdee,#5a8ab8)",
+  mist:   "linear-gradient(135deg,#eef1f6,#cfd6e0)",
+};
+
+const S = {
+  ticketIdx:1, balance:12480, todayNet:320, limitLeft:16, freeLeft:3,
+  streak:0, busy:false, auto:false, autoTimer:null,
+  stage:"idle", // idle | ready | revealing | done
+  level:-1, grid:[], scratched:0, ticketNo:1,
+  winCount:12, bestMult:86,
+};
+
+const $ = id => document.getElementById(id);
+const fmt = n => n.toLocaleString("en-US");
+const nowTime = () => { const d=new Date(); return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0"); };
+
+/* ================= 票种切换 ================= */
+function renderTypes(){
+  const html = TICKETS.map((t,i)=>`
+    <button class="tt ${i===S.ticketIdx?("on"+(i===2?" gold":"")):""}" data-t="${i}">
+      <div class="tt-p">${t.price} 火花</div>
+      <div class="tt-m">最高 ${t.max}</div>
+    </button>`).join("");
+  $("ticketTypes").innerHTML = html;
+  $("poolTypes").innerHTML = html;
+  document.querySelectorAll("#ticketTypes .tt, #poolTypes .tt").forEach(b=>{
+    b.addEventListener("click",()=>{
+      if(S.busy) return;
+      S.ticketIdx = +b.dataset.t;
+      resetTicket();
+      renderTypes(); renderState(); renderChips();
+    });
+  });
+}
+
+/* ================= 刮层画布 ================= */
+const COLS = 3, ROWS = 2, CELLS = COLS*ROWS;
+let canvases = [], erasure = []; // erasure[i] = Set of sampled points
+
+function drawCoat(cv){
+  const ctx = cv.getContext("2d");
+  const dpr = window.devicePixelRatio || 1;
+  const w = cv.clientWidth, h = cv.clientHeight;
+  cv.width = w*dpr; cv.height = h*dpr;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  // 灰底
+  const g = ctx.createLinearGradient(0,0,w,h);
+  g.addColorStop(0,"#d3d6dc"); g.addColorStop(1,"#b6bac2");
+  ctx.fillStyle = g; ctx.fillRect(0,0,w,h);
+  // 暗纹圆环
+  ctx.strokeStyle = "rgba(255,255,255,.18)"; ctx.lineWidth = 1;
+  for(let r=18;r<Math.max(w,h);r+=22){ ctx.beginPath(); ctx.arc(w/2,h/2,r,0,Math.PI*2); ctx.stroke(); }
+  // 中央问号星
+  ctx.fillStyle = "rgba(90,96,108,.55)";
+  ctx.font = "700 20px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.fillText("?", w/2, h/2);
+}
+
+function buildGridDOM(){
+  const grid = $("scratchGrid");
+  grid.innerHTML = "";
+  canvases = []; erasure = [];
+  for(let i=0;i<CELLS;i++){
+    const cell = document.createElement("div");
+    cell.className = "cell locked";
+    cell.innerHTML = `<span class="sym"></span><canvas></canvas>`;
+    grid.appendChild(cell);
+    const cv = cell.querySelector("canvas");
+    canvases.push(cv); erasure.push(new Set());
+    attachScratch(cv, i);
+  }
+}
+
+function samplePoints(i){
+  const cv = canvases[i];
+  const n = 10;
+  const pts = [];
+  for(let y=0;y<n;y++) for(let x=0;x<n;x++){
+    pts.push([(x+0.5)/n*cv.clientWidth, (y+0.5)/n*cv.clientHeight]);
+  }
+  return pts;
+}
+
+function eraseAt(i, x, y, radius){
+  const cv = canvases[i], ctx = cv.getContext("2d");
+  ctx.globalCompositeOperation = "destination-out";
+  ctx.beginPath(); ctx.arc(x,y,radius,0,Math.PI*2); ctx.fill();
+  // 采样打点
+  const pts = samplePoints(i);
+  pts.forEach(([px,py],k)=>{
+    if(Math.hypot(px-x,py-y) <= radius) erasure[i].add(k);
+  });
+}
+
+function attachScratch(cv, i){
+  let drawing = false;
+  const pos = e => {
+    const r = cv.getBoundingClientRect();
+    const p = e.touches ? e.touches[0] : e;
+    return [p.clientX - r.left, p.clientY - r.top];
+  };
+  const start = e => {
+    if(S.stage!=="ready") return;
+    e.preventDefault(); drawing = true;
+    const [x,y] = pos(e); eraseAt(i,x,y,16);
+    checkErasure();
+  };
+  const move = e => {
+    if(!drawing || S.stage!=="ready") return;
+    e.preventDefault();
+    const [x,y] = pos(e); eraseAt(i,x,y,16);
+    checkErasure();
+  };
+  const end = ()=>{ drawing = false; };
+  cv.addEventListener("pointerdown", start);
+  cv.addEventListener("pointermove", move);
+  window.addEventListener("pointerup", end);
+  cv.addEventListener("pointerleave", end);
+}
+
+function erasedRatio(){
+  return erasure.reduce((s,set)=>s+set.size/100,0)/CELLS;
+}
+
+function checkErasure(){
+  const ratio = erasedRatio();
+  const opened = erasure.filter(s=>s.size>=40).length;
+  $("scratchedCount").textContent = `${opened}/6`;
+  if(S.stage==="ready" && (ratio>=0.55 || opened>=4)){
+    revealAll();
+  }
+}
+
+function revealAll(){
+  S.stage = "revealing";
+  canvases.forEach(cv=>{ const ctx=cv.getContext("2d"); ctx.clearRect(0,0,cv.width,cv.height); });
+  $("scratchedCount").textContent = "6/6";
+  setTimeout(settle, 550);
+}
+
+/* ================= 出票 / 结算 ================= */
+function drawLevel(){
+  let r = Math.random()*TOTAL_W, idx = 0;
+  for(let i=0;i<POOL.length;i++){ r-=POOL[i].weight; if(r<=0){idx=i;break;} }
+  return idx;
+}
+
+function buildSymbols(level){
+  const pool = ["💎","✨","🎀","🎫","🍊"];
+  const g = new Array(6).fill("");
+  const main = POOL[level].sym;
+  if(level===0 || level===1 || level===2){
+    const spots = [0,2,4].sort(()=>Math.random()-.5);
+    g[spots[0]]=main; g[spots[1]]=main; g[spots[2]]=main;
+  } else if(level===3){
+    g[0]=main; g[5]=main;
+  }
+  for(let i=0;i<6;i++){
+    if(!g[i]){
+      let s; do { s = pool[Math.floor(Math.random()*pool.length)]; } while(s===main);
+      g[i]=s;
+    }
+  }
+  return g;
+}
+
+function price(){ return TICKETS[S.ticketIdx].price; }
+
+function canPlay(){ return !S.busy && S.limitLeft>0 && S.balance>=price(); }
+
+function issueTicket(){
+  if(!canPlay()) return false;
+  const cost = price();
+  if(S.freeLeft>0){ S.freeLeft--; } else { S.balance -= cost; }
+  S.limitLeft--;
+  S.level = drawLevel();
+  S.grid = buildSymbols(S.level);
+  S.stage = "ready";
+  erasure.forEach(s=>s.clear());
+  buildGridDOM();
+  // 重建 DOM 后再写入符号（符号在涂层下层）
+  document.querySelectorAll(".cell").forEach((cell,i)=>{
+    cell.querySelector(".sym").textContent = S.grid[i];
+    cell.classList.remove("hit");
+  });
+  // 重新绘制涂层
+  setTimeout(()=>canvases.forEach(drawCoat),0);
+  $("scratchMid").style.display = "none";
+  $("betShow").textContent = cost;
+  $("ticketNo").textContent = S.ticketNo;
+  $("flash").innerHTML = `<span class="f-tie">按住刮开灰色涂层，三连同奖～</span>`;
+  renderState();
+  return true;
+}
+
+function settle(){
+  const t = TICKETS[S.ticketIdx];
+  const p = POOL[S.level];
+  const mult = t.mults[S.level];
+  const won = Math.round(price()*mult);
+  const net = S.level===4 ? -price() : won-price();
+  let kind, text;
+  if(S.level===0){ kind="jackpot"; text=`🎉 命中头奖「${p.name}」，独得累积奖池！`; }
+  else if(won>price()){ kind="win"; text=`✨ 命中「${p.name}」，净赚 +${net} 火花！`; }
+  else if(S.level===3){ kind="tie"; text=`🎫 票券返还，本金已退回`; }
+  else { kind="lose"; text=`🍀 谢谢参与，再来一张？`; }
+
+  // 高亮命中格
+  if(S.level<=2){
+    document.querySelectorAll(".cell").forEach((cell,i)=>{ if(S.grid[i]===p.sym) cell.classList.add("hit"); });
+  }
+
+  S.balance += won;
+  S.todayNet += net;
+  if(won>price()){ S.streak++; S.winCount++; } else { S.streak=0; }
+  if(mult>S.bestMult) S.bestMult = mult;
+
+  hist.unshift({ t:nowTime(), ticket:t.price, level:S.level, desc:`${p.name} · ${t.price}票`, net });
+  renderHist(); renderState();
+
+  $("flash").innerHTML = `<span class="f-${kind}">${text}</span>`;
+  S.stage = "done";
+
+  setTimeout(()=>showWin(p, mult, won, kind), 500);
+}
+
+function showWin(p, mult, won, kind){
+  $("winIc").textContent = p.icon;
+  $("winTitle").textContent = kind==="jackpot" ? "恭喜命中头奖" : (won>price() ? "恭喜中奖" : (S.level===3 ? "票券返还" : "未中奖"));
+  $("winTitle").className = "win-title" + (kind==="jackpot"?" jackpot":"");
+  $("winDesc").textContent = `${p.name} · ${mult>0?"×"+mult.toLocaleString():""} ${mult>0?"倍率":"· 感谢参与"}`;
+  $("winAmt").innerHTML = `${won>=0?"+":""}${fmt(won)}<small>火花</small>`;
+  $("winOverlay").classList.add("open");
+  $("winOverlay").classList.toggle("jackpot", kind==="jackpot");
+}
+
+function resetTicket(){
+  S.stage = "idle"; S.level=-1; S.grid=[]; S.scratched=0;
+  erasure.forEach(s=>s.clear());
+  buildGridDOM();
+  setTimeout(()=>canvases.forEach(drawCoat),0);
+  document.querySelectorAll(".cell .sym").forEach(s=>s.textContent="");
+  $("scratchMid").style.display = "flex";
+  $("betShow").textContent = price();
+  $("scratchedCount").textContent = "0/6";
+  $("flash").innerHTML = "";
+}
+
+/* ================= 批量 ================= */
+function runBatch(n){
+  if(S.busy) return;
+  if(S.limitLeft<n){ notice("warn", `剩余张数不足 ${n} 连刮（仅剩 ${S.limitLeft} 张），可先单次刮开。`); return; }
+  if(S.balance<price()*n && S.freeLeft<=0){ notice("warn","火花余额不足以十连刮，可先单次刮开。"); return; }
+  const rounds = []; let total = 0;
+  for(let k=0;k<n;k++){
+    const lv = drawLevel();
+    const t = TICKETS[S.ticketIdx];
+    const mult = t.mults[lv];
+    const won = Math.round(price()*mult);
+    const net = lv===4 ? -price() : won-price();
+    total += net;
+    rounds.push({ p:POOL[lv], won, net, mult });
+    hist.unshift({ t:nowTime(), ticket:t.price, level:lv, desc:`${POOL[lv].name} · ${t.price}票`, net });
+  }
+  S.balance += total; S.todayNet += total; S.limitLeft -= n;
+  S.winCount += rounds.filter(r=>r.won>price()).length;
+  renderHist(); renderState();
+  $("tenTitle").textContent = `${n} 连刮 · 星尘信封`;
+  $("tenList").innerHTML = rounds.slice(0,20).map(r=>`
+    <div class="ten-row ${r.net>0?"win":""}">
+      <span>${r.p.icon} ${r.p.name}${r.mult>0?" ×"+r.mult:""}</span>
+      <span class="num">${r.net>=0?"+":""}${fmt(r.net)}</span>
+    </div>`).join("") + (rounds.length>20?`<div class="ten-row"><span>… 其余 ${rounds.length-20} 笔</span></div>`:"");
+  $("tenTotal").textContent = `合计净收 ${fmt(total)} 火花`;
+  $("tenOverlay").classList.add("open");
+  resetTicket();
+}
+
+/* ================= 渲染 ================= */
+function renderPreview(){
+  $("previewRow").innerHTML = PREVIEW.map(p=>`
+    <div class="pv-item">
+      <div class="pv-ic">${p.icon}</div>
+      <div class="pv-nm">${p.nm}</div>
+      <div class="pv-odds">${p.odds}</div>
+    </div>`).join("");
+}
+
+function renderChips(){
+  const t = TICKETS[S.ticketIdx];
+  $("poolChips").innerHTML = POOL.map((p,i)=>{
+    const mult = t.mults[i];
+    const meta = mult>0 ? `×${mult.toLocaleString()} 倍率` : "未中奖";
+    const cls = i===0?"gold":(i<=2?"mint":"mist");
+    return `<div class="pool-item ${cls}">
+      <div class="pi-ic" style="--tone:${GRAD[p.tone]}">${p.icon}</div>
+      <div class="pi-mid"><div class="pi-nm">${p.name}</div><div class="pi-meta">${meta}</div></div>
+      <div class="pi-prob num">${p.prob.toFixed(1)}%</div>
+    </div>`;
+  }).join("");
+}
+
+let hist = [
+  { t:"14:32", ticket:100, level:0, desc:"水晶三连 · 100票", net:500 },
+  { t:"14:18", ticket:100, level:4, desc:"星光未成 · 100票", net:-100 },
+  { t:"13:55", ticket:100, level:2, desc:"蝴蝶结 · 100票", net:200 },
+  { t:"13:20", ticket:10,  level:3, desc:"票券返还 · 10票", net:5 },
+];
+function renderHist(){
+  $("recordList").innerHTML = hist.length ? hist.map(h=>{
+    const cls = h.net>0 ? "win" : (h.net<0 ? "lose" : "tie");
+    return `<div class="rec-row">
+      <span class="htime">${h.t}</span>
+      <span>${h.desc}</span>
+      <span class="r-net ${cls}">${h.net>0?"+":""}${fmt(h.net)}</span>
+    </div>`;
+  }).join("") : `<div class="record-empty">还没有战绩——去刮一张吧</div>`;
+}
+
+const COLLECT = POOL.map((p,i)=>({ idx:i, count: i===4?0:Math.max(1, Math.round(14-i*3)), rarity:p.rarity }));
+function renderAlbum(){
+  const got = COLLECT.filter(c=>c.count>0).length;
+  $("albumGrid").innerHTML = COLLECT.map(c=>{
+    const p=POOL[c.idx], has=c.count>0;
+    const t=TICKETS[S.ticketIdx], mult=t.mults[c.idx];
+    const multTxt = mult>0 ? `×${mult.toLocaleString()}` : "未中";
+    return `<div class="album-card r${c.rarity} ${has?"":"locked"}">
+      <div class="a-ic" style="--tone:${GRAD[p.tone]}">${has?p.icon:"❔"}</div>
+      <div class="a-nm">${has?p.name:"???"}</div>
+      <div class="a-meta">${multTxt} · ×${c.count}</div>
+    </div>`;
+  }).join("");
+  $("albumGot").textContent = `${got}/${POOL.length}`;
+}
+
+function notice(type, html){
+  const bar=$("noticeBar");
+  if(!type){ bar.className="notice-bar"; bar.innerHTML=""; return; }
+  bar.className="notice-bar show "+type;
+  bar.innerHTML=html;
+}
+
+function renderState(){
+  $("balance").textContent = fmt(S.balance);
+  $("todayNet").textContent = (S.todayNet>=0?"+":"")+fmt(S.todayNet);
+  $("todayNet").className = "bal-vl num "+(S.todayNet>=0?"win":"lose");
+  $("limitLeft").textContent = S.limitLeft;
+  $("freeLeft").textContent = S.freeLeft;
+  $("statLeft").textContent = S.freeLeft>0 ? `${S.freeLeft} 张` : `${S.limitLeft} 张`;
+  $("statWin").textContent = `${S.winCount} 次`;
+  $("statBest").textContent = S.bestMult>0 ? S.bestMult+"x" : "—";
+  $("todayLeft").textContent = S.limitLeft;
+  $("winRate").textContent = (100-POOL[4].prob).toFixed(1)+"%";
+
+  if(S.limitLeft<=0) notice("danger","今日张数已用完，明天再来～ 或先回娱乐屋看看其他玩法。");
+  else if(S.balance<price() && S.freeLeft<=0) notice("warn","火花余额不足，先去做种赚取火花再来～");
+  else if(S.balance<price()*10 && S.freeLeft<=0) notice("warn","余额不足以十连刮，可先单次刮开。");
+  else notice(null);
+
+  const off = S.busy || S.limitLeft<=0 || (S.balance<price() && S.freeLeft<=0);
+  $("startBtn").disabled = off;
+  $("ctaBtn").disabled = off;
+  $("tenBtn").disabled = S.busy || S.limitLeft<10 || S.balance<price()*10;
+  $("autoBtn").disabled = S.auto ? false : off;
+}
+
+/* ================= 自动连刮 ================= */
+function stopAuto(){
+  S.auto=false;
+  if(S.autoTimer){ clearTimeout(S.autoTimer); S.autoTimer=null; }
+  $("autoBtn").classList.remove("on"); $("autoLb").textContent="一直刮";
+  $("autoBtn").querySelector("span").textContent="▶";
+  renderState();
+}
+function startAuto(){
+  if(!canPlay()) return;
+  S.auto=true;
+  $("autoBtn").classList.add("on"); $("autoLb").textContent="停止连刮";
+  $("autoBtn").querySelector("span").textContent="⏸";
+  scheduleNext();
+}
+function scheduleNext(){
+  if(!S.auto) return;
+  if(!(S.limitLeft>0 && (S.balance>=price() || S.freeLeft>0))){ stopAuto(); return; }
+  S.autoTimer=setTimeout(()=>{ if(S.auto) goOnce(); },700);
+}
+
+function goOnce(){
+  if(!canPlay() && S.freeLeft<=0) return;
+  if(S.stage==="ready" || S.stage==="revealing") return;
+  if(!issueTicket()) return;
+}
+
+/* ================= 事件 ================= */
+$("startBtn").addEventListener("click", goOnce);
+$("ctaBtn").addEventListener("click", goOnce);
+$("tenBtn").addEventListener("click", ()=>runBatch(10));
+$("autoBtn").addEventListener("click", ()=>{ S.auto?stopAuto():startAuto(); });
+$("winAgain").addEventListener("click", ()=>{ $("winOverlay").classList.remove("open"); setTimeout(goOnce,120); });
+$("winTen").addEventListener("click", ()=>{ $("winOverlay").classList.remove("open"); setTimeout(()=>runBatch(10),120); });
+$("tenClose").addEventListener("click", ()=>$("tenOverlay").classList.remove("open"));
+$("tenOverlay").addEventListener("click", e=>{ if(e.target===$("tenOverlay")) $("tenOverlay").classList.remove("open"); });
+$("ruleBtn").addEventListener("click", ()=>$("ruleOverlay").classList.add("open"));
+$("ruleClose").addEventListener("click", ()=>$("ruleOverlay").classList.remove("open"));
+$("ruleOverlay").addEventListener("click", e=>{ if(e.target===$("ruleOverlay")) $("ruleOverlay").classList.remove("open"); });
+
+$("sfxBtn").addEventListener("click",()=>{
+  const on=$("sfxBtn").dataset.on!=="0";
+  $("sfxBtn").dataset.on=on?"0":"1";
+  $("sfxBtn").innerHTML=on?`<span>🔇</span><span>已静音</span>`:`<span>🔊</span><span>已开</span>`;
+});
+
+const TAB_COLS={play:"colPlay",pool:"colPool",records:"colRecords"};
+function switchTab(name){
+  document.querySelectorAll(".gs-tab").forEach(x=>x.classList.toggle("on",x.dataset.tab===name));
+  Object.entries(TAB_COLS).forEach(([k,id])=>{ $(id).style.display=k===name?"block":"none"; });
+}
+document.querySelectorAll(".gs-tab").forEach(t=>t.addEventListener("click",()=>switchTab(t.dataset.tab)));
+$("oddsLink").addEventListener("click",e=>{ e.preventDefault(); switchTab("pool"); });
+$("oddsLink2").addEventListener("click",e=>{ e.preventDefault(); switchTab("pool"); });
+
+window.addEventListener("resize", ()=>{
+  if(S.stage==="idle" || S.stage==="done"){ setTimeout(()=>canvases.forEach(drawCoat),0); }
+});
+
+/* ================= 初始化 ================= */
+window.S = S; window.revealAll = revealAll;
+buildGridDOM();
+renderTypes(); renderPreview(); renderChips(); renderHist(); renderAlbum(); renderState();
+setTimeout(()=>canvases.forEach(drawCoat),0);
+</script>
+</body>
+</html>

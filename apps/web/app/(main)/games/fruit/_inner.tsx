@@ -21,11 +21,12 @@ import { GameShell, PlayHint } from "@/components/game/game-kit";
 import { ResultFlash } from "@/components/game/game-kit-feedback";
 import { StreakPill } from "@/components/game/streak-pill";
 import {
-  CapsuleMachine,
-  type CapsulePrize,
-} from "@/components/game/capsule-machine";
+  FruitMachine,
+} from "@/components/game/fruit-machine";
+import type { SlotPrize } from "@/components/game/slot-machine";
 import { GameStage } from "@/components/game/game-stage";
 import { clientUuid } from "@/lib/client-uuid";
+
 export interface Overview {
   me?: {
     balance: number;
@@ -33,7 +34,7 @@ export interface Overview {
     today_plays: number;
     limit_left: number;
   };
-  capsule?: { ticket: number; prizes: CapsulePrize[] };
+  fruit?: { ticket: number; prizes: SlotPrize[] };
 }
 
 interface DrawResult {
@@ -45,19 +46,19 @@ interface DrawResult {
   value?: number;
   fell_back?: string | null;
 }
-/** 扭蛋机专注页：投币 → 震机 → 掉蛋 → 开壳揭晓。 */
-export default function CapsuleFocusPage({
+
+/** 水果机专注页：投币 → 灯排跑马 → 中央窗落符号揭晓。 */
+export default function FruitFocusPage({
   initialOver,
 }: {
   initialOver: Overview | null;
 }) {
   const { dict, currency } = useI18n();
   const t = dict.games;
-  const tc = dict.games.capsule;
+  const tc = dict.games.fruit;
 
   const [ov, setOv] = useState<Overview | null>(initialOver);
-  // 战绩 + 连胜（波3）：服务端算连胜，刷新不丢（use-rounds 统一消费口）
-  const { hist, streak, reload: reloadRounds } = useRounds("capsule");
+  const { hist, streak, reload: reloadRounds } = useRounds("fruit");
   const [busy, setBusy] = useState(false);
   const [res, setRes] = useState<DrawResult | null>(null);
   const [flash, setFlash] = useState<{
@@ -65,17 +66,13 @@ export default function CapsuleFocusPage({
     text: string;
   } | null>(null);
   const [err, setErr] = useState<string | null>(null);
-  // 样图手机版：主玩法 / 记录图鉴 双 tab
   const [tab, setTab] = useState("play");
   const [reduced, setReduced] = useState(false);
   const [sessionPlays, setSessionPlays] = useState(0);
-  // 个人收集（趣味性批）：本人真实抽中数，替代纯概率的收集感。
-  // 数据来自通用图鉴端点 /games/collection/capsule（与 jgg/scratch/wheel 同源）
   const [collect, setCollect] = useState<{
     tiers: { tier: string; got: number; total: number; hits: number }[];
   } | null>(null);
   const idem = useRef<string>("");
-  // P0-5：网络错误保留幂等键供原键重试
   const [unknown, setUnknown] = useState(false);
 
   useEffect(() => {
@@ -86,7 +83,7 @@ export default function CapsuleFocusPage({
     try {
       const r = await api.get<{
         entries: { rarity: number; count: number }[];
-      }>("/api/v1/games/collection/capsule");
+      }>("/api/v1/games/collection/fruit");
       type Bucket = { got: number; total: number; hits: number };
       const byRar: Record<number, Bucket> = {};
       for (const e of r.entries) {
@@ -122,10 +119,9 @@ export default function CapsuleFocusPage({
     void loadCollect();
   }, [loadMeta, loadCollect]);
 
-  const prizes = ov?.capsule?.prizes ?? [];
-  const ticket = ov?.capsule?.ticket ?? 100;
+  const prizes = ov?.fruit?.prizes ?? [];
+  const ticket = ov?.fruit?.ticket ?? 100;
 
-  // R-SR-SSR 收集度（样图⑦）：按奖池稀有度权重分布实时合成（公示口径）
   const rarityMeters = (() => {
     const buckets: Record<number, number> = {};
     for (const p of prizes) {
@@ -138,8 +134,6 @@ export default function CapsuleFocusPage({
       pct: Math.round(((buckets[r] ?? 0) / total) * 100),
     }));
   })();
-  // 奖池条（样图⑦ 扭蛋屏）：等值前 4 档（CapsulePrize 无 rarity 字段，
-  //  按「等值/票价」分色调：≥10x 金、≥3x 紫、其余蓝）
   const prizeStripItems = prizes
     .slice()
     .sort(
@@ -161,7 +155,7 @@ export default function CapsuleFocusPage({
       };
     });
   const ten = useTenDraw<DrawResult>({
-    path: "/api/v1/games/capsule",
+    path: "/api/v1/games/fruit",
     onError: (msg) => setErr(msg),
     onDone: () => {
       setSessionPlays((n) => n + 10);
@@ -184,11 +178,11 @@ export default function CapsuleFocusPage({
     if (!idem.current) idem.current = clientUuid();
     setUnknown(false);
     try {
-      const r = await api.post<DrawResult>("/api/v1/games/capsule", {
+      const r = await api.post<DrawResult>("/api/v1/games/fruit", {
         idempotency_key: idem.current,
       });
       setRes(r);
-      idem.current = ""; // 本局结束，下局生成新键
+      idem.current = "";
     } catch (e) {
       setErr(
         e instanceof ApiError
@@ -209,7 +203,6 @@ export default function CapsuleFocusPage({
     setBusy(false);
     setSessionPlays((n) => n + 1);
     if (!r) return;
-    // 物品位 payout 为 0：必须按 value 判，否则「中了免考核卡」会渲染成谢谢参与
     const won = r.value ?? r.payout;
     const kind: "win" | "lose" | "tie" | "jackpot" =
       won >= ticket * 10
@@ -245,13 +238,13 @@ export default function CapsuleFocusPage({
           active={tab}
           onChange={setTab}
         />
-        <GameRecordsPanel game="capsule" />
+        <GameRecordsPanel game="fruit" />
       </div>
     );
   }
   return (
     <GameShell
-      icon={<ArcadeGlyph k="capsule" />}
+      icon={<ArcadeGlyph k="fruit" />}
       title={tc.title}
       subtitle={`${tc.winRate.replace("{pct}", winRate)} · ${tc.sub}`}
       balance={ov?.me?.balance ?? null}
@@ -276,11 +269,11 @@ export default function CapsuleFocusPage({
       stage={
         <div className="flex w-full flex-col items-center gap-3">
           <GameStage
-            bg="radial-gradient(120% 130% at 50% 0%, #3a2a5e, #14101f 72%)"
-            shjBg="var(--shj-stage-capsule)"
+            bg="radial-gradient(120% 130% at 50% 0%, #123a6e, #0a1526 72%)"
+            shjBg="var(--shj-stage-fruit)"
             className="w-full max-w-[460px] py-6 relative jgg-scene-host"
           >
-            <CapsuleMachine
+            <FruitMachine
               prizes={prizes}
               ticket={ticket}
               resultIndex={res?.index ?? null}
@@ -291,6 +284,7 @@ export default function CapsuleFocusPage({
               onLanded={onLanded}
               goLabel={tc.go}
               drawingLabel={tc.drawing}
+              title={tc.title}
             />
           </GameStage>
           <ResultFlash
@@ -358,8 +352,6 @@ export default function CapsuleFocusPage({
               </div>
             ))}
           </div>
-          {/* 个人收集（趣味性批）：本人真实抽中数，替代纯概率的收集感。
-              got/total = 集齐档位数；hits = 累计抽中次数 */}
           {collect && (
             <div className="sw-cap-collect">
               {collect.tiers.map((tr) => (
@@ -399,7 +391,7 @@ export default function CapsuleFocusPage({
             }))}
             empty={t.historyEmpty}
           />
-          <GameRules game="capsule" />
+          <GameRules game="fruit" />
         </div>
       }
       foot={

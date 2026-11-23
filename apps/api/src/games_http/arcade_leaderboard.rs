@@ -54,14 +54,15 @@ pub(super) async fn arcade_leaderboard(
                SELECT l.user_id, l.amount AS v FROM spark_ledger l \
                 WHERE l.kind = 'game' AND l.amount > 0 \
                   AND (l.ref_type IN ('scratch','bigsmall','jgg','capsule',\
-                       'wheel','fishing','farm') \
-                       OR l.idempotency_key LIKE 'game-fishing-win:%') \
+                       'fruit','wheel','fishing','farm') \
+                       OR l.idempotency_key LIKE 'game-fishing-win:%' \
+                       OR l.idempotency_key LIKE 'game-mole-win:%') \
                   AND {WEEK} \
                UNION ALL \
                SELECT d.user_id, r.gold_rank::bigint AS v FROM gacha_draws d \
                 JOIN gacha_rarities r ON r.key = d.rarity \
                 WHERE d.rarity IS NOT NULL AND r.gold_rank > 0 \
-                  AND d.created_at >= date_trunc('week', now()) \
+                  AND d.drawn_at >= date_trunc('week', now()) \
              ) t GROUP BY user_id"
         ),
     )

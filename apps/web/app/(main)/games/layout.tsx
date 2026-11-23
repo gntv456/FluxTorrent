@@ -7,6 +7,9 @@ import type { ReactNode } from "react";
    Next.js 允许在 layout 里 import CSS，会自动按路由分包。 */
 import "@/app/styles/arcade.css";
 import "@/app/styles/arcade-sweet.css";
+/* arcade-bigsmall.css：猜大小房间页专属多端断点（窄屏/折叠/横屏高度），
+   只作用在 .bs-room-page，压在 sweet 基础皮肤之后。 */
+import "@/app/styles/arcade-bigsmall.css";
 /* /gacha（抽卡）也消费 sw-* 皮肤类（.gtabs / .sw-card* / .sw-album*），
    arcade-gacha.css 是从 arcade-sweet.css 拆出的抽卡专用规则，
    同样走路由级加载。 */
@@ -17,6 +20,15 @@ import "@/app/styles/arcade-fx.css";
 /* arcade-night.css：夜场赌场皮肤（波·成熟化）——令牌换血 + 金线面板 +
    发光交互，全部压在 arcade-fx 之后加载（覆盖 sweet 浅色遗留）。 */
 import "@/app/styles/arcade-night.css";
+/* arcade-wheel.css：大转盘专注页样图落地（三标签/400px 盘/四入口一排），
+   只作用在 .wheel-page，最后加载确保压住夜场皮肤。 */
+import "@/app/styles/arcade-wheel.css";
+/* arcade-mole.css：打地鼠专注页（九宫格升级）——洞阵/锤感/结算，
+   只作用在 .mole-page，加载在 wheel 之后以便收紧间距。 */
+import "@/app/styles/arcade-mole.css";
+/* arcade-scratch.css：刮刮乐红黄促销样图皮肤，只作用在 .scratch-promo，
+   最后加载确保压住 sweet/night/wheel/mole 既有覆盖。 */
+import "@/app/styles/arcade-scratch.css";
 
 /**
  * 娱乐屋路由布局：在 /games/* 下挂 data-arcade="sweet" 属性，

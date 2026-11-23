@@ -52,6 +52,16 @@ pub(super) async fn arcade_overview(
     let s_ev = games::pool_ev(&scratch.entries, scratch.ticket);
     let jgg = super::pool::load_pool(&state.repo.db, "jgg").await?;
     let j_ev = games::pool_ev(&jgg.entries, jgg.ticket);
+    let mole = super::pool::load_pool(db, "mole").await?;
+    let m_ev = games::pool_ev(&mole.entries, mole.ticket);
+    // 大转盘与九宫格/扭蛋同构：后台的 EV 表不能只报五个池，
+    // 否则站长改完转盘奖池后没有一处能读到它的回收率。
+    let wheel = super::pool::load_pool(db, "wheel").await?;
+    let w_ev = games::pool_ev(&wheel.entries, wheel.ticket);
+    let slot = super::pool::load_pool(db, "capsule").await?;
+    let slot_ev = games::pool_ev(&slot.entries, slot.ticket);
+    let fruit = super::pool::load_pool(db, "fruit").await?;
+    let fr_ev = games::pool_ev(&fruit.entries, fruit.ticket);
     let b_ev = games::pool_ev(&btable.all(), btable.ticket);
     // 农场 = 确定性收获（机制常数 FARM_BASE_EV）+ 彩蛋池那一注，现值现场复算
     let fpool = super::farm_egg::load_farm(db).await?;
@@ -93,6 +103,42 @@ pub(super) async fn arcade_overview(
         serde_json::json!({
             "name": "九宫格", "ev": j_ev,
             "note": format!("票价 {}，权重×赔付 / Σ权重", jgg.ticket),
+        }),
+        serde_json::json!({
+            "name": "打地鼠", "ev": m_ev,
+            "note": format!(
+                "票价 {}，{} 档；单局 {} 次奖池冒头，闸门按满盘算",
+                mole.ticket,
+                mole.entries.len(),
+                games::POOL_SPAWNS
+            ),
+        }),
+        serde_json::json!({
+            "name": "大转盘", "ev": w_ev,
+            "note": format!(
+                "票价 {}，{} 档，权重合计 {}",
+                wheel.ticket,
+                wheel.entries.len(),
+                wheel.entries.iter().map(|e| e.weight).sum::<u32>()
+            ),
+        }),
+        serde_json::json!({
+            "name": "老虎机", "ev": slot_ev,
+            "note": format!(
+                "票价 {}，{} 档，权重合计 {}",
+                slot.ticket,
+                slot.entries.len(),
+                slot.entries.iter().map(|e| e.weight).sum::<u32>()
+            ),
+        }),
+        serde_json::json!({
+            "name": "水果机", "ev": fr_ev,
+            "note": format!(
+                "票价 {}，{} 档，权重合计 {}",
+                fruit.ticket,
+                fruit.entries.len(),
+                fruit.entries.iter().map(|e| e.weight).sum::<u32>()
+            ),
         }),
         serde_json::json!({
             "name": "农场", "ev": f_ev,

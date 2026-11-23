@@ -54,7 +54,9 @@ pub(super) async fn sync_stubs(
     let m: (i64, i64, i64, i64, i64, i64, i64, i64, i64, i64) = sqlx::query_as(
         "SELECT count(*)::bigint, \
                 count(*) FILTER (WHERE ref_type = 'scratch')::bigint, \
-                count(*) FILTER (WHERE ref_type = 'jgg')::bigint, \
+                -- 九宫格已由打地鼠接替：旧票根的 jgg_plays 记两代玩法，
+                -- 否则 arc_jgg_30/100 在 jgg 下架后永远拿不到
+                count(*) FILTER (WHERE ref_type IN ('jgg','mole'))::bigint, \
                 count(*) FILTER (WHERE ref_type = 'bigsmall')::bigint, \
                 count(*) FILTER (WHERE ref_type = 'farm_water')::bigint, \
                 count(*) FILTER (WHERE ref_type = 'farm_plant')::bigint, \

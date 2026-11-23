@@ -161,3 +161,11 @@ export const BTN_RETRY_PILL =
 export const PANEL_WARN_ORANGE =
   "rounded-[var(--r-sm)] border border-[var(--compat-orange)] "
   + "p-2 text-xs text-ink";
+
+/** 渔场「完整玩法」小徽（pond 页与 fishing 主页同款浅蓝胶囊）。
+ *  原先裸写两枚 hex（= sweet 域 sky 裸值）——design_cov 非豁免 hex
+ *  超基线，改令牌派生：bg 用 --sky-soft、字用 --sky-deep，
+ *  夜场皮肤下自动换血不炸眼。 */
+export const CHIP_POND_BADGE =
+  "rounded-full bg-[var(--sky-soft)] px-2 py-0.5 text-[10px] "
+  + "text-[var(--sky-deep)]";

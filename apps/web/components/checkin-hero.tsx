@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
 import { useI18n } from "@/i18n/client";
 import type { AttendanceRules } from "@/components/checkin-rules";
@@ -41,6 +42,7 @@ export function CheckinHero({
   checkinLabel,
   busyLabel,
   attendedLabel,
+  resub,
 }: {
   checkedToday: boolean;
   streak: number;
@@ -53,6 +55,9 @@ export function CheckinHero({
   checkinLabel: string;
   busyLabel: string;
   attendedLabel: string;
+  /** 补签入口（弹层件，含持有数徽标）——与签到主按钮并排（2026-11-22
+   *  体验反馈：原页尾右下角太不显眼） */
+  resub?: ReactNode;
 }) {
   const { dict, currency } = useI18n();
   const t = dict.home2;
@@ -106,18 +111,21 @@ export function CheckinHero({
           ) : null}
         </div>
         <div className="ck-hero__act">
-          {!checkedToday ? (
-            <button
-              type="button"
-              className="ck-hero__btn"
-              onClick={onCheckin}
-              disabled={busy}
-            >
-              {busy ? busyLabel : checkinLabel}
-            </button>
-          ) : (
-            <span className="ck-hero__done">{attendedLabel}</span>
-          )}
+          <div className="ck-hero__actions">
+            {!checkedToday ? (
+              <button
+                type="button"
+                className="ck-hero__btn"
+                onClick={onCheckin}
+                disabled={busy}
+              >
+                {busy ? busyLabel : checkinLabel}
+              </button>
+            ) : (
+              <span className="ck-hero__done">{attendedLabel}</span>
+            )}
+            {resub}
+          </div>
           <p className="ck-hero__meta">
             {t.heroDay.replace("{pos}", String(pos))}
             {" · "}

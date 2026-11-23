@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<title>甜梦钓场 · 实现总览</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#e9eff7;font-family:"Noto Sans SC",system-ui,sans-serif;color:#2c3e5c;padding:28px 20px 36px}
+  .head{text-align:center;margin-bottom:22px}
+  .head h1{font-family:"Noto Serif SC",serif;font-size:20px;letter-spacing:.18em;color:#4a7ab0}
+  .head p{font-size:11px;color:#8a9ab0;margin-top:6px;letter-spacing:.08em}
+  .grid{display:grid;grid-template-columns:repeat(3,390px);gap:22px 24px;justify-content:center}
+  .cell{background:#fff;border-radius:22px;padding:8px 8px 10px;box-shadow:0 16px 34px -20px rgba(30,50,80,.45)}
+  .cell iframe{width:374px;height:810px;border:0;border-radius:16px;display:block;background:#f4f8fd;transform:scale(1);transform-origin:top left}
+  .cap{display:flex;justify-content:space-between;align-items:baseline;padding:7px 4px 2px;font-size:10px;color:#5a6b8c}
+  .cap b{font-family:"Noto Serif SC",serif;font-size:12px;color:#4a7ab0;letter-spacing:.1em}
+  .cap span{color:#9fb0c6}
+</style>
+</head>
+<body>
+  <div class="head">
+    <h1>甜梦钓场 · 钓鱼玩法实现总览</h1>
+    <p>390×844 手机断点实拍 · 全部为可运行页面</p>
+  </div>
+  <div class="grid" id="grid"></div>
+<script>
+  const shots = [
+    ['渔场 · 待机', ''],
+    ['咬钩 · 起竿窗口', 'preview=bite'],
+    ['溜鱼 · 张力控制', 'preview=reel'],
+    ['结算 · 单尾', 'preview=catch'],
+    ['装备 · 六槽汇总', 'view=gear'],
+    ['背包 · 渔获与容量', 'view=bag'],
+    ['商店 · 鱼竿列表', 'view=shop'],
+    ['图鉴 · 场景分区', 'view=album'],
+    ['每日订单', 'view=orders'],
+    ['好友鱼塘与赠饵', 'view=friends'],
+    ['成就徽章墙', 'view=ach'],
+    ['赛季排行榜', 'view=rank'],
+  ];
+  const grid = document.getElementById('grid');
+  shots.forEach(([name, q], i) => {
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+    const f = document.createElement('iframe');
+    f.src = '../index.html' + (q ? '?' + q : '');
+    f.loading = 'eager';
+    const cap = document.createElement('div');
+    cap.className = 'cap';
+    const b = document.createElement('b'); b.textContent = name;
+    const s = document.createElement('span'); s.textContent = String(i + 1).padStart(2, '0');
+    cap.append(b, s);
+    cell.append(f, cap);
+    grid.append(cell);
+  });
+</script>
+</body>
+</html>

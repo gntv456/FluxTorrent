@@ -10,7 +10,7 @@ use serde::Deserialize;
 use crate::dto::ok;
 use crate::economy_http::{earn_spark_tx, spend_spark_tx, SpendOutcome};
 use crate::errors::{DomainError, DomainResult};
-use crate::games::{self, Guess};
+use crate::games::{self, EntryKind, Guess};
 use crate::http::require_auth;
 use crate::state::AppState;
 
@@ -75,6 +75,22 @@ pub(super) async fn guess_bigsmall(
     let draw = games::draw_entry(table.region(side)).ok_or_else(|| {
         DomainError::Validation("猜大小该档区不可抽样".into())
     })?;
+    // 每局抽水（2026-11-21）：派彩按抽水后的等效倍率入账，面板赔率（前端
+    // multiplier 显示、EV 闸）仍按奖池行原值——只有实际到手的魔力打折。
+    // 物品位原样透传（猜大小三区全是魔力位；真混入物品位也不该被抽水）。
+    let draw = match &draw.prize.kind {
+        EntryKind::Magic { mult_permille } => games::Draw {
+            index: draw.index,
+            prize: games::PoolEntry {
+                label: draw.prize.label.clone(),
+                weight: draw.prize.weight,
+                kind: EntryKind::Magic {
+                    mult_permille: games::raked_mult_permille(*mult_permille),
+                },
+            },
+        },
+        EntryKind::Item { .. } => draw,
+    };
     let win_idem = format!("game-bs-win:{}", idem);
     let prop_idem = |k: &str| format!("game-bs-prop:{idem}:{k}");
     // 一笔事务走完：扣注额 → 扣道具 → 结算 → 道具加成。

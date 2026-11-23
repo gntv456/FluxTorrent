@@ -45,12 +45,44 @@ const GLYPHS: Record<string, React.ReactNode> = {
       <rect x="13" y="13" width="7" height="7" rx="2" {...S} />
     </>
   ),
-  // 扭蛋机：蛋形
+  // 扭蛋机（旧入口兼容）：蛋形
   capsule: (
     <path
       d="M12 3.5c-3.6 0-6.2 4.6-6.2 9.3a6.2 6.2 0 0 0 12.4 0c0-4.7-2.6-9.3-6.2-9.3Z"
       {...S}
     />
+  ),
+  // 老虎机：机身框 + 三滚轮 + 拉杆头
+  slot: (
+    <>
+      <rect x="3.5" y="5" width="17" height="13" rx="2.6" {...S} />
+      <path d="M8.7 7.8v7.4M15.3 7.8v7.4" {...S} />
+      <path d="M12 1.8v3.2M19.2 5h-2.6" {...S} />
+      <circle cx="19.2" cy="5" r="1.2" {...S} />
+    </>
+  ),
+  // 水果机：樱桃（双果 + 梗）
+  fruit: (
+    <>
+      <path d="M12 5c1.2 1.6 2.8 2.4 5 2.6" {...S} />
+      <circle cx="9" cy="15" r="3.4" {...S} />
+      <circle cx="15.4" cy="15" r="3.4" {...S} />
+      <circle cx="8" cy="14" r=".8" fill="currentColor" />
+      <circle cx="14.4" cy="14" r=".8" fill="currentColor" />
+    </>
+  ),
+  // 打地鼠：3×3 洞阵里探出的一只（土丘 + 圆头 + 两只耳朵）
+  mole: (
+    <>
+      <ellipse cx="12" cy="17.4" rx="7.2" ry="2" {...S} />
+      <path
+        d="M8.4 16.4c-.5-3.4.6-6.6 3.6-6.6s4.1 3.2 3.6 6.6"
+        {...S}
+      />
+      <circle cx="9.6" cy="8.2" r="1.5" fill="currentColor" />
+      <circle cx="14.4" cy="8.2" r="1.5" fill="currentColor" />
+      <path d="M10.4 12.2h3.2" {...S} />
+    </>
   ),
   // 大转盘：摩天轮（轮辐 + 中心毂）
   wheel: (

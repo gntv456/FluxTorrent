@@ -54,6 +54,10 @@ function isAnonymousOk(pathname: string): boolean {
     // 时浏览器只报「样式表解码失败」，选山海经主题的用户整站无样式。
     pathname.startsWith("/theme-css/") ||
     pathname.startsWith("/p/") ||
+    // 内嵌小游戏静态资源（public/arcade/*）：与 /fonts/ 同一类坑——HTML/CSS/JS
+    // 被 307 成登录页时，挂载器只能拿到登录页 HTML，脚本静默加载失败。
+    // 目录内只有游戏本体资源，不含用户数据，匿名可达安全。
+    pathname.startsWith("/arcade/") ||
     [
       "/favicon.ico",
       "/manifest.webmanifest",

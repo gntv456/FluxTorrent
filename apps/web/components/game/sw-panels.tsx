@@ -61,6 +61,10 @@ export function SwCtaRow({
   goldDisabled,
   goldBusy,
   primaryGold,
+  autoLabel,
+  autoActive,
+  autoDisabled,
+  onAuto,
 }: {
   primaryLabel: string;
   /** 不传则只渲染主按钮（如转盘的中心 GO 已是主行动） */
@@ -72,6 +76,11 @@ export function SwCtaRow({
   goldBusy?: boolean;
   /** 主钮走香槟金（样图的大金开始键，转盘用） */
   primaryGold?: boolean;
+  /** 一直抽/一直刮：传入 onAuto 才渲染第三键 */
+  autoLabel?: string;
+  autoActive?: boolean;
+  autoDisabled?: boolean;
+  onAuto?: () => void;
 }) {
   return (
     <div className="sw-cta-row">
@@ -93,6 +102,16 @@ export function SwCtaRow({
           {goldBusy ? "…" : goldLabel}
         </button>
       )}
+      {onAuto && (
+        <button
+          type="button"
+          className={`sw-cta cta-auto${autoActive ? " on" : ""}`}
+          onClick={onAuto}
+          disabled={autoDisabled}
+        >
+          <span aria-hidden>{autoActive ? "⏸" : "▶"}</span> {autoLabel}
+        </button>
+      )}
     </div>
   );
 }
@@ -105,6 +124,8 @@ export function SwTenModal({
   totalLabel,
   onClose,
   closeLabel,
+  note,
+  totalNet,
 }: {
   open: boolean;
   title: string;
@@ -112,6 +133,10 @@ export function SwTenModal({
   totalLabel: string;
   onClose: () => void;
   closeLabel?: string;
+  /** 连抽封顶/部分结果说明（可多段用 · 拼好传入） */
+  note?: string;
+  /** 列表只展示前 N 笔时，合计要按全部结果传，不能拿可见行求和 */
+  totalNet?: number;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -128,7 +153,7 @@ export function SwTenModal({
     };
   }, [open, onClose]);
   if (!open) return null;
-  const total = rows.reduce((s, r) => s + r.net, 0);
+  const total = totalNet ?? rows.reduce((s, r) => s + r.net, 0);
   const titleId = "sw-ten-title";
   return (
     <div
@@ -167,6 +192,7 @@ export function SwTenModal({
         <div className="sw-ten-total num">
           {totalLabel.replace("{net}", String(total))}
         </div>
+        {note && <p className="sw-ten-note">{note}</p>}
       </div>
     </div>
   );

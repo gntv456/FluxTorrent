@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<meta name="theme-color" content="#f4f8fd" />
+<title>甜梦钓场 · 钓鱼玩法</title>
+<link rel="stylesheet" href="https://miaoda.feishu.cn/fonts/css2?family=Noto+Serif+SC:wght@600;700;900&family=Noto+Sans+SC:wght@400;500;700&display=swap" />
+<link rel="stylesheet" href="css/game.css" />
+</head>
+<body>
+
+<!-- SVG 图标库：全部内联，避免无头环境 emoji 变豆腐块 -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-sparkle" viewBox="0 0 24 24"><path d="M12 2 L14 10 L22 12 L14 14 L12 22 L10 14 L2 12 L10 10 Z"/></symbol>
+    <symbol id="i-fish" viewBox="0 0 24 24"><path d="M3 12 Q8 6 15 8 Q20 9 21 12 Q20 15 15 16 Q8 18 3 12 Z"/><path d="M21 12 L23 9 L23 15 Z"/><circle cx="9" cy="11" r="1" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M9 6 L15 12 L9 18"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="6" y="11" width="12" height="9" rx="1.5"/><path d="M9 11 L9 8 Q9 5 12 5 Q15 5 15 8 L15 11"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5 L12 19 M5 12 L19 12"/></symbol>
+    <symbol id="i-bag" viewBox="0 0 24 24"><path d="M6 8 Q6 5 12 5 Q18 5 18 8 L19 20 Q19 21 18 21 L6 21 Q5 21 5 20 Z"/><path d="M9 8 Q9 3 12 3 Q15 3 15 8"/><rect x="9" y="13" width="6" height="4" rx="1"/></symbol>
+    <symbol id="i-shop" viewBox="0 0 24 24"><path d="M4 9 L5 5 L19 5 L20 9"/><path d="M4 9 Q4 11 6 11 Q8 11 8 9 Q8 11 10 11 Q12 11 12 9 Q12 11 14 11 Q16 11 16 9 Q16 11 18 11 Q20 11 20 9"/><path d="M5 11 L5 20 L19 20 L19 11"/><path d="M10 20 L10 15 L14 15 L14 20"/></symbol>
+    <symbol id="i-album" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 15 Q11 12 13 14 L15 16"/><circle cx="9.5" cy="9" r="1.4" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2 L13.5 5 L16 4.5 L16.5 7 L19 8 L18.5 10.5 L21 12 L18.5 13.5 L19 16 L16.5 17 L16 19.5 L13.5 19 L12 22 L10.5 19 L8 19.5 L7.5 17 L5 16 L5.5 13.5 L3 12 L5.5 10.5 L5 8 L7.5 7 L8 4.5 L10.5 5 Z"/></symbol>
+    <symbol id="i-aqua" viewBox="0 0 24 24"><path d="M5 8 Q5 5 12 5 Q19 5 19 8 L19 17 Q19 20 12 20 Q5 20 5 17 Z"/><path d="M5 11 Q8 9 12 11 Q16 13 19 11"/></symbol>
+    <symbol id="i-chest" viewBox="0 0 24 24"><rect x="4" y="9" width="16" height="11" rx="2"/><path d="M4 11 Q4 6 12 6 Q20 6 20 11"/><rect x="10" y="12" width="4" height="4" rx="1"/></symbol>
+    <symbol id="i-rod" viewBox="0 0 24 24"><path d="M3 21 L15.5 4.5"/><path d="M15.5 4.5 Q19 2.5 21.5 4"/><path d="M3 21 L1.5 22.5"/><circle cx="7" cy="15.6" r="2.6"/><circle cx="7" cy="15.6" r="0.9" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-bait" viewBox="0 0 24 24"><path d="M5 19 Q3 15 7 13 Q11 11 9 7 Q8 4 12 4 Q16 4 15 8 Q14 12 18 13 Q21 14 19 18"/></symbol>
+    <symbol id="i-hook" viewBox="0 0 24 24"><circle cx="12" cy="5" r="2"/><path d="M12 7 L12 14 Q12 18 15 18 Q18 18 18 15"/><path d="M18 15 L18 12"/></symbol>
+    <symbol id="i-line" viewBox="0 0 24 24"><path d="M12 3 Q8 7 12 11 Q16 15 12 19 Q10 21 12 21"/></symbol>
+    <symbol id="i-float" viewBox="0 0 24 24"><path d="M12 3 Q15 6 14 10 L13 17 Q13 19 12 19 Q11 19 11 17 L10 10 Q9 6 12 3 Z"/><path d="M10 10 L14 10"/></symbol>
+    <symbol id="i-scene" viewBox="0 0 24 24"><path d="M3 18 L8 8 L12 14 L15 9 L21 18 Z"/><path d="M3 20 L21 20"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12 L10 17 L19 7"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 3 L14.5 9 L21 9.5 L16 13.5 L17.5 20 L12 16.5 L6.5 20 L8 13.5 L3 9.5 L9.5 9 Z"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6 L18 18 M18 6 L6 18"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5 L12 12 L15.5 14"/></symbol>
+    <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2 L5 13 L11 13 L10 22 L19 10 L13 10 Z"/></symbol>
+    <symbol id="i-gift" viewBox="0 0 24 24"><rect x="4" y="9" width="16" height="11" rx="2"/><path d="M4 13 L20 13"/><path d="M12 9 L12 20"/><path d="M12 9 Q8 9 7 6 Q7 4 9 4 Q12 4 12 9 Z"/><path d="M12 9 Q16 9 17 6 Q17 4 15 4 Q12 4 12 9 Z"/></symbol>
+    <symbol id="i-frog" viewBox="0 0 24 24"><circle cx="8" cy="7" r="2.2"/><circle cx="16" cy="7" r="2.2"/><path d="M5 12 Q5 7 12 7 Q19 7 19 12 Q19 17 12 17 Q5 17 5 12 Z"/><circle cx="8" cy="7" r=".7" fill="currentColor" stroke="none"/><circle cx="16" cy="7" r=".7" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-palm" viewBox="0 0 24 24"><path d="M12 21 L12 11"/><path d="M12 11 Q7 10 4 6 Q9 6 12 9 Q15 6 20 6 Q17 10 12 11 Z"/><path d="M12 11 Q8 13 6 17 Q10 15 12 12"/><path d="M12 11 Q16 13 18 17 Q14 15 12 12"/></symbol>
+    <symbol id="i-net" viewBox="0 0 24 24"><circle cx="10" cy="10" r="6"/><path d="M14.5 14.5 L20 20"/><path d="M6 10 L14 10 M7.5 6.5 L12.5 13.5 M12.5 6.5 L7.5 13.5"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2 L12 5 M12 19 L12 22 M2 12 L5 12 M19 12 L22 12 M4.5 4.5 L6.5 6.5 M17.5 17.5 L19.5 19.5 M19.5 4.5 L17.5 6.5 M6.5 17.5 L4.5 19.5"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14 Q14 20 8 14 Q4 10 6 4 Q12 6 14 12 Q16 16 20 14 Z"/></symbol>
+    <symbol id="i-rain" viewBox="0 0 24 24"><path d="M7 14 Q4 14 4 11 Q4 8 7 8 Q8 5 12 5 Q16 5 17 8 Q20 8 20 11 Q20 14 17 14 Z"/><path d="M8 17 L7 20 M12 17 L11 21 M16 17 L15 20"/></symbol>
+    <symbol id="i-new" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7 L12 12 L15.5 14"/></symbol>
+    <symbol id="i-trophy" viewBox="0 0 24 24"><path d="M7 4 L17 4 L17 10 Q17 14 12 14 Q7 14 7 10 Z"/><path d="M7 5 H4 Q4 9 7 10"/><path d="M17 5 H20 Q20 9 17 10"/><path d="M12 14 L12 17"/><path d="M8 20 L16 20 L15 17 L9 17 Z"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21 Q4 15 12 15 Q20 15 20 21"/></symbol>
+    <symbol id="i-set" viewBox="0 0 24 24"><path d="M12 3 L19 7.5 L12 12 L5 7.5 Z"/><path d="M5 12 L12 16.5 L19 12"/><path d="M5 16.5 L12 21 L19 16.5"/></symbol>
+    <symbol id="i-friend" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20 Q3.5 14.5 9 14.5 Q14.5 14.5 14.5 20"/><circle cx="17" cy="9" r="2.4"/><path d="M15.5 14.6 Q19.5 15 20.5 19.5"/></symbol>
+    <symbol id="i-medal" viewBox="0 0 24 24"><circle cx="12" cy="10" r="5.5"/><path d="M9 14.5 L7 21 L12 18.5 L17 21 L15 14.5"/><circle cx="12" cy="10" r="1.8" fill="currentColor" stroke="none"/></symbol>
+  </defs>
+</svg>
+
+<div id="app" class="app">
+  <div class="frame">
+    <div class="hud" id="hud">
+      <div class="hud-left">
+        <span class="hud-time" id="hudTime">08:00</span>
+        <span class="hud-sep"></span>
+        <span class="hud-season" id="hudSeason">赛季 · 第 1 天</span>
+      </div>
+      <div class="hud-right">
+        <span class="magic-pill" id="hudMagic" title="魔力余额"><svg class="ic"><use href="#i-sparkle"/></svg><b>0</b></span>
+        <button class="icon-btn" data-act="rules" title="玩法规则"><svg class="ic"><use href="#i-album"/></svg></button>
+      </div>
+    </div>
+
+    <div class="view" id="view"></div>
+
+    <nav class="tabbar" id="tabbar">
+      <button class="tb on" data-act="tab" data-tab="pond"><svg class="ic"><use href="#i-scene"/></svg><span>渔场</span></button>
+      <button class="tb" data-act="tab" data-tab="album"><svg class="ic"><use href="#i-album"/></svg><span>图鉴</span></button>
+      <button class="tb" data-act="tab" data-tab="gear"><svg class="ic"><use href="#i-rod"/></svg><span>渔具</span></button>
+      <button class="tb" data-act="tab" data-tab="bag"><svg class="ic"><use href="#i-bag"/></svg><span>背包</span></button>
+      <button class="tb" data-act="tab" data-tab="shop"><svg class="ic"><use href="#i-shop"/></svg><span>商店</span></button>
+    </nav>
+  </div>
+</div>
+
+<div class="overlay" id="overlay" aria-hidden="true"></div>
+<div class="toast-wrap" id="toastWrap"></div>
+<pre id="dbg" style="display:none;position:fixed;left:0;top:0;z-index:99;background:#0b1a2e;color:#8ef;font:11px/1.5 monospace;padding:6px;margin:0;max-width:100%"></pre>
+
+<script src="js/data.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/store.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

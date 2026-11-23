@@ -1,8 +1,9 @@
-//! M24 娱乐玩法 HTTP 接口（刮刮乐/猜大小/九宫格 + 农场 + 每小时限次）。
-//! 经济定位：四玩法一律**回收魔力**（各自 EV < 1），赔率/概率走代码常量 + 设置键双源。
+//! M24 娱乐玩法 HTTP 接口（刮刮乐/猜大小/打地鼠 + 农场 + 每小时限次）。
+//! 经济定位：玩法一律**回收魔力**（各自 EV < 1），赔率/概率走代码常量 + 设置键双源。
 //! 按域拆分（300 行门禁）：总览/历史/回合在 overview.rs，赔率与限次助手在
-//! helpers.rs，刮刮乐/猜大小/九宫格在 casino.rs，农场在 farm.rs（收获彩蛋奖池在
-//! farm_egg.rs，土地阶梯在 farm_land.rs / farm_land_write.rs），趣味投票在 fun.rs。
+//! helpers.rs，刮刮乐/猜大小在 casino.rs，打地鼠在 mole.rs / mole_settle.rs，
+//! 农场在 farm.rs（收获彩蛋奖池在 farm_egg.rs，土地阶梯在
+//! farm_land.rs / farm_land_write.rs），趣味投票在 fun.rs。
 //! mount_games 留在此。
 
 mod arcade_admin;
@@ -21,6 +22,8 @@ mod arcade_rewards;
 mod arcade_rewards_write;
 mod arcade_stubs;
 mod bigsmall_props;
+mod bs_room_http;
+mod bs_room_store;
 mod career;
 mod casino;
 mod casino_bigsmall;
@@ -33,6 +36,7 @@ mod farm_land;
 mod farm_land_write;
 mod fishing;
 mod fishing_extra;
+mod fishing_pond;
 mod food_coupon;
 mod fun;
 // pub(crate)：gacha_http/draw 也走同一把等级门（0490）
@@ -41,11 +45,14 @@ mod item_use;
 mod linkage;
 // 逐游戏等级门（0490）：helpers re-export，gacha_http 也消费
 pub(crate) mod minclass;
+mod mole;
+mod mole_settle;
 mod overview;
 mod pet_custom;
 mod pet_log;
 mod pets;
 mod pool;
+mod pool_batch;
 mod pool_games;
 mod pool_table;
 mod prize_view;
@@ -61,6 +68,7 @@ use arcade_items_write::*;
 use arcade_leaderboard::*;
 use arcade_meta::*;
 use arcade_rewards_write::*;
+use bs_room_http::*;
 use career::*;
 use casino::*;
 use casino_bigsmall::*;
@@ -72,13 +80,17 @@ use farm_land::*;
 use farm_land_write::*;
 use fishing::*;
 use fishing_extra::*;
+use fishing_pond::*;
 use fun::*;
 use item_use::*;
 use linkage::*;
+use mole::*;
+use mole_settle::*;
 use overview::*;
 use pet_custom::*;
 use pet_log::*;
 use pets::*;
+use pool_batch::*;
 use pool_games::*;
 use ranch::*;
 use ranch_pens::*;
@@ -91,13 +103,27 @@ pub fn mount_games(scope: actix_web::Scope) -> actix_web::Scope {
         .service(game_career)
         .service(scratch)
         .service(guess_bigsmall)
+        // 0515 倒计时房间制（期次/倒计时/本期下注）
+        .service(room_state)
+        .service(room_bet)
         // 0424 走势看板（同类站对标小件）
         .service(bigsmall_trend)
         .service(jgg)
         .service(capsule)
+        .service(fruit)
         .service(wheel)
+        .service(wheel_batch)
+        .service(mole_start)
+        .service(mole_hit)
+        .service(mole_finish)
         .service(fishing_cast)
         .service(fishing_reel)
+        .service(pond_state)
+        .service(pond_cast)
+        .service(pond_hook)
+        .service(pond_settle)
+        .service(pond_act)
+        .service(pond_rank)
         .service(pet_status)
         .service(pet_feed)
         .service(pet_claim)

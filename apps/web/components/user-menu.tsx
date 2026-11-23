@@ -258,7 +258,7 @@ export function UserMenu({
                   <span>{currency}：</span>
                   <b className="num">{sparkText}</b>
                 </a>
-                <UserCheckin onDone={refreshSpark} />
+                <UserCheckin />
               </div>
             </div>
             <button

@@ -1,0 +1,413 @@
+/* ═══════════════════════════════════════════════════════════
+   猜大小「倒计时房间」多端适配（.bs-room-page 作用域）。
+   栏宽断点沿用娱乐屋既有断点柜：768 平板双栏、1024 正式右栏、
+   1280 加宽；本文件只收窄移动端 / 折叠外屏 / 横屏高度，不重复
+   定义栏宽。舞台美术与骰面为 SVG / 内联尺寸，媒体查询内 !important
+   收紧时同步 svg 跟随容器。
+   ═══════════════════════════════════════════════════════════ */
+
+/* 骰面 svg 默认跟随外框，便于断点整体缩放 */
+.bs-room-page .bs-die svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* ═══════════════ 荷官舞台 ═══════════════ */
+/* 舞台金强调（选中筹码描边等）：ui_design 守卫要求引用的变量有定义，
+   此前只有引用处的 fallback 裸值在扛。挂到 --sun 强调令牌上，
+   夜场皮肤换血时同步。 */
+.bs-room-page {
+  --bs-gold: var(--sun, #ffc94d);
+}
+.bs-room-page .bs-stage {
+  position: relative;
+  width: 100%;
+  max-width: 460px;
+  min-height: 300px;
+  overflow: hidden;
+  border-radius: var(--r-lg);
+  background:
+    radial-gradient(120% 90% at 50% 0%, #3a2a63 0%, #241a3e 55%, #171129 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* 顶部聚光 */
+.bs-room-page .bs-stage::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -30px;
+  width: 320px;
+  height: 320px;
+  transform: translateX(-50%);
+  background: radial-gradient(
+    closest-side, rgba(255, 220, 150, 0.18), transparent 70%
+  );
+  pointer-events: none;
+}
+
+.bs-room-page .bs-dealer {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  /* ui_design 语义档：舞台内三层 dealer(0) < tray/浮件(10)，
+     浮件互不重叠，树序即视觉序 */
+  z-index: 0;
+  pointer-events: none;
+}
+
+.bs-room-page .bs-dealer-img {
+  height: 258px;
+  width: auto;
+  display: block;
+  filter: drop-shadow(0 10px 24px rgba(0, 0, 0, 0.45));
+}
+
+.bs-room-page .bs-stage-top {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 10;
+}
+
+.bs-room-page .bs-badge-round {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(30, 22, 56, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 22px;
+  padding: 7px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #f3eefc;
+}
+
+/* 上期开奖面板（左下） */
+.bs-room-page .bs-last-panel {
+  position: absolute;
+  left: 12px;
+  bottom: 14px;
+  z-index: 10;
+  background: rgba(30, 22, 56, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  padding: 10px 13px;
+  min-width: 148px;
+  backdrop-filter: blur(6px);
+}
+
+.bs-room-page .bs-last-row1 {
+  font-size: 12px;
+  color: #cfc4ea;
+  margin-bottom: 6px;
+}
+
+.bs-room-page .bs-last-row2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.bs-room-page .bs-last-dice {
+  display: flex;
+  gap: 4px;
+}
+
+/* 倒计时框（右下） */
+.bs-room-page .bs-count-box {
+  position: absolute;
+  right: 12px;
+  bottom: 14px;
+  z-index: 10;
+  background: linear-gradient(160deg, #51429b, #3b2f74);
+  border: 1.5px solid #9d8ce0;
+  border-radius: 14px;
+  padding: 10px 16px;
+  text-align: center;
+  min-width: 128px;
+  box-shadow: 0 8px 20px rgba(80, 60, 160, 0.4);
+}
+
+.bs-room-page .bs-count-label {
+  font-size: 12px;
+  color: #d8cff5;
+}
+
+.bs-room-page .bs-count-num {
+  font-size: 22px;
+  font-weight: 900;
+  margin-top: 2px;
+  color: #fff;
+}
+
+.bs-room-page .bs-count-num em {
+  font-style: normal;
+  font-size: 13px;
+  font-weight: 500;
+  margin-left: 2px;
+}
+
+/* 前方骰子台 */
+.bs-room-page .bs-dice-tray {
+  position: relative;
+  z-index: 10;
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+}
+
+/* ═══════════════ 在线头像圈（演示占位） ═══════════════ */
+.bs-room-page .bs-rail {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  width: 100%;
+  padding: 6px 4px;
+  scrollbar-width: none;
+}
+
+.bs-room-page .bs-rail::-webkit-scrollbar {
+  display: none;
+}
+
+.bs-room-page .bs-rail-player {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  flex: none;
+  width: 58px;
+}
+
+.bs-room-page .bs-rail-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 18px;
+  color: #fff;
+}
+
+.bs-room-page .bs-rail-name {
+  font-size: 12px;
+  color: #cfc4ea;
+  max-width: 64px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ═══════════════ 筹码面额栏 ═══════════════ */
+.bs-room-page .bs-chips {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  align-items: center;
+}
+
+.bs-room-page .bs-chip {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 6px dashed #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  color: #fff;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+  transition: transform 0.15s;
+  padding: 0;
+}
+
+.bs-room-page .bs-chip:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.bs-room-page .bs-chip.is-active {
+  transform: scale(1.12);
+  outline: 3px solid var(--bs-gold, #ffc94d);
+}
+
+.bs-room-page .bs-chip-inner {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #fff;
+  color: #2b2438;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+}
+
+.bs-room-page .bs-chip--red { background: #d84343; }
+.bs-room-page .bs-chip--green { background: #3d9a63; }
+.bs-room-page .bs-chip--blue { background: #3f76c9; }
+
+/* ── 折叠外屏 / 小屏手机（≤380）：下注盘与骰面降一档 ── */
+@media (max-width <= 380px) {
+  .bs-room-page .bs-picks {
+    gap: 8px;
+  }
+  .bs-room-page .bs-pick {
+    padding: 11px 6px;
+  }
+  .bs-room-page .bs-pick-t {
+    font-size: 17px;
+  }
+  .bs-room-page .bs-pick-s {
+    font-size: 11px;
+  }
+  .bs-room-page .bs-die {
+    width: 58px !important;
+    height: 58px !important;
+  }
+  .bs-room-page .gs-stage-box {
+    padding: 16px 12px;
+    gap: 10px;
+  }
+  .bs-room-page .bs-stage {
+    min-height: 264px;
+  }
+  .bs-room-page .bs-dealer-img {
+    height: 216px;
+  }
+  .bs-room-page .bs-last-panel {
+    min-width: 124px;
+    padding: 8px 10px;
+  }
+  .bs-room-page .bs-count-box {
+    min-width: 110px;
+    padding: 8px 12px;
+  }
+}
+
+/* ── 三折外屏（≤340）：标题与盘距再收一档，避免换行溢出 ── */
+@media (max-width <= 340px) {
+  .bs-room-page .bs-picks {
+    gap: 6px;
+  }
+  .bs-room-page .bs-pick {
+    padding: 9px 4px;
+    border-radius: var(--r-md);
+  }
+  .bs-room-page .bs-pick-t {
+    font-size: 15px;
+  }
+  .bs-room-page .bs-pick-s {
+    font-size: 10px;
+  }
+  .bs-room-page .bs-dice {
+    gap: 10px;
+  }
+  .bs-room-page .bs-die {
+    width: 50px !important;
+    height: 50px !important;
+  }
+  .bs-room-page .bs-dice-cap {
+    margin-bottom: 6px;
+  }
+}
+
+/* ── 三折外屏（≤260）：盘与骰面压到最小档，保证不横向溢出 ── */
+@media (max-width <= 260px) {
+  .bs-room-page .bs-picks {
+    gap: 4px;
+  }
+  .bs-room-page .bs-pick {
+    padding: 8px 3px;
+  }
+  .bs-room-page .bs-pick-t {
+    font-size: 13px;
+  }
+  .bs-room-page .bs-pick-s {
+    font-size: 9.5px;
+  }
+  .bs-room-page .bs-die {
+    width: 44px !important;
+    height: 44px !important;
+  }
+  .bs-room-page .bs-last-panel {
+    display: none;
+  }
+  .bs-room-page .bs-dealer-img {
+    height: 176px;
+  }
+}
+
+/* ── 平板 / 折叠展开（768–1023）：下注盘放宽，荷官加高 ── */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .bs-room-page .bs-picks {
+    max-width: 520px;
+  }
+  .bs-room-page .bs-stage {
+    min-height: 336px;
+  }
+  .bs-room-page .bs-dealer-img {
+    height: 300px;
+  }
+}
+
+/* ── Web 宽屏（≥1280）：舞台盘与荷官适度放大 ── */
+@media (min-width: 1280px) {
+  .bs-room-page .bs-picks {
+    max-width: 560px;
+  }
+  .bs-room-page .bs-dealer-img {
+    height: 336px;
+  }
+}
+
+/* ── 横屏且高度受限（手机横屏 / 矮窗 Web）：压缩舞台纵向占用 ── */
+@media (orientation: landscape) and (max-height: 500px) {
+  .bs-room-page .gs-shell {
+    gap: 10px;
+  }
+  .bs-room-page .gs-stage-box {
+    padding: 12px 16px;
+    gap: 8px;
+  }
+  .bs-room-page .bs-stage {
+    min-height: 0;
+  }
+  .bs-room-page .bs-dealer-img {
+    height: 150px;
+  }
+  .bs-room-page .bs-dice {
+    gap: 12px;
+  }
+  .bs-room-page .bs-die {
+    width: 52px !important;
+    height: 52px !important;
+  }
+  .bs-room-page .bs-dice-cap {
+    margin-top: 2px;
+    margin-bottom: 2px;
+  }
+}
+
+/* ═══════════════ 动效降级 ═══════════════ */
+/* ui_design 守卫：含 transition/animation 的文件须有降级块（wheel 先例） */
+@media (prefers-reduced-motion: reduce) {
+  .bs-room-page .bs-chip {
+    transition: none;
+  }
+}

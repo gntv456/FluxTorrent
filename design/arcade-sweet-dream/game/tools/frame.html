@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<title>钓鱼玩法 · 断点预览框</title>
+<style>
+  html,body{margin:0;height:100%;background:#e9eff7;font-family:system-ui,sans-serif}
+  body{display:flex;align-items:center;justify-content:center;overflow:hidden}
+  .host{position:relative;border-radius:18px;overflow:hidden;box-shadow:0 20px 50px -22px rgba(30,50,80,.5)}
+  iframe{border:0;display:block;background:#f4f8fd}
+  .cap{position:absolute;left:0;right:0;bottom:-22px;text-align:center;font-size:11px;color:#5a6b8c;letter-spacing:.08em}
+</style>
+</head>
+<body>
+  <div class="host" id="host"><iframe id="f" title="preview"></iframe></div>
+<script>
+  // 用法：frame.html?w=390&h=844&q=view%3Dgear
+  const p = new URLSearchParams(location.search);
+  const w = Number(p.get('w') || 390), h = Number(p.get('h') || 844);
+  const q = p.get('q') || '';
+  const f = document.getElementById('f');
+  const host = document.getElementById('host');
+  f.style.width = w + 'px';
+  f.style.height = h + 'px';
+  host.style.width = w + 'px';
+  host.style.height = h + 'px';
+  f.src = '../index.html' + (q ? '?' + decodeURIComponent(q) : '');
+</script>
+</body>
+</html>

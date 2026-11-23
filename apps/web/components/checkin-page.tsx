@@ -168,6 +168,14 @@ export function CheckinPage() {
         checkinLabel={t.checkinNow}
         busyLabel={dict.my.checkinBusy}
         attendedLabel={t.attended}
+        resub={
+          <ResubButton
+            cards={status?.makeup_cards ?? 0}
+            onCardsChange={(n) =>
+              setStatus((s) => (s ? { ...s, makeup_cards: n } : s))
+            }
+          />
+        }
       />
       <div className="checkin-page__almanac">
         <div className="checkin-page__cal">
@@ -200,10 +208,6 @@ export function CheckinPage() {
             <CheckinRules rules={status.rules} streakNow={status.streak ?? 0} />
           ) : null}
         </aside>
-      </div>
-      {/* 补签入口保留在 hero 下（弹层件，含持有数徽标） */}
-      <div className="checkin-page__resub">
-        <ResubButton cards={status?.makeup_cards ?? 0} />
       </div>
     </div>
   );

@@ -50,9 +50,16 @@
 .ck-hero__act {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: flex-end;
   gap: 7px;
   margin-left: auto;
+}
+/* 主按钮 + 补签入口并排一行（补签 2026-11-22 从页尾右下角上移至此） */
+.ck-hero__actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 .ck-hero__btn {
   min-height: 46px;
@@ -218,11 +225,6 @@
   color: var(--text-muted);
   font-size: 12px;
   line-height: 1.55;
-}
-/* 补签入口行（hero 下独立一行，弹层件自带徽标） */
-.checkin-page__resub {
-  display: flex;
-  justify-content: flex-end;
 }
 /* 热力足迹并入日历卡尾：标题左、条带右的一行带 */
 .checkin-page__heat {

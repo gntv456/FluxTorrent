@@ -1,0 +1,760 @@
+/* ══════════════════════════════════════════════════════════════
+   打地鼠专注页：定稿样图的紫金星空夜场。
+   作用域只在 .mole-page；不影响大厅与其它玩法。
+   ══════════════════════════════════════════════════════════════ */
+
+.mole-page {
+  --mo-gold-1: #f7e2b2;
+  --mo-gold-2: #d4af7a;
+  --mo-gold-3: #a87f3c;
+  --mo-violet: #c3b4e6;
+  --mo-sky: #6ab6f0;
+  --mo-ink: #f6f0ff;
+  --mo-sub: #c3b3e0;
+  --mo-faint: #9080b0;
+  --mo-panel: rgba(44, 30, 72, 0.5);
+  --mo-line: rgba(247, 226, 178, 0.16);
+  --mo-line-strong: rgba(247, 226, 178, 0.38);
+  --mo-mint: #46d3a4;
+  --mo-coral: #ff7a6b;
+  --mo-sun: #ffd700;
+  --mo-dirt-1: #6b4326;
+  --mo-dirt-2: #2a170c;
+  --mo-hole-in: #130a05;
+  --mo-bomb: #ff9a92;
+  --mo-bomb-soft: rgba(255, 122, 107, 0.16);
+  --mo-shade: rgba(12, 6, 20, 0.55);
+  --mo-panel-hi: rgba(74, 44, 96, 0.55);
+  color: var(--mo-ink);
+}
+
+.mole-page {
+  position: relative;
+  color: var(--mo-ink);
+}
+.mole-page::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(1.5px 1.5px at 12% 30%,
+      rgba(255, 255, 255, 0.7), transparent),
+    radial-gradient(1px 1px at 28% 62%,
+      rgba(255, 255, 255, 0.5), transparent),
+    radial-gradient(1.5px 1.5px at 46% 16%,
+      rgba(255, 215, 0, 0.6), transparent),
+    radial-gradient(1px 1px at 64% 40%,
+      rgba(255, 255, 255, 0.55), transparent),
+    radial-gradient(1.5px 1.5px at 80% 68%,
+      rgba(195, 180, 230, 0.6), transparent),
+    radial-gradient(1px 1px at 92% 26%,
+      rgba(255, 255, 255, 0.5), transparent),
+    radial-gradient(1px 1px at 36% 84%,
+      rgba(255, 255, 255, 0.4), transparent),
+    radial-gradient(1.5px 1.5px at 70% 90%,
+      rgba(255, 215, 0, 0.5), transparent);
+  animation: mo-star-tw 4s ease-in-out infinite alternate;
+}
+
+/* 样图整页是深紫星空：外壳选择器在 main 外侧，这里用 :has 反向上溯。
+   变量挂到 :root，顶栏/页脚/底栏这些 main 外的全局壳子才能一起继承。 */
+:root:has(.mole-page) {
+  color-scheme: dark;
+  --surface-page: #171129;
+  --surface-card: #2a1b45;
+  --surface-raised: #322053;
+  --surface-sunken: #120c1f;
+  --surface-cream: #1d1433;
+  --surface-hover: #3d2860;
+  --border-soft: rgba(247, 226, 178, 0.16);
+  --border-deep: rgba(247, 226, 178, 0.38);
+  --text-strong: #f6f0ff;
+  --text-muted: #c3b3e0;
+  --text-sub: #c3b3e0;
+  --ink: #f6f0ff;
+  --sub: #c3b3e0;
+  --chip-veil: rgba(23, 17, 41, 0.92);
+  --compat-bg: #171129;
+  --compat-paper: #2a1b45;
+  --compat-line: rgba(247, 226, 178, 0.16);
+  --compat-line-soft: rgba(247, 226, 178, 0.16);
+  --sky-soft: rgba(106, 182, 240, 0.12);
+  --sky-deep: #6ab6f0;
+}
+body:has(.mole-page),
+main:has(.mole-page) {
+  background:
+    radial-gradient(120% 80% at 50% -12%,
+      #3a2564 0%, transparent 55%),
+    radial-gradient(70% 50% at 90% 20%,
+      rgba(106, 182, 240, 0.14), transparent 60%),
+    radial-gradient(60% 50% at 6% 24%,
+      rgba(255, 215, 0, 0.09), transparent 60%),
+    linear-gradient(180deg, #171129 0%, #0c0916 100%) !important;
+}
+
+.mole-page .gs-shell {
+  position: relative;
+  z-index: 10;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+/* 全局顶栏 / 横幅 / 页脚 / 移动底栏一并收进紫夜，避免样图氛围被浅色外壳截断 */
+body:has(.mole-page) .site-news-banner,
+body:has(.mole-page) .tide-header,
+body:has(.mole-page) footer,
+body:has(.mole-page) .mobile-tabbar {
+  background: #171129 !important;
+  border-color: rgba(247, 226, 178, 0.16) !important;
+  color: #f6f0ff;
+}
+body:has(.mole-page) footer > div > div {
+  background: #2a1b45 !important;
+  border-color: rgba(247, 226, 178, 0.16) !important;
+}
+body:has(.mole-page) .tide-header input,
+body:has(.mole-page) .tide-header button:not(:has(img)) {
+  background: rgba(255, 255, 255, 0.05);
+  color: #c3b3e0;
+  border-color: rgba(247, 226, 178, 0.16);
+}
+
+/* ── 页头 / 徽章 / 余额 / 标签 ───────────────────────────────── */
+.mole-page .gs-title {
+  background: linear-gradient(180deg, #fff6dd 10%, #f0cd86 55%, #c89848 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  letter-spacing: 0.18em;
+  text-shadow: none;
+}
+.mole-page .gs-head-sub,
+.mole-page .gs-head-mid {
+  color: var(--mo-sub);
+}
+.mole-page .gs-back,
+.mole-page .gs-head-center > button {
+  border-color: var(--mo-line);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--mo-sub);
+}
+.mole-page .gs-back:hover,
+.mole-page .gs-head-center > button:hover {
+  color: var(--mo-ink);
+  border-color: var(--mo-line-strong);
+}
+.mole-page .wp-badge {
+  border-color: var(--mo-line-strong);
+  background: var(--mo-panel);
+  color: var(--mo-sub);
+}
+.mole-page .wp-badge.ticket .hl,
+.mole-page .wp-badge.ticket {
+  color: var(--mo-sun);
+}
+
+.mole-page .wp-bal-chip {
+  border-color: var(--mo-line);
+  background: var(--mo-panel);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+.mole-page .wp-bal-ic {
+  background:
+    linear-gradient(180deg, rgba(255, 215, 0, 0.22),
+      rgba(212, 158, 74, 0.1));
+  border: 1px solid rgba(255, 215, 0, 0.28);
+}
+.mole-page .wp-bal-lb {
+  color: var(--mo-faint);
+}
+.mole-page .wp-bal-vl {
+  color: var(--mo-ink);
+}
+.mole-page .wp-bal-vl.win { color: var(--mo-mint); }
+.mole-page .wp-bal-vl.lose { color: var(--mo-coral); }
+
+.mole-page .gtabs {
+  background: var(--mo-panel);
+  box-shadow: inset 0 0 0 1px var(--mo-line);
+}
+.mole-page .gtab {
+  color: var(--mo-faint);
+}
+.mole-page .gtab:not(.on):hover {
+  color: var(--mo-sub);
+}
+.mole-page .gtab.on {
+  background: linear-gradient(180deg, #f0cd86, #c89848);
+  color: #3b2a10;
+  box-shadow: 0 4px 14px -4px rgba(212, 158, 74, 0.7);
+}
+
+/* ── 舞台：紫夜机台，板内不再套草皮绿框 ──────────────────────── */
+.mole-page .gs-stage-box {
+  position: relative;
+  max-width: 1000px;
+  overflow: hidden;
+  padding: 18px 20px 18px;
+  border-color: rgba(240, 200, 120, 0.24) !important;
+  background:
+    radial-gradient(120% 120% at 50% 0%,
+      #322053 0%, #1a1130 68%, #120c1f 100%) !important;
+  box-shadow:
+    0 24px 50px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -20px 40px rgba(8, 5, 18, 0.45) !important;
+}
+.mole-page .gs-stage-box::before {
+  content: "";
+  position: absolute;
+  inset: -30% 10% auto;
+  height: 70%;
+  background:
+    radial-gradient(50% 42% at 50% 0%,
+      rgba(247, 226, 178, 0.14), transparent 70%);
+  pointer-events: none;
+}
+.mo-stage {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+.mo-stage-wrap {
+  position: relative;
+  width: 100%;
+  max-width: 520px;
+}
+
+.mo-board {
+  position: relative;
+  padding: 8px 4px 4px;
+  border: 0;
+  border-radius: 20px;
+  background:
+    radial-gradient(120% 78% at 50% -18%,
+      rgba(247, 226, 178, 0.08), transparent 62%),
+    transparent;
+  box-shadow: none;
+  overflow: hidden;
+}
+.mo-board::before {
+  display: none;
+}
+
+/* ── HUD：剩余 / 得分 / 连击 ─────────────────────────────────── */
+.mo-hud {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 10px 12px;
+  width: 100%;
+  max-width: 430px;
+  padding: 0 2px 10px;
+}
+.mo-clock,
+.mo-score-chip,
+.mo-combo {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 7px 13px;
+  border-radius: var(--r-md, 12px);
+  border: 1px solid var(--mo-line);
+  background: var(--mo-panel);
+}
+.mo-clock {
+  color: var(--mo-faint);
+  font-size: 12px;
+  font-weight: 800;
+}
+.mo-clock b {
+  color: var(--mo-ink);
+  font-size: 15px;
+}
+.mo-score-lb {
+  color: var(--mo-faint);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+}
+.mo-score {
+  color: var(--mo-sun);
+  font-size: 15px;
+  line-height: 1;
+  text-shadow: 0 0 12px rgba(255, 206, 108, 0.42);
+}
+.mo-combo {
+  background: rgba(70, 211, 164, 0.12);
+  border-color: rgba(70, 211, 164, 0.28);
+  color: var(--mo-mint);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.mo-track {
+  position: relative;
+  flex: 1 1 120px;
+  min-width: 120px;
+  height: 10px;
+  border: 1px solid var(--mo-line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+.mo-track-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--mo-sky), var(--mo-mint));
+  transition: width 0.12s linear;
+}
+
+/* ── 洞阵：深棕椭圆土坑，地鼠从坑口弹出 ──────────────────────── */
+.mo-grid {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  width: 100%;
+  max-width: 430px;
+  margin-inline: auto;
+}
+.mo-hole {
+  position: relative;
+  height: 78px;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 16px;
+  background: transparent;
+  cursor: crosshair;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.mo-hole:focus-visible {
+  outline: 2px solid var(--mo-gold-2);
+  outline-offset: 2px;
+}
+.mo-rim {
+  position: absolute;
+  left: 4%;
+  right: 4%;
+  bottom: 7%;
+  height: 36%;
+  border-radius: 50%;
+  background:
+    radial-gradient(130% 120% at 50% 32%, #7a4f2c, #2a170c 72%);
+  box-shadow:
+    inset 0 6px 10px rgba(0, 0, 0, 0.55),
+    0 2px 0 rgba(212, 175, 122, 0.16);
+}
+.mo-rim::after {
+  content: "";
+  position: absolute;
+  inset: 12% 10% auto;
+  height: 30%;
+  border-radius: 50%;
+  background:
+    radial-gradient(ellipse at 50% 0%,
+      rgba(122, 84, 44, 0.35), transparent 70%);
+}
+.mo-dirt {
+  position: absolute;
+  left: 16%;
+  right: 16%;
+  bottom: 15%;
+  height: 22%;
+  border-radius: 50%;
+  background: radial-gradient(120% 100% at 50% 0%, #2c170b, var(--mo-hole-in));
+  box-shadow: inset 0 8px 12px var(--mo-hole-in);
+}
+.mo-hole-num {
+  display: none;
+}
+
+.mo-mole {
+  position: absolute;
+  left: 50%;
+  bottom: 16%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 64%;
+  transform: translate(-50%, 115%) scale(0.55);
+  transform-origin: 50% 100%;
+  opacity: 0;
+  pointer-events: none;
+}
+.mo-hole.up .mo-mole {
+  animation: mo-rise 0.22s cubic-bezier(0.2, 1.5, 0.4, 1) forwards;
+}
+.mo-board.idle .mo-mole {
+  transform: translate(-50%, 0) scale(1);
+  opacity: 1;
+}
+.mo-mole::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -2px;
+  width: 74%;
+  height: 46%;
+  transform: translateX(-50%);
+  border-radius: 50% 50% 42% 42%;
+  background: linear-gradient(180deg, var(--mo-dirt-1), var(--mo-dirt-2));
+  box-shadow: inset 0 2px 6px rgba(255, 206, 108, 0.18);
+}
+.mo-face {
+  position: relative;
+  font-size: 40px;
+  line-height: 1;
+  filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.45));
+}
+.mo-tag {
+  position: relative;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--mo-panel);
+  border: 1px solid var(--mo-line-strong);
+  color: var(--mo-gold-1);
+  font-size: 10px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.mo-tag.neg {
+  border-color: var(--mo-bomb);
+  color: var(--mo-bomb);
+}
+
+.mo-hole.up .mo-rim {
+  box-shadow:
+    inset 0 7px 11px var(--mo-shade),
+    0 0 0 1px var(--mo-line-strong),
+    0 0 22px rgba(255, 206, 108, 0.42);
+}
+.mo-hole.bomb.up .mo-rim {
+  box-shadow:
+    inset 0 7px 11px var(--mo-shade),
+    0 0 20px var(--mo-bomb-soft);
+}
+
+.mo-idle {
+  position: static;
+  display: block;
+  margin: 6px auto 0;
+  color: var(--mo-ink);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-align: center;
+  padding: 0 20px;
+  pointer-events: none;
+}
+.mo-dust {
+  position: absolute;
+  inset: 8px;
+  border-radius: inherit;
+  border: 1px solid var(--mo-line-strong);
+  opacity: 0;
+  pointer-events: none;
+  animation: mo-miss 0.4s ease-out;
+}
+
+/* ── 结算盘 ──────────────────────────────────────────────────── */
+.mo-result {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 18px;
+  border-radius: 20px;
+  border: 1px solid var(--mo-line-strong);
+  background:
+    radial-gradient(90% 70% at 50% 0%, var(--mo-panel-hi), transparent 70%),
+    rgba(26, 17, 48, 0.96);
+  backdrop-filter: blur(6px);
+  text-align: center;
+  animation: mo-pop 0.26s ease-out;
+}
+.mo-res-top {
+  color: var(--mo-faint);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+.mo-res-score {
+  color: var(--mo-gold-1);
+  font-size: 34px;
+  line-height: 1;
+  text-shadow: 0 0 18px rgba(255, 206, 108, 0.42);
+}
+.mo-res-unit {
+  margin-left: 4px;
+  font-size: 12px;
+  color: var(--mo-faint);
+}
+.mo-res-net {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--mo-sub);
+}
+.mo-res-net.win { color: var(--mo-mint); }
+.mo-res-net.lose { color: var(--mo-coral); }
+.mo-res-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 2px;
+  color: var(--mo-sub);
+  font-size: 11px;
+}
+.mo-res-row b { color: var(--mo-gold-2); }
+.mo-res-cta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* ── 控制行与读数 ────────────────────────────────────────────── */
+.mo-cta {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  max-width: 720px;
+}
+.mo-cta .arc-chip,
+.mo-res-cta .arc-chip {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 48px;
+  border: 1px solid rgba(106, 182, 240, 0.4);
+  background: rgba(106, 182, 240, 0.08);
+  color: var(--mo-sky);
+  border-radius: 999px;
+  padding: 0 12px;
+  font-weight: 800;
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.mo-cta .arc-chip.on,
+.mo-res-cta .arc-chip.on {
+  position: relative;
+  overflow: hidden;
+  flex: 2 1 220px;
+  border: 0;
+  color: #4a3312;
+  letter-spacing: 0.06em;
+  background: linear-gradient(180deg, #ffe9b8, #f0c878 55%, #d49a4a);
+  box-shadow:
+    0 10px 24px -6px rgba(212, 158, 74, 0.75),
+    inset 0 2px 0 rgba(255, 255, 255, 0.75),
+    inset 0 -3px 6px rgba(120, 70, 10, 0.35);
+}
+.mo-cta .arc-chip.on::after,
+.mo-res-cta .arc-chip.on::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -60%;
+  width: 40%;
+  height: 100%;
+  background:
+    linear-gradient(100deg, transparent,
+      rgba(255, 255, 255, 0.55), transparent);
+  transform: skewX(-20deg);
+  animation: mo-sheen 3.2s ease-in-out infinite;
+}
+.mo-cta .arc-chip.auto,
+.mo-res-cta .arc-chip.auto {
+  border-color: rgba(255, 122, 107, 0.45);
+  background: rgba(255, 122, 107, 0.1);
+  color: var(--mo-coral);
+}
+.mo-cta .arc-chip.auto.on,
+.mo-res-cta .arc-chip.auto.on {
+  background: linear-gradient(180deg, #ff8a7a, #e05a4a);
+  border-color: #ff8a7a;
+  color: #fff;
+  box-shadow: 0 6px 18px -6px rgba(255, 122, 107, 0.7);
+}
+.mo-cta .arc-chip.auto.on::after,
+.mo-res-cta .arc-chip.auto.on::after {
+  display: none;
+}
+.mo-cta .arc-chip:disabled,
+.mo-res-cta .arc-chip:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.mo-live {
+  color: var(--mo-sub);
+  font-size: 11px;
+}
+
+.wp-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  width: 100%;
+}
+.wp-stat {
+  min-width: 0;
+  padding: 12px 10px;
+  border-radius: 14px;
+  border: 1px solid var(--mo-line);
+  background: rgba(255, 255, 255, 0.055);
+  text-align: center;
+}
+.wp-stat-lb {
+  color: var(--mo-faint);
+}
+.wp-stat-vl { color: var(--mo-ink); }
+.wp-stat-vl.gold { color: var(--mo-gold-1); }
+.wp-stat-vl.green { color: var(--mo-mint); }
+
+/* ── 奖池 / 记录面板 ─────────────────────────────────────────── */
+.mole-page .wp-pool,
+.mole-page .wp-pool-panel,
+.mole-page .gr-panel {
+  border-color: var(--mo-line) !important;
+  background: linear-gradient(160deg, #2a1b45, #1d1433) !important;
+  color: var(--mo-ink);
+}
+.mole-page .wp-h2 { color: var(--mo-gold-1); }
+.mole-page .wp-pi-nm { color: var(--mo-ink); }
+.mole-page .wp-pi-meta { color: var(--mo-sub); }
+.mole-page .wp-pool-note { color: var(--mo-faint); }
+.mole-page .gr-panel h2 { color: var(--mo-gold-1); }
+.mole-page .gr-panel .text-sub,
+.mole-page .gr-panel .text-muted {
+  color: #b9a7d2;
+}
+
+/* 战绩条目在夜场深卡上提亮 */
+.mole-page .gr-panel {
+  color: #f1e6ff;
+}
+.mole-page .gr-panel .text-sub { color: #b9a7d2; }
+.mole-page .sw-stat {
+  border: 1px solid var(--mo-line);
+  background: rgba(255, 255, 255, 0.055);
+}
+.mole-page .sw-stat-lb { color: var(--mo-faint); }
+.mole-page .sw-stat-vl { color: var(--mo-ink); }
+.mole-page .gr-row {
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.05) !important;
+  color: var(--mo-sub);
+}
+.mole-page .gr-album {
+  border-color: var(--mo-line) !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  color: var(--mo-ink);
+}
+.mole-page .wp-odds-bar {
+  border-color: var(--mo-line);
+  background: rgba(106, 182, 240, 0.08);
+  color: var(--mo-sub);
+}
+.mole-page .wp-odds-bar button { color: var(--mo-sky); }
+
+@keyframes mo-rise {
+  0% {
+    transform: translate(-50%, 115%) scale(0.55);
+    opacity: 0;
+  }
+  70% {
+    transform: translate(-50%, -6%) scale(1.06);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, 0) scale(1);
+    opacity: 1;
+  }
+}
+@keyframes mo-miss {
+  0% { opacity: 0.7; transform: scale(0.96); }
+  100% { opacity: 0; transform: scale(1.04); }
+}
+@keyframes mo-pop {
+  from { opacity: 0; transform: translateY(6px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes mo-sheen {
+  0% { left: -60%; }
+  55%, 100% { left: 130%; }
+}
+@keyframes mo-star-tw {
+  from { opacity: 0.5; }
+  to { opacity: 1; }
+}
+
+/* 窄屏：洞阵收紧，主按钮独占一行 */
+@media (max-width: 768px) {
+  main:has(.mole-page) {
+    padding-bottom: 120px !important;
+  }
+  .mole-page { margin-bottom: 24px; }
+  .mo-stage-wrap { max-width: 100%; }
+  .mo-board { padding: 10px 6px 6px; }
+  .mo-grid { gap: 10px; max-width: 330px; }
+  .mo-hole {
+    height: 66px;
+    min-height: 0;
+    border-radius: 12px;
+  }
+  .mo-face { font-size: 30px; }
+  .mo-tag { font-size: 9px; }
+  .mo-hud { gap: 8px 10px; }
+  .mo-track {
+    flex-basis: 100%;
+    min-width: 0;
+    order: 5;
+  }
+  .mo-cta {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .mo-cta .arc-chip,
+  .mo-cta .arc-chip.on {
+    flex: 1 1 100%;
+  }
+  .mo-result { padding: 12px; }
+  .mo-res-score { font-size: 26px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mo-hole.up .mo-mole,
+  .mo-item,
+  .mo-dust,
+  .mo-result,
+  .mole-page::before,
+  .mo-cta .arc-chip.on::after,
+  .mo-res-cta .arc-chip.on::after {
+    animation: none !important;
+  }
+  .mo-track-fill { transition: none; }
+}

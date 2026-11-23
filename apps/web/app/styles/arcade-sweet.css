@@ -825,31 +825,10 @@
   );
 }
 
-/* —— 扭蛋机：蓝紫机身 + 珍珠玻璃罩 —— */
-[data-arcade="sweet"] .cap-machine {
-  background: linear-gradient(180deg, #c5dff0, #8ab4dd);
-  border-radius: var(--r-lg) var(--r-lg) 0 0;
-}
-[data-arcade="sweet"] .cap-dome {
-  background: radial-gradient(
-    circle at 35% 30%,
-    rgba(255, 255, 255, 0.6),
-    rgba(197, 223, 240, 0.3) 60%,
-    rgba(184, 200, 232, 0.2)
-  );
-  border: 2px solid rgba(255, 255, 255, 0.5);
-}
-[data-arcade="sweet"] .cap-base {
-  background: linear-gradient(180deg, var(--sweet-sky-deep), #2c5a8c);
-}
-[data-arcade="sweet"] .cap-knob {
-  background: radial-gradient(
-    circle at 35% 30%,
-    #f7e6c0,
-    var(--sweet-gold) 60%,
-    var(--sweet-gold-deep)
-  );
-}
+/* —— 老虎机 / 水果机：不再在此贴粉彩机身。两机是「机台画面」元件，
+   与转盘/打地鼠同口径：机身色定义在 arcade.css 源头并跟 arcade-night
+   夜场令牌（夜色底 + 金线）走；sweet 浅色覆盖会造成深夜场页面上浮着
+   粉蓝机台 + 白字压浅底难读（2026-11-21 实测撤除）。 —— */
 
 /* —— 转盘：盘面色板在 lucky-wheel 源头按档位粉彩直出（样图③口径）。
    旧的整盘 conic 背景 + 方盒 box-shadow 都撤：SVG 是方画布，盒阴影
@@ -1463,6 +1442,18 @@
     0 6px 14px -6px rgba(176, 138, 74, 0.6),
     inset 0 1px 0 rgba(255, 255, 255, 0.7);
 }
+.sw-cta.cta-auto {
+  background: linear-gradient(180deg, #9aa8e8, #5a6ab8);
+  box-shadow:
+    0 6px 14px -6px rgba(90, 106, 184, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  text-shadow: 0 1px 2px rgba(30, 38, 82, 0.35);
+}
+.sw-cta.cta-auto.on {
+  background: linear-gradient(180deg, #e8c878, #c89848);
+  color: #4a3312;
+  text-shadow: 0 1px 2px rgba(255, 244, 214, 0.6);
+}
 
 .sw-ten-overlay {
   position: fixed;
@@ -1561,6 +1552,10 @@
   margin-top: 2px;
   font-size: 12px;
   color: #8a9ab0;
+}
+.sw-tier:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* 星尘信封 + 3×2 涂层格 */

@@ -34,29 +34,41 @@ export interface CatalogItem {
 const CELL =
   "w-full rounded-[var(--r-sm)] border border-line " +
   "bg-[var(--surface-card)] px-2 py-1 text-xs";
+const ACT = "rounded border border-line px-1.5 py-0.5";
 
 export function AdminArcadePoolRows({
   rows,
   catalog,
+  totalWeight,
   showSide,
   valueColLabel,
   onSet,
+  onMove,
+  onDel,
 }: {
   rows: PoolRowView[];
   catalog: CatalogItem[];
+  totalWeight: number;
   showSide: boolean;
   /** 倍数那一列的尺子随玩法变（票价 / 农场种子价），故由壳子传进来 */
   valueColLabel?: string;
   onSet: (i: number, patch: Partial<PoolRowView>) => void;
+  onMove: (i: number, dir: -1 | 1) => void;
+  onDel: (i: number) => void;
 }) {
   const { dict } = useI18n();
   const t = dict.adminArcade.pool;
+  const pct = (weight: number) =>
+    totalWeight > 0
+      ? `${((weight / totalWeight) * 100).toFixed(1)}%`
+      : "—";
   return (
       <table className="nexus-table w-full text-xs">
         <thead>
           <tr className="text-left text-sub">
             <th className="py-1">{t.colPrize}</th>
             <th className="py-1">{t.colWeight}</th>
+            <th className="py-1">{t.colProb}</th>
             <th className="py-1">{t.colKind}</th>
             {showSide && (
               <th className="py-1">{t.colSide}</th>
@@ -66,6 +78,7 @@ export function AdminArcadePoolRows({
             </th>
             <th className="py-1">{t.colRarity}</th>
             <th className="py-1">{t.colImage}</th>
+            <th className="py-1">{t.colActions}</th>
           </tr>
         </thead>
         <tbody>
@@ -88,6 +101,9 @@ export function AdminArcadePoolRows({
                     onSet(i, { weight_permille: Number(e.target.value) || 0 })
                   }
                 />
+              </td>
+              <td className="py-1 pr-2 text-right num text-sub">
+                {pct(r.weight_permille)}
               </td>
               <td className="py-1 pr-1">
                 <select
@@ -185,6 +201,39 @@ export function AdminArcadePoolRows({
                     onSet(i, { image_url: e.target.value })
                   }
                 />
+              </td>
+              <td className="py-1">
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    className={ACT + " disabled:opacity-40"}
+                    title={t.moveUp}
+                    aria-label={t.moveUp}
+                    disabled={i === 0}
+                    onClick={() => onMove(i, -1)}
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    className={ACT + " disabled:opacity-40"}
+                    title={t.moveDown}
+                    aria-label={t.moveDown}
+                    disabled={i === rows.length - 1}
+                    onClick={() => onMove(i, 1)}
+                  >
+                    ↓
+                  </button>
+                  <button
+                    type="button"
+                    className={ACT + " text-[var(--coral)]"}
+                    title={t.rowDel}
+                    aria-label={t.rowDel}
+                    onClick={() => onDel(i)}
+                  >
+                    ×
+                  </button>
+                </div>
               </td>
             </tr>
           ))}

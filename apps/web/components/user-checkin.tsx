@@ -1,20 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { withTicketNote, type CheckinResp } from "@/lib/checkin-msg";
-import { api, ApiError } from "@/lib/api-client";
+import Link from "next/link";
+import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 
-/** 摘要区直发签到（0148）：点击即 POST /attendance/checkin，不跳控制面板；
- *  成功后 ✓ 态 + 结果文案 + 回调刷新 {magic} 余额。后端业务错误（如
- *  「今天已经签到过啦」）透出原文案并把按钮置已签态，不再误报网络失败。 */
-export function UserCheckin({ onDone }: { onDone: () => void }) {
-  const { dict, currency } = useI18n();
+/** 摘要区签到入口（2026-11-22 调整）：点击跳签到日历页 /checkin——旧的
+ *  弹窗内直发 POST 退役，连签进度/里程碑/补签卡都在日历页，导流过去更顺。
+ *  已签态只换文案不锁点击：点进去还能看日历/补签。 */
+export function UserCheckin() {
+  const { dict } = useI18n();
   const [checked, setChecked] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
 
-  // 初始态对齐：今天已签（如首页/别处签过）直接置 ✓，避免点开就报错
+  // 初始态对齐：今天已签（如首页/别处签过）显示 ✓，避免口径打架
   useEffect(() => {
     api
       .get<{ checked_today: boolean }>("/api/v1/attendance")
@@ -22,56 +20,9 @@ export function UserCheckin({ onDone }: { onDone: () => void }) {
       .catch(() => {});
   }, []);
 
-  async function checkin() {
-    if (busy || checked) return;
-    setBusy(true);
-    try {
-      const r = await api.post<CheckinResp>("/api/v1/attendance/checkin", {});
-      setChecked(true);
-      const m = withTicketNote(
-        dict.my.checkinOk
-          .replace("{reward}", String(r.reward))
-          .replace("{streak}", String(r.streak))
-          .replace("{magic}", currency),
-        dict.my,
-        r,
-      );
-      setMsg(m);
-      onDone();
-    } catch (e) {
-      if (e instanceof ApiError) {
-        // ZT2（2026-10-03）：不再按中文文案 `includes("已经签到")` 判分支——后端一旦
-        // 本地化/改文案即失效，外语站更是直接失效。改为回读权威状态 checked_today。
-        setMsg(e.message);
-        api
-          .get<{ checked_today: boolean }>("/api/v1/attendance")
-          .then((s) => {
-            if (s.checked_today) setChecked(true);
-          })
-          .catch(() => {});
-      } else {
-        setMsg(dict.common.networkError);
-      }
-    } finally {
-      setBusy(false);
-    }
-  }
-
   return (
-    <>
-      <button
-        type="button"
-        className="usermenu__checkin"
-        onClick={checkin}
-        disabled={busy || checked}
-      >
-        {busy
-          ? dict.my.checkinBusy
-          : checked
-            ? dict.my.checked
-            : `[${dict.my.dailyCheckin}]`}
-      </button>
-      {msg && <p className="usermenu__checkmsg">{msg}</p>}
-    </>
+    <Link href="/checkin" className={`usermenu__checkin${checked ? " is-checked" : ""}`}>
+      {checked ? `✓ ${dict.my.checked}` : `[${dict.my.dailyCheckin}]`}
+    </Link>
   );
 }

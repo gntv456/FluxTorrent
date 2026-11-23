@@ -2,7 +2,7 @@
  "note": "actix 路由宏静态提取：get/post/put/patch/delete/route 六种方法宏，含 #[actix_web::get] 全限定形态；handler 关联自宏后首条 fn；注释内的宏不计（被注释掉的路由是死代码）",
  "path_scope": "path=宏原始字面量（scope 相对路径）；/api/v1 等挂载前缀由 mount 侧拼接，清单不还原 mount 链",
  "grep_baseline_note": "口径对齐 grep -rE '#\\[(actix_web::)?(get|post|put|patch|delete|route)\\(' apps/api/src --include=*.rs；grep 会数到注释里的宏，total 若比 grep 少，差额即被注释掉的死宏",
- "total": 873,
+ "total": 886,
  "routes": [
   {
    "method": "POST",
@@ -2976,6 +2976,18 @@
   },
   {
    "method": "GET",
+   "path": "/games/bigsmall/room",
+   "handler": "room_state",
+   "file": "apps/api/src/games_http/bs_room_http.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/games/bigsmall/room/bet",
+   "handler": "room_bet",
+   "file": "apps/api/src/games_http/bs_room_http.rs"
+  },
+  {
+   "method": "GET",
    "path": "/games/career",
    "handler": "game_career",
    "file": "apps/api/src/games_http/career.rs"
@@ -3090,6 +3102,42 @@
   },
   {
    "method": "GET",
+   "path": "/games/fishing/pond",
+   "handler": "pond_state",
+   "file": "apps/api/src/games_http/fishing_pond/http.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/games/fishing/pond/cast",
+   "handler": "pond_cast",
+   "file": "apps/api/src/games_http/fishing_pond/http.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/games/fishing/pond/hook",
+   "handler": "pond_hook",
+   "file": "apps/api/src/games_http/fishing_pond/http.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/games/fishing/pond/settle",
+   "handler": "pond_settle",
+   "file": "apps/api/src/games_http/fishing_pond/http.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/games/fishing/pond/act",
+   "handler": "pond_act",
+   "file": "apps/api/src/games_http/fishing_pond/http.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/games/fishing/pond/rank",
+   "handler": "pond_rank",
+   "file": "apps/api/src/games_http/fishing_pond/http.rs"
+  },
+  {
+   "method": "GET",
    "path": "/fun/polls",
    "handler": "fun_polls",
    "file": "apps/api/src/games_http/fun.rs"
@@ -3117,6 +3165,24 @@
    "path": "/games/coupons/use",
    "handler": "use_coupon",
    "file": "apps/api/src/games_http/linkage.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/games/mole/start",
+   "handler": "mole_start",
+   "file": "apps/api/src/games_http/mole.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/games/mole/hit",
+   "handler": "mole_hit",
+   "file": "apps/api/src/games_http/mole.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/games/mole/finish",
+   "handler": "mole_finish",
+   "file": "apps/api/src/games_http/mole_settle.rs"
   },
   {
    "method": "GET",
@@ -3174,6 +3240,12 @@
   },
   {
    "method": "POST",
+   "path": "/games/wheel/batch",
+   "handler": "wheel_batch",
+   "file": "apps/api/src/games_http/pool_batch.rs"
+  },
+  {
+   "method": "POST",
    "path": "/games/jgg",
    "handler": "jgg",
    "file": "apps/api/src/games_http/pool_games.rs"
@@ -3182,6 +3254,12 @@
    "method": "POST",
    "path": "/games/capsule",
    "handler": "capsule",
+   "file": "apps/api/src/games_http/pool_games.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/games/fruit",
+   "handler": "fruit",
    "file": "apps/api/src/games_http/pool_games.rs"
   },
   {

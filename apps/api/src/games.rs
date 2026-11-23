@@ -5,7 +5,9 @@
 //! - 刮刮乐 EV 0.66、九宫格 EV 0.725（各有单测锁定）；
 //! - 猜大小赢面 49% / 平 2% / 输 49%，赔率必须 < 2.0 否则 EV 恒为 1
 //!   （旧值 2.0：EV = 0.49×2 + 0.02 = 1.0，且「同时押大押小」可零风险对冲），
-//!   现缺省 1.9（EV 0.951），见 `BIGSMALL_WIN_MULT_PERMILLE`；
+//!   现缺省 1.9（EV 0.951），见 `BIGSMALL_WIN_MULT_PERMILLE`；2026-11-21 起
+//!   每局抽水 10%——只抽赢局派彩（等效倍率 ×0.9），有效 RTP ≈ 0.831，
+//!   面板赔率与 EV 闸口径不变，见 `BIGSMALL_RAKE_PERMILLE`；
 //! - 农场收获期望 = 产量/种子价 × (1 + 20% 双倍)，作物表按 0.75 标定 → EV 0.90；
 //!   收获之上的**彩蛋奖池**（`arcade_pools` game='farm'）只能吃剩下的 0.10，
 //!   由 `validate_farm` 与写侧闸共同把关；
@@ -13,15 +15,25 @@
 #![allow(dead_code)]
 
 mod bigsmall;
+mod bs_room;
 mod farm;
 mod farm_land;
 mod jgg;
+mod mole;
 mod scratch;
 
 #[cfg(test)]
 mod farm_land_tests;
 #[cfg(test)]
 mod farm_tests;
+#[cfg(test)]
+mod mole_db_economy_tests;
+#[cfg(test)]
+mod mole_db_harness;
+#[cfg(test)]
+mod mole_db_tests;
+#[cfg(test)]
+mod mole_tests;
 #[cfg(test)]
 mod pool_tests;
 #[cfg(test)]
@@ -31,9 +43,15 @@ mod tests;
 // bin crate 的 pub use 对未被外部引用的项会触发 unused_imports，显式放行。
 #[allow(unused_imports)]
 pub use bigsmall::{
-    bigsmall_expected_value, outcome_side, roll, validate_bet,
-    validate_bigsmall, DiceOutcome, Guess, BIGSMALL_WIN_MULT_PERMILLE,
+    bigsmall_expected_value, bigsmall_raked_expected_value, outcome_side,
+    raked_mult_permille, raked_payout, roll, validate_bet, validate_bigsmall,
+    DiceOutcome, Guess, BIGSMALL_RAKE_PERMILLE, BIGSMALL_WIN_MULT_PERMILLE,
     REGION_LOSE_PERMILLE, REGION_TRIPLE_PERMILLE, REGION_WIN_PERMILLE,
+};
+#[allow(unused_imports)]
+pub use bs_room::{
+    parse_side, payout, region_of, remaining_seconds, side_wins,
+    window_seconds, ROUND_SECONDS_DEFAULT,
 };
 #[allow(unused_imports)]
 pub use farm::{
@@ -56,6 +74,12 @@ pub use farm_land::{
 pub use jgg::{
     draw_entry, pool_ev, validate_pool, validate_ticket_cap, Draw, EntryKind,
     PoolEntry, PoolError, FALLBACK_MULT, MULT_UNIT,
+};
+#[allow(unused_imports)]
+pub use mole::{
+    build_schedule, in_window, settle_score, validate_mole, Spawn, BOMB_SPAWNS,
+    CEIL_DEN, CEIL_NUM, DEFAULT_BOMB_PENALTY, FIRST_SPAWN_MS, HIT_EARLY_MS,
+    HIT_LATE_MS, POOL_SPAWNS, ROUND_MS, SPAWN_GAP_MS, UP_MS,
 };
 #[allow(unused_imports)]
 pub use scratch::{scratch_pay, ScratchOutcome};

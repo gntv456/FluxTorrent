@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FluxTorrent · 打地鼠 · 游戏厅样图</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='10' fill='%238a6428'/%3E%3Ccircle cx='12' cy='13' r='5' fill='%232a1b47'/%3E%3C/svg%3E">
+<style>
+:root{
+  --bg0:#0c0916; --bg1:#171129;
+  --gold1:#f7e2b2; --gold2:#d4af7a; --gold3:#a87f3c;
+  --violet:#c3b4e6; --blue:#a3c4e8;
+  --ink:#f6f0ff; --sub:#c3b3e0; --faint:#9080b0;
+  --panel:rgba(44,30,72,.5); --line:rgba(247,226,178,.16);
+  --mint:#46d3a4; --coral:#ff7a6b; --sun:#ffd700; --sky:#6ab6f0;
+  --r-md:12px; --r-lg:18px;
+  --font:"Noto Serif SC","Songti SC","Microsoft YaHei",serif;
+  --num:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:var(--font);color:var(--ink);font-size:13px;line-height:1.5;min-height:100vh;
+  background:
+    radial-gradient(120% 80% at 50% -12%, #3a2564 0%, transparent 55%),
+    radial-gradient(70% 50% at 90% 20%, rgba(106,182,240,.14), transparent 60%),
+    radial-gradient(60% 50% at 6% 24%, rgba(255,215,0,.09), transparent 60%),
+    radial-gradient(140% 110% at 50% 115%, #171129 25%, #0c0916 100%),
+    var(--bg0);
+  overflow-x:hidden;
+}
+button{font-family:inherit}
+.num{font-variant-numeric:tabular-nums;font-family:var(--num)}
+
+.bg-stars{position:fixed;inset:0;pointer-events:none;z-index:0;animation:starTw 4s ease-in-out infinite alternate;
+  background-image:
+    radial-gradient(1.5px 1.5px at 12% 30%, rgba(255,255,255,.7),transparent),
+    radial-gradient(1px 1px at 28% 62%, rgba(255,255,255,.5),transparent),
+    radial-gradient(1.5px 1.5px at 46% 16%, rgba(255,215,0,.6),transparent),
+    radial-gradient(1px 1px at 64% 40%, rgba(255,255,255,.55),transparent),
+    radial-gradient(1.5px 1.5px at 80% 68%, rgba(195,180,230,.6),transparent),
+    radial-gradient(1px 1px at 92% 26%, rgba(255,255,255,.5),transparent),
+    radial-gradient(1px 1px at 36% 84%, rgba(255,255,255,.4),transparent),
+    radial-gradient(1.5px 1.5px at 70% 90%, rgba(255,215,0,.5),transparent);
+}
+@keyframes starTw{from{opacity:.5}to{opacity:1}}
+
+.wrap{position:relative;z-index:1;max-width:1180px;margin:0 auto;padding:14px 18px}
+
+/* ===== 顶栏一行 ===== */
+.topbar{display:flex;align-items:center;gap:14px;margin-bottom:12px}
+.game-btn{min-height:36px;border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--sub);border-radius:999px;padding:0 14px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:7px;backdrop-filter:blur(6px)}
+.game-btn:hover{color:var(--ink);border-color:rgba(247,226,178,.4)}
+.head{flex:1;text-align:center}
+.head h1{display:inline-flex;align-items:center;gap:10px;font-size:22px;font-weight:900;letter-spacing:5px;
+  background:linear-gradient(180deg,#fff6dd 10%,#f0cd86 55%,#c89848 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.star{width:11px;height:11px;background:var(--sun);clip-path:polygon(50% 0,62% 38%,100% 50%,62% 62%,50% 100%,38% 62%,0 50%,38% 38%);filter:drop-shadow(0 0 6px rgba(255,215,0,.8))}
+.head .sub{display:block;font-size:11.5px;color:var(--sub);letter-spacing:.04em;margin-top:2px}
+.head .badges{display:inline-flex;gap:8px;margin-left:10px}
+.badge{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:5px 12px;font-size:11.5px;color:var(--sub)}
+.badge .hl{color:var(--gold1);font-weight:800}
+.badge.ticket .hl{color:var(--sun)}
+
+/* ===== meta 行：余额 + tabs ===== */
+.meta-row{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+.bal-row{display:flex;flex-wrap:wrap;gap:10px}
+.bal-chip{display:flex;align-items:center;gap:9px;padding:8px 14px;border-radius:var(--r-md);background:var(--panel);border:1px solid var(--line);backdrop-filter:blur(8px)}
+.bal-ic{width:30px;height:30px;border-radius:10px;display:grid;place-items:center;font-size:15px;background:linear-gradient(180deg,rgba(255,215,0,.22),rgba(212,158,74,.1));border:1px solid rgba(255,215,0,.28)}
+.bal-meta{display:flex;flex-direction:column}
+.bal-lb{font-size:10.5px;color:var(--faint);letter-spacing:.1em}
+.bal-vl{font-family:var(--num);font-size:15px;font-weight:900}
+.win{color:var(--mint)} .lose{color:var(--coral)}
+
+.gs-tabs{display:inline-flex;gap:5px;padding:4px;border:1px solid var(--line);background:var(--panel);border-radius:999px;backdrop-filter:blur(8px)}
+.gs-tab{border:0;background:none;border-radius:999px;padding:7px 16px;font-size:12px;font-weight:700;color:var(--faint);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .18s ease}
+.gs-tab:hover:not(.on){color:var(--sub)}
+.gs-tab.on{background:linear-gradient(180deg,#f0cd86,#c89848);color:#2a1b08;box-shadow:0 4px 14px -4px rgba(212,158,74,.7);font-weight:900}
+.gs-tab.on .tab-ic{transform:scale(1.12)}
+.tab-ic{transition:transform .18s ease}
+
+@media(max-width:760px){
+  .meta-row{display:block}
+  .bal-row{display:flex;justify-content:space-between;gap:8px;margin-bottom:10px}
+  .bal-chip{flex:1 1 0;min-width:0;justify-content:center;padding:8px 10px}
+  .gs-tabs{display:flex;width:100%}
+  .gs-tab{flex:1 1 0;min-width:0;padding:10px 12px;font-size:13px}
+  .wrap{padding:12px 10px}
+  .panel{padding:12px 10px}
+}
+
+/* 提示条 */
+.notice-bar{display:none;max-width:520px;margin:0 auto 12px;align-items:center;gap:9px;border-radius:var(--r-md);padding:9px 14px;font-size:12px;font-weight:700;border:1px solid}
+.notice-bar.show{display:flex}
+.notice-bar.warn{background:rgba(255,201,60,.1);border-color:rgba(255,201,60,.35);color:var(--sun)}
+.notice-bar.danger{background:rgba(255,122,107,.1);border-color:rgba(255,122,107,.35);color:var(--coral)}
+
+/* ===== 三列主体 ===== */
+.layout{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;align-items:start}
+@media(max-width:980px){.layout{grid-template-columns:1fr}}
+
+.panel{border:1px solid var(--line);background:var(--panel);border-radius:var(--r-lg);padding:14px;backdrop-filter:blur(10px)}
+.panel h2{font-size:13px;font-weight:900;letter-spacing:2px;margin-bottom:11px;color:var(--gold1);display:flex;align-items:center;gap:7px}
+.panel h2::before{content:"◆";font-size:8px;color:var(--gold2)}
+
+/* 奖池墙 */
+.pool-note{margin-top:10px;font-size:11px;color:var(--faint);line-height:1.6}
+.pool-top{margin-bottom:16px}
+.pool-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
+.pool-item{display:flex;align-items:center;gap:10px;border-radius:12px;padding:10px 12px;border:1px solid transparent;background:rgba(255,255,255,.05);min-width:0}
+.pi-ic{width:36px;height:36px;flex:none;border-radius:11px;display:grid;place-items:center;font-size:17px;color:#fff;background:var(--tone,#4a7ab0);box-shadow:0 4px 10px -3px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.35)}
+.pi-mid{flex:1;min-width:0}
+.pi-nm{font-size:12.5px;font-weight:800;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pi-meta{font-size:10.5px;color:var(--faint);margin-top:2px}
+.pi-prob{font-family:var(--num);font-size:13px;font-weight:900;flex:none}
+.pool-item.gold{background:linear-gradient(180deg,rgba(255,201,60,.2),rgba(212,158,74,.08));border-color:rgba(255,201,60,.35)}
+.pool-item.gold .pi-prob{color:var(--sun)}
+.pool-item.mint{background:rgba(70,211,164,.1);border-color:rgba(70,211,164,.25)}
+.pool-item.mint .pi-prob{color:var(--mint)}
+.pool-item.mist{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.1)}
+.pool-item.mist .pi-prob{color:var(--sub)}
+.pool-item.bomb{background:rgba(255,122,107,.1);border-color:rgba(255,122,107,.3)}
+.pool-item.bomb .pi-prob{color:var(--coral)}
+
+/* ===== 中列舞台：地鼠洞阵 ===== */
+.stage-card{position:relative;border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden;
+  background:radial-gradient(120% 120% at 50% 0%,#322053 0%,#1a1130 68%,#120c1f 100%);
+  box-shadow:0 24px 50px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.08);
+  padding:22px 20px 20px;display:flex;flex-direction:column;align-items:center;gap:16px}
+.stage-card::before{content:"";position:absolute;inset:-30% 10% auto;height:70%;background:radial-gradient(50% 42% at 50% 0%,rgba(247,226,178,.14),transparent 70%);pointer-events:none}
+
+/* 局内状态条 */
+.round-bar{position:relative;z-index:1;width:100%;max-width:430px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:center}
+.rb-chip{display:flex;align-items:baseline;gap:6px;padding:7px 13px;border-radius:var(--r-md);background:var(--panel);border:1px solid var(--line)}
+.rb-lb{font-size:10.5px;color:var(--faint);letter-spacing:.08em}
+.rb-vl{font-family:var(--num);font-size:15px;font-weight:900}
+.rb-vl.gold{color:var(--sun)} .rb-vl.mint{color:var(--mint)} .rb-vl.coral{color:var(--coral)}
+.timer-track{position:relative;flex:1 1 120px;min-width:120px;height:10px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden;border:1px solid var(--line)}
+.timer-fill{position:absolute;inset:0;width:100%;border-radius:999px;background:linear-gradient(90deg,#6ab6f0,#46d3a4);transition:width .3s linear}
+.timer-track.hot .timer-fill{background:linear-gradient(90deg,#ff8a7a,#e05a4a)}
+
+/* 洞阵 */
+.mole-grid{position:relative;z-index:1;display:grid;grid-template-columns:repeat(3,1fr);gap:18px;width:100%;max-width:430px}
+.hole{position:relative;aspect-ratio:1;border:0;background:none;cursor:pointer;border-radius:50%;display:grid;place-items:end center;overflow:visible;padding:0}
+.hole-rim{position:absolute;bottom:7%;left:50%;transform:translateX(-50%);width:88%;height:36%;border-radius:50%;
+  background:radial-gradient(ellipse at 50% 32%,#33200f,#130a05 72%);
+  box-shadow:inset 0 7px 11px rgba(0,0,0,.75),0 2px 0 rgba(212,175,122,.16)}
+.hole-rim::after{content:"";position:absolute;inset:12% 10% auto;height:30%;border-radius:50%;background:radial-gradient(ellipse at 50% 0%,rgba(122,84,44,.35),transparent 70%)}
+.mole{position:absolute;bottom:20%;left:50%;transform:translate(-50%,115%);width:62%;aspect-ratio:1;display:grid;place-items:center;font-size:clamp(30px,6vw,42px);
+  transition:transform .18s cubic-bezier(.34,1.56,.64,1),opacity .15s ease;filter:drop-shadow(0 6px 8px rgba(0,0,0,.45));z-index:2;line-height:1}
+.hole.up .mole{transform:translate(-50%,0)}
+.hole.bomb .mole{filter:drop-shadow(0 0 10px rgba(255,122,107,.8))}
+.hole.whacked .mole{transform:translate(-50%,115%) scale(.75);opacity:.35}
+.hole.hit-bomb .hole-rim{box-shadow:inset 0 7px 11px rgba(0,0,0,.75),0 0 16px rgba(255,122,107,.55)}
+.float-score{position:absolute;top:4%;left:50%;transform:translateX(-50%);font-weight:900;font-family:var(--num);font-size:15px;z-index:3;opacity:0;white-space:nowrap}
+.float-score.up{animation:floatUp .7s ease-out}
+@keyframes floatUp{0%{opacity:0;transform:translate(-50%,8px)}20%{opacity:1}100%{opacity:0;transform:translate(-50%,-20px)}}
+.mole-grid.idle .hole{cursor:default}
+
+.mid-row{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;min-height:36px;z-index:1;flex-wrap:wrap}
+.flash{flex:0 1 auto;display:flex;align-items:center;justify-content:center;gap:6px;text-align:center;font-size:14px;font-weight:900;letter-spacing:.02em;padding:0 10px}
+.flash .f-win{color:var(--mint);text-shadow:0 0 12px rgba(70,211,164,.4)}
+.flash .f-jackpot{color:var(--sun);text-shadow:0 0 16px rgba(255,215,0,.6)}
+.flash .f-lose{color:var(--sub)}
+.flash .f-tie{color:var(--ink)}
+.flash .f-bomb{color:var(--coral);text-shadow:0 0 12px rgba(255,122,107,.4)}
+
+.streak-pill{display:inline-flex;align-items:center;gap:6px;flex:none;border:1px solid rgba(255,201,60,.4);background:linear-gradient(180deg,rgba(255,201,60,.18),rgba(255,122,107,.08));color:var(--sun);border-radius:999px;padding:6px 13px;font-size:11.5px;font-weight:800;box-shadow:0 0 16px rgba(255,201,60,.18);animation:streakGlow 2s ease-in-out infinite}
+@keyframes streakGlow{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+
+.cta-row{display:flex;flex-wrap:nowrap;justify-content:center;gap:10px;width:100%;z-index:1}
+.sw-cta{position:relative;overflow:hidden;flex:1 1 0;min-width:0;min-height:48px;border:0;cursor:pointer;border-radius:999px;color:#4a3312;font-weight:900;font-size:15px;letter-spacing:.06em;
+  background:linear-gradient(180deg,#ffe9b8,#f0c878 55%,#d49a4a);
+  box-shadow:0 10px 24px -6px rgba(212,158,74,.75),inset 0 2px 0 rgba(255,255,255,.75),inset 0 -3px 6px rgba(120,70,10,.35);
+  transition:transform .14s ease,filter .14s ease}
+.sw-cta::after{content:"";position:absolute;top:0;left:-60%;width:40%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.55),transparent);transform:skewX(-20deg);animation:sheen 3.2s ease-in-out infinite}
+@keyframes sheen{0%{left:-60%}55%,100%{left:130%}}
+.sw-cta:active:not(:disabled){transform:scale(.97)}
+.sw-cta:disabled{opacity:.5;cursor:not-allowed;filter:grayscale(.3)}
+.arc-chip{flex:1 1 0;min-width:0;min-height:48px;border:1px solid rgba(106,182,240,.4);background:rgba(106,182,240,.08);color:var(--sky);border-radius:999px;padding:0 10px;font-weight:800;font-size:13px;cursor:pointer;backdrop-filter:blur(6px);display:inline-flex;align-items:center;justify-content:center;gap:6px;transition:all .15s ease;white-space:nowrap}
+.arc-chip:hover:not(:disabled){background:rgba(106,182,240,.18)}
+.arc-chip:disabled{opacity:.45;cursor:not-allowed}
+.arc-chip.purple{border-color:rgba(195,180,230,.45);background:rgba(195,180,230,.1);color:var(--violet)}
+.arc-chip.purple:hover:not(:disabled){background:rgba(195,180,230,.2)}
+.arc-chip.auto{border-color:rgba(255,122,107,.45);background:rgba(255,122,107,.1);color:var(--coral)}
+.arc-chip.auto:hover:not(:disabled){background:rgba(255,122,107,.2)}
+.arc-chip.auto.on{background:linear-gradient(180deg,#ff8a7a,#e05a4a);border-color:#ff8a7a;color:#fff;box-shadow:0 6px 18px -6px rgba(255,122,107,.7)}
+.auto-ic{font-size:11px}
+
+.stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;width:100%}
+.stat{border-radius:var(--r-md);padding:12px 10px;text-align:center;background:var(--panel);border:1px solid var(--line)}
+.stat-lb{font-size:11px;font-weight:700;color:var(--faint);letter-spacing:.06em}
+.stat-vl{font-family:var(--num);font-size:15px;font-weight:900;margin-top:2px}
+.stat-vl.gold{color:var(--sun)} .stat-vl.green{color:var(--mint)}
+
+.prize-strip{width:100%;padding:10px 12px;border-radius:var(--r-lg);background:linear-gradient(160deg,rgba(255,255,255,.07),rgba(247,226,178,.05));border:1px solid rgba(247,226,178,.26)}
+.prize-lb{font-size:11px;font-weight:800;letter-spacing:.16em;color:var(--gold1);margin-bottom:8px;text-align:center}
+.prize-row{display:flex;justify-content:space-around;align-items:center;gap:8px}
+.prize-item{text-align:center;min-width:0}
+.prize-ic{width:32px;height:32px;margin:0 auto 4px;border-radius:11px;display:grid;place-items:center;font-size:15px;color:#fff;background:var(--tone,#4a7ab0);box-shadow:0 4px 10px -3px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.35)}
+.prize-nm{font-size:11px;color:var(--sub);font-weight:700;white-space:nowrap}
+.prize-odds{font-size:10.5px;color:var(--faint);font-family:var(--num);margin-top:1px}
+
+.rules{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:12px;padding:10px 12px;border-radius:var(--r-md);background:rgba(106,182,240,.08);font-size:11px;color:var(--sub)}
+.rules a{color:var(--sky);font-weight:700;white-space:nowrap}
+
+.record-list{display:flex;flex-direction:column;gap:6px}
+.record-empty{padding:24px;text-align:center;color:var(--faint);font-size:13px}
+
+/* 记录 tab：统计四格 / 对局行 / 图鉴 */
+.rec-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+@media(max-width:760px){.rec-stats{grid-template-columns:repeat(2,1fr)}}
+.rec-row{display:grid;grid-template-columns:92px 1fr auto;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;background:rgba(255,255,255,.05);font-size:12px}
+.rec-row .htime{color:var(--faint);font-weight:700;font-family:var(--num)}
+.rec-row .r-bet{color:var(--faint);font-family:var(--num);text-align:right}
+.rec-row .r-net{font-weight:900;font-family:var(--num);min-width:84px;text-align:right}
+.r-net.win{color:var(--mint)} .r-net.lose{color:var(--coral)} .r-net.tie{color:var(--sub)}
+
+.album-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:10px}
+@media(max-width:760px){.album-grid{grid-template-columns:repeat(3,1fr)}}
+.album-card{display:flex;flex-direction:column;align-items:center;gap:5px;border-radius:12px;border:2px solid var(--line);background:rgba(255,255,255,.04);padding:10px 6px;text-align:center}
+.album-card .a-ic{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;font-size:16px;color:#fff;background:var(--tone,#4a7ab0)}
+.album-card .a-nm{font-size:12px;font-weight:800;line-height:1.2}
+.album-card .a-meta{font-size:10.5px;color:var(--faint);font-family:var(--num)}
+.album-card.r5{border-color:rgba(255,215,0,.65);box-shadow:0 0 14px rgba(255,215,0,.16)}
+.album-card.r4{border-color:rgba(195,180,230,.55)}
+.album-card.r3{border-color:rgba(163,196,232,.5)}
+.album-card.r1,.album-card.r2{border-color:rgba(255,255,255,.14)}
+.album-card.locked{border-style:dashed;border-color:rgba(255,255,255,.14);opacity:.55;background:rgba(255,255,255,.02)}
+.album-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:11px}
+.album-head h2{margin-bottom:0}
+.album-got{font-size:11.5px;color:var(--sub);font-family:var(--num)}
+
+@media(max-width:760px){
+  .pool-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .pi-nm{font-size:11.5px}
+  .rec-row{grid-template-columns:1fr auto;gap:8px;padding:9px 10px}
+  .rec-row .r-bet{display:none}
+  .rec-row .r-net{min-width:0}
+  .r-net .cur{display:none}
+  .album-card,.stat{min-width:0}
+  .mole-grid{gap:12px;max-width:330px}
+  .arc-chip{font-size:12px;padding:0 8px;gap:5px}
+  .cta-row{flex-wrap:wrap}
+}
+
+@media(max-width:560px){
+  .wrap{padding:10px 10px}
+  .topbar{flex-direction:column;align-items:stretch;gap:8px}
+  .game-btn{min-height:32px;padding:0 10px;font-size:11px;width:fit-content}
+  .head{order:2;flex:1 1 100%;margin-top:2px;text-align:center}
+  .head h1{font-size:19px;letter-spacing:3px}
+  .head .badges{margin-left:0;gap:6px;flex-wrap:wrap;justify-content:center}
+  .badge{font-size:10.5px;padding:4px 9px;white-space:nowrap}
+  .bal-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .bal-chip{padding:7px 6px;gap:6px;min-width:0;justify-content:center}
+  .bal-ic{width:26px;height:26px;font-size:13px;flex:none}
+  .bal-meta{min-width:0;align-items:center}
+  .bal-vl{font-size:12px;white-space:nowrap}
+  .bal-lb{font-size:9.5px}
+  .gs-tabs{width:100%}
+  .gs-tab{min-width:0;padding:9px 4px;font-size:11px;gap:4px;white-space:nowrap}
+  .stage-card{padding:16px 12px;gap:12px}
+  .round-bar{gap:8px}
+  .rb-chip{padding:6px 10px;min-width:0}
+  .timer-track{flex-basis:100%;order:5}
+  .mole-grid{gap:10px;max-width:320px;width:100%}
+  .hole{min-width:0}
+  .cta-row{flex-wrap:wrap;gap:8px}
+  .sw-cta{flex:1 1 100%;min-height:46px}
+  .arc-chip{flex:1 1 30%;min-width:0;min-height:42px;font-size:12px;white-space:nowrap}
+  .stat-row{gap:8px}
+  .stat{padding:10px 6px;min-width:0}
+  .stat-vl{font-size:13px}
+  .prize-row{flex-wrap:wrap;gap:10px}
+  .pool-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .rec-stats{grid-template-columns:repeat(2,1fr)}
+}
+
+/* 结算 / 批量浮层 */
+.ten-overlay{position:fixed;inset:0;z-index:95;display:none;place-items:center;padding:16px;background:rgba(8,5,16,.78);backdrop-filter:blur(6px)}
+.ten-overlay.open{display:grid}
+.ten{width:min(440px,92vw);max-height:80vh;overflow:auto;border-radius:var(--r-lg);background:linear-gradient(180deg,#2a1b47,#1a1130);border:1px solid var(--line);padding:18px;box-shadow:0 30px 70px rgba(0,0,0,.6)}
+.ten-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:13px}
+.ten-hd h4{font-size:16px;font-weight:900;letter-spacing:3px;color:var(--gold1)}
+.ten-x{border:0;background:none;color:var(--sub);font-size:18px;cursor:pointer}
+.ten-list{display:flex;flex-direction:column;gap:6px}
+.ten-row{display:flex;justify-content:space-between;padding:8px 12px;border-radius:10px;background:rgba(255,255,255,.05);font-size:13px}
+.ten-row.win{color:var(--mint);background:rgba(70,211,164,.1)}
+.ten-row.bad{color:var(--coral);background:rgba(255,122,107,.1)}
+.ten-total{margin-top:13px;text-align:center;font-weight:900;font-size:15px;font-family:var(--num);color:var(--gold1)}
+.ten-actions{display:flex;gap:10px;margin-top:14px}
+.ten-actions .sw-cta,.ten-actions .arc-chip{min-height:42px}
+</style>
+</head>
+<body>
+<div class="bg-stars" aria-hidden></div>
+<div class="wrap">
+
+  <div class="topbar">
+    <button class="game-btn">← 返回娱乐屋</button>
+    <div class="head">
+      <h1><span class="star"></span>打地鼠<span class="star"></span></h1>
+      <div class="badges">
+        <span class="badge">命中率 <span class="hl num" id="winRate">62.0%</span></span>
+        <span class="badge ticket">票价 <span class="hl num">100</span> 魔力 / 局</span>
+      </div>
+      <span class="sub">地鼠冒头，看准再砸，别碰炸弹</span>
+    </div>
+    <button class="game-btn" id="sfxBtn"><span>🔊</span><span>已开</span></button>
+  </div>
+
+  <div class="meta-row">
+    <div class="bal-row">
+      <div class="bal-chip"><div class="bal-ic">💎</div><div class="bal-meta"><span class="bal-lb">余额</span><span class="bal-vl num" id="balance">12,480</span></div></div>
+      <div class="bal-chip"><div class="bal-ic">💰</div><div class="bal-meta"><span class="bal-lb">今日净收</span><span class="bal-vl num win" id="todayNet">+320</span></div></div>
+      <div class="bal-chip"><div class="bal-ic">🎯</div><div class="bal-meta"><span class="bal-lb">剩余局数</span><span class="bal-vl num" id="limitLeft">18</span></div></div>
+    </div>
+    <div class="gs-tabs">
+      <button class="gs-tab on" data-tab="play"><span class="tab-ic">🔨</span> 主玩法</button>
+      <button class="gs-tab" data-tab="pool"><span class="tab-ic">🎁</span> 奖池概率</button>
+      <button class="gs-tab" data-tab="records"><span class="tab-ic">📜</span> 记录</button>
+    </div>
+  </div>
+
+  <div class="notice-bar" id="noticeBar" role="alert"></div>
+
+  <div id="colPlay">
+    <div class="layout">
+
+      <div class="stage-card">
+        <div class="round-bar">
+          <div class="rb-chip"><span class="rb-lb">⏱ 剩余</span><span class="rb-vl num" id="timerText">30s</span></div>
+          <div class="timer-track" id="timerTrack"><div class="timer-fill" id="timerFill"></div></div>
+          <div class="rb-chip"><span class="rb-lb">本局得分</span><span class="rb-vl gold num" id="roundScore">0</span></div>
+          <div class="rb-chip"><span class="rb-lb">连击</span><span class="rb-vl mint num" id="combo">×0</span></div>
+        </div>
+
+        <div class="mole-grid idle" id="moleGrid" aria-label="地鼠洞阵"></div>
+
+        <div class="mid-row">
+          <p class="flash" id="flash" role="status" aria-live="polite"><span class="f-tie">点击「开始一局」，地鼠就会探出头来</span></p>
+          <span class="streak-pill" id="streak">🔥 <span class="num" id="streakN">3</span> 连胜 · 手气正旺</span>
+        </div>
+
+        <div class="cta-row">
+          <button class="sw-cta" id="ctaBtn">开始一局 · 100</button>
+          <button class="arc-chip" id="tenBtn">十连</button>
+          <button class="arc-chip purple" id="hundredBtn">百连</button>
+          <button class="arc-chip auto" id="autoBtn"><span class="auto-ic">▶</span><span id="autoLb">一直打</span></button>
+        </div>
+
+        <div class="stat-row">
+          <div class="stat"><div class="stat-lb">剩余局数</div><div class="stat-vl num" id="statLeft">18</div></div>
+          <div class="stat"><div class="stat-lb">单局最佳</div><div class="stat-vl gold num" id="statBest">320</div></div>
+          <div class="stat"><div class="stat-lb">今日净收</div><div class="stat-vl green num" id="statNet">+320</div></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div id="colPool" style="display:none">
+    <div class="layout" style="grid-template-columns:minmax(0,1fr)">
+
+      <div class="panel" style="max-width:860px;margin:0 auto;width:100%">
+        <div class="prize-strip pool-top">
+          <div class="prize-lb">高价值奖池</div>
+          <div class="prize-row" id="prizeStrip"></div>
+        </div>
+        <h2>地鼠奖池 · 概率公示</h2>
+        <div class="pool-grid" id="poolChips"></div>
+        <p class="pool-note">奖池与后端实现同源：站长调整赔率后此处自动同步；各档概率按权重实时归一化计算。炸弹档敲中会扣除对应魔力，金鼠为大奖档。</p>
+      </div>
+
+    </div>
+  </div>
+
+  <div id="colRecords" style="display:none">
+    <div class="layout" style="grid-template-columns:minmax(0,1fr)">
+
+      <div class="panel" style="max-width:760px;margin:0 auto;width:100%">
+        <div class="rec-stats">
+          <div class="stat"><div class="stat-lb">总局数</div><div class="stat-vl num">42</div></div>
+          <div class="stat"><div class="stat-lb">命中率</div><div class="stat-vl num">62%</div></div>
+          <div class="stat"><div class="stat-lb">单局最佳</div><div class="stat-vl gold num">320</div></div>
+          <div class="stat"><div class="stat-lb">累计净收</div><div class="stat-vl green num">+520</div></div>
+        </div>
+      </div>
+
+      <div class="panel" style="max-width:760px;margin:0 auto;width:100%">
+        <h2>最近对局</h2>
+        <div class="record-list" id="recordList"></div>
+        <div class="rules">
+          <span>地鼠冒头后快速敲击得分；敲到炸弹扣分，放空杆不罚</span>
+          <a href="#" id="oddsLink">概率公示 ›</a>
+        </div>
+      </div>
+
+      <div class="panel" style="max-width:760px;margin:0 auto;width:100%">
+        <div class="album-head">
+          <h2>地鼠图鉴</h2>
+          <span class="album-got">已点亮 <span class="num">5/14</span></span>
+        </div>
+        <div class="album-grid" id="albumGrid"></div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<div class="ten-overlay" id="tenOverlay" role="presentation">
+  <div class="ten" role="dialog" aria-modal="true" aria-labelledby="tenTitle">
+    <div class="ten-hd"><h4 id="tenTitle">十连 · 打地鼠</h4><button class="ten-x" id="tenClose" aria-label="关闭">✕</button></div>
+    <div class="ten-list" id="tenList"></div>
+    <div class="ten-total num" id="tenTotal"></div>
+    <div class="ten-actions" id="tenActions" style="display:none">
+      <button class="sw-cta" id="againBtn">再来一局</button>
+      <button class="arc-chip" id="toRecordsBtn">查看记录</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const TICKET = 100;
+const ROUND_MS = 30000;
+// kind: magic=倍率翻票价；item=固定价值道具；bomb=扣分；fallback=未中
+const POOL = [
+  { label:"谢谢参与",   icon:"🍀", weight:620, mult:0,   v:0,    tone:"mist",   kind:"fallback" },
+  { label:"灰鼠 +10",   icon:"🐹", weight:380, mult:1.0, v:10,   tone:"mist",   kind:"magic" },
+  { label:"蓝耳鼠 +20", icon:"🐭", weight:200, mult:2.0, v:20,   tone:"blue",   kind:"magic" },
+  { label:"粉猪鼠 +30", icon:"🐷", weight:120, mult:3.0, v:30,   tone:"blue",   kind:"magic" },
+  { label:"白兔鼠 +50", icon:"🐰", weight:70,  mult:5.0, v:50,   tone:"violet", kind:"magic" },
+  { label:"墨镜酷鼠 +80",icon:"🕶️", weight:35, mult:8.0, v:80,   tone:"violet", kind:"magic" },
+  { label:"金鼠 大奖",  icon:"👑", weight:8,   mult:20.0,v:300,  tone:"gold",   kind:"magic" },
+  { label:"炸弹 -25",   icon:"💣", weight:120, mult:0,   v:-25,  tone:"bomb",   kind:"bomb" },
+  { label:"魔力袋 ×50", icon:"🎁", weight:30,  mult:0,   v:50,   tone:"mist",   kind:"item"  },
+  { label:"积分 +200",  icon:"🎟️", weight:35,  mult:0,   v:200,  tone:"mist",   kind:"item"  },
+  { label:"经验 +50",   icon:"✨", weight:40,  mult:0,   v:50,   tone:"mist",   kind:"item"  },
+  { label:"幸运头像框", icon:"🖼️", weight:10,  mult:0,   v:0,    tone:"mist",   kind:"item"  },
+  { label:"表情贴纸",   icon:"😄", weight:12,  mult:0,   v:0,    tone:"mist",   kind:"item"  },
+  { label:"幸运符",     icon:"🍀", weight:8,   mult:0,   v:0,    tone:"mist",   kind:"item"  },
+];
+const TOTAL_W = POOL.reduce((s,p)=>s+p.weight,0);
+POOL.forEach(p=>{ p.prob = p.weight/TOTAL_W*100; });
+// 局内可冒头档位（不含物品与未中档）
+const ACTIVE = POOL.filter(p=>p.kind==="magic"||p.kind==="bomb");
+const ACTIVE_W = ACTIVE.reduce((s,p)=>s+p.weight,0);
+
+const GRAD = {
+  gold:   ["#ffe9b8","#e6bd6e"],
+  violet: ["#dccff3","#b29adc"],
+  blue:   ["#c2dcf6","#8fbce8"],
+  mist:   ["#f5f9fd","#dde8f3"],
+  bomb:   ["#ffb3a8","#e05a4a"],
+};
+const INK = "#2c4a74", INK_GOLD = "#6b4a1a";
+
+const S = { balance:12480, todayNet:320, limitLeft:18, streak:3, busy:false, playing:false, auto:false, autoTimer:null };
+const R = { score:0, combo:0, hits:0, bombs:0, left:ROUND_MS, spawnTimer:null, tickTimer:null, active:new Map() };
+
+const $ = id => document.getElementById(id);
+const grid = $("moleGrid");
+
+/* ---------- 洞阵 ---------- */
+function buildGrid(){
+  grid.innerHTML = "";
+  for(let i=0;i<9;i++){
+    const hole=document.createElement("button");
+    hole.className="hole"; hole.dataset.i=i; hole.type="button";
+    hole.innerHTML=`<span class="hole-rim"></span><span class="mole"></span><span class="float-score"></span>`;
+    hole.addEventListener("click",()=>onHoleTap(i,hole));
+    grid.appendChild(hole);
+  }
+  renderShowcase();
+}
+// 静态展示态：几只地鼠探出头供样图预览，不参与计分
+const SHOWCASE = { 0:"🐹", 4:"🐷", 7:"🐰" };
+function renderShowcase(){
+  [...grid.children].forEach((hole,i)=>{
+    retreat(hole);
+    if(SHOWCASE[i]){
+      hole.querySelector(".mole").textContent=SHOWCASE[i];
+      hole.classList.add("up");
+    }
+  });
+}
+function randActive(){
+  let r=Math.random()*ACTIVE_W, idx=0;
+  for(let i=0;i<ACTIVE.length;i++){ r-=ACTIVE[i].weight; if(r<=0){idx=i;break;} }
+  return ACTIVE[idx];
+}
+function spawn(){
+  if(!S.playing) return;
+  const empty=[...grid.children].map((h,i)=>h).filter(h=>!h.classList.contains("up"));
+  if(!empty.length) return;
+  const hole=empty[Math.floor(Math.random()*empty.length)];
+  const p=randActive();
+  const mole=hole.querySelector(".mole");
+  mole.textContent=p.icon;
+  hole.dataset.kind=POOL.indexOf(p);
+  hole.classList.add("up");
+  if(p.kind==="bomb") hole.classList.add("bomb");
+  R.active.set(hole, p);
+  setTimeout(()=>retreat(hole), 820);
+}
+function retreat(hole){
+  if(!hole.isConnected) return;
+  hole.classList.remove("up","bomb","whacked");
+  hole.querySelector(".mole").textContent="";
+  R.active.delete(hole);
+}
+function onHoleTap(i,hole){
+  if(!S.playing) return;
+  const p=R.active.get(hole);
+  const fs=hole.querySelector(".float-score");
+  if(!p){ // 放空杆：不罚分，仅轻反馈
+    fs.textContent="·"; fs.style.color="var(--faint)";
+    fs.classList.remove("up"); void fs.offsetWidth; fs.classList.add("up");
+    return;
+  }
+  R.active.delete(hole);
+  hole.classList.add("whacked");
+  if(p.kind==="bomb"){
+    R.score=Math.max(0,R.score+p.v); R.combo=0; R.bombs++;
+    hole.classList.add("hit-bomb");
+    fs.textContent=`${p.v}`; fs.style.color="var(--coral)";
+    flash("bomb",`💣 踩到炸弹，扣 ${-p.v} 魔力！`);
+    setTimeout(()=>hole.classList.remove("hit-bomb"),500);
+  } else {
+    R.score+=p.v; R.combo++; R.hits++;
+    const big=p.v>=TICKET*3;
+    fs.textContent=`+${p.v}`; fs.style.color=big?"var(--sun)":"var(--mint)";
+    if(p.v>=TICKET*3) flash("jackpot",`🎉 命中「${p.label}」+${p.v} 魔力！`);
+    else flash("win",`砸中「${p.label}」+${p.v} 魔力`);
+  }
+  fs.classList.remove("up"); void fs.offsetWidth; fs.classList.add("up");
+  retreat(hole);
+  renderRound();
+}
+
+/* ---------- 局内计时 ---------- */
+function startRound(){
+  if(!canPlay()) return;
+  S.busy=true; S.playing=true;
+  [...grid.children].forEach(retreat);
+  R.score=0; R.combo=0; R.hits=0; R.bombs=0; R.left=ROUND_MS;
+  grid.classList.remove("idle");
+  renderRound(); renderState();
+  flash("tie","开局！地鼠探出头了，快砸 🔨");
+  R.tickTimer=setInterval(()=>{
+    R.left-=1000;
+    if(R.left<=0){ endRound(); return; }
+    renderRound();
+  },1000);
+  R.spawnTimer=setInterval(spawn,650);
+}
+function endRound(){
+  S.playing=false; S.busy=false;
+  clearInterval(R.tickTimer); clearInterval(R.spawnTimer);
+  [...grid.children].forEach(retreat);
+  grid.classList.add("idle");
+  renderShowcase();
+  // 结算：得分折算魔力（样图口径：得分等值即 won）
+  const won=R.score, net=won-TICKET;
+  S.balance+=net; S.todayNet+=net; S.limitLeft--;
+  if(net>0) S.streak++; else S.streak=0;
+  hist.unshift({ t:nowTime(), win:net>0, net });
+  renderHist(); renderState();
+  openRoundResult(won,net);
+  if(S.auto) scheduleNext();
+}
+function renderRound(){
+  $("timerText").textContent=Math.max(0,Math.ceil(R.left/1000))+"s";
+  $("timerFill").style.width=(R.left/ROUND_MS*100)+"%";
+  $("timerTrack").classList.toggle("hot",R.left<=8000);
+  $("roundScore").textContent=R.score;
+  $("combo").textContent="×"+R.combo;
+}
+
+/* ---------- 奖池 / 图鉴 / 记录 ---------- */
+function toneClass(p){ return p.v>=TICKET*10?"gold":(p.v>TICKET?"mint":(p.kind==="bomb"?"bomb":"mist")); }
+function toneGrad(p){ return p.v>=TICKET*10?"linear-gradient(180deg,#e8c878,#c89848)":(p.v>=TICKET*3?"linear-gradient(180deg,#8898d8,#5a6ab8)":(p.kind==="bomb"?"linear-gradient(180deg,#ff8a7a,#c8463a)":"linear-gradient(180deg,#6a9ec8,#4a7ab0)")); }
+function renderStrip(){
+  const top=[...POOL].sort((a,b)=>b.v-a.v).slice(0,4);
+  $("prizeStrip").innerHTML=top.map(p=>`
+    <div class="prize-item">
+      <div class="prize-ic" style="--tone:${toneGrad(p)}">${p.icon}</div>
+      <div class="prize-nm">${p.label}</div>
+      <div class="prize-odds">${p.prob.toFixed(1)}%</div>
+    </div>`).join("");
+}
+function renderChips(){
+  $("poolChips").innerHTML=POOL.map(p=>{
+    const meta = p.kind==="item" ? (p.v>0?`价值 ${p.v} 魔力`:"限定道具")
+      : p.kind==="bomb" ? `扣 ${-p.v} 魔力`
+      : (p.mult>0?`×${p.mult.toFixed(1).replace(/\.0$/,"")} 倍率`:"未中奖");
+    return `<div class="pool-item ${toneClass(p)}">
+      <div class="pi-ic" style="--tone:${toneGrad(p)}">${p.icon}</div>
+      <div class="pi-mid"><div class="pi-nm">${p.label}</div><div class="pi-meta">${meta}</div></div>
+      <div class="pi-prob num">${p.prob.toFixed(1)}%</div>
+    </div>`;
+  }).join("");
+}
+
+let hist = [
+  { t:"14:32", win:true,  net:200 },
+  { t:"14:28", win:false, net:-100 },
+  { t:"14:21", win:true,  net:150 },
+  { t:"14:15", win:false, net:-100 },
+  { t:"14:09", win:true,  net:300 },
+  { t:"13:58", win:false, net:-100 },
+];
+function renderHist(){
+  $("recordList").innerHTML = hist.length ? hist.map(h=>{
+    const cls = h.net>0 ? "win" : (h.net<0 ? "lose" : "tie");
+    return `<div class="rec-row">
+      <span class="htime">${h.t}</span>
+      <span class="r-bet">票价 ${TICKET}</span>
+      <span class="r-net ${cls}">${h.net>0?"+":""}${h.net}<span class="cur"> 魔力</span></span>
+    </div>`;
+  }).join("") : `<div class="record-empty">还没有对局——去玩一把吧</div>`;
+}
+
+const COLLECT = POOL.map((p,i)=>({
+  idx:i,
+  count: i<8 ? Math.max(1, Math.round(36 - i*3.4)) : 0,
+  rarity: p.v>=TICKET*10 ? 5 : (p.v>=TICKET*3 ? 4 : (p.v>=TICKET ? 3 : 1)),
+}));
+function renderAlbum(){
+  const got = COLLECT.filter(c=>c.count>0).length;
+  $("albumGrid").innerHTML = COLLECT.map(c=>{
+    const p=POOL[c.idx], got=c.count>0;
+    const meta = p.kind==="item" ? (p.v>0?"物品":"碎片") : (p.mult>0 ? `×${p.mult.toFixed(1).replace(/\.0$/,"")}` : (p.kind==="bomb"?"扣分":"未中"));
+    return `<div class="album-card r${c.rarity} ${got?"":"locked"}">
+      <div class="a-ic" style="--tone:${toneGrad(p)}">${got?p.icon:"❔"}</div>
+      <div class="a-nm">${got?p.label:"???"}</div>
+      <div class="a-meta">${meta} · ×${c.count}</div>
+    </div>`;
+  }).join("");
+  document.querySelector(".album-got .num").textContent = `${got}/${POOL.length}`;
+}
+
+/* ---------- 状态与提示 ---------- */
+const fmt=n=> n.toLocaleString("en-US");
+function notice(type, html){
+  const bar=$("noticeBar");
+  if(!type){ bar.className="notice-bar"; bar.innerHTML=""; return; }
+  bar.className="notice-bar show "+type;
+  bar.innerHTML=html;
+}
+function renderState(){
+  $("balance").textContent=fmt(S.balance);
+  $("todayNet").textContent=(S.todayNet>=0?"+":"")+fmt(S.todayNet);
+  $("statNet").textContent=(S.todayNet>=0?"+":"")+fmt(S.todayNet);
+  $("limitLeft").textContent=S.limitLeft;
+  $("statLeft").textContent=S.limitLeft;
+  $("statBest").textContent=320;
+  $("todayNet").className="bal-vl num "+(S.todayNet>=0?"win":"lose");
+  $("streakN").textContent=S.streak;
+  $("streak").style.display = S.streak>=3 ? "inline-flex" : "none";
+  $("winRate").textContent=(100-POOL[0].prob).toFixed(1)+"%";
+
+  if(S.limitLeft<=0){ notice("danger","今日局数已用完，明天再来～ 或先回娱乐屋看看其他玩法。"); }
+  else if(S.balance<TICKET){ notice("warn","魔力不足单次票价，先去做种赚取魔力再来～"); }
+  else if(S.balance<TICKET*10){ notice("warn","余额不足以十连，可先单局开打。"); }
+  else if(S.balance<TICKET*100){ notice("warn","余额不足以百连，可先十连或单局开打。"); }
+  else { notice(null); }
+
+  const off = S.busy || S.limitLeft<=0 || S.balance<TICKET;
+  $("ctaBtn").disabled=off;
+  $("tenBtn").disabled = S.busy || S.limitLeft<10 || S.balance<TICKET*10;
+  $("hundredBtn").disabled = S.busy || S.limitLeft<100 || S.balance<TICKET*100;
+  $("autoBtn").disabled = S.auto ? false : (S.busy || S.limitLeft<=0 || S.balance<TICKET);
+}
+
+function flash(kind, text){
+  const cls = kind==="jackpot"?"f-jackpot":kind==="win"?"f-win":kind==="bomb"?"f-bomb":kind==="lose"?"f-lose":"f-tie";
+  $("flash").innerHTML=`<span class="${cls}">${text}</span>`;
+}
+function nowTime(){ const d=new Date(); return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0"); }
+
+/* ---------- 批量（十连 / 百连，模拟快速结算） ---------- */
+function draw(){
+  let r=Math.random()*TOTAL_W, idx=0;
+  for(let i=0;i<POOL.length;i++){ r-=POOL[i].weight; if(r<=0){idx=i;break;} }
+  return idx;
+}
+function settle(p){
+  const won=p.kind==="item" ? p.v : p.v;
+  const net=won-TICKET;
+  let kind, text;
+  if(p.kind==="bomb"){ kind="lose"; text=`💣 ${p.label}`; }
+  else if(won>=TICKET*10){ kind="jackpot"; text=`🎉 命中大奖「${p.label}」`; }
+  else if(won>TICKET){ kind="win"; text=`「${p.label}」净赚 +${net}`; }
+  else if(won===TICKET){ kind="tie"; text=`「再来一次」票价已返还`; }
+  else { kind="lose"; text=`谢谢参与，再来一把？`; }
+  return { p, won, net, kind };
+}
+function runBatch(n){
+  if(S.busy || S.limitLeft<n || S.balance<TICKET*n) return;
+  const rounds=[]; let total=0;
+  for(let k=0;k<n;k++){ const p=POOL[draw()]; const r=settle(p); rounds.push(r); total+=r.net; }
+  S.balance+=total; S.todayNet+=total; S.limitLeft-=n;
+  rounds.forEach(r=>{ hist.unshift({ t:nowTime(), win:r.net>0, net:r.net }); });
+  if(total>0) S.streak+=rounds.filter(r=>r.net>0).length; else S.streak=0;
+  renderHist(); renderState();
+  $("tenTitle").textContent = n===10?"十连 · 打地鼠" : n===100?"百连 · 打地鼠" : `${n} 连 · 打地鼠`;
+  const shown=rounds.slice(0,20);
+  $("tenList").innerHTML=shown.map(r=>`
+    <div class="ten-row ${r.net>0?"win":(r.net<0?"bad":"")}">
+      <span>${r.p.icon} ${r.p.label}</span>
+      <span class="num">${r.net>=0?"+":""}${r.net}</span>
+    </div>`).join("") + (rounds.length>20?`<div class="ten-row"><span>… 其余 ${rounds.length-20} 笔</span></div>`:"");
+  $("tenTotal").textContent=`合计净收 ${total} 魔力`;
+  $("tenActions").style.display="none";
+  $("tenOverlay").classList.add("open");
+}
+
+/* ---------- 单局结算浮层 ---------- */
+function openRoundResult(won,net){
+  $("tenTitle").textContent="本局结算 · 打地鼠";
+  $("tenList").innerHTML=`
+    <div class="ten-row"><span>🐹 命中地鼠</span><span class="num">${R.hits} 只</span></div>
+    <div class="ten-row ${R.bombs>0?"bad":""}"><span>💣 踩到炸弹</span><span class="num">${R.bombs} 次</span></div>
+    <div class="ten-row"><span>本局得分</span><span class="num">${won}</span></div>`;
+  $("tenTotal").textContent=`净收 ${net>=0?"+":""}${net} 魔力`;
+  $("tenActions").style.display="flex";
+  $("tenOverlay").classList.add("open");
+}
+
+/* ---------- 自动挂机 ---------- */
+function stopAuto(){
+  S.auto=false;
+  if(S.autoTimer){ clearTimeout(S.autoTimer); S.autoTimer=null; }
+  $("autoBtn").classList.remove("on"); $("autoLb").textContent="一直打";
+  $("autoBtn").querySelector(".auto-ic").textContent="▶";
+  renderState();
+}
+function startAuto(){
+  if(!canPlay()) return;
+  S.auto=true;
+  $("autoBtn").classList.add("on"); $("autoLb").textContent="停止连打";
+  $("autoBtn").querySelector(".auto-ic").textContent="⏸";
+  scheduleNext();
+}
+function scheduleNext(){
+  if(!S.auto) return;
+  if(!(S.limitLeft>0 && S.balance>=TICKET)){ stopAuto(); return; }
+  S.autoTimer=setTimeout(()=>{ if(S.auto && !S.playing) startRound(); },700);
+}
+function canPlay(){ return !S.busy && S.limitLeft>0 && S.balance>=TICKET; }
+
+$("ctaBtn").addEventListener("click",startRound);
+$("tenBtn").addEventListener("click",()=>runBatch(10));
+$("hundredBtn").addEventListener("click",()=>runBatch(100));
+$("autoBtn").addEventListener("click",()=>{ S.auto?stopAuto():startAuto(); });
+$("tenClose").addEventListener("click",()=>$("tenOverlay").classList.remove("open"));
+$("tenOverlay").addEventListener("click",e=>{ if(e.target===$("tenOverlay")) $("tenOverlay").classList.remove("open"); });
+$("againBtn").addEventListener("click",()=>{ $("tenOverlay").classList.remove("open"); startRound(); });
+$("toRecordsBtn").addEventListener("click",()=>{ $("tenOverlay").classList.remove("open"); switchTab("records"); });
+
+$("sfxBtn").addEventListener("click",()=>{
+  const on=$("sfxBtn").dataset.on!=="0";
+  $("sfxBtn").dataset.on=on?"0":"1";
+  $("sfxBtn").innerHTML=on?`<span>🔇</span><span>已静音</span>`:`<span>🔊</span><span>已开</span>`;
+});
+
+const TAB_COLS={play:"colPlay",pool:"colPool",records:"colRecords"};
+function switchTab(name){
+  document.querySelectorAll(".gs-tab").forEach(x=>x.classList.toggle("on",x.dataset.tab===name));
+  Object.entries(TAB_COLS).forEach(([k,id])=>{ $(id).style.display=k===name?"block":"none"; });
+}
+document.querySelectorAll(".gs-tab").forEach(t=>t.addEventListener("click",()=>switchTab(t.dataset.tab)));
+$("oddsLink").addEventListener("click",e=>{ e.preventDefault(); switchTab("pool"); });
+
+// 样图直链：#play / #pool / #records 打开即定位对应标签
+(function(){
+  const h=(location.hash||"").replace("#","");
+  if(TAB_COLS[h]) switchTab(h);
+})();
+
+buildGrid(); renderStrip(); renderChips(); renderHist(); renderAlbum(); renderState(); renderRound();
+</script>
+</body>
+</html>

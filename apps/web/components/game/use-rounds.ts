@@ -13,6 +13,8 @@ export interface RoundRow {
   game: string;
   bet: number;
   payout: number;
+  /** 派彩等值：物品档是 anchor×件数，普通档等于 payout（旧服务端无此列） */
+  value?: number;
   net: number;
   at?: string;
   /** 服务端局记录里带的点数（bigsmall 近 5 局走势显大/小用） */

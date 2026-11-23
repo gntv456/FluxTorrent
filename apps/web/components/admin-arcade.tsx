@@ -43,20 +43,37 @@ export function AdminArcade() {
   const { dict, currency } = useI18n();
   const t = dict.adminArcade;
   const [d, setD] = useState<Overview | null>(null);
+  const [failed, setFailed] = useState(false);
 
   const load = useCallback(async () => {
     try {
       setD(
         await api.get<Overview>("/api/v1/admin/arcade/overview"),
       );
+      setFailed(false);
     } catch {
       setD(null);
+      setFailed(true);
     }
   }, []);
   useEffect(() => {
     void load();
   }, [load]);
 
+  if (!d && failed) {
+    return (
+      <div className="flex flex-col items-start gap-2 text-sm text-sub">
+        <p>{dict.common.loadFailed}</p>
+        <button
+          type="button"
+          className="min-h-11 rounded-full border border-line px-3 font-bold"
+          onClick={() => void load()}
+        >
+          {dict.common.retry}
+        </button>
+      </div>
+    );
+  }
   if (!d) return <p className="text-sm text-sub">{t.loading}</p>;
 
   return (

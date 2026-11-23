@@ -6,6 +6,7 @@
 
 use actix_web::{post, web, HttpRequest, HttpResponse};
 use serde::Deserialize;
+use sqlx::Row;
 
 use crate::dto::ok;
 use crate::economy_http::{spend_spark_tx, SpendOutcome};
@@ -18,6 +19,10 @@ use super::casino::{award_kind, settle_tx};
 use super::helpers::{check_minclass, check_rate, eco_i64, idem_key};
 use super::pool::{dberr, load_pool};
 
+/// 批量上限：一次事务最多连抽的局数。十连/百连走 pool_batch.rs，
+/// 「一直抽」仍逐发单抽（要逐局出闪字演出）。
+pub(crate) const MAX_BATCH: i64 = 100;
+
 #[derive(Deserialize)]
 // 会员面「花火花」写口：多带的键不静默忽略（P-314 一族，普查见 scripts/pt_audit_write_unknown_field.py）。
 // 九宫格/扭蛋/大转盘：票价在池配置里，客户端多带的键被吞后「我以为下的是 X」没有回执。
@@ -26,6 +31,55 @@ struct DrawReq {
     /// 客户端幂等键（审计 P2-8）
     #[serde(default)]
     idempotency_key: Option<String>,
+}
+
+/// 已提交局的回放。响应丢失后客户端用同一幂等键重试，必须拿回原结果，
+/// 而不是只收到「已受理」再让玩家自己猜钱去哪了。
+async fn replay_round(
+    db: &sqlx::PgPool,
+    idem: &str,
+) -> DomainResult<serde_json::Value> {
+    // mult 回算：抽中档按「load_pool 同序（p.sort, e.sort）」的第
+    // entry_index 行取 mult_permille——回放表没存 mult（历史局也没有），
+    // 池档被站长改过时回算的是*当前*池的倍率， prize 文案同此口径。
+    let row = sqlx::query(
+        "WITH pool AS ( \
+           SELECT e.mult_permille, row_number() OVER ( \
+             ORDER BY p.sort, e.sort) - 1 AS idx \
+           FROM arcade_pools p JOIN arcade_pool_entries e \
+             ON e.pool_key = p.key AND e.enabled \
+           WHERE p.game = (SELECT game FROM arcade_draw_results \
+                           WHERE idempotency_key = $1) AND p.enabled \
+         ) \
+         SELECT d.entry_index, d.prize, d.rarity, d.kind, d.fell_back, \
+                d.replay, d.payout, d.value, d.ticket, pool.mult_permille \
+         FROM arcade_draw_results d \
+         LEFT JOIN pool ON pool.idx = d.entry_index \
+         WHERE d.idempotency_key = $1",
+    )
+    .bind(idem)
+    .fetch_optional(db)
+    .await
+    .map_err(dberr)?
+    .ok_or(DomainError::LedgerConflict)?;
+    let index: i32 = row.get("entry_index");
+    let prize: String = row.get("prize");
+    let rarity: i16 = row.get("rarity");
+    let kind: String = row.get("kind");
+    let fell_back: Option<String> = row.get("fell_back");
+    let replay: bool = row.get("replay");
+    let payout: i64 = row.get("payout");
+    let value: i64 = row.get("value");
+    let ticket: i64 = row.get("ticket");
+    let mult_permille: Option<i64> = row.get("mult_permille");
+    Ok(serde_json::json!({
+        "index": index, "prize": prize, "rarity": rarity, "kind": kind,
+        "fell_back": fell_back, "replay": replay,
+        "payout": payout, "value": value, "ticket": ticket,
+        "net": value - ticket,
+        // 与首发的 mult 对齐：回放方也要拿到语言无关倍率读数
+        "mult": mult_permille.map(|m| m as f64 / games::MULT_UNIT as f64),
+    }))
 }
 
 /// 池抽类玩法通用一局：扣票 → 抽档 → 结算。
@@ -48,6 +102,61 @@ async fn pool_round(
     check_rate(state, &state.redis, uid).await?;
 
     let idem = idem_key(game, uid, &client_idem);
+    let mut tx = state.repo.db.begin().await.map_err(dberr)?;
+    let r = round_in_tx(&mut tx, uid, game, &pool, &idem).await?;
+    if r.is_none() {
+        // 幂等命中：这局已受理过，回放原结果（不重抽、不重扣）。
+        let _ = tx.rollback().await;
+        return replay_round(&state.repo.db, &idem).await;
+    }
+    let (mult, rarity, idx, label, kind, fell_back, replay, spark, value) =
+        r.unwrap();
+    tx.commit().await.map_err(dberr)?;
+    state
+        .repo
+        .audit(Some(uid), &format!("game.{game}"), None)
+        .await;
+    Ok(serde_json::json!({
+        "index": idx,
+        "prize": label,
+        "rarity": rarity,
+        "kind": kind,
+        "fell_back": fell_back,
+        "replay": replay,
+        "payout": spark,
+        "value": value,
+        "ticket": ticket,
+        "net": value - ticket,
+        // 魔力档的语言无关读数（与批量同款）：×N 由客户端组合展示
+        "mult": mult,
+    }))
+}
+
+/// 单局事务段：扣票 → 抽档 → 结算 → 回放，同生共死。
+/// 返回 None = 幂等命中（该键已受理过），调用方走 replay_round 回放；
+/// 返回 Some(...) = (mult, rarity, index, prize, kind, fell_back,
+/// replay, payout, value)。
+/// 批量连抽（pool_batch.rs）逐局复用同一段，单局纪律只有这一份。
+#[allow(clippy::type_complexity)]
+pub(super) async fn round_in_tx(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    uid: i64,
+    game: &str,
+    pool: &super::pool::Pool,
+    idem: &str,
+) -> DomainResult<
+    Option<(
+        f64,
+        i16,
+        usize,
+        String,
+        &'static str,
+        Option<String>,
+        bool,
+        i64,
+        i64,
+    )>,
+> {
     // 抽档是纯计算，先定死；再开一笔事务把「扣票 + 结算」一起提交 ——
     // 分两次写的话，结算失败就是「票价扣了、奖没开」，玩家白亏一注。
     let draw = games::draw_entry(&pool.entries)
@@ -55,49 +164,69 @@ async fn pool_round(
     // 魔力位直接入账；物品位走发放账（库存/上限/幂等同一事务判），
     // 发不出去时按 FALLBACK_MULT 折魔力 —— 这条回落已被 EV 计入，不是额外成本。
     let win_idem = format!("game-{game}-win:{idem}");
-    let mut tx = state.repo.db.begin().await.map_err(dberr)?;
     // 幂等（同 scratch）：重放不重开，避免「首局没中 + 重放中了」白赚
     if !matches!(
-        spend_spark_tx(&mut tx, uid, ticket, "game", &idem, game, 0).await?,
+        spend_spark_tx(tx, uid, pool.ticket, "game", idem, game, 0).await?,
         SpendOutcome::Spent
     ) {
-        let _ = tx.rollback().await;
-        return Err(DomainError::Validation("该局已受理，请勿重复提交".into()));
+        return Ok(None);
     }
     let (spark, value, fell_back) = settle_tx(
-        &mut tx,
+        tx,
         uid,
-        ticket,
+        pool.ticket,
         &draw,
         game,
         &win_idem,
         super::casino::meta_rarity(&pool.meta, draw.index),
     )
     .await?;
-    tx.commit().await.map_err(dberr)?;
-    state
-        .repo
-        .audit(Some(uid), &format!("game.{game}"), None)
-        .await;
+    // 同事务落回放结果：扣票、结算、回放三写同生共死；网络丢了响应也追得回。
+    let kind = award_kind(&draw, fell_back);
+    let rarity = super::casino::meta_rarity(&pool.meta, draw.index);
     // 返本档（倍数恰为 1）不占九宫格灯格：前端灯阵跳过它、直接按返本演出。
     // 只有 jgg 的灯板按格定位中奖，其余两个玩法（扭蛋/大转盘）没有灯阵。
     let replay = game == "jgg"
         && draw.prize.mult_permille() == 1000
         && matches!(draw.prize.kind, games::EntryKind::Magic { .. });
-    Ok(serde_json::json!({
-        "index": draw.index,
-        "prize": draw.prize.label,
-        // 真稀有序（波1 三兄弟拉齐）：前端此前按「等值/票价」猜色调，
-        // 现在直接读奖池 meta（与 collection 图鉴同一把尺）
-        "rarity": super::casino::meta_rarity(&pool.meta, draw.index),
-        "kind": award_kind(&draw, fell_back),
-        "fell_back": fell_back,
-        "replay": replay,
-        "payout": spark,
-        "value": value,
-        "ticket": ticket,
-        "net": value - ticket,
-    }))
+    sqlx::query(
+        "INSERT INTO arcade_draw_results (idempotency_key, user_id, game, \
+         entry_index, prize, rarity, kind, fell_back, replay, payout, \
+         value, ticket) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) \
+         ON CONFLICT (idempotency_key) DO NOTHING",
+    )
+    .bind(idem)
+    .bind(uid)
+    .bind(game)
+    .bind(draw.index as i32)
+    .bind(&draw.prize.label)
+    .bind(rarity)
+    .bind(kind)
+    .bind(fell_back)
+    .bind(replay)
+    .bind(spark)
+    .bind(value)
+    .bind(pool.ticket)
+    .execute(&mut **tx)
+    .await
+    .map_err(dberr)?;
+    let mult = match draw.prize.kind {
+        games::EntryKind::Magic { mult_permille } => {
+            mult_permille as f64 / games::MULT_UNIT as f64
+        }
+        _ => 0.0,
+    };
+    Ok(Some((
+        mult,
+        rarity,
+        draw.index,
+        draw.prize.label,
+        kind,
+        fell_back.map(str::to_owned),
+        replay,
+        spark,
+        value,
+    )))
 }
 
 #[post("/games/jgg")]
@@ -112,7 +241,7 @@ pub(super) async fn jgg(
     Ok(ok(pool_round(&state, auth.id, "jgg", client_idem).await?))
 }
 
-/// 扭蛋机：与九宫格同构，仅池键不同（capsule）。
+/// 老虎机（旧扭蛋池键 capsule 复用：历史流水 / 成就 / 图鉴不断档）。
 #[post("/games/capsule")]
 pub(super) async fn capsule(
     req: HttpRequest,
@@ -125,6 +254,19 @@ pub(super) async fn capsule(
     Ok(ok(
         pool_round(&state, auth.id, "capsule", client_idem).await?
     ))
+}
+
+/// 水果机：与九宫格同构，仅池键不同（fruit）。
+#[post("/games/fruit")]
+pub(super) async fn fruit(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: crate::http::OptJson<DrawReq>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    check_minclass(&state, "fruit", auth.class_id).await?;
+    let client_idem = body.and_then(|b| b.idempotency_key.clone());
+    Ok(ok(pool_round(&state, auth.id, "fruit", client_idem).await?))
 }
 
 /// 大转盘：与九宫格同构，仅池键不同（wheel）。

@@ -48,6 +48,32 @@ const nextConfig: NextConfig = {
     const api = process.env.API_SERVER_URL ?? "http://localhost:8080";
     return [{ source: "/api/:path*", destination: `${api}/api/:path*` }];
   },
+  // 九宫格（jgg）已由打地鼠接替：老书签/外链永久改道，别让两条玩法并存
+  // 扭蛋机（capsule）已由老虎机接替（池键复用，历史流水不断档）
+  async redirects() {
+    return [
+      {
+        source: "/games/jgg/records",
+        destination: "/games/mole/records",
+        permanent: true,
+      },
+      {
+        source: "/games/jgg",
+        destination: "/games/mole",
+        permanent: true,
+      },
+      {
+        source: "/games/capsule/records",
+        destination: "/games/slot/records",
+        permanent: true,
+      },
+      {
+        source: "/games/capsule",
+        destination: "/games/slot",
+        permanent: true,
+      },
+    ];
+  },
   // 认证/交互关键页 HTML 不缓存：防旧 SW/代理留下过期 shell（点击无反应类问题）
   async headers() {
     return [

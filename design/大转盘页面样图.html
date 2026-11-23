@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FluxTorrent · 大转盘 · 游戏厅样图</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='10' fill='%23d4af7a'/%3E%3Ccircle cx='12' cy='12' r='3' fill='%232a1b47'/%3E%3C/svg%3E">
+<style>
+:root{
+  --bg0:#0c0916; --bg1:#171129;
+  --gold1:#f7e2b2; --gold2:#d4af7a; --gold3:#a87f3c;
+  --violet:#c3b4e6; --blue:#a3c4e8;
+  --ink:#f6f0ff; --sub:#c3b3e0; --faint:#9080b0;
+  --panel:rgba(44,30,72,.5); --line:rgba(247,226,178,.16);
+  --mint:#46d3a4; --coral:#ff7a6b; --sun:#ffd700; --sky:#6ab6f0;
+  --r-md:12px; --r-lg:18px;
+  --font:"Noto Serif SC","Songti SC","Microsoft YaHei",serif;
+  --num:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:var(--font);color:var(--ink);font-size:13px;line-height:1.5;min-height:100vh;
+  background:
+    radial-gradient(120% 80% at 50% -12%, #3a2564 0%, transparent 55%),
+    radial-gradient(70% 50% at 90% 20%, rgba(106,182,240,.14), transparent 60%),
+    radial-gradient(60% 50% at 6% 24%, rgba(255,215,0,.09), transparent 60%),
+    radial-gradient(140% 110% at 50% 115%, #171129 25%, #0c0916 100%),
+    var(--bg0);
+  overflow-x:hidden;
+}
+button{font-family:inherit}
+.num{font-variant-numeric:tabular-nums;font-family:var(--num)}
+
+.bg-stars{position:fixed;inset:0;pointer-events:none;z-index:0;animation:starTw 4s ease-in-out infinite alternate;
+  background-image:
+    radial-gradient(1.5px 1.5px at 12% 30%, rgba(255,255,255,.7),transparent),
+    radial-gradient(1px 1px at 28% 62%, rgba(255,255,255,.5),transparent),
+    radial-gradient(1.5px 1.5px at 46% 16%, rgba(255,215,0,.6),transparent),
+    radial-gradient(1px 1px at 64% 40%, rgba(255,255,255,.55),transparent),
+    radial-gradient(1.5px 1.5px at 80% 68%, rgba(195,180,230,.6),transparent),
+    radial-gradient(1px 1px at 92% 26%, rgba(255,255,255,.5),transparent),
+    radial-gradient(1px 1px at 36% 84%, rgba(255,255,255,.4),transparent),
+    radial-gradient(1.5px 1.5px at 70% 90%, rgba(255,215,0,.5),transparent);
+}
+@keyframes starTw{from{opacity:.5}to{opacity:1}}
+
+.wrap{position:relative;z-index:1;max-width:1180px;margin:0 auto;padding:14px 18px}
+
+/* ===== 顶栏一行 ===== */
+.topbar{display:flex;align-items:center;gap:14px;margin-bottom:12px}
+.game-btn{min-height:36px;border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--sub);border-radius:999px;padding:0 14px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:7px;backdrop-filter:blur(6px)}
+.game-btn:hover{color:var(--ink);border-color:rgba(247,226,178,.4)}
+.head{flex:1;text-align:center}
+.head h1{display:inline-flex;align-items:center;gap:10px;font-size:22px;font-weight:900;letter-spacing:5px;
+  background:linear-gradient(180deg,#fff6dd 10%,#f0cd86 55%,#c89848 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.star{width:11px;height:11px;background:var(--sun);clip-path:polygon(50% 0,62% 38%,100% 50%,62% 62%,50% 100%,38% 62%,0 50%,38% 38%);filter:drop-shadow(0 0 6px rgba(255,215,0,.8))}
+.head .sub{display:block;font-size:11.5px;color:var(--sub);letter-spacing:.04em;margin-top:2px}
+.head .badges{display:inline-flex;gap:8px;margin-left:10px}
+.badge{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:5px 12px;font-size:11.5px;color:var(--sub)}
+.badge .hl{color:var(--gold1);font-weight:800}
+.badge.ticket .hl{color:var(--sun)}
+
+/* ===== meta 行：余额 + tabs ===== */
+.meta-row{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+.bal-row{display:flex;flex-wrap:wrap;gap:10px}
+.bal-chip{display:flex;align-items:center;gap:9px;padding:8px 14px;border-radius:var(--r-md);background:var(--panel);border:1px solid var(--line);backdrop-filter:blur(8px)}
+.bal-ic{width:30px;height:30px;border-radius:10px;display:grid;place-items:center;font-size:15px;background:linear-gradient(180deg,rgba(255,215,0,.22),rgba(212,158,74,.1));border:1px solid rgba(255,215,0,.28)}
+.bal-meta{display:flex;flex-direction:column}
+.bal-lb{font-size:10.5px;color:var(--faint);letter-spacing:.1em}
+.bal-vl{font-family:var(--num);font-size:15px;font-weight:900}
+.win{color:var(--mint)} .lose{color:var(--coral)}
+
+.gs-tabs{display:inline-flex;gap:5px;padding:4px;border:1px solid var(--line);background:var(--panel);border-radius:999px;backdrop-filter:blur(8px)}
+.gs-tab{border:0;background:none;border-radius:999px;padding:7px 16px;font-size:12px;font-weight:700;color:var(--faint);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .18s ease}
+.gs-tab:hover:not(.on){color:var(--sub)}
+.gs-tab.on{background:linear-gradient(180deg,#f0cd86,#c89848);color:#2a1b08;box-shadow:0 4px 14px -4px rgba(212,158,74,.7);font-weight:900}
+.gs-tab.on .tab-ic{transform:scale(1.12)}
+.tab-ic{transition:transform .18s ease}
+
+@media(max-width:760px){
+  .meta-row{display:block}
+  .bal-row{display:flex;justify-content:space-between;gap:8px;margin-bottom:10px}
+  .bal-chip{flex:1 1 0;min-width:0;justify-content:center;padding:8px 10px}
+  .gs-tabs{display:flex;width:100%}
+  .gs-tab{flex:1 1 0;min-width:0;padding:10px 12px;font-size:13px}
+  .wrap{padding:12px 10px}
+  .panel{padding:12px 10px}
+}
+
+/* 提示条 */
+.notice-bar{display:none;max-width:520px;margin:0 auto 12px;align-items:center;gap:9px;border-radius:var(--r-md);padding:9px 14px;font-size:12px;font-weight:700;border:1px solid}
+.notice-bar.show{display:flex}
+.notice-bar.warn{background:rgba(255,201,60,.1);border-color:rgba(255,201,60,.35);color:var(--sun)}
+.notice-bar.danger{background:rgba(255,122,107,.1);border-color:rgba(255,122,107,.35);color:var(--coral)}
+
+/* ===== 三列主体 ===== */
+.layout{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;align-items:start}
+@media(max-width:980px){.layout{grid-template-columns:1fr}}
+
+.panel{border:1px solid var(--line);background:var(--panel);border-radius:var(--r-lg);padding:14px;backdrop-filter:blur(10px)}
+.panel h2{font-size:13px;font-weight:900;letter-spacing:2px;margin-bottom:11px;color:var(--gold1);display:flex;align-items:center;gap:7px}
+.panel h2::before{content:"◆";font-size:8px;color:var(--gold2)}
+
+/* 左列：奖池墙 */
+.pool-note{margin-top:10px;font-size:11px;color:var(--faint);line-height:1.6}
+
+/* 奖池概率标签页 */
+.pool-top{margin-bottom:16px}
+.pool-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
+.pool-item{display:flex;align-items:center;gap:10px;border-radius:12px;padding:10px 12px;border:1px solid transparent;background:rgba(255,255,255,.05);min-width:0}
+.pi-ic{width:36px;height:36px;flex:none;border-radius:11px;display:grid;place-items:center;font-size:17px;color:#fff;background:var(--tone,#4a7ab0);box-shadow:0 4px 10px -3px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.35)}
+.pi-mid{flex:1;min-width:0}
+.pi-nm{font-size:12.5px;font-weight:800;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pi-meta{font-size:10.5px;color:var(--faint);margin-top:2px}
+.pi-prob{font-family:var(--num);font-size:13px;font-weight:900;flex:none}
+.pool-item.gold{background:linear-gradient(180deg,rgba(255,201,60,.2),rgba(212,158,74,.08));border-color:rgba(255,201,60,.35)}
+.pool-item.gold .pi-prob{color:var(--sun)}
+.pool-item.mint{background:rgba(70,211,164,.1);border-color:rgba(70,211,164,.25)}
+.pool-item.mint .pi-prob{color:var(--mint)}
+.pool-item.mist{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.1)}
+.pool-item.mist .pi-prob{color:var(--sub)}
+
+/* 中列舞台 */
+.stage-card{position:relative;border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden;
+  background:radial-gradient(120% 120% at 50% 0%,#322053 0%,#1a1130 68%,#120c1f 100%);
+  box-shadow:0 24px 50px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.08);
+  padding:22px 20px 20px;display:flex;flex-direction:column;align-items:center;gap:16px}
+.stage-card::before{content:"";position:absolute;inset:-30% 10% auto;height:70%;background:radial-gradient(50% 42% at 50% 0%,rgba(247,226,178,.14),transparent 70%);pointer-events:none}
+
+.lw-rig{position:relative;width:100%;max-width:420px;display:flex;justify-content:center;z-index:1}
+.rays{position:absolute;inset:-12%;border-radius:50%;background:repeating-conic-gradient(from 0deg,rgba(247,226,178,.10) 0deg 7deg,transparent 7deg 30deg);
+  -webkit-mask:radial-gradient(circle,transparent 30%,#000 55%,transparent 78%);mask:radial-gradient(circle,transparent 30%,#000 55%,transparent 78%);
+  animation:ringSpin 30s linear infinite;z-index:0}
+.halo{position:absolute;inset:-6%;border-radius:50%;background:radial-gradient(circle,rgba(255,215,0,.20),transparent 60%);filter:blur(10px);z-index:0}
+.reflect{position:absolute;left:50%;bottom:-6%;transform:translateX(-50%);width:62%;height:22px;border-radius:50%;background:radial-gradient(ellipse,rgba(212,158,74,.28),transparent 70%);filter:blur(8px);z-index:0}
+
+.lw-disc-wrap{position:relative;width:min(400px,82vw);aspect-ratio:1;border-radius:50%;padding:12px;z-index:1;
+  background:radial-gradient(circle at 36% 26%,#f7e6c0,#d4af7a 55%,#8a6428 100%);
+  box-shadow:0 20px 40px rgba(0,0,0,.55),0 0 34px rgba(212,158,74,.35),inset 0 2px 0 rgba(255,255,255,.65),inset 0 -6px 12px rgba(90,60,18,.5)}
+.lw-disc-wrap.spinning{animation:wrapPulse .5s ease-in-out infinite}
+@keyframes wrapPulse{0%,100%{box-shadow:0 20px 40px rgba(0,0,0,.55),0 0 34px rgba(212,158,74,.35)}50%{box-shadow:0 20px 40px rgba(0,0,0,.55),0 0 56px rgba(255,215,0,.55)}}
+.lw-disc{width:100%;height:100%;display:block;transition:transform 4s cubic-bezier(.16,.72,.2,1)}
+.seg-hit{stroke:#ffd700 !important;stroke-width:3 !important;filter:drop-shadow(0 0 6px rgba(255,215,0,.8))}
+
+.lw-pointer{position:absolute;left:50%;top:-11px;z-index:4;transform:translateX(-50%);width:0;height:0;border-left:14px solid transparent;border-right:14px solid transparent;border-top:30px solid #f2683f;filter:drop-shadow(0 5px 7px rgba(3,6,16,.65))}
+.lw-pointer::after{content:"";position:absolute;left:-7px;top:-30px;width:13px;height:13px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff3c8,#ffd700 70%);box-shadow:0 0 10px rgba(255,215,0,.9)}
+.lw-rig.pointer-shake .lw-pointer{animation:shake .18s linear infinite}
+@keyframes shake{0%,100%{transform:translateX(-50%)}50%{transform:translateX(calc(-50% + 2px))}}
+
+.lw-hub{position:absolute;left:50%;top:50%;z-index:5;transform:translate(-50%,-50%);width:104px;height:104px;border-radius:50%;cursor:pointer;display:grid;place-items:center;flex-direction:column;
+  color:#2c4a74;font-weight:900;font-size:17px;line-height:1.15;border:3px solid #d4af7a;
+  background:radial-gradient(circle at 35% 28%,#ffffff,#eef4fb 62%,#dbe7f4);
+  box-shadow:0 8px 16px rgba(176,138,74,.45),inset 0 1px 3px rgba(255,255,255,.9),0 0 20px rgba(255,255,255,.28));
+  transition:transform .14s ease}
+.lw-hub::before{content:"";position:absolute;inset:-9px;border-radius:50%;border:1.5px solid rgba(255,215,0,.5);animation:hubRing 2s ease-in-out infinite}
+@keyframes hubRing{0%{transform:scale(.9);opacity:.8}70%{transform:scale(1.18);opacity:0}100%{opacity:0}}
+.lw-hub:active:not(:disabled){transform:translate(-50%,-50%) scale(.95)}
+.lw-hub:disabled{filter:saturate(.5) brightness(.85);cursor:not-allowed}
+.lw-hub:disabled::before{display:none}
+.lw-hub small{font-size:11.5px;font-weight:700;opacity:.85;margin-top:3px}
+
+.mid-row{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;min-height:36px;z-index:1}
+.flash{flex:0 1 auto;display:flex;align-items:center;justify-content:center;gap:6px;text-align:center;font-size:14px;font-weight:900;letter-spacing:.02em;padding:0 10px}
+.flash .f-win{color:var(--mint);text-shadow:0 0 12px rgba(70,211,164,.4)}
+.flash .f-jackpot{color:var(--sun);text-shadow:0 0 16px rgba(255,215,0,.6)}
+.flash .f-lose{color:var(--sub)}
+.flash .f-tie{color:var(--ink)}
+
+.streak-pill{display:inline-flex;align-items:center;gap:6px;flex:none;border:1px solid rgba(255,201,60,.4);background:linear-gradient(180deg,rgba(255,201,60,.18),rgba(255,122,107,.08));color:var(--sun);border-radius:999px;padding:6px 13px;font-size:11.5px;font-weight:800;box-shadow:0 0 16px rgba(255,201,60,.18);animation:streakGlow 2s ease-in-out infinite}
+@keyframes streakGlow{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+
+.cta-row{display:flex;flex-wrap:nowrap;justify-content:center;gap:10px;width:100%;z-index:1}
+.sw-cta{position:relative;overflow:hidden;flex:1 1 0;min-width:0;min-height:48px;border:0;cursor:pointer;border-radius:999px;color:#4a3312;font-weight:900;font-size:15px;letter-spacing:.06em;
+  background:linear-gradient(180deg,#ffe9b8,#f0c878 55%,#d49a4a);
+  box-shadow:0 10px 24px -6px rgba(212,158,74,.75),inset 0 2px 0 rgba(255,255,255,.75),inset 0 -3px 6px rgba(120,70,10,.35);
+  transition:transform .14s ease,filter .14s ease}
+.sw-cta::after{content:"";position:absolute;top:0;left:-60%;width:40%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.55),transparent);transform:skewX(-20deg);animation:sheen 3.2s ease-in-out infinite}
+@keyframes sheen{0%{left:-60%}55%,100%{left:130%}}
+.sw-cta:active:not(:disabled){transform:scale(.97)}
+.sw-cta:disabled{opacity:.5;cursor:not-allowed;filter:grayscale(.3)}
+.arc-chip{flex:1 1 0;min-width:0;min-height:48px;border:1px solid rgba(106,182,240,.4);background:rgba(106,182,240,.08);color:var(--sky);border-radius:999px;padding:0 10px;font-weight:800;font-size:13px;cursor:pointer;backdrop-filter:blur(6px);display:inline-flex;align-items:center;justify-content:center;gap:6px;transition:all .15s ease;white-space:nowrap}
+.arc-chip:hover:not(:disabled){background:rgba(106,182,240,.18)}
+.arc-chip:disabled{opacity:.45;cursor:not-allowed}
+.arc-chip.purple{border-color:rgba(195,180,230,.45);background:rgba(195,180,230,.1);color:var(--violet)}
+.arc-chip.purple:hover:not(:disabled){background:rgba(195,180,230,.2)}
+.arc-chip.auto{border-color:rgba(255,122,107,.45);background:rgba(255,122,107,.1);color:var(--coral)}
+.arc-chip.auto:hover:not(:disabled){background:rgba(255,122,107,.2)}
+.arc-chip.auto.on{background:linear-gradient(180deg,#ff8a7a,#e05a4a);border-color:#ff8a7a;color:#fff;box-shadow:0 6px 18px -6px rgba(255,122,107,.7)}
+.auto-ic{font-size:11px}
+
+.stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;width:100%}
+.stat{border-radius:var(--r-md);padding:12px 10px;text-align:center;background:var(--panel);border:1px solid var(--line)}
+.stat-lb{font-size:11px;font-weight:700;color:var(--faint);letter-spacing:.06em}
+.stat-vl{font-family:var(--num);font-size:15px;font-weight:900;margin-top:2px}
+.stat-vl.gold{color:var(--sun)} .stat-vl.green{color:var(--mint)}
+
+.prize-strip{width:100%;padding:10px 12px;border-radius:var(--r-lg);background:linear-gradient(160deg,rgba(255,255,255,.07),rgba(247,226,178,.05));border:1px solid rgba(247,226,178,.26)}
+.prize-lb{font-size:11px;font-weight:800;letter-spacing:.16em;color:var(--gold1);margin-bottom:8px;text-align:center}
+.prize-row{display:flex;justify-content:space-around;align-items:center;gap:8px}
+.prize-item{text-align:center;min-width:0}
+.prize-ic{width:32px;height:32px;margin:0 auto 4px;border-radius:11px;display:grid;place-items:center;font-size:15px;color:#fff;background:var(--tone,#4a7ab0);box-shadow:0 4px 10px -3px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.35)}
+.prize-nm{font-size:11px;color:var(--sub);font-weight:700;white-space:nowrap}
+.prize-odds{font-size:10.5px;color:var(--faint);font-family:var(--num);margin-top:1px}
+
+.rules{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:12px;padding:10px 12px;border-radius:var(--r-md);background:rgba(106,182,240,.08);font-size:11px;color:var(--sub)}
+.rules a{color:var(--sky);font-weight:700;white-space:nowrap}
+
+.record-list{display:flex;flex-direction:column;gap:6px}
+.record-empty{padding:24px;text-align:center;color:var(--faint);font-size:13px}
+
+/* 记录 tab：统计四格 / 对局行 / 图鉴 */
+.rec-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+@media(max-width:760px){.rec-stats{grid-template-columns:repeat(2,1fr)}}
+.rec-row{display:grid;grid-template-columns:92px 1fr auto;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;background:rgba(255,255,255,.05);font-size:12px}
+.rec-row .htime{color:var(--faint);font-weight:700;font-family:var(--num)}
+.rec-row .r-bet{color:var(--faint);font-family:var(--num);text-align:right}
+.rec-row .r-net{font-weight:900;font-family:var(--num);min-width:84px;text-align:right}
+.r-net.win{color:var(--mint)} .r-net.lose{color:var(--coral)} .r-net.tie{color:var(--sub)}
+
+.album-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:10px}
+@media(max-width:760px){.album-grid{grid-template-columns:repeat(3,1fr)}}
+.album-card{display:flex;flex-direction:column;align-items:center;gap:5px;border-radius:12px;border:2px solid var(--line);background:rgba(255,255,255,.04);padding:10px 6px;text-align:center}
+.album-card .a-ic{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;font-size:16px;color:#fff;background:var(--tone,#4a7ab0)}
+.album-card .a-nm{font-size:12px;font-weight:800;line-height:1.2}
+.album-card .a-meta{font-size:10.5px;color:var(--faint);font-family:var(--num)}
+.album-card.r5{border-color:rgba(255,215,0,.65);box-shadow:0 0 14px rgba(255,215,0,.16)}
+.album-card.r4{border-color:rgba(195,180,230,.55)}
+.album-card.r3{border-color:rgba(163,196,232,.5)}
+.album-card.r1,.album-card.r2{border-color:rgba(255,255,255,.14)}
+.album-card.locked{border-style:dashed;border-color:rgba(255,255,255,.14);opacity:.55;background:rgba(255,255,255,.02)}
+.album-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:11px}
+.album-head h2{margin-bottom:0}
+.album-got{font-size:11.5px;color:var(--sub);font-family:var(--num)}
+
+@media(max-width:760px){
+  .pool-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .pi-nm{font-size:11.5px}
+  .rec-row{grid-template-columns:1fr auto;gap:8px;padding:9px 10px}
+  .rec-row .r-bet{display:none}
+  .rec-row .r-net{min-width:0}
+  .r-net .cur{display:none}
+  .album-card,.stat{min-width:0}
+  .lw-disc-wrap{width:min(330px,80vw)}
+  .lw-rig{max-width:330px}
+  .arc-chip{font-size:12px;padding:0 8px;gap:5px}
+}
+
+/* 十连浮层 */
+.ten-overlay{position:fixed;inset:0;z-index:95;display:none;place-items:center;padding:16px;background:rgba(8,5,16,.78);backdrop-filter:blur(6px)}
+.ten-overlay.open{display:grid}
+.ten{width:min(440px,92vw);max-height:80vh;overflow:auto;border-radius:var(--r-lg);background:linear-gradient(180deg,#2a1b47,#1a1130);border:1px solid var(--line);padding:18px;box-shadow:0 30px 70px rgba(0,0,0,.6)}
+.ten-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:13px}
+.ten-hd h4{font-size:16px;font-weight:900;letter-spacing:3px;color:var(--gold1)}
+.ten-x{border:0;background:none;color:var(--sub);font-size:18px;cursor:pointer}
+.ten-list{display:flex;flex-direction:column;gap:6px}
+.ten-row{display:flex;justify-content:space-between;padding:8px 12px;border-radius:10px;background:rgba(255,255,255,.05);font-size:13px}
+.ten-row.win{color:var(--mint);background:rgba(70,211,164,.1)}
+.ten-total{margin-top:13px;text-align:center;font-weight:900;font-size:15px;font-family:var(--num);color:var(--gold1)}
+</style>
+</head>
+<body>
+<div class="bg-stars" aria-hidden></div>
+<div class="wrap">
+
+  <div class="topbar">
+    <button class="game-btn">← 返回娱乐屋</button>
+    <div class="head">
+      <h1><span class="star"></span>大转盘<span class="star"></span></h1>
+      <div class="badges">
+        <span class="badge">中奖率 <span class="hl num" id="winRate">38.0%</span></span>
+        <span class="badge ticket">票价 <span class="hl num">100</span> 魔力 / 次</span>
+      </div>
+      <span class="sub">转起来，指针停在哪就是哪</span>
+    </div>
+    <button class="game-btn" id="sfxBtn"><span>🔊</span><span>已开</span></button>
+  </div>
+
+  <div class="meta-row">
+    <div class="bal-row">
+      <div class="bal-chip"><div class="bal-ic">💎</div><div class="bal-meta"><span class="bal-lb">余额</span><span class="bal-vl num" id="balance">12,480</span></div></div>
+      <div class="bal-chip"><div class="bal-ic">💰</div><div class="bal-meta"><span class="bal-lb">今日净收</span><span class="bal-vl num win" id="todayNet">+320</span></div></div>
+      <div class="bal-chip"><div class="bal-ic">🎯</div><div class="bal-meta"><span class="bal-lb">剩余局数</span><span class="bal-vl num" id="limitLeft">18</span></div></div>
+    </div>
+    <div class="gs-tabs">
+      <button class="gs-tab on" data-tab="play"><span class="tab-ic">🎲</span> 主玩法</button>
+      <button class="gs-tab" data-tab="pool"><span class="tab-ic">🎁</span> 奖池概率</button>
+      <button class="gs-tab" data-tab="records"><span class="tab-ic">📜</span> 记录</button>
+    </div>
+  </div>
+
+  <div class="notice-bar" id="noticeBar" role="alert"></div>
+
+  <div id="colPlay">
+    <div class="layout">
+
+      <div class="stage-card">
+        <div class="lw-rig" id="rig">
+          <div class="halo" aria-hidden></div>
+          <div class="rays" aria-hidden></div>
+          <div class="reflect" aria-hidden></div>
+          <div class="lw-disc-wrap" id="discWrap">
+            <span class="lw-pointer" aria-hidden></span>
+            <svg class="lw-disc" id="disc" viewBox="0 0 360 360" aria-hidden></svg>
+            <button class="lw-hub" id="hubBtn" disabled>
+              <span id="hubGo">GO</span>
+              <small id="hubTap">点击开始</small>
+            </button>
+          </div>
+        </div>
+
+        <div class="mid-row">
+          <p class="flash" id="flash" role="status" aria-live="polite"></p>
+          <span class="streak-pill" id="streak">🔥 <span class="num" id="streakN">3</span> 连胜 · 手气正旺</span>
+        </div>
+
+        <div class="cta-row">
+          <button class="sw-cta" id="ctaBtn">GO</button>
+          <button class="arc-chip" id="tenBtn">十连</button>
+          <button class="arc-chip purple" id="hundredBtn">百连</button>
+          <button class="arc-chip auto" id="autoBtn"><span class="auto-ic">▶</span><span id="autoLb">一直抽</span></button>
+        </div>
+
+        <div class="stat-row">
+          <div class="stat"><div class="stat-lb">剩余局数</div><div class="stat-vl num" id="statLeft">18</div></div>
+          <div class="stat"><div class="stat-lb">最高倍率</div><div class="stat-vl gold num" id="statBest">20.0x</div></div>
+          <div class="stat"><div class="stat-lb">今日净收</div><div class="stat-vl green num" id="statNet">+320</div></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div id="colPool" style="display:none">
+    <div class="layout" style="grid-template-columns:minmax(0,1fr)">
+
+      <div class="panel" style="max-width:860px;margin:0 auto;width:100%">
+        <div class="prize-strip pool-top">
+          <div class="prize-lb">高价值奖池</div>
+          <div class="prize-row" id="prizeStrip"></div>
+        </div>
+        <h2>转盘奖池 · 概率公示</h2>
+        <div class="pool-grid" id="poolChips"></div>
+        <p class="pool-note">扇区与后端奖池同源，站长改档位后此处自动同步；各档概率按权重实时归一化计算。</p>
+      </div>
+
+    </div>
+  </div>
+
+  <div id="colRecords" style="display:none">
+    <div class="layout" style="grid-template-columns:minmax(0,1fr)">
+
+      <div class="panel" style="max-width:760px;margin:0 auto;width:100%">
+        <div class="rec-stats">
+          <div class="stat"><div class="stat-lb">总局数</div><div class="stat-vl num">42</div></div>
+          <div class="stat"><div class="stat-lb">中奖率</div><div class="stat-vl num">38%</div></div>
+          <div class="stat"><div class="stat-lb">单局最佳</div><div class="stat-vl gold num">800</div></div>
+          <div class="stat"><div class="stat-lb">累计净收</div><div class="stat-vl green num">+520</div></div>
+        </div>
+      </div>
+
+      <div class="panel" style="max-width:760px;margin:0 auto;width:100%">
+        <h2>最近对局</h2>
+        <div class="record-list" id="recordList"></div>
+        <div class="rules">
+          <span>扇区与后端奖池同源，站长改档位后此处自动同步</span>
+          <a href="#" id="oddsLink">概率公示 ›</a>
+        </div>
+      </div>
+
+      <div class="panel" style="max-width:760px;margin:0 auto;width:100%">
+        <div class="album-head">
+          <h2>奖档图鉴</h2>
+          <span class="album-got">已点亮 <span class="num">5/6</span></span>
+        </div>
+        <div class="album-grid" id="albumGrid"></div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<div class="ten-overlay" id="tenOverlay" role="presentation">
+  <div class="ten" role="dialog" aria-modal="true" aria-labelledby="tenTitle">
+    <div class="ten-hd"><h4 id="tenTitle">十连 · 命运转盘</h4><button class="ten-x" id="tenClose" aria-label="关闭">✕</button></div>
+    <div class="ten-list" id="tenList"></div>
+    <div class="ten-total num" id="tenTotal"></div>
+  </div>
+</div>
+
+<script>
+const TICKET = 100;
+// kind: magic=倍率翻票价；item=固定价值道具
+const POOL = [
+  { label:"谢谢参与",   icon:"🍀", weight:620, mult:0,   v:0,    tone:"mist",   kind:"magic" },
+  { label:"1.5x 魔力",  icon:"🔷", weight:200, mult:1.5, v:150,  tone:"blue",   kind:"magic" },
+  { label:"2x 魔力",    icon:"🔷", weight:100, mult:2.0, v:200,  tone:"blue",   kind:"magic" },
+  { label:"3x 魔力",    icon:"💎", weight:50,  mult:3.0, v:300,  tone:"violet", kind:"magic" },
+  { label:"8x 魔力",    icon:"💎", weight:25,  mult:8.0, v:800,  tone:"violet", kind:"magic" },
+  { label:"20x 大奖",    icon:"👑", weight:5,   mult:20.0,v:2000, tone:"gold",   kind:"magic" },
+  { label:"1.2x 魔力",  icon:"🔹", weight:80,  mult:1.2, v:120,  tone:"blue",   kind:"magic" },
+  { label:"1.8x 魔力",  icon:"🔹", weight:70,  mult:1.8, v:180,  tone:"blue",   kind:"magic" },
+  { label:"2.5x 魔力",  icon:"💠", weight:40,  mult:2.5, v:250,  tone:"blue",   kind:"magic" },
+  { label:"5x 魔力",    icon:"💎", weight:15,  mult:5.0, v:500,  tone:"violet", kind:"magic" },
+  { label:"12x 大奖",    icon:"🏆", weight:8,   mult:12.0,v:1200, tone:"violet", kind:"magic" },
+  { label:"50x 传奇",    icon:"🌟", weight:2,   mult:50.0,v:5000, tone:"gold",   kind:"magic" },
+  { label:"魔力袋 ×50",  icon:"🎁", weight:30,  mult:0,   v:50,   tone:"mist",   kind:"item"  },
+  { label:"积分 +200",  icon:"🎟️", weight:35,  mult:0,   v:200,  tone:"mist",   kind:"item"  },
+  { label:"经验 +50",    icon:"✨", weight:40,  mult:0,   v:50,   tone:"mist",   kind:"item"  },
+  { label:"幸运头像框",  icon:"🖼️", weight:10,  mult:0,   v:0,    tone:"mist",   kind:"item"  },
+  { label:"表情贴纸",    icon:"😄", weight:12,  mult:0,   v:0,    tone:"mist",   kind:"item"  },
+  { label:"幸运符",      icon:"🍀", weight:8,   mult:0,   v:0,    tone:"mist",   kind:"item"  },
+];
+const TOTAL_W = POOL.reduce((s,p)=>s+p.weight,0);
+POOL.forEach(p=>{ p.prob = p.weight/TOTAL_W*100; });
+const GRAD = {
+  gold:   ["#ffe9b8","#e6bd6e"],
+  violet: ["#dccff3","#b29adc"],
+  blue:   ["#c2dcf6","#8fbce8"],
+  mist:   ["#f5f9fd","#dde8f3"],
+};
+const INK = "#2c4a74", INK_GOLD = "#6b4a1a";
+const N = POOL.length, ANG = 360/N;
+
+const S = { balance:12480, todayNet:320, limitLeft:120, streak:3, busy:false, auto:false, autoTimer:null };
+
+const $ = id => document.getElementById(id);
+const disc = $("disc"), wrap=$("discWrap"), rig=$("rig"), hubBtn=$("hubBtn"), ctaBtn=$("ctaBtn"), tenBtn=$("tenBtn"), hundredBtn=$("hundredBtn"), autoBtn=$("autoBtn"), autoLb=$("autoLb");
+let rot = 0;
+
+const CX=180, CY=180, R=150;
+function polar(deg,r){ const rad=(deg-90)*Math.PI/180; return [CX+r*Math.cos(rad), CY+r*Math.sin(rad)]; }
+function sectorPath(i){
+  const a1=i*ANG, a2=a1+ANG;
+  const [x1,y1]=polar(a1,R), [x2,y2]=polar(a2,R);
+  return `M ${CX} ${CY} L ${x1.toFixed(2)} ${y1.toFixed(2)} A ${R} ${R} 0 0 1 ${x2.toFixed(2)} ${y2.toFixed(2)} Z`;
+}
+
+function renderWheel(){
+  const dense = N>12;
+  const iconSize = dense?13:19, glyphSize = dense?9.5:14;
+  let defs=`<defs>
+    <radialGradient id="lwRim" cx="0.5" cy="0.3" r="0.8">
+      <stop offset="0%" stop-color="#e8c888"/><stop offset="100%" stop-color="#8a6428"/>
+    </radialGradient>`;
+  POOL.forEach((p,i)=>{
+    defs+=`<radialGradient id="grad${i}" cx="0.5" cy="0.35" r="0.85">
+      <stop offset="0%" stop-color="${GRAD[p.tone][0]}"/><stop offset="100%" stop-color="${GRAD[p.tone][1]}"/></radialGradient>`;
+  });
+  defs+="</defs>";
+
+  let out=defs;
+  out+=`<circle cx="${CX}" cy="${CY}" r="${R+18}" fill="url(#lwRim)"/>`;
+  out+=`<circle cx="${CX}" cy="${CY}" r="${R+11}" fill="none" stroke="#f7e6c0" stroke-width="2" opacity=".7"/>`;
+  const lampN = Math.max(12, N);
+  for(let k=0;k<lampN;k++){ const [lx,ly]=polar(k*(360/lampN),R+11);
+    out+=`<circle cx="${lx.toFixed(2)}" cy="${ly.toFixed(2)}" r="4.2" fill="${k%2===0?"#ffd700":"#f7e2b2"}" stroke="#8a6428" stroke-width="1"/>
+          <circle cx="${(lx-1.2).toFixed(2)}" cy="${(ly-1.2).toFixed(2)}" r="1.3" fill="#fff" opacity=".85"/>`; }
+  out+=`<circle cx="${CX}" cy="${CY}" r="${R+5}" fill="#fff" opacity=".9"/>`;
+
+  POOL.forEach((p,i)=>{
+    const mid=i*ANG+ANG/2;
+    const [ix,iy]=polar(mid,R*0.52), [tx,ty]=polar(mid,R*0.76);
+    const glyph = p.kind==="item" ? (p.v>0?"+"+p.v:"·") : (p.mult===0 ? "0" : "×"+p.mult.toFixed(1).replace(/\.0$/,""));
+    const color = p.v>=TICKET*10 ? INK_GOLD : INK;
+    out+=`<path class="seg" data-i="${i}" d="${sectorPath(i)}" fill="url(#grad${i})" stroke="#d4af7a" stroke-width="1.5" opacity=".98"/>`;
+    out+=`<text x="${ix.toFixed(2)}" y="${iy.toFixed(2)}" font-size="${iconSize}" text-anchor="middle" dominant-baseline="middle">${p.icon}</text>`;
+    out+=`<text x="${tx.toFixed(2)}" y="${ty.toFixed(2)}" fill="${color}" font-size="${glyphSize}" font-weight="800" text-anchor="middle" dominant-baseline="middle" font-variant-numeric="tabular-nums">${glyph}</text>`;
+  });
+  out+=`<circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="rgba(255,255,255,0.55)" stroke-width="2"/>`;
+  disc.innerHTML=out;
+}
+
+function toneClass(p){ return p.v>=TICKET*10?"gold":(p.v>TICKET?"mint":"mist"); }
+function toneGrad(p){ return p.v>=TICKET*10?"linear-gradient(180deg,#e8c878,#c89848)":(p.v>=TICKET*3?"linear-gradient(180deg,#8898d8,#5a6ab8)":"linear-gradient(180deg,#6a9ec8,#4a7ab0)"); }
+function renderStrip(){
+  const top=[...POOL].sort((a,b)=>b.v-a.v).slice(0,4);
+  $("prizeStrip").innerHTML=top.map(p=>`
+    <div class="prize-item">
+      <div class="prize-ic" style="--tone:${toneGrad(p)}">${p.icon}</div>
+      <div class="prize-nm">${p.label}</div>
+      <div class="prize-odds">${p.prob.toFixed(1)}%</div>
+    </div>`).join("");
+}
+function renderChips(){
+  $("poolChips").innerHTML=POOL.map(p=>{
+    const meta = p.kind==="item" ? (p.v>0?`价值 ${p.v} 魔力`:"限定道具") : (p.mult>0?`×${p.mult.toFixed(1).replace(/\.0$/,"")} 倍率`:"未中奖");
+    return `<div class="pool-item ${toneClass(p)}">
+      <div class="pi-ic" style="--tone:${toneGrad(p)}">${p.icon}</div>
+      <div class="pi-mid"><div class="pi-nm">${p.label}</div><div class="pi-meta">${meta}</div></div>
+      <div class="pi-prob num">${p.prob.toFixed(1)}%</div>
+    </div>`;
+  }).join("");
+}
+
+let hist = [
+  { t:"14:32", win:true,  net:200 },
+  { t:"14:28", win:false, net:-100 },
+  { t:"14:21", win:true,  net:150 },
+  { t:"14:15", win:false, net:-100 },
+  { t:"14:09", win:true,  net:300 },
+  { t:"13:58", win:false, net:-100 },
+];
+function renderHist(){
+  $("recordList").innerHTML = hist.length ? hist.map(h=>{
+    const cls = h.net>0 ? "win" : (h.net<0 ? "lose" : "tie");
+    return `<div class="rec-row">
+      <span class="htime">${h.t}</span>
+      <span class="r-bet">投注 ${TICKET}</span>
+      <span class="r-net ${cls}">${h.net>0?"+":""}${h.net}<span class="cur"> 魔力</span></span>
+    </div>`;
+  }).join("") : `<div class="record-empty">还没有对局——去玩一把吧</div>`;
+}
+
+const COLLECT = POOL.map((p,i)=>({
+  idx:i,
+  count: i<15 ? Math.max(1, Math.round(36 - i*2.4)) : 0,
+  rarity: p.v>=TICKET*10 ? 5 : (p.v>=TICKET*3 ? 4 : (p.v>=TICKET ? 3 : 1)),
+}));
+function renderAlbum(){
+  const got = COLLECT.filter(c=>c.count>0).length;
+  $("albumGrid").innerHTML = COLLECT.map(c=>{
+    const p=POOL[c.idx], got=c.count>0;
+    const multTxt = p.kind==="item" ? (p.v>0?"物品":"碎片") : (p.mult>0 ? `×${p.mult.toFixed(1).replace(/\.0$/,"")}` : "未中");
+    return `<div class="album-card r${c.rarity} ${got?"":"locked"}">
+      <div class="a-ic" style="--tone:${toneGrad(p)}">${got?p.icon:"❔"}</div>
+      <div class="a-nm">${got?p.label:"???"}</div>
+      <div class="a-meta">${multTxt} · ×${c.count}</div>
+    </div>`;
+  }).join("");
+  document.querySelector(".album-got .num").textContent = `${got}/${POOL.length}`;
+}
+
+const fmt=n=> n.toLocaleString("en-US");
+function notice(type, html){
+  const bar=$("noticeBar");
+  if(!type){ bar.className="notice-bar"; bar.innerHTML=""; return; }
+  bar.className="notice-bar show "+type;
+  bar.innerHTML=html;
+}
+function renderState(){
+  $("balance").textContent=fmt(S.balance);
+  $("todayNet").textContent=(S.todayNet>=0?"+":"")+fmt(S.todayNet);
+  $("statNet").textContent=(S.todayNet>=0?"+":"")+fmt(S.todayNet);
+  $("limitLeft").textContent=S.limitLeft;
+  $("statLeft").textContent=S.limitLeft;
+  $("statBest").textContent=Math.max(...POOL.map(p=>p.mult)).toFixed(1)+"x";
+  $("todayNet").className="bal-vl num "+(S.todayNet>=0?"win":"lose");
+  $("streakN").textContent=S.streak;
+  $("streak").style.display = S.streak>=3 ? "inline-flex" : "none";
+  $("winRate").textContent=(100-POOL[0].prob).toFixed(1)+"%";
+
+  if(S.limitLeft<=0){ notice("danger","今日局数已用完，明天再来～ 或先回娱乐屋看看其他玩法。"); }
+  else if(S.balance<TICKET){ notice("warn","魔力不足单次票价，先去做种赚取魔力再来～"); }
+  else if(S.balance<TICKET*10){ notice("warn","余额不足以十连，可先单次转动。"); }
+  else if(S.balance<TICKET*100){ notice("warn","余额不足以百连，可先十连或单次转动。"); }
+  else { notice(null); }
+
+  const off = S.busy || S.limitLeft<=0 || S.balance<TICKET;
+  hubBtn.disabled=off; ctaBtn.disabled=off;
+  tenBtn.disabled = S.busy || S.limitLeft<10 || S.balance<TICKET*10;
+  hundredBtn.disabled = S.busy || S.limitLeft<100 || S.balance<TICKET*100;
+  autoBtn.disabled = S.auto ? false : (S.busy || S.limitLeft<=0 || S.balance<TICKET);
+}
+
+function draw(){
+  const total=POOL.reduce((s,p)=>s+p.weight,0);
+  let r=Math.random()*total, idx=0;
+  for(let i=0;i<POOL.length;i++){ r-=POOL[i].weight; if(r<=0){idx=i;break;} }
+  return idx;
+}
+function settle(p){
+  const won=p.kind==="item" ? p.v : p.mult*TICKET, net=won-TICKET;
+  let kind, text;
+  if(won>=TICKET*10){ kind="jackpot"; text=`🎉 命中大奖「${p.label}」，净赚 +${net} 魔力！`; }
+  else if(won>TICKET){ kind="win"; text=`指针停在「${p.label}」，净赚 +${net} 魔力！`; }
+  else if(won===TICKET){ kind="tie"; text=`「再来一次」，票价已返还`; }
+  else { kind="lose"; text=`谢谢参与，再来一把？`; }
+  return { p, won, net, kind, text, idx:POOL.indexOf(p) };
+}
+function nowTime(){ const d=new Date(); return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0"); }
+
+function applyResult(r){
+  S.balance+=r.net; S.todayNet+=r.net; S.limitLeft--;
+  if(r.net>0) S.streak++; else S.streak=0;
+  hist.unshift({ t:nowTime(), win:r.net>0, net:r.net });
+  renderHist(); renderState();
+}
+
+function spin(targetIdx, done){
+  S.busy=true; renderState();
+  const p=POOL[targetIdx], center=targetIdx*ANG+ANG/2;
+  const delta=((360-center)-(rot%360)+360)%360;
+  rot = rot + 360*5 + delta;
+  disc.style.transform=`rotate(${rot}deg)`;
+  wrap.classList.add("spinning"); rig.classList.add("pointer-shake");
+  $("hubGo").textContent="转动中…"; $("hubTap").textContent="";
+  $("flash").innerHTML=`<span class="f-tie">转动中…</span>`;
+  disc.querySelectorAll(".seg-hit").forEach(el=>el.classList.remove("seg-hit"));
+  setTimeout(()=>{
+    S.busy=false;
+    wrap.classList.remove("spinning"); rig.classList.remove("pointer-shake");
+    $("hubGo").textContent="GO"; $("hubTap").textContent="点击开始";
+    done(p);
+  },4000);
+}
+
+function highlight(idx){
+  const el=disc.querySelector(`.seg[data-i="${idx}"]`);
+  if(el) el.classList.add("seg-hit");
+}
+
+function canPlay(){ return !S.busy && S.limitLeft>0 && S.balance>=TICKET; }
+
+function goOnce(){
+  if(!canPlay()) return;
+  const idx=draw();
+  spin(idx, p=>{
+    const r=settle(p);
+    highlight(r.idx);
+    $("flash").innerHTML=`<span class="f-${r.kind}">${r.text}</span>`;
+    applyResult(r);
+    if(S.auto) scheduleNext();
+  });
+}
+
+function runBatch(n){
+  if(S.busy || S.limitLeft<n || S.balance<TICKET*n) return;
+  const rounds=[]; let total=0;
+  for(let k=0;k<n;k++){ const p=POOL[draw()]; const r=settle(p); rounds.push(r); total+=r.net; }
+  S.balance+=total; S.todayNet+=total; S.limitLeft-=n;
+  rounds.forEach(r=>{ hist.unshift({ t:nowTime(), win:r.net>0, net:r.net }); });
+  if(total>0) S.streak+=rounds.filter(r=>r.net>0).length; else S.streak=0;
+  renderHist(); renderState();
+  $("tenTitle").textContent = n===10?"十连 · 命运转盘" : n===100?"百连 · 命运转盘" : `${n} 连 · 命运转盘`;
+  const shown=rounds.slice(0,20);
+  $("tenList").innerHTML=shown.map(r=>`
+    <div class="ten-row ${r.net>0?"win":""}">
+      <span>${r.p.icon} ${r.p.label}</span>
+      <span class="num">${r.net>=0?"+":""}${r.net}</span>
+    </div>`).join("") + (rounds.length>20?`<div class="ten-row"><span>… 其余 ${rounds.length-20} 笔</span></div>`:"");
+  $("tenTotal").textContent=`合计净收 ${total} 魔力`;
+  $("tenOverlay").classList.add("open");
+}
+
+function stopAuto(){
+  S.auto=false;
+  if(S.autoTimer){ clearTimeout(S.autoTimer); S.autoTimer=null; }
+  autoBtn.classList.remove("on"); autoLb.textContent="一直抽";
+  autoBtn.querySelector(".auto-ic").textContent="▶";
+  renderState();
+}
+function startAuto(){
+  if(!canPlay()) return;
+  S.auto=true;
+  autoBtn.classList.add("on"); autoLb.textContent="停止连抽";
+  autoBtn.querySelector(".auto-ic").textContent="⏸";
+  scheduleNext();
+}
+function scheduleNext(){
+  if(!S.auto) return;
+  if(!(S.limitLeft>0 && S.balance>=TICKET)){ stopAuto(); return; }
+  S.autoTimer=setTimeout(()=>{ if(S.auto) goOnce(); },600);
+}
+
+hubBtn.addEventListener("click",goOnce);
+ctaBtn.addEventListener("click",goOnce);
+tenBtn.addEventListener("click",()=>runBatch(10));
+hundredBtn.addEventListener("click",()=>runBatch(100));
+autoBtn.addEventListener("click",()=>{ S.auto?stopAuto():startAuto(); });
+$("tenClose").addEventListener("click",()=>$("tenOverlay").classList.remove("open"));
+$("tenOverlay").addEventListener("click",e=>{ if(e.target===$("tenOverlay")) $("tenOverlay").classList.remove("open"); });
+
+$("sfxBtn").addEventListener("click",()=>{
+  const on=$("sfxBtn").dataset.on!=="0";
+  $("sfxBtn").dataset.on=on?"0":"1";
+  $("sfxBtn").innerHTML=on?`<span>🔇</span><span>已静音</span>`:`<span>🔊</span><span>已开</span>`;
+});
+
+const TAB_COLS={play:"colPlay",pool:"colPool",records:"colRecords"};
+function switchTab(name){
+  document.querySelectorAll(".gs-tab").forEach(x=>x.classList.toggle("on",x.dataset.tab===name));
+  Object.entries(TAB_COLS).forEach(([k,id])=>{ $(id).style.display=k===name?"block":"none"; });
+}
+document.querySelectorAll(".gs-tab").forEach(t=>t.addEventListener("click",()=>switchTab(t.dataset.tab)));
+$("oddsLink").addEventListener("click",e=>{ e.preventDefault(); switchTab("pool"); });
+
+renderWheel(); renderStrip(); renderChips(); renderHist(); renderAlbum(); renderState();
+</script>
+</body>
+</html>

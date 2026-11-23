@@ -1179,140 +1179,305 @@
   background: linear-gradient(150deg, #bdecf0, #2fb4b4 60%, #126a6a);
 }
 
-/* ══════ 扭蛋机（cap-*） ══════ */
-.cap-rig {
+/* ══════ 老虎机（slot-*） ══════ */
+.slot-rig {
   position: relative;
   width: 100%;
-  max-width: 300px;
+  max-width: 320px;
   display: flex;
   flex-direction: column;
   align-items: center;
 }
-.cap-machine { position: relative; width: 200px; }
-.cap-machine.shake { animation: capShake 0.5s ease-in-out; }
-@keyframes capShake {
-  0%, 100% { transform: translateX(0) rotate(0); }
-  20% { transform: translateX(-3px) rotate(-1.2deg); }
-  45% { transform: translateX(3px) rotate(1.2deg); }
-  70% { transform: translateX(-2px) rotate(-0.6deg); }
-}
-/* 玻璃穹顶：内壁反光 + 一堆扭蛋 */
-.cap-dome {
+.slot-body {
   position: relative;
-  height: 120px;
-  border-radius: 100px 100px 14px 14px;
-  border: 2px solid rgba(200, 216, 248, 0.5);
-  overflow: hidden;
-  background: radial-gradient(
-      circle at 32% 24%,
-      rgba(255, 255, 255, 0.72),
-      rgba(255, 255, 255, 0) 42%
-    ),
-    linear-gradient(180deg, rgba(120, 168, 240, 0.34), rgba(12, 18, 36, 0.6));
-  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.5),
-    inset 0 -14px 26px rgba(3, 6, 16, 0.5);
-}
-.cap-eggs { position: absolute; inset: 0; }
-.cap-egg {
-  position: absolute;
-  width: 30px;
-  height: 34px;
-  border-radius: 50% 50% 46% 46%;
-  box-shadow: inset -3px -5px 8px rgba(0, 0, 0, 0.28),
-    inset 3px 4px 6px rgba(255, 255, 255, 0.5);
-}
-.cap-egg::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 48%;
-  height: 2px;
-  background: rgba(0, 0, 0, 0.22);
-}
-.cap-base {
-  position: relative;
-  height: 74px;
-  margin-top: -6px;
-  border-radius: 16px;
-  border: 2px solid rgba(200, 216, 248, 0.4);
-  background: linear-gradient(180deg, #2b3556, #141a30);
-  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.18),
-    inset 0 -12px 22px rgba(0, 0, 0, 0.4);
-}
-/* 旋钮（拨盘）：辐条 + 中心轴，转起来时才动 */
-.cap-knob {
-  position: absolute;
-  left: 50%;
-  top: 18px;
-  width: 44px;
-  height: 44px;
-  transform: translateX(-50%);
-  border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  background: radial-gradient(
-      circle at 38% 30%,
-      #fff6d8,
-      #e9b94e 56%,
-      #8a6320 98%
-    );
-  box-shadow: 0 4px 10px rgba(3, 6, 16, 0.5);
-}
-.cap-knob::before {
-  content: "";
-  position: absolute;
-  inset: 9px 20px;
-  border-radius: 2px;
-  background: rgba(60, 42, 8, 0.62);
-  box-shadow: 0 0 0 0 transparent;
-}
-.cap-machine.spin .cap-knob { animation: capSpin 0.6s linear infinite; }
-@keyframes capSpin { to { transform: translateX(-50%) rotate(360deg); } }
-/* 出货口 */
-.cap-mouth {
-  position: absolute;
-  left: 24px;
-  bottom: 10px;
-  width: 52px;
-  height: 26px;
-  border-radius: 8px;
-  background: radial-gradient(
-    ellipse at 50% 20%,
-    #05070f,
-    #0b1120 78%
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 16px 14px;
+  /* 机台面板家族（与夜场 gs-shell 同语汇：夜色三级 + 暗金线），
+     用表面令牌派生，夜场皮肤换血令牌时机身自动跟随 */
+  border: 2px solid
+    color-mix(in srgb, var(--sun, #e8c878) 42%, transparent);
+  border-radius: 18px;
+  background: linear-gradient(
+    165deg,
+    var(--surface-raised, #223050) 0%,
+    var(--surface-sunken, #0c1220) 100%
   );
-  border: 1px solid rgba(200, 216, 248, 0.32);
-  box-shadow: inset 0 6px 12px rgba(0, 0, 0, 0.7);
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.16),
+    0 12px 32px -16px rgba(0, 0, 0, 0.6);
+  color: var(--text-strong, #f2f6ff);
 }
-/* 掉落的蛋：正对出货口（mouth 左起 24px、宽 52px → 中心 50px），
-   不能居中 —— 居中会盖住旋钮，读不出「从口里掉出来」 */
-.cap-drop {
-  position: absolute;
-  left: 30px;
-  bottom: -6px;
-  width: 40px;
-  height: 46px;
-  border-radius: 50% 50% 46% 46%;
-  z-index: 3;
-  box-shadow: inset -4px -6px 10px rgba(0, 0, 0, 0.3),
-    inset 4px 5px 8px rgba(255, 255, 255, 0.55),
-    0 8px 16px rgba(3, 6, 16, 0.5);
+.slot-body.spinning { animation: slotShake 0.4s ease-in-out infinite; }
+.slot-body.jackpot {
+  border-color: var(--sun);
+  box-shadow: 0 0 22px rgba(232, 195, 58, 0.55),
+    inset 0 2px 0 rgba(255, 255, 255, 0.16);
 }
-.cap-drop.fall { animation: capFall 0.7s cubic-bezier(0.3, 1.4, 0.5, 1); }
-@keyframes capFall {
-  0% { transform: translateY(-72px) scale(0.9); opacity: 0; }
-  60% { transform: translateY(4px) scale(1); opacity: 1; }
-  100% { transform: translateY(0) scale(1); }
+@keyframes slotShake {
+  0%, 100% { transform: translateX(0) rotate(0); }
+  25% { transform: translateX(-2px) rotate(-0.6deg); }
+  75% { transform: translateX(2px) rotate(0.6deg); }
 }
-.cap-drop.open { animation: capOpen 0.5s ease forwards; }
-@keyframes capOpen {
-  to { transform: scale(1.5); opacity: 0; }
+.slot-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.slot-lamp {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.28);
+}
+.slot-body.spinning .slot-lamp { animation: slotLamp 0.4s alternate infinite; }
+@keyframes slotLamp {
+  from { background: rgba(255, 255, 255, 0.28); }
+  to { background: var(--sun); }
+}
+.slot-title {
+  font-family: var(--font-display, serif);
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: var(--sun);
+  text-shadow: 0 0 10px rgba(232, 195, 58, 0.5);
+}
+.slot-reels {
+  display: flex;
+  gap: 10px;
+}
+.slot-reel {
+  width: 72px;
+  height: 84px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  border: 1px solid
+    color-mix(in srgb, var(--border-deep, #5a6c9c) 55%, transparent);
+  background: radial-gradient(
+    circle at 50% 30%,
+    var(--surface-card, #1a2438),
+    var(--surface-sunken, #0c1220) 80%
+  );
+  box-shadow: inset 0 6px 12px rgba(0, 0, 0, 0.55);
+  font-size: 30px;
+}
+.slot-reel.stopped {
+  border-color: color-mix(
+    in srgb,
+    var(--sun, #e8c878) 60%,
+    transparent
+  );
+}
+.slot-reel.hot {
+  border-color: var(--coral);
+  box-shadow: inset 0 6px 12px rgba(0, 0, 0, 0.55),
+    0 0 14px rgba(192, 39, 45, 0.55);
+}
+.slot-glyph {
+  font-family: var(--font-display, serif);
+  font-size: 30px;
+  font-weight: 900;
+  letter-spacing: 1px;
+}
+.slot-icon { font-size: 30px; }
+.slot-panel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid
+    color-mix(in srgb, var(--border-deep, #5a6c9c) 50%, transparent);
+  background: color-mix(
+    in srgb,
+    var(--surface-sunken, #0c1220) 78%,
+    transparent
+  );
+}
+.slot-needle {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--coral);
+}
+.slot-dial {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+/* ══════ 水果机（fruit-*） ══════ */
+.fruit-rig {
+  position: relative;
+  width: 100%;
+  max-width: 340px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.fruit-body {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 14px 12px;
+  /* 机台面板家族（与 slot-body/夜场 gs-shell 同语汇） */
+  border: 2px solid
+    color-mix(in srgb, var(--sun, #e8c878) 38%, transparent);
+  border-radius: 16px;
+  background: linear-gradient(
+    165deg,
+    var(--surface-raised, #223050) 0%,
+    var(--surface-sunken, #0c1220) 100%
+  );
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.14),
+    0 12px 32px -16px rgba(0, 0, 0, 0.6);
+  color: var(--text-strong, #f2f6ff);
+}
+.fruit-lights {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.fruit-light {
+  min-width: 26px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-muted, #8fa0c5);
+  background: color-mix(
+    in srgb,
+    var(--text-strong, #f2f6ff) 7%,
+    transparent
+  );
+  border: 1px solid
+    color-mix(in srgb, var(--border-soft, #3a4a72) 70%, transparent);
+}
+.fruit-light.on {
+  color: #1a1408;
+  background: var(--sun);
+  border-color: var(--sun);
+}
+.fruit-light.hit {
+  color: #fff;
+  background: var(--coral);
+  border-color: var(--coral);
+}
+.fruit-stage {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+}
+.fruit-side {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+}
+.fruit-chip {
+  padding: 4px 6px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+  color: var(--text-muted, #8fa0c5);
+  background: color-mix(
+    in srgb,
+    var(--text-strong, #f2f6ff) 7%,
+    transparent
+  );
+}
+.fruit-chip.luck { color: var(--sun); }
+.fruit-center {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.fruit-heading {
+  font-family: var(--font-display, serif);
+  font-weight: 800;
+  letter-spacing: 3px;
+  color: var(--sun);
+}
+.fruit-window {
+  width: 92px;
+  height: 76px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border-radius: 14px;
+  border: 1px solid
+    color-mix(in srgb, var(--border-deep, #5a6c9c) 55%, transparent);
+  background: radial-gradient(
+    circle at 50% 28%,
+    var(--surface-card, #1a2438),
+    var(--surface-sunken, #0c1220) 82%
+  );
+  box-shadow: inset 0 6px 14px rgba(0, 0, 0, 0.55);
+}
+.fruit-icon { font-size: 30px; }
+.fruit-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-strong, #f2f6ff);
+}
+.fruit-placeholder { font-size: 24px; opacity: 0.5; }
+.fruit-led {
+  padding: 3px 14px;
+  border-radius: 8px;
+  background: var(--surface-sunken, #0c1220);
+  border: 1px solid
+    color-mix(in srgb, var(--sun, #e8c878) 30%, transparent);
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: var(--sun, #e8c878);
+}
+.fruit-pays {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 6px;
+}
+.fruit-pay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 5px 2px;
+  border-radius: 8px;
+  background: color-mix(
+    in srgb,
+    var(--text-strong, #f2f6ff) 6%,
+    transparent
+  );
+  border: 1px solid
+    color-mix(in srgb, var(--border-soft, #3a4a72) 55%, transparent);
+}
+.fruit-pay-ic { font-size: 15px; }
+.fruit-pay-mult {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted, #8fa0c5);
+}
+@media (max-width <= 400px) {
+  .fruit-side { display: none; }
+  .fruit-pays { grid-template-columns: repeat(4, 1fr); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .cap-machine.shake,
-  .cap-machine.spin .cap-knob,
-  .cap-drop.fall,
-  .cap-drop.open { animation: none; }
+  .slot-body.spinning,
+  .slot-body.spinning .slot-lamp { animation: none; }
 }
 
 /* ══════ 大转盘（lw-*） ══════ */

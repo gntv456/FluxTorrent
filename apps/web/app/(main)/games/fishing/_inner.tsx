@@ -1,7 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { PANEL_LG_COL, PANEL_WARN_ORANGE } from "@/lib/ui-classes";
+import Link from "next/link";
+import {
+  CHIP_POND_BADGE,
+  PANEL_LG_COL,
+  PANEL_WARN_ORANGE,
+} from "@/lib/ui-classes";
 import { api, ApiError, isRetryableNetError } from "@/lib/api-client";
 import { apiErrorMessage, useI18n } from "@/i18n/client";
 import { fmtCur } from "@/i18n/config";
@@ -252,7 +257,25 @@ export default function FishingPage({
     );
   }
   return (
-    <GameShell
+    <>
+      <div className={`mb-3 flex flex-wrap items-center justify-between gap-3
+        rounded-xl border border-[#d8e4f2] bg-white/80 px-3 py-2.5`}>
+        <div className="min-w-0">
+          <p className="text-xs font-semibold">
+            {tf.pondTitle} · {tf.pondCrumb}
+            <span className={`ml-2 ${CHIP_POND_BADGE}`}>NEW</span>
+          </p>
+          <p className="mt-0.5 text-[11px] text-sub">{tf.pondSub}</p>
+        </div>
+        <Link
+          href="/games/fishing/pond"
+          className={`rounded-full bg-[#4a7ab0] px-3.5 py-1.5
+            text-xs font-semibold text-white`}
+        >
+          进入完整渔场 →
+        </Link>
+      </div>
+      <GameShell
       icon={<ArcadeGlyph k="fishing" />}
       title={tf.title}
       subtitle={`${tf.winRate.replace("{pct}", winRate)} · ${tf.sub}`}
@@ -379,5 +402,6 @@ export default function FishingPage({
       }
       side={<FishingSide prizes={prizes} ticket={ticket} hist={hist} />}
     />
+    </>
   );
 }

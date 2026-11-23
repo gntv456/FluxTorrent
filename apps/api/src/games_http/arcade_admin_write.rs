@@ -215,6 +215,11 @@ pub(super) async fn arcade_pool_save(
     gate.map_err(|e| {
         DomainError::Validation(format!("奖池不合法，已拒绝保存：{e}"))
     })?;
+    // 打地鼠一局要冒 12 次，只看「单次 EV < 1」会放过「满盘 12 倍」的池子
+    if b.game == "mole" {
+        games::validate_mole(&entries, ticket)
+            .map_err(|m| DomainError::Validation(m.into()))?;
+    }
     let mut tx = state.repo.db.begin().await.map_err(dberr)?;
     sqlx::query(
         r#"

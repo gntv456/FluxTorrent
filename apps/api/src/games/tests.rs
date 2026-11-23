@@ -92,6 +92,29 @@ fn bigsmall_expected_value_below_one() {
     );
 }
 
+/// 每局抽水（2026-11-21）：只抽赢局派彩，等效倍率 = 面板 × 0.9（1900→1710），
+/// 面板口径（前端显示/EV 闸）不动。锁三件事：等效倍率取整、派彩数字、
+/// 抽水后 RTP 仍 < 1 且落在预期区间。
+#[test]
+fn bigsmall_rake_applies_to_winning_payouts_only() {
+    // 等效倍率：1900 × 0.9 = 1710（向下取整）；1000 抽水后仍是 900
+    assert_eq!(raked_mult_permille(1900), 1710);
+    assert_eq!(raked_mult_permille(1000), 900);
+    // 派彩：100 注 × 1.71 = 171（原 190，抽掉 19）；小额向下取整 101→172.71→172
+    assert_eq!(raked_payout(100, 1900), 171);
+    assert_eq!(raked_payout(101, 1900), 172);
+    assert_eq!(raked_payout(1000, 1900), 1710);
+    // 输局口径不变：0 倍率仍派 0，抽水不产生负数
+    assert_eq!(raked_payout(100, 0), 0);
+    // 抽水后 EV：105/216 × 1.71 ≈ 0.8312，仍 < 1 且 ≈ 0.9 × 原 EV
+    let ev = bigsmall_raked_expected_value(BIGSMALL_WIN_MULT_PERMILLE);
+    assert!(ev < 1.0, "抽水后 EV 必须 < 1，实得 {ev}");
+    assert!(
+        (ev - 105.0 / 216.0 * 1.71).abs() < 1e-9,
+        "抽水后 EV 漂移: {ev}"
+    );
+}
+
 /// 刮刮乐播种表（0248 从设置键现值搬进 arcade_pools）的 EV 必须仍是 0.66，
 /// 且权重铺满 100 —— 这条断言锁的是「搬家前后行为一字不差」。
 #[test]
