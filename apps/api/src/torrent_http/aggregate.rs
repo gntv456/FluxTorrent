@@ -20,6 +20,12 @@ use crate::http::require_auth;
 use crate::state::AppState;
 use crate::torrents;
 
+mod aggregate_preserve;
+mod aggregate_viewer;
+
+use aggregate_preserve::PreserveClaimState;
+use aggregate_viewer::load_viewer_segment;
+
 /// 详情共享段 + 仅本用户可见的互动位（平铺成 detail JSON 的同一层，
 /// 不改共享缓存结构）
 #[derive(Serialize)]
@@ -29,23 +35,9 @@ struct DetailViewer {
     bookmarked: bool,
     /// 已感谢（thanks 一人一种一行，重复提交回 5002；按钮初始态）
     thanked: bool,
-    /// 保种区认领位（详情页入口提级 2026-11-23）：in_zone=在区且过审
-    /// （与保种区列表同一把尺，P-317 口径）；claimed_by_me=本人已认领；
-    /// claimed=任一人已认领（按钮转「已认领」态）。viewer 态进个人段，
-    /// 不进 30s 共享缓存。
+    /// 保种认领位：viewer 态，进个人段不进共享缓存（见 aggregate_preserve）
     #[serde(skip_serializing_if = "Option::is_none")]
     preserve: Option<PreserveClaimState>,
-}
-
-/// 保种认领三态（seed_preserve 行缺失 = 不在区 = None）
-#[derive(Serialize, sqlx::FromRow)]
-struct PreserveClaimState {
-    in_zone: bool,
-    claimed_by_me: bool,
-    claimed: bool,
-    /// 每保满一天可得（preserve_bonus_per_day，认领按钮利益角签用；
-    /// 与保种区列表 preserve.rs:204 同一配置同一缺省）
-    bonus_per_day: i64,
 }
 
 #[derive(Serialize)]
@@ -251,96 +243,30 @@ struct TorrentAggregateShared {
 }
 
 /// 个人段：thanks（是否已感谢带 viewer 态）+ comments（点赞 viewer 态，0155）
-/// 每用户实时，叠回共享段组成最终响应。
+/// 每用户实时，叠回共享段组成最终响应。取数见 aggregate_viewer.rs。
 async fn assemble(
     shared: TorrentAggregateShared,
     uid: i64,
     state: &web::Data<std::sync::Arc<AppState>>,
     id: i64,
 ) -> DomainResult<TorrentAggregate> {
-    let (thanks, comments) = tokio::join!(
-        torrents::list_thanks(&state.repo.db, id),
-        torrents::list_comments_as(&state.repo.db, id, 20, uid),
-    );
-    // detail 里的 is_owner / purchased 是 viewer 态，而共享缓存存的是「第一个访问者」
-    // 的答案——必须按当前用户重算（0285 修过一次，被并行批次覆盖回 `let _ = uid;`，
-    // 症状：B 打开付费种看到「已购买/我发布」，付费墙被隐藏）。重算失败宁可
-    // 回落保守值（非本人/未购买），也不能端出缓存里别人的答案——那正是
-    // 0285 的症状会在 DB 抖动时复现的路径。
+    let v = load_viewer_segment(&state.repo.db, id, uid).await?;
+    // detail 里的 is_owner / purchased 是 viewer 态，共享缓存存的是「第一个
+    // 访问者」的答案——必须用当前用户的重算值覆写后再端出去（0285）。
     let mut detail = shared.detail;
-    detail.is_owner = false;
-    detail.purchased = false;
-    let mut bookmarked = false;
-    let mut thanked = false;
-    let mut preserve = None;
-    let own: Option<(bool, bool, bool, bool)> = sqlx::query_as(
-        "SELECT (t.owner_id = $2) AS is_owner, \
-                EXISTS(SELECT 1 FROM torrent_purchases p \
-                        WHERE p.torrent_id = t.id \
-                          AND p.user_id = $2) AS purchased, \
-                EXISTS(SELECT 1 FROM bookmarks b \
-                        WHERE b.torrent_id = t.id \
-                          AND b.user_id = $2) AS bookmarked, \
-                EXISTS(SELECT 1 FROM thanks th \
-                        WHERE th.torrent_id = t.id \
-                          AND th.user_id = $2) AS thanked \
-         FROM torrents t WHERE t.id = $1",
-    )
-    .bind(id)
-    .bind(uid)
-    .fetch_optional(&state.repo.db)
-    .await
-    .ok()
-    .flatten();
-    if let Some((is_owner, purchased, is_bookmarked, is_thanked)) = own {
-        detail.is_owner = is_owner;
-        detail.purchased = purchased;
-        bookmarked = is_bookmarked;
-        thanked = is_thanked;
-    }
-    // 保种认领位（详情页入口提级）：与保种区列表/认领口同一把尺
-    // （approval_status=1 + exited_at IS NULL，P-317 口径）。查询失败
-    // 降级为 None——详情页只是少一个按钮，不该整页报错。
-    // 三态表达式必须 COALESCE 成非 NULL：未认领时 claimed_by IS NULL，
-    // `claimed_by = $2` 是 NULL 不是 false，sqlx FromRow 拿 NULL 填 bool
-    // 直接报错 → 整行被 .ok() 吞成 None，按钮永远不渲染（实测踩坑）。
-    let preserve_row: Option<PreserveClaimState> = sqlx::query_as(
-        "SELECT COALESCE(t.approval_status = 1 AND sp.exited_at IS NULL, false) \
-                    AS in_zone, \
-                COALESCE(sp.claimed_by = $2, false) AS claimed_by_me, \
-                COALESCE(sp.claimed_by IS NOT NULL, false) AS claimed, \
-                COALESCE((SELECT value::bigint FROM site_settings \
-                          WHERE name = 'preserve_bonus_per_day'), 100) \
-                    AS bonus_per_day \
-         FROM torrents t \
-         LEFT JOIN seed_preserve sp ON sp.torrent_id = t.id \
-         WHERE t.id = $1 AND sp.torrent_id IS NOT NULL",
-    )
-    .bind(id)
-    .bind(uid)
-    .fetch_optional(&state.repo.db)
-    .await
-    .ok()
-    .flatten();
-    if let Some(row) = preserve_row {
-        if row.in_zone {
-            preserve = Some(row);
-        }
-    }
+    detail.is_owner = v.is_owner;
+    detail.purchased = v.purchased;
     Ok(TorrentAggregate {
         torrent: shared.torrent,
         detail: DetailViewer {
             detail,
-            bookmarked,
-            thanked,
-            preserve,
+            bookmarked: v.bookmarked,
+            thanked: v.thanked,
+            preserve: v.preserve,
         },
         files: shared.files,
-        thanks: thanks.unwrap_or_default(),
-        comments: match comments {
-            Ok(c) => c,
-            Err(e) => return Err(e),
-        },
+        thanks: v.thanks,
+        comments: v.comments,
         nfo: shared.nfo,
         mi_check: shared.mi_check,
         tags: shared.tags,

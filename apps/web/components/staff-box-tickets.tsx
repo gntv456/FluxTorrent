@@ -103,7 +103,10 @@ export function TicketPanel({
                   <details>
                     <summary className="cursor-pointer">{m.subject}</summary>
                     {m.answer && (
-                      <p className="mt-2 whitespace-pre-wrap rounded-[var(--r-sm)] border border-dashed border-[var(--compat-line)] bg-[var(--compat-cream)] p-2 text-xs text-sub">
+                      <p className="mt-2 whitespace-pre-wrap
+                        rounded-[var(--r-sm)] border border-dashed
+                        border-[var(--compat-line)]
+                        bg-[var(--compat-cream)] p-2 text-xs text-sub">
                         ↩ {m.answer}
                       </p>
                     )}

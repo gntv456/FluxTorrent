@@ -1,10 +1,8 @@
 import { notFound } from "next/navigation";
-import type { Metadata } from "next";
 import { api, ApiError } from "@/lib/api-client";
 import { ErrorPanel } from "@/components/ui/error-panel";
 import { normalizeError } from "@/lib/render-error";
-import { formatBytes, promotionBadge } from "@/lib/format";
-import { siteBase } from "@/lib/site-url";
+import { promotionBadge } from "@/lib/format";
 import {
   byId,
   catColor,
@@ -13,144 +11,37 @@ import {
   getSiteProfile,
   legacyDimName,
 } from "@/lib/site-profile";
-import { TorrentTags, type TagPayload } from "@/components/torrent-tags";
+import { TorrentTags } from "@/components/torrent-tags";
 import { TorrentManageLazy } from "@/components/torrent-detail-lazy";
 import { PromoBuyButton } from "@/components/promo-buy-button";
-import { ClaimButton } from "@/components/claim-button";
 import { Descr } from "@/components/torrent-detail-parts";
 import { TorrentHead } from "@/components/torrent-detail-head";
-import type { RipLog } from "@/components/torrent-rip-logs";
 import { TorrentPreviews } from "@/components/torrent-previews";
 import { TorrentAnchorBar } from "@/components/torrent-anchor";
 import { TorrentActionBarMount } from "@/components/torrent-actionbar-mount";
 import { TorrentCrossseed } from "@/components/torrent-crossseed";
 import { FoldMobile } from "@/components/fold-mobile";
 import { TorrentRelated } from "@/components/torrent-related";
-import type {
-  GroupInfo,
-  ThankItem,
-  TorrentDetailExt,
-} from "@/components/torrent-detail-blocks";
+import type { GroupInfo } from "@/components/torrent-detail-blocks";
 import { anchorDict } from "@/components/torrent-detail-dict";
 import { TorrentSectionTabs } from "@/components/torrent-section-tabs";
 import { relTime as rel } from "@/lib/rel-time";
 import { TorrentDetailSide } from "./_parts/torrent-detail-side";
+import { TorrentDetailClaim } from "./_parts/torrent-detail-claim";
 import { TorrentSpecs } from "./_parts/torrent-detail-specs";
 import { sectionTabs } from "./_parts/torrent-section-tabs-data";
 import { getDict } from "@/i18n/server";
 import type { SectionKindMeta } from "@/components/admin-sections-shared";
-import type {
-  TorrentComment,
-  TorrentListItem,
-} from "@fluxtorrent/domain-types";
 import { isStaffClass } from "@/lib/domain/user-class";
 import { TorrentDutyNotice } from "@/components/torrent-duty-notice";
 import { RecentViewTracker } from "@/components/recent-view-tracker";
+import type { Aggregate } from "./_parts/torrent-detail-metadata";
 import "@/app/styles/ux-product.css";
 
 export const dynamic = "force-dynamic";
 
-interface FileItem {
-  file_index: number;
-  path: string;
-  size: number;
-}
-
-/** GET /torrents/{id}/aggregate 响应（批次三 BFF；契约收录进 domain-types 待后续批次） */
-interface Aggregate {
-  torrent: TorrentListItem;
-  detail: TorrentDetailExt & {
-    /** 保种认领位（详情页入口提级 2026-11-23）：仅 viewer 态下发，
-     *  不在区（seed_preserve 无行或已移出/未过审）时缺省。 */
-    preserve?: {
-      in_zone: boolean;
-      claimed_by_me: boolean;
-      claimed: boolean;
-      bonus_per_day: number;
-    };
-  };
-  files: FileItem[];
-  /** 抓轨日志清单（0312；正文按碟懒加载 /torrents/{id}/logs/{ordinal}） */
-  logs: RipLog[];
-  thanks: ThankItem[];
-  comments: TorrentComment[];
-  nfo: string | null;
-  tags: TagPayload;
-}
-
-/** 详情页 SEO/OG（站型分型尾巴）：标题带分类，描述带维度摘要（季/话数/
- *  作者/联赛…按站型自动生效）；og 卡只在站长开启 indexable 时发——
- *  私有站默认对爬虫关门（robots 口径与 layout 全局一致），
- *  分享卡（Telegram/Discord 预览）在关闭时同样收敛，不泄漏种子标题。 */
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}): Promise<Metadata> {
-  const tid = Number((await params).id);
-  if (!Number.isFinite(tid)) return {};
-  const enc = encodeURIComponent(tid);
-  const [agg, profile] = await Promise.all([
-    api
-      .get<Aggregate>(`/api/v1/torrents/${enc}/aggregate`)
-      .catch(() => null),
-    getSiteProfile().catch(() => null),
-  ]);
-  if (!agg) return {};
-  const t = agg.torrent;
-  const base = siteBase();
-  const brand = profile?.brand || "";
-  const indexable = profile?.seo?.indexable === true;
-  // 维度摘要：label → 首值（sections 值对象里取 name），拼进 description
-  const secs = (agg.detail.sections ?? {}) as Record<
-    string,
-    { label?: string; name?: string; values?: string[] }
-  >;
-  const dims = Object.values(secs)
-    .map((s) => {
-      const v = s.name?.trim() || s.values?.[0]?.trim() || "";
-      const label = s.label?.trim() || "";
-      return label && v ? `${label}: ${v}` : "";
-    })
-    .filter(Boolean)
-    .slice(0, 4)
-    .join(" · ");
-  const title = `${t.name} | ${brand}`.slice(0, 95);
-  const desc =
-    [t.small_descr?.trim(), dims, `${formatBytes(t.size)} · #${t.category_id}`]
-      .filter(Boolean)
-      .join(" — ")
-      .slice(0, 200);
-  return {
-    title,
-    description: desc || undefined,
-    robots: indexable
-      ? { index: true, follow: true }
-      : { index: false, follow: false },
-    // Next 的 metadata 继承是「子页只增不删」：layout 的全局 og 卡会穿透
-    // 到子页。私有站（indexable=false）须显式置空 og/twitter 各键，
-    // 否则分享卡照样把种子标题泄漏出去。
-    ...(indexable
-      ? {
-          openGraph: {
-            type: "article",
-            siteName: brand || undefined,
-            title,
-            description: desc || undefined,
-            ...(base ? { url: `${base.href}torrent/${enc}` } : {}),
-            images: ["/brand/og.png"],
-          },
-        }
-      : {
-          openGraph: {
-            title: brand || undefined,
-            description: undefined,
-            images: [],
-          },
-          twitter: { card: "summary", title: brand || undefined, images: [] },
-        }),
-  };
-}
+// Next 要求 generateMetadata 从 page 导出；实现与 Aggregate 契约见 _parts。
+export { generateMetadata } from "./_parts/torrent-detail-metadata";
 
 export default async function TorrentDetailPage({
   params,
@@ -288,17 +179,12 @@ export default async function TorrentDetailPage({
               torrentId={t.id}
               approved={t.approval_status === 1}
             />
-            {/* 保种认领入口提级（2026-11-23）：保种模块开 + 种子在区才渲染，
-                与保种区列表同一把尺（后端 P-317 闸兜底，重复认领有明确报错） */}
-            {profile?.modules?.preserve && ext?.preserve?.in_zone && (
-              <ClaimButton
-                torrentId={t.id}
-                claimed={ext.preserve.claimed}
-                label={dict.preserve.claimAction}
-                claimedLabel={dict.preserve.claimedTag}
-                bonus={ext.preserve.bonus_per_day}
-              />
-            )}
+            <TorrentDetailClaim
+              state={ext?.preserve}
+              preserveOn={profile?.modules?.preserve}
+              torrentId={t.id}
+              dict={dict}
+            />
             {(isStaff || !!ext?.is_owner) && (<TorrentManageLazy
               torrentId={t.id} name={t.name} smallDescr={t.small_descr}
               descr={ext?.descr ?? null} anonymous={t.anonymous}
