@@ -11,16 +11,21 @@
 
 use sqlx::PgPool;
 
-/// 读注册表拼「metrics CTE 体」：每行 `({expr}) AS {metric}`，
-/// expr 里 {u} 占位替换为 users 别名 u。注册表为空时回退空串
-/// （调用方 SQL 里保留 seeding_bytes 最小集，成就引擎静默空转）。
-async fn metrics_cte(db: &PgPool) -> anyhow::Result<String> {
+/// 读注册表：返回 `(metrics CTE 体, 指标名序列)`。每行拼
+/// `({expr}) AS {metric}`，expr 里 {u} 占位替换为 users 别名 u。
+/// 名字直接从注册表行带出（旧版从拼好的 CTE 字符串 split(" AS ")
+/// 反解析——指标表达式自带 AS/别名时中段被切飞，UNION 里拼出
+/// `'name,\n (expr)::bigint)'` 这种字符串字面量与括号残肢，运行期
+/// syntax error，成就引擎因此从未跑通过一轮）。注册表为空时回退
+/// 空串（调用方 SQL 里保留 seeding_bytes 最小集，成就引擎静默空转）。
+async fn metrics_cte(db: &PgPool) -> anyhow::Result<(String, Vec<String>)> {
     let rows: Vec<(String, String)> = sqlx::query_as(
         "SELECT metric, sql_expr FROM achievement_metrics ORDER BY position",
     )
     .fetch_all(db)
     .await?;
-    Ok(rows
+    let names: Vec<String> = rows.iter().map(|(m, _)| m.clone()).collect();
+    let cols = rows
         .iter()
         .map(|(m, expr)| {
             format!(
@@ -29,13 +34,14 @@ async fn metrics_cte(db: &PgPool) -> anyhow::Result<String> {
                 m
             )
         })
-        .collect())
+        .collect();
+    Ok((cols, names))
 }
 
 /// 成就授予（0079 G6，U3D 口径教育站收敛版）：注册表指标聚合 → 达标授予 + 火花奖励。
 /// 幂等：PK (user_id, def_id) 天然防重；奖励走幂等键 achievement:{def_code}:{uid}。
 pub(crate) async fn achievement_grant(db: &PgPool) -> anyhow::Result<u64> {
-    let metric_cols = metrics_cte(db).await?;
+    let (metric_cols, metric_names) = metrics_cte(db).await?;
     // 授予：注册表指标逐行比对 def.metric/threshold（JOIN 侧动态拼）
     let insert_sql = format!(
         r#"
@@ -56,7 +62,7 @@ pub(crate) async fn achievement_grant(db: &PgPool) -> anyhow::Result<u64> {
         ON CONFLICT (user_id, def_id) DO NOTHING
         "#,
         metric_cols = metric_cols,
-        unions = unions_sql(&metric_cols),
+        unions = unions_sql(&metric_names),
     );
     let _res = sqlx::query(&insert_sql).fetch_all(db).await?;
     // RETURNING 只能引用目标表列（code/reward_sparks 属于 achievement_defs）。
@@ -166,10 +172,8 @@ pub(crate) async fn achievement_grant(db: &PgPool) -> anyhow::Result<u64> {
 }
 
 /// m CTE 的 UNION ALL 体：注册表每指标一行 (user_id, metric, val)。
-fn unions_sql(metric_cols: &str) -> String {
-    let metrics: Vec<&str> =
-        metric_cols.split(" AS ").skip(1).filter_map(seg).collect();
-    metrics
+fn unions_sql(metric_names: &[String]) -> String {
+    metric_names
         .iter()
         .enumerate()
         .map(|(i, m)| {
@@ -182,14 +186,4 @@ fn unions_sql(metric_cols: &str) -> String {
         })
         .collect::<Vec<_>>()
         .join("\n            ")
-}
-
-/// 从片段 `..., (expr) AS name` 序列提取末段指标名。
-fn seg(seg: &str) -> Option<&str> {
-    let t = seg.trim();
-    if t.is_empty() {
-        None
-    } else {
-        Some(t)
-    }
 }

@@ -14,8 +14,11 @@ pub(crate) async fn onboarding_followup(db: &PgPool) -> anyhow::Result<u64> {
     let mut acted = 0u64;
     // A) day-N 未首下提醒（0505 参数化：site_settings.onboarding_day3_days，
     //    缺省 3=既有硬编码值；0=关闭该提醒）
-    let d3: i64 = sqlx::query_scalar(
-        "SELECT COALESCE((SELECT value::bigint FROM site_settings \
+    // ⚠️ 必须是 i32：`make_interval(days => $n)` 只接受 int，绑 i64 会在
+    // 运行期报 `function make_interval(days => bigint) does not exist`
+    // （repo/community/forum_side.rs 同款注释；cargo check 查不出）。
+    let d3: i32 = sqlx::query_scalar(
+        "SELECT COALESCE((SELECT value::int FROM site_settings \
           WHERE name = 'onboarding_day3_days'), 3)",
     )
     .fetch_one(db)
