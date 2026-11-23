@@ -220,3 +220,33 @@ pub(crate) async fn lifecycle_touch(db: &PgPool) -> anyhow::Result<u64> {
     acted += anniv.rows_affected() as u64;
     Ok(acted)
 }
+
+#[cfg(test)]
+mod live_db_tests {
+    //! DB 级实测（`#[ignore]` 门控：CI 无数据库；本地对准隧道后的真库跑）。
+    //! 用途：2026-11-23 d3 绑 i64 触发 make_interval(days => bigint) 不存在，
+    //! 改 i32 后在真函数上验证（含 site_settings 读取路径）。
+
+    use super::*;
+
+    async fn pool() -> sqlx::PgPool {
+        let url = std::env::var("DATABASE_URL").unwrap_or_else(|_| {
+            "postgres://flux:flux@127.0.0.1:5432/fluxtorrent".into()
+        });
+        sqlx::postgres::PgPoolOptions::new()
+            .max_connections(2)
+            .connect(&url)
+            .await
+            .expect("connect")
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn onboarding_followup_on_live_db() {
+        let db = pool().await;
+        let n = onboarding_followup(&db).await.expect("must succeed");
+        eprintln!("onboarding_followup ok, acted = {n}");
+        let m = lifecycle_touch(&db).await.expect("must succeed");
+        eprintln!("lifecycle_touch ok, acted = {m}");
+    }
+}

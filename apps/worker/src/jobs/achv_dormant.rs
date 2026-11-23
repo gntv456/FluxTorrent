@@ -42,9 +42,14 @@ async fn metrics_cte(db: &PgPool) -> anyhow::Result<(String, Vec<String>)> {
 /// 幂等：PK (user_id, def_id) 天然防重；奖励走幂等键 achievement:{def_code}:{uid}。
 pub(crate) async fn achievement_grant(db: &PgPool) -> anyhow::Result<u64> {
     let (metric_cols, metric_names) = metrics_cte(db).await?;
-    // 授予：注册表指标逐行比对 def.metric/threshold（JOIN 侧动态拼）
-    let insert_sql = format!(
-        r#"
+    let unions = unions_sql(&metric_names);
+    // 「达标行」生成器：metrics 宽表 → m 纵表 (user_id, metric, val) → 与 defs 比对。
+    // 三条查询共用同一结构——旧版第二条/第三条把宽表内联后直接引用 m.metric/m.val
+    // （宽表没有这两列），写成那天起就是坏的；旧版第一条 INSERT 因 split 损坏
+    // 先炸，永远轮不到它们，本次修复第一条后才暴露（live_db_tests 实测复现）。
+    let due_sql = |select: &str, tail: &str| {
+        format!(
+            r#"
         WITH metrics AS (
             SELECT u.id AS user_id{metric_cols}
             FROM users u WHERE u.status < 2
@@ -57,30 +62,24 @@ pub(crate) async fn achievement_grant(db: &PgPool) -> anyhow::Result<u64> {
             FROM m JOIN achievement_defs d
               ON d.metric = m.metric AND m.val >= d.threshold
         )
-        INSERT INTO user_achievements (user_id, def_id, metric_value)
-        SELECT user_id, def_id, val FROM due
-        ON CONFLICT (user_id, def_id) DO NOTHING
-        "#,
-        metric_cols = metric_cols,
-        unions = unions_sql(&metric_names),
+        {select}
+        FROM due d{tail}
+        "#
+        )
+    };
+    // 授予：注册表指标逐行比对 def.metric/threshold
+    let insert_sql = due_sql(
+        "INSERT INTO user_achievements (user_id, def_id, metric_value)
+        SELECT user_id, def_id, val",
+        "
+        ON CONFLICT (user_id, def_id) DO NOTHING",
     );
     let _res = sqlx::query(&insert_sql).fetch_all(db).await?;
     // RETURNING 只能引用目标表列（code/reward_sparks 属于 achievement_defs）。
-    // 0079 上线以来因 RETURNING 语法错误，成就系统从未授予过 —— 改为插入后反查达标行。
-    let res: Vec<(i64, i64, String, i64, i64)> = sqlx::query_as(&format!(
-        r#"
-        SELECT ua.user_id, ua.def_id, d.code, d.reward_sparks, ua.metric_value
-        FROM user_achievements ua
-        JOIN achievement_defs d ON d.id = ua.def_id
-        WHERE (ua.user_id, ua.def_id) IN (
-            SELECT m.user_id, d2.id FROM (
-                SELECT u.id AS user_id{metric_cols}
-                FROM users u WHERE u.status < 2
-            ) m JOIN achievement_defs d2
-              ON d2.metric = m.metric AND m.val >= d2.threshold
-        )
-        "#,
-        metric_cols = metric_cols
+    // 改为插入后反查达标行。
+    let res: Vec<(i64, i64, String, i64, i64)> = sqlx::query_as(&due_sql(
+        "SELECT d.user_id, d.def_id, d.code, d.reward_sparks, d.val",
+        "",
     ))
     .fetch_all(db)
     .await?;
@@ -97,7 +96,8 @@ pub(crate) async fn achievement_grant(db: &PgPool) -> anyhow::Result<u64> {
                 r#"
                 INSERT INTO spark_ledger
                     (id, user_id, amount, kind, idempotency_key, balance_after)
-                SELECT nextval('spark_ledger_id_seq'), $1, $2, 'achievement', $3,
+                SELECT nextval('spark_ledger_id_seq'), $1, $2,
+                       'achievement', $3,
                   u.spark_balance + $2 FROM users u WHERE u.id = $1
                 AND NOT EXISTS (SELECT 1 FROM spark_ledger
                   WHERE idempotency_key = $3)
@@ -129,18 +129,26 @@ pub(crate) async fn achievement_grant(db: &PgPool) -> anyhow::Result<u64> {
     }
     // 新授予（本轮才落 user_achievements 的行）补发站内信；历史达标行只走上面的
     // 幂等发奖路径，不重复发信（修复每小时向全部历史达标成就重发通知的轰炸）。
+    // 语义：due（本轮达标）∩ user_achievements（已落库）∩ 未发过「成就达成」PM。
+    // 独立 format!：主体是 ua 驱动，due 只作 IN 子查询；CTE 结构与 due_sql 同源。
     let newly: Vec<(i64, String, i64)> = sqlx::query_as(&format!(
         r#"
+        WITH metrics AS (
+            SELECT u.id AS user_id{metric_cols}
+            FROM users u WHERE u.status < 2
+        ),
+        m AS (
+            {unions}
+        ),
+        due AS (
+            SELECT m.user_id, d.id AS def_id
+            FROM m JOIN achievement_defs d
+              ON d.metric = m.metric AND m.val >= d.threshold
+        )
         SELECT ua.user_id, d.code, d.reward_sparks
         FROM user_achievements ua
         JOIN achievement_defs d ON d.id = ua.def_id
-        WHERE (ua.user_id, ua.def_id) IN (
-            SELECT m.user_id, d2.id FROM (
-                SELECT u.id AS user_id{metric_cols}
-                FROM users u WHERE u.status < 2
-            ) m JOIN achievement_defs d2
-              ON d2.metric = m.metric AND m.val >= d2.threshold
-        )
+        WHERE (ua.user_id, ua.def_id) IN (SELECT user_id, def_id FROM due)
         AND NOT EXISTS (
             SELECT 1 FROM messages msg
             WHERE msg.receiver_id = ua.user_id
@@ -148,7 +156,8 @@ pub(crate) async fn achievement_grant(db: &PgPool) -> anyhow::Result<u64> {
               AND msg.body LIKE '%「' || d.code || '」%'
         )
         "#,
-        metric_cols = metric_cols
+        metric_cols = metric_cols,
+        unions = unions
     ))
     .fetch_all(db)
     .await?;
@@ -186,4 +195,45 @@ fn unions_sql(metric_names: &[String]) -> String {
         })
         .collect::<Vec<_>>()
         .join("\n            ")
+}
+
+#[cfg(test)]
+mod live_db_tests {
+    //! DB 级实测（`#[ignore]` 门控：CI 无数据库；本地对准隧道后的真库跑）。
+    //! 用途：2026-11-23 dev.44 上线后 achievement_grant 报
+    //! `column m.metric does not exist`，而同形状 SQL 手跑通过——
+    //! 需要在真函数上复现才能定位。
+
+    use super::*;
+
+    async fn pool() -> sqlx::PgPool {
+        let url = std::env::var("DATABASE_URL").unwrap_or_else(|_| {
+            "postgres://flux:flux@127.0.0.1:5432/fluxtorrent".into()
+        });
+        sqlx::postgres::PgPoolOptions::new()
+            .max_connections(2)
+            .connect(&url)
+            .await
+            .expect("connect")
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn achievement_grant_on_live_db() {
+        let db = pool().await;
+        let rows: Vec<(String, String)> = sqlx::query_as(
+            "SELECT metric, sql_expr
+             FROM achievement_metrics ORDER BY position",
+        )
+        .fetch_all(&db)
+        .await
+        .unwrap();
+        eprintln!("registry rows = {}", rows.len());
+        eprintln!(
+            "names = {:?}",
+            rows.iter().map(|(m, _)| m).collect::<Vec<_>>()
+        );
+        let n = achievement_grant(&db).await.expect("grant must succeed");
+        eprintln!("grant ok, n = {n}");
+    }
 }
