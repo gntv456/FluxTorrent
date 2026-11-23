@@ -160,7 +160,7 @@
   "apps/web/components/snatch-list.tsx::wide": 1,
   "apps/web/components/staff-box-desk.tsx::wide": 3,
   "apps/web/components/staff-box-pm.tsx::wide": 4,
-  "apps/web/components/staff-box-tickets.tsx::wide": 5,
+  "apps/web/components/staff-box-tickets.tsx::wide": 4,
   "apps/web/components/staff-box.tsx::wide": 12,
   "apps/web/components/staff-custom-pages.tsx": 323,
   "apps/web/components/staff-custom-pages.tsx::wide": 4,
