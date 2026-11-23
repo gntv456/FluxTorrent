@@ -2,6 +2,48 @@
    路由级加载：只在 /torrents import，不回灌 globals。
    色值只走语义令牌；触控底线只用 --tap-min。 */
 
+/* 折叠壳（2026-11-23 站长拍板）：四行 chip 墙默认收起，首屏只留一行 summary。 */
+.ux-facets-wrap > .ux-facets {
+  margin-top: 8px;
+}
+.ux-facets-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--tap-min);
+  padding: 0 12px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-md);
+  background: var(--surface-card);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-strong);
+  cursor: pointer;
+  list-style: none;
+}
+.ux-facets-summary::-webkit-details-marker {
+  display: none;
+}
+.ux-facets-summary::before {
+  content: "▾";
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.ux-facets-wrap[open] > .ux-facets-summary::before {
+  content: "▴";
+}
+.ux-facets-count {
+  min-width: 20px;
+  padding: 0 6px;
+  border-radius: 99px;
+  background: var(--accent-soft, var(--surface-sunken));
+  color: var(--accent, var(--text-strong));
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 20px;
+  text-align: center;
+}
+
 .ux-facets {
   display: flex;
   flex-direction: column;

@@ -152,8 +152,28 @@ export function TorrentsFacets({
     { label: ">10GB", min: "10GB" },
   ];
 
+  // 默认折叠（站长拍板 2026-11-23）：四行 chip 墙占首屏过高，收进 details
+  // 一行 summary；summary 常显「当前 N 项筛选」徽标，有筛选时折叠也不丢信息。
+  const activeFacets =
+    (sp.category_id ? 1 : 0) +
+    (sp.promo ? 1 : 0) +
+    (sp.size_min || sp.size_max ? 1 : 0) +
+    (sp.alive === "1" ? 1 : 0) +
+    (sp.official === "1" ? 1 : 0) +
+    resolutions.filter((r) => inCsv(sp[r.key], r.value)).length +
+    (subtitle && subActive ? 1 : 0);
+
   return (
-    <div className="ux-facets">
+    <details className="ux-facets-wrap">
+      <summary className="ux-facets-summary">
+        <span>{u.facetsToggle}</span>
+        {activeFacets > 0 && (
+          <span className="ux-facets-count" aria-label={u.filterSaved}>
+            {activeFacets}
+          </span>
+        )}
+      </summary>
+      <div className="ux-facets">
       <FacetRow label={u.filterCategory}>
         {categories.map((c) => {
           const id = String(c.id);
@@ -251,6 +271,7 @@ export function TorrentsFacets({
         saveLabel={u.saveFilter}
         savedLabel={u.filterSaved}
       />
-    </div>
+      </div>
+    </details>
   );
 }
