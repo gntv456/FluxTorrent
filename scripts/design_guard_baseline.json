@@ -5415,8 +5415,8 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   139,
-   141
+   131,
+   133
   ],
   "color": []
  },
@@ -5739,22 +5739,22 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   335,
-   337
+   333,
+   335
   ],
   "color": [
-   250
+   275
   ]
  },
  "app/(main)/games/fruit/_inner.tsx": {
   "h1": [],
   "h1First": null,
   "palette": [
-   359,
-   361
+   331,
+   333
   ],
   "color": [
-   273
+   272
   ]
  },
  "components/game/slot-symbols.tsx": {
