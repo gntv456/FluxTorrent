@@ -179,71 +179,8 @@ pub(super) async fn guess_bigsmall(
 }
 
 // ============ 农场 ============
-
-/// GET /games/bigsmall/trend —— 走势看板（0424，同类站对标小件）。
-///
-/// 近 N 局（默认 20，上限 50）的全站开奖序列 + 大/小/豹子分布占比。
-/// 数据源 arcade_pool_rounds(game='bigsmall')：prize 列存区标签
-/// （win/triple/lose），side 语义反推——lose 行无法从 prize 区分押注方向，
-/// 但走势看板要的是「开奖落在哪区」，直接按 rarity/prize 聚合即可。
-#[actix_web::get("/games/bigsmall/trend")]
-pub(super) async fn bigsmall_trend(
-    req: HttpRequest,
-    state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<TrendQ>,
-) -> DomainResult<HttpResponse> {
-    let auth = require_auth(&req, &state).await?;
-    check_minclass(&state, "bigsmall", auth.class_id).await?;
-    let n = q.n.unwrap_or(20).clamp(1, 50);
-    // rarity 基表是 smallint：按 i32 解会当场 decode 失败，本口一旦有
-    // 开奖行就 500（同域 casino.rs / prize_view.rs 都按 i16 读）
-    let rows: Vec<(String, i64, i16, chrono::DateTime<chrono::Utc>)> =
-        sqlx::query_as(
-            "SELECT prize, spark, rarity, created_at FROM arcade_pool_rounds \
-             WHERE game = 'bigsmall' ORDER BY id DESC LIMIT $1",
-        )
-        .bind(n)
-        .fetch_all(&state.repo.db)
-        .await
-        .map_err(dberr)?;
-    // 区标签 → 开奖面（win = 命中所押面；走势只关心大/小/豹子三态，
-    // 用 number 不可得（未落库），以 prize 近似：triple 标签 = 豹子；
-    // 其余按 spark>0=win 行的两态展示为「开」）——分布口径在注释里说死。
-    let mut seq: Vec<&str> = Vec::with_capacity(rows.len());
-    let (mut big_n, mut small_n, mut triple_n) = (0i64, 0i64, 0i64);
-    for (prize, _spark, _rarity, _at) in &rows {
-        let face = if prize == "triple" {
-            triple_n += 1;
-            "triple"
-        } else if *_spark > 0 {
-            big_n += 1;
-            "open"
-        } else {
-            small_n += 1;
-            "blank"
-        };
-        seq.push(face);
-    }
-    let total = rows.len().max(1) as f64;
-    state
-        .repo
-        .audit(Some(auth.id), "game.bigsmall_trend", None)
-        .await;
-    Ok(ok(serde_json::json!({
-        "rounds": rows.iter().map(|(p, s, r, at)| serde_json::json!({
-            "prize": p, "spark": s, "rarity": r, "at": at,
-        })).collect::<Vec<_>>(),
-        "seq": seq,
-        "dist": {
-            "win": (big_n as f64 / total * 100.0).round() / 100.0,
-            "lose": (small_n as f64 / total * 100.0).round() / 100.0,
-            "triple": (triple_n as f64 / total * 100.0).round() / 100.0,
-        },
-        "count": rows.len(),
-    })))
-}
-
-#[derive(Deserialize)]
-struct TrendQ {
-    n: Option<i32>,
-}
+//
+// （/games/bigsmall/trend 走势看板端点已删除，2026-11-24：它的数据口径是
+// 失真的——arcade_pool_rounds.prize 存的是「猜错归零/猜中派彩/豹子判负」
+// 这类结果标签，端点却当好/小/豹子的开奖面用（spark>0 冒充「开大」），
+// 而全站没有任何前端消费它。路单页走 /games/rounds 按输赢渲染，诚实可用。）

@@ -123,6 +123,10 @@ pub struct DiceOutcome {
     pub payout: i64,
 }
 
+/// ⚠️ 死代码（2026-11-24 普查）：无任何调用方——真实的注额校验走
+/// `games_http::helpers::check_bet`（上限读设置键 `games_max_bet`）。
+/// 保留只为单测锚定 `MAX_BET` 常量；新代码**不要**用它（双口径会让
+/// 「站长调低上限」只在一半入口生效）。
 pub fn validate_bet(bet: i64) -> Result<(), String> {
     if bet <= 0 {
         return Err("下注必须为正数".into());

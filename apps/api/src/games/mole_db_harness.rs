@@ -14,7 +14,7 @@ use sqlx::PgPool;
 /// 测试用户名前缀：收尾按它扫删；撞上真实用户名的概率约等于零。
 pub(super) const TAG: &str = "__mole_db_t";
 
-pub(super) async fn pool() -> PgPool {
+pub(crate) async fn pool() -> PgPool {
     let url = std::env::var("DATABASE_URL").unwrap_or_else(|_| {
         "postgres://flux:_YLzbU1D8ktsL0Kz4NSqycqRkgrbhW5r\
          @127.0.0.1:5432/fluxtorrent"

@@ -346,6 +346,7 @@ metric 只能是 uploads / downloads / seedtime	metric 只能是 uploads / downl
 这一局不存在或不属于你	這一局不存在或不屬於你	This round does not exist or is not yours
 这一局已结算	這一局已結算	This round is already settled
 这一局已结算，请刷新战绩	這一局已結算，請重新整理戰績	This round is already settled; refresh your record
+这一局还没结束，稍后再结算	這一局還沒結束，稍後再結算	This round is not over yet; settle it a bit later
 这一锤不在本局排程里	這一錘不在本局排程裡	This hit is not part of this round's schedule
 side 仅支持 small/big	side 僅支持 small/big	side must be small or big
 本期已截止，请等待新一期	本期已截止，請等待新一期	This round is closed; please wait for the next one

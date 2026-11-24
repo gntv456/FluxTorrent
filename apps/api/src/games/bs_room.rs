@@ -58,6 +58,16 @@ pub fn parse_side(side: &str) -> Option<Guess> {
     }
 }
 
+/// 房间派彩的幂等键：`game-bs-win:<下注幂等键>`。
+///
+/// 前缀不是随便起的 —— `/games/rounds` 战绩口就是按
+/// `'game-bs-win:' || l.idempotency_key` 把扣款流水 LEFT JOIN 到派彩流水上的。
+/// 此前写成 `game-bs-round-win:<期>:<注>`，与扣款流水没有公共键，房间局在
+/// 「记录」页永远匹配不到派彩（赢显示成输、连胜恒 0）。
+pub fn win_idem(bet_idem: &str) -> String {
+    format!("game-bs-win:{bet_idem}")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -112,5 +122,44 @@ mod tests {
         // 房间制与即时局同一赔率口径，回收口纪律不变
         let ev = super::super::bigsmall_expected_value(1900);
         assert!(ev < 1.0, "房间派彩 EV 必须 < 1，实得 {ev}");
+    }
+
+    /// 派彩键必须能被战绩口 JOIN 到：`/games/rounds` 的条件是
+    /// `'game-bs-win:' || <扣款流水 idem>`。两边任何一边改了前缀，房间局
+    /// 就会从「记录」里消失（此前就是这样）。
+    #[test]
+    fn win_idem_matches_the_rounds_history_join() {
+        let bet = "game-bs-room:42:abc";
+        let win = win_idem(bet);
+        assert_eq!(win, format!("game-bs-win:{bet}"));
+        assert!(win.starts_with("game-bs-win:"), "战绩口只认这个前缀：{win}");
+        assert!(!win.contains("round-win"), "旧前缀 JOIN 不到，不许回退");
+    }
+
+    /// `insert_bet` 的占位符个数必须等于 `.bind()` 个数。
+    ///
+    /// 这是一条**源码级守卫**：动态 SQL 的参数数量不符，编译器和类型系统都
+    /// 抓不到，只有线上执行时才炸。此前 INSERT 声明了 `$1..$5` 却只 bind 了
+    /// 4 个 —— PG 报 `Expected 5 parameters but got 4`，整笔回滚，房间下注
+    /// **自上线起一注都没成功过**（本地库 22 期 / 0 注 / 0 流水可复现）。
+    #[test]
+    fn insert_bet_binds_every_placeholder() {
+        const SRC: &str = include_str!("../games_http/bs_room_store.rs");
+        let start = SRC
+            .find("INSERT INTO arcade_bigsmall_bets")
+            .expect("insert_bet 的 INSERT 语句应存在");
+        // 语句 = 从 INSERT 到 `.execute(`；绑定链夹在两者之间
+        let exec = start + SRC[start..].find(".execute(").unwrap();
+        let stmt = &SRC[start..exec];
+        let placeholders = stmt.matches('$').count();
+        let binds = stmt.matches(".bind(").count();
+        assert_eq!(
+            placeholders, binds,
+            "占位符 {placeholders} 个但只 bind 了 {binds} 个：这条 INSERT 线上必败"
+        );
+        assert_eq!(
+            placeholders, 5,
+            "列：round_id/user_id/side/amount/idempotency_key"
+        );
     }
 }

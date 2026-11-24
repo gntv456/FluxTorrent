@@ -101,7 +101,21 @@ pub(super) async fn mole_start(
                     "该局已受理，请勿重复提交".into(),
                 ));
             }
-            // 只清自己的过期未结算：排程里没有玩家余额，删了也不动账
+            // 先把这一用户**已走完但没结算**的旧局补结算（命中的分数照付）。
+            // 以前这里直接 DELETE，注释说「排程里没有玩家余额，删了也不动账」
+            // —— 那是错的：被删的局里可能有 arcade_mole_hits，删掉等于吞掉
+            // 玩家已命中的派彩。此前被「切走即结算」掩盖；现在提前结算被
+            // schedule_done 挡下，旧局只能在这里收尾。
+            let settled = crate::games::mole_repo::settle_stale_rounds_tx(
+                &mut tx, auth.id,
+            )
+            .await?;
+            if settled > 0 {
+                tracing::info!(uid = auth.id, settled, "打地鼠旧局补结算");
+            }
+            // 上一行补结算之后仍是未 resolved 的，只可能是「开局还不到 36 秒」
+            // 的进行中半局 —— 下面这条 1 小时清理对它们永远不会命中（真到 1 小时
+            // 早就被补结算结掉了），留着只是给历史遗留的坏行兜底。
             sqlx::query(
                 "DELETE FROM arcade_mole_rounds \
                   WHERE user_id = $1 AND NOT resolved \

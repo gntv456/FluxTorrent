@@ -20,6 +20,7 @@ mod farm;
 mod farm_land;
 mod jgg;
 mod mole;
+pub(crate) mod mole_repo;
 mod scratch;
 
 #[cfg(test)]
@@ -30,6 +31,10 @@ mod farm_tests;
 mod mole_db_economy_tests;
 #[cfg(test)]
 mod mole_db_harness;
+#[cfg(test)]
+pub(crate) use mole_db_harness::pool as mole_db_pool;
+#[cfg(test)]
+mod mole_db_settle_tests;
 #[cfg(test)]
 mod mole_db_tests;
 #[cfg(test)]
@@ -50,7 +55,7 @@ pub use bigsmall::{
 };
 #[allow(unused_imports)]
 pub use bs_room::{
-    parse_side, payout, region_of, remaining_seconds, side_wins,
+    parse_side, payout, region_of, remaining_seconds, side_wins, win_idem,
     window_seconds, ROUND_SECONDS_DEFAULT,
 };
 #[allow(unused_imports)]
@@ -77,9 +82,10 @@ pub use jgg::{
 };
 #[allow(unused_imports)]
 pub use mole::{
-    build_schedule, in_window, settle_score, validate_mole, Spawn, BOMB_SPAWNS,
-    CEIL_DEN, CEIL_NUM, DEFAULT_BOMB_PENALTY, FIRST_SPAWN_MS, HIT_EARLY_MS,
-    HIT_LATE_MS, POOL_SPAWNS, ROUND_MS, SPAWN_GAP_MS, UP_MS,
+    build_schedule, in_window, round_over, schedule_done, settle_score,
+    settled_or_over, validate_mole, Spawn, BOMB_SPAWNS, CEIL_DEN, CEIL_NUM,
+    DEFAULT_BOMB_PENALTY, FIRST_SPAWN_MS, HIT_EARLY_MS, HIT_LATE_MS,
+    POOL_SPAWNS, ROUND_MS, SPAWN_GAP_MS, UP_MS,
 };
 #[allow(unused_imports)]
 pub use scratch::{scratch_pay, ScratchOutcome};

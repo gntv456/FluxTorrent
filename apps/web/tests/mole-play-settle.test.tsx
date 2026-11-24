@@ -16,8 +16,9 @@ import {
  * 断言结算链：
  *   · 结算失败落 settled + err 可见且 auto 不续局
  *   · auto 连打：settled 后自动开局
- *   · stop 停 auto 并立即结算
- *   · 卸载兜底：局未结算时补一发 finish
+ *   · stop 只停 auto：局留给服务端按时结算（2026-11-24 契约：
+ *     服务端拒绝未走完的 finish，切标签页不再白亏一局）
+ *   · 卸载兜底：延迟到整局走完（+1s 余量）再补一发 finish
  */
 
 beforeEach(() => {
@@ -92,7 +93,7 @@ describe("useMolePlay · settle", () => {
     await flushUntil(() => result.current.phase === "playing");
   });
 
-  it("stop：停 auto 并立即结算进行中的局", async () => {
+  it("stop：只停 auto，不提前终结进行中的局", async () => {
     const calls = stubApi([START]);
     const { result } = mount();
     await act(async () => {
@@ -101,12 +102,13 @@ describe("useMolePlay · settle", () => {
     await act(async () => {
       void result.current.stop();
     });
-    await flushUntil(() => result.current.phase === "settled");
     expect(result.current.auto).toBe(false);
-    expect(finishOf(calls).length).toBeGreaterThanOrEqual(1);
+    // 契约：服务端拒早结（schedule_done 闸），这一局还在走
+    expect(result.current.phase).toBe("playing");
+    expect(finishOf(calls).length).toBe(0);
   });
 
-  it("卸载兜底：局未结算时补一发 finish", async () => {
+  it("卸载兜底：整局走完后才补 finish，半途不发", async () => {
     const calls = stubApi([START]);
     const { result, unmount } = mount();
     await act(async () => {
@@ -116,6 +118,14 @@ describe("useMolePlay · settle", () => {
     await act(async () => {
       await Promise.resolve();
     });
-    expect(finishOf(calls).length).toBeGreaterThanOrEqual(1);
+    // 卸载当下：半途不发 finish（服务端会拒）
+    expect(finishOf(calls).length).toBe(0);
+    // 推进到整局走完 + 1s 余量后：补一发
+    await act(async () => {
+      vi.advanceTimersByTime(31_000 + 1_000 + 100);
+      await Promise.resolve();
+    });
+    expect(finishOf(calls).length).toBe(1);
+    void result;
   });
 });

@@ -8,7 +8,7 @@
 use chrono::{DateTime, Utc};
 use sqlx::FromRow;
 
-use crate::economy_http::{earn_spark_tx, SpendOutcome};
+use crate::economy_http::earn_spark_tx;
 use crate::errors::{DomainError, DomainResult};
 use crate::games;
 
@@ -84,8 +84,8 @@ async fn settle_round(
     let sum: i16 = dice.iter().sum::<u32>() as i16;
     let dice_vec: Vec<i16> = dice.iter().map(|d| *d as i16).collect();
 
-    let bets: Vec<(i64, i64, String, i64)> = sqlx::query_as(&format!(
-        "SELECT id, user_id, side, amount FROM {BET_TABLE} \
+    let bets: Vec<(i64, i64, String, i64, String)> = sqlx::query_as(&format!(
+        "SELECT id, user_id, side, amount, idempotency_key FROM {BET_TABLE} \
              WHERE round_id = $1 FOR UPDATE"
     ))
     .bind(round_id)
@@ -93,7 +93,7 @@ async fn settle_round(
     .await
     .map_err(dberr)?;
 
-    for (bet_id, uid, side, amount) in bets {
+    for (bet_id, uid, side, amount, bet_idem) in bets {
         let win = games::side_wins(region, &side);
         let payout = if win {
             games::payout(amount, mult_permille)
@@ -102,13 +102,12 @@ async fn settle_round(
         };
         let net = payout - amount;
         if payout > 0 {
-            let win_idem = format!("game-bs-round-win:{round_id}:{bet_id}");
-            if !matches!(
-                earn_spark_tx(tx, uid, payout, "game", &win_idem).await?,
-                SpendOutcome::Spent
-            ) {
-                return Err(DomainError::LedgerConflict);
-            }
+            // 派彩键挂在下注的幂等键上（格式与理由见 games::bs_room::win_idem）。
+            // 重放 = 上一笔已入账但没来得及标 settled（进程中断）：钱在账上，
+            // 继续收尾即可。此前报 LedgerConflict 会让懒结算**永久卡死**在
+            // 这一期（每次进房间都重试、每次都失败）。
+            let win_idem = games::win_idem(&bet_idem);
+            earn_spark_tx(tx, uid, payout, "game", &win_idem).await?;
         }
         sqlx::query(&format!(
             "UPDATE {BET_TABLE} SET payout=$1, net=$2 WHERE id=$3"
@@ -227,6 +226,11 @@ pub(super) async fn add_side_total(
 }
 
 /// 落一笔下注。幂等键冲突视为重放（调用方先靠 spend 幂等闸过一道）。
+///
+/// ⚠️ `idempotency_key` 列是 NOT NULL UNIQUE，且**必须**是下注扣款流水的那个
+/// 幂等键：`settle_round` 用 `game-bs-win:<这个键>` 派彩，战绩口靠它 JOIN。
+/// 此前 INSERT 声明了 `$5` 却只 bind 了 4 个参数 —— 这条语句在线上**每注必败**
+/// （sqlx：expected 5 parameters, got 4），整个房间下注从未真正成功过。
 pub(super) async fn insert_bet(
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     round_id: i64,
@@ -235,15 +239,16 @@ pub(super) async fn insert_bet(
     amount: i64,
     idem: &str,
 ) -> DomainResult<()> {
-    sqlx::query(&format!(
-        "INSERT INTO {BET_TABLE} \
+    sqlx::query(
+        "INSERT INTO arcade_bigsmall_bets \
              (round_id, user_id, side, amount, idempotency_key) \
-             VALUES ($1, $2, $3, $4, $5)"
-    ))
+         VALUES ($1, $2, $3, $4, $5)",
+    )
     .bind(round_id)
     .bind(user_id)
     .bind(side)
     .bind(amount)
+    .bind(idem)
     .execute(&mut **tx)
     .await
     .map_err(|e| {

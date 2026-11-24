@@ -9,17 +9,46 @@ use serde::Deserialize;
 use crate::dto::ok;
 use crate::economy_http::{spend_spark_tx, SpendOutcome};
 use crate::errors::{DomainError, DomainResult};
-use crate::games::{self, BIGSMALL_WIN_MULT_PERMILLE};
+use crate::games;
 use crate::http::require_auth;
 use crate::state::AppState;
 
 use super::bs_room_store::{
     add_side_total, advance_open, insert_bet, last_settled, my_bets,
 };
-use super::helpers::{
-    check_bet, check_minclass, check_rate, eco_i64, idem_key,
-};
+use super::helpers::{check_bet, check_minclass, eco_i64, idem_key};
 use super::pool::{dberr, load_table};
+
+/// 「事后计数」限流：这一注已确定落库时才调用（`room_bet` 专用）。
+///
+/// 与 `helpers::check_rate`（预检式）的差别：INCR 超限时**退还这次计数**
+/// 再报错 —— 调用方回滚业务事务，玩家的注没落库，额度也不被这笔失败白扣。
+/// 此前预检 INCR 排在「本期已截止」判定之前：过期边缘的下注被拒但额度
+/// 被吃掉一次；幂等重放同样不该再吃额度。
+async fn charge_rate_after_fact(
+    state: &web::Data<std::sync::Arc<AppState>>,
+    user_id: i64,
+) -> DomainResult<()> {
+    use redis::AsyncCommands;
+    let limit = eco_i64(state, "games_max_plays_per_hour", 60).await;
+    let key = format!("rl:games:{user_id}");
+    let mut conn = state.redis.clone();
+    let n: i64 = conn.incr(&key, 1).await.map_err(|_| {
+        DomainError::Internal(anyhow::anyhow!("限流服务不可用"))
+    })?;
+    if n > limit {
+        // 退还：这笔注会随事务一起回滚，额度不能被白扣
+        let _: Option<i64> = conn.incr(&key, -1).await.ok();
+        return Err(DomainError::RateLimited);
+    }
+    let ttl: i64 = conn.pttl(&key).await.unwrap_or(-1);
+    if ttl < 0 {
+        if let Err(e) = conn.expire::<_, i64>(&key, 3600).await {
+            tracing::warn!(%e, key = %key, "游戏额度桶续期失败（下一次调用会补）");
+        }
+    }
+    Ok(())
+}
 
 /// 读桌（关闸校验）+ 命中侧千分倍率 + 下注窗口秒数。
 async fn room_config(
@@ -120,7 +149,6 @@ pub(super) async fn room_bet(
     if games::parse_side(&body.side).is_none() {
         return Err(DomainError::Validation("side 仅支持 small/big".into()));
     }
-    check_rate(&state, &state.redis, auth.id).await?;
 
     let idem = idem_key("bs-room", auth.id, &body.idempotency_key);
     let mut tx = state.repo.db.begin().await.map_err(dberr)?;
@@ -149,6 +177,10 @@ pub(super) async fn room_bet(
         return Err(DomainError::Validation("该注已受理，请勿重复提交".into()));
     }
     insert_bet(&mut tx, open.id, auth.id, &body.side, body.bet, &idem).await?;
+    // 限流在「这注确定落库」之后才计数（超限会退回这次计数并回滚整笔）：
+    // 此后预检式 INCR 排在「本期已截止」之前，过期边缘的下注被拒但额度
+    // 被白扣；幂等重放同样不该再吃一次额度。
+    charge_rate_after_fact(&state, auth.id).await?;
     add_side_total(&mut tx, open.id, &body.side, body.bet).await?;
     let mine = my_bets(&mut tx, open.id, auth.id).await?;
     tx.commit().await.map_err(dberr)?;

@@ -47,12 +47,18 @@ mod linkage;
 pub(crate) mod minclass;
 mod mole;
 mod mole_settle;
+// 测试期把补结算口暴露给 games/ 下的 DB 级测试（夹具在 games::mole_db_harness，
+// 而 layer_guard 对 games_http/ 新文件零容忍 SQL，测试只能落在 games/ 侧）。
+#[cfg(test)]
+pub(crate) use crate::games::mole_repo::settle_stale_rounds_tx;
 mod overview;
 mod pet_custom;
 mod pet_log;
 mod pets;
 mod pool;
 mod pool_batch;
+#[cfg(test)]
+mod pool_db_tests;
 mod pool_games;
 mod pool_table;
 mod prize_view;
@@ -106,8 +112,6 @@ pub fn mount_games(scope: actix_web::Scope) -> actix_web::Scope {
         // 0515 倒计时房间制（期次/倒计时/本期下注）
         .service(room_state)
         .service(room_bet)
-        // 0424 走势看板（同类站对标小件）
-        .service(bigsmall_trend)
         .service(jgg)
         .service(capsule)
         .service(fruit)

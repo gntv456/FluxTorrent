@@ -6,7 +6,6 @@
 
 use actix_web::{post, web, HttpRequest, HttpResponse};
 use serde::Deserialize;
-use sqlx::Row;
 
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
@@ -169,6 +168,7 @@ fn batch_base(client_idem: &Option<String>) -> String {
 /// 整组回放：按派生键 `base-g{i}` 逐局读回放表。组键是客户端自报的，
 /// 若首局已受理但后续局缺失（同组键并发首发的极端交错），缺失局按
 /// 原局数补不了——原样返回已有局数并注明，客户端按 count 对账。
+/// mult 读数与单抽回放同一把尺（已落库 value/ticket，不按当前池序回算）。
 async fn replay_batch(
     db: &sqlx::PgPool,
     game: &str,
@@ -176,61 +176,19 @@ async fn replay_batch(
     base: &str,
     n: i64,
 ) -> DomainResult<serde_json::Value> {
-    // mult 回算：与 replay_round 同一把尺（load_pool 同序第 idx 行），
-    // 回放方也拿语言无关倍率读数，不退回 DB 中文 label。
     let mut rows: Vec<serde_json::Value> = Vec::with_capacity(n as usize);
     let mut total_net: i64 = 0;
     for i in 0..n {
         let idem = batch_idem(game, uid, base, i);
-        let row = sqlx::query(
-            "WITH pool AS ( \
-               SELECT e.mult_permille, \
-                      row_number() OVER ( \
-                        ORDER BY p.sort, e.sort) - 1 AS idx \
-               FROM arcade_pools p \
-               JOIN arcade_pool_entries e \
-                 ON e.pool_key = p.key AND e.enabled \
-               WHERE p.game = $3 AND p.enabled \
-             ) \
-             SELECT d.entry_index, d.prize, d.rarity, d.kind, d.fell_back, \
-                    d.replay, d.payout, d.value, d.ticket, \
-                    pool.mult_permille \
-             FROM arcade_draw_results d \
-             LEFT JOIN pool ON pool.idx = d.entry_index \
-             WHERE d.idempotency_key = $1 AND d.user_id = $2",
-        )
-        .bind(&idem)
-        .bind(uid)
-        .bind(game)
-        .fetch_optional(db)
-        .await
-        .map_err(dberr)?;
-        let Some(row) = row else { break };
-        let index: i32 = row.get("entry_index");
-        let prize: String = row.get("prize");
-        let rarity: i16 = row.get("rarity");
-        let kind: String = row.get("kind");
-        let fell_back: Option<String> = row.get("fell_back");
-        let replay: bool = row.get("replay");
-        let payout: i64 = row.get("payout");
-        let value: i64 = row.get("value");
-        let ticket: i64 = row.get("ticket");
-        let mult_permille: Option<i64> = row.get("mult_permille");
-        total_net += value - ticket;
-        rows.push(serde_json::json!({
-            "index": index,
-            "prize": prize,
-            "rarity": rarity,
-            "kind": kind,
-            "fell_back": fell_back,
-            "replay": replay,
-            "payout": payout,
-            "value": value,
-            "ticket": ticket,
-            "net": value - ticket,
-            "mult": mult_permille
-                .map(|m| m as f64 / games::MULT_UNIT as f64),
-        }));
+        let Some(row) =
+            super::pool_games::replay_one(db, &idem, Some(uid), Some(game))
+                .await
+                .ok()
+        else {
+            break;
+        };
+        total_net += row["net"].as_i64().unwrap_or(0);
+        rows.push(row);
     }
     Ok(serde_json::json!({
         "rows": rows,

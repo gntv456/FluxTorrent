@@ -38,6 +38,11 @@ export interface MoleResult {
 
 type Phase = "idle" | "playing" | "settling" | "settled";
 
+/** 一局「走完」的客户端估算：整局 30s + 1s 余量（与后端时长闸同向，
+ *  宁可晚一秒发 finish，不抢在闸前被拒）。服务端还有补结算兜底，
+ *  这里只是让玩家离开页面时也能尽快拿到结算。 */
+const ROUND_DONE_MS = 31_000;
+
 /**
  * 打地鼠一局的状态机：开局拿排程 → 按 at 让地鼠冒头 → 敲击当场回传 →
  * 倒计时结束结算。
@@ -101,33 +106,46 @@ export function useMolePlay(opts: {
     r.ticks = [];
   }, []);
 
-  const finish = useCallback(async () => {
-    const r = roundRef.current;
-    if (!r || phaseRef.current !== "playing") return;
-    clearTimers();
-    toPhase("settling");
-    setActiveMap({});
-    try {
-      const out = await api.post<MoleResult>(
-        "/api/v1/games/mole/finish",
-        { round_id: r.id },
-      );
-      setScore(out.score);
-      setRes(out);
-      setSessionPlays((n) => n + 1);
-      toPhase("settled");
-      settledRef.current();
-      if (autoRef.current) {
-        autoTimer.current = window.setTimeout(() => {
-          void startRef.current?.();
-        }, 1300);
+  const finish = useCallback(
+    async (retry = false) => {
+      const r = roundRef.current;
+      if (!r || phaseRef.current !== "playing") return;
+      clearTimers();
+      toPhase("settling");
+      setActiveMap({});
+      try {
+        const out = await api.post<MoleResult>(
+          "/api/v1/games/mole/finish",
+          { round_id: r.id },
+        );
+        setScore(out.score);
+        setRes(out);
+        setSessionPlays((n) => n + 1);
+        toPhase("settled");
+        settledRef.current();
+        if (autoRef.current) {
+          autoTimer.current = window.setTimeout(() => {
+            void startRef.current?.();
+          }, 1300);
+        }
+      } catch (e) {
+        // 「还没结束」是时钟边界（客户端 t0 晚于服务端 created_at 时，
+        // finish 可能抢在时长闸前 1~2 秒）：等过闸再试一次，别把
+        // 一局有分数的玩家晾在没有结算结果的空屏上。
+        if (!retry) {
+          window.setTimeout(() => {
+            toPhase("playing");
+            void finishRef.current?.(true);
+          }, 2_500);
+          return;
+        }
+        setErr(descRef.current(e));
+        setRes(null);
+        toPhase("settled");
       }
-    } catch (e) {
-      setErr(descRef.current(e));
-      setRes(null);
-      toPhase("settled");
-    }
-  }, [clearTimers]);
+    },
+    [clearTimers],
+  );
 
   const start = useCallback(async () => {
     if (busyRef.current) return;
@@ -195,7 +213,7 @@ export function useMolePlay(opts: {
     }
   }, [clearTimers]);
 
-  const finishRef = useRef<(() => Promise<void>) | null>(null);
+  const finishRef = useRef<((retry?: boolean) => Promise<void>) | null>(null);
   finishRef.current = finish;
   startRef.current = start;
 
@@ -211,7 +229,9 @@ export function useMolePlay(opts: {
     setActiveMap(cur);
     setHits((n) => (sp.value < 0 ? n : n + 1));
     setCombo((c) => (sp.value < 0 ? 0 : c + 1));
-    setScore((v) => v + sp.value);
+    // 乐观分数与结算同向钳 0：服务端 payout = max(score, 0)，此前炸弹
+    // 能把本地分数打成负数、结算又弹回 0，HUD 上像「分数凭空消失」。
+    setScore((v) => Math.max(0, v + sp.value));
     if (sp.value < 0) setBombs((n) => n + 1);
     const rid = roundRef.current?.id;
     if (!rid) return;
@@ -230,14 +250,16 @@ export function useMolePlay(opts: {
   }, [start]);
 
   const stop = useCallback(() => {
+    // 只停自动模式，**不**再提前 finish：切标签页时这一局还在走，
+    // 服务端拒绝未走完的结算（schedule_done 闸），回来还能接着打；
+    // 不回来的话，下次开局前服务端会补结算（mole_start 的补结算口）。
     autoRef.current = false;
     setAuto(false);
     if (autoTimer.current !== null) {
       window.clearTimeout(autoTimer.current);
       autoTimer.current = null;
     }
-    if (phaseRef.current === "playing") void finish();
-  }, [finish]);
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -247,11 +269,22 @@ export function useMolePlay(opts: {
       }
       const r = roundRef.current;
       if (r && phaseRef.current !== "idle" && phaseRef.current !== "settled") {
-        void api
-          .post("/api/v1/games/mole/finish", { round_id: r.id })
-          .catch(() => {});
+        // 卸载（离开页面）时把「距离这一局走完还差多久」交给一个定时器，
+        // 到点再调 finish；页面直接关掉的话定时器随页死，交给下次开局的
+        // 补结算。此前这里立刻 finish，半局被当场结掉（后端现在会拒）。
+        const leftMs = Math.max(
+          0,
+          r.t0 + ROUND_DONE_MS - Date.now(),
+        );
+        window.setTimeout(() => {
+          void api
+            .post("/api/v1/games/mole/finish", { round_id: r.id })
+            .catch(() => {});
+        }, leftMs + 1_000);
       }
     };
+    // ROUND_DONE_MS：最后一只收尾 ≈ 27.7s，取整局 30s + 网络余量 1s
+    // （与后端 settled_or_over 的时长闸同向：宁可晚一秒，不抢在闸前）。
   }, [clearTimers]);
 
   return {

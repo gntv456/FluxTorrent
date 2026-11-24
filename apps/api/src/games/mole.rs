@@ -94,6 +94,41 @@ pub fn settle_score(values: &[i64]) -> (i64, i64) {
     (score, score.max(0))
 }
 
+/// 这一局的排程是否已经走完（最后一只的判中窗口已关闭）。
+///
+/// `finish` 只许在走完之后结算。此前不校验：玩家玩到一半切去「奖池」标签
+/// （前端 `stop()` 会调 finish）或组件卸载，这一局就**当场按已命中的分数结算**
+/// —— 后面还没冒头的地鼠（含大奖）全部作废，票价照扣。提前结算只会让玩家
+/// 拿得更少，所以不是经济漏洞，但「切个标签页就白亏一局」足够伤人。
+///
+/// 排程解不出来（坏 JSON / 空排程）时返回 `false` —— 配合 [`round_over`]
+/// 的时长闸一起用（见 [`settled_or_over`]）：坏排程的局不会因为「解析失败」
+/// 就永远结不了，也不会在半途被结掉。
+pub fn schedule_done(spawns: &[Spawn], elapsed_ms: i64) -> bool {
+    let Some(last) = spawns.iter().map(|s| s.at + s.up + HIT_LATE_MS).max()
+    else {
+        return false;
+    };
+    elapsed_ms >= last
+}
+
+/// 整局时长闸：开局超过 `ROUND_MS` 的局，排程**必然**已走完。
+///
+/// 排程是开局时按固定节奏生成的（最后一只在
+/// `FIRST_SPAWN_MS + 13 × SPAWN_GAP_MS + UP_MS + HIT_LATE_MS` ≈ 27.7s 收尾，
+/// 早于 30s 整局），所以时长是不依赖排程内容的权威判据 —— 坏 JSON 的局
+/// 也靠它收尾，而不是被「解析失败」卡成永远结不了的坏账。
+pub fn round_over(elapsed_ms: i64) -> bool {
+    elapsed_ms >= ROUND_MS
+}
+
+/// 这一局现在能不能结算：排程按内容判定走完，**或**整局时长已过。
+/// 两边取「或」—— 正常局在最后一只收尾后（≈27.7s）即可结算，不必等满 30s；
+/// 排程损坏的局在 30s 后由时长闸放行。
+pub fn settled_or_over(spawns: &[Spawn], elapsed_ms: i64) -> bool {
+    round_over(elapsed_ms) || schedule_done(spawns, elapsed_ms)
+}
+
 /// 生成整局排程。调用方必须先过 `validate_mole`。
 ///
 /// 洞位刻意「不连续同洞」：同一洞连着冒两次，玩家会当成没打中。

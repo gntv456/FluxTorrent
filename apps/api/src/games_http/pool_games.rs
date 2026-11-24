@@ -33,31 +33,30 @@ struct DrawReq {
     idempotency_key: Option<String>,
 }
 
-/// 已提交局的回放。响应丢失后客户端用同一幂等键重试，必须拿回原结果，
-/// 而不是只收到「已受理」再让玩家自己猜钱去哪了。
-async fn replay_round(
+/// 已提交局的回放（单抽与批量共用）。响应丢失后客户端用同一幂等键重试，
+/// 必须拿回原结果。`uid`/`game` 给批量用（键含序号防跨用户撞键；单抽按
+/// 全局唯一键定位即可）。
+///
+/// mult 读数用**已落库的 `value / ticket`**（派彩等值口径，物品档同尺），
+/// 不按当前池序回算：回放表没存 mult，池档随时会被站长改（加档/删档/换序），
+/// 回算出来的是*现在*那格的倍率 —— 历史局的文案与倍率对不上自己那一局。
+pub(super) async fn replay_one(
     db: &sqlx::PgPool,
     idem: &str,
+    uid: Option<i64>,
+    game: Option<&str>,
 ) -> DomainResult<serde_json::Value> {
-    // mult 回算：抽中档按「load_pool 同序（p.sort, e.sort）」的第
-    // entry_index 行取 mult_permille——回放表没存 mult（历史局也没有），
-    // 池档被站长改过时回算的是*当前*池的倍率， prize 文案同此口径。
     let row = sqlx::query(
-        "WITH pool AS ( \
-           SELECT e.mult_permille, row_number() OVER ( \
-             ORDER BY p.sort, e.sort) - 1 AS idx \
-           FROM arcade_pools p JOIN arcade_pool_entries e \
-             ON e.pool_key = p.key AND e.enabled \
-           WHERE p.game = (SELECT game FROM arcade_draw_results \
-                           WHERE idempotency_key = $1) AND p.enabled \
-         ) \
-         SELECT d.entry_index, d.prize, d.rarity, d.kind, d.fell_back, \
-                d.replay, d.payout, d.value, d.ticket, pool.mult_permille \
-         FROM arcade_draw_results d \
-         LEFT JOIN pool ON pool.idx = d.entry_index \
-         WHERE d.idempotency_key = $1",
+        "SELECT d.entry_index, d.prize, d.rarity, d.kind, d.fell_back, \
+                d.replay, d.payout, d.value, d.ticket \
+           FROM arcade_draw_results d \
+          WHERE d.idempotency_key = $1 \
+            AND ($2::bigint IS NULL OR d.user_id = $2) \
+            AND ($3::text IS NULL OR d.game = $3)",
     )
     .bind(idem)
+    .bind(uid)
+    .bind(game)
     .fetch_optional(db)
     .await
     .map_err(dberr)?
@@ -71,14 +70,15 @@ async fn replay_round(
     let payout: i64 = row.get("payout");
     let value: i64 = row.get("value");
     let ticket: i64 = row.get("ticket");
-    let mult_permille: Option<i64> = row.get("mult_permille");
+    // mult = 等值 / 票价（无票价不除，防御历史 0 票行）
+    let mult = (ticket > 0).then(|| value as f64 / ticket as f64);
     Ok(serde_json::json!({
         "index": index, "prize": prize, "rarity": rarity, "kind": kind,
         "fell_back": fell_back, "replay": replay,
         "payout": payout, "value": value, "ticket": ticket,
         "net": value - ticket,
         // 与首发的 mult 对齐：回放方也要拿到语言无关倍率读数
-        "mult": mult_permille.map(|m| m as f64 / games::MULT_UNIT as f64),
+        "mult": mult,
     }))
 }
 
@@ -107,7 +107,7 @@ async fn pool_round(
     if r.is_none() {
         // 幂等命中：这局已受理过，回放原结果（不重抽、不重扣）。
         let _ = tx.rollback().await;
-        return replay_round(&state.repo.db, &idem).await;
+        return replay_one(&state.repo.db, &idem, None, None).await;
     }
     let (mult, rarity, idx, label, kind, fell_back, replay, spark, value) =
         r.unwrap();

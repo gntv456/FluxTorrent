@@ -113,11 +113,12 @@ export function useWheelPlay({
     const won = r.value ?? r.payout;
     const itemWin = r.kind === "item" && won > 0;
     const fallback = Boolean(r.fell_back) || r.kind === "fallback";
-    const kind: FlashKind =
-      itemWin || won >= ticket * 10
-        ? won >= ticket * 10
-          ? "jackpot"
-          : "win"
+    // 「头奖」只给魔力档 ≥10× 票价：物品档走 win 分支 —— 此前物品档
+    // 等值过线会一边放头奖特效、一边播「获得物品」文案，视觉与文案打架。
+    const kind: FlashKind = itemWin
+      ? "win"
+      : won >= ticket * 10
+        ? "jackpot"
         : won > ticket
           ? "win"
           : won === ticket

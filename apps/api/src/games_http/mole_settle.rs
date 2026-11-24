@@ -14,6 +14,7 @@ use crate::http::require_auth;
 use crate::state::AppState;
 
 use super::pool::dberr;
+use crate::games::mole_repo::settle_round_tx;
 
 type Db = web::Data<std::sync::Arc<AppState>>;
 
@@ -31,15 +32,18 @@ pub(super) async fn mole_finish(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     let db = &state.repo.db;
-    let (bet, resolved, done_score, done_payout, idem): (
+    let (bet, resolved, done_score, done_payout, idem, schedule, elapsed): (
         i64,
         bool,
         i64,
         i64,
         String,
+        serde_json::Value,
+        i64,
     ) = sqlx::query_as(
         "SELECT bet, resolved, COALESCE(score, 0), \
-                    COALESCE(payout, 0), COALESCE(idem, '') \
+                    COALESCE(payout, 0), COALESCE(idem, ''), schedule, \
+                    (EXTRACT(EPOCH FROM (now() - created_at)) * 1000)::bigint \
                FROM arcade_mole_rounds WHERE id = $1 AND user_id = $2",
     )
     .bind(body.round_id)
@@ -72,83 +76,25 @@ pub(super) async fn mole_finish(
     .fetch_all(db)
     .await
     .map_err(dberr)?;
-    let values: Vec<i64> = hits.iter().map(|(_, v)| *v).collect();
-    let (score, payout) = games::settle_score(&values);
-    let win_idem = format!("game-mole-win:{idem}");
+    // 排程没走完不许结算（理由见 games::schedule_done）：切标签页 / 卸载
+    // 触发的提前 finish 在这里被挡下，这一局留在未结算态，等走完再结。
+    // 排程损坏的局由整局时长闸放行（见 games::settled_or_over）。
+    let spawns: Vec<games::Spawn> =
+        serde_json::from_value(schedule).unwrap_or_default();
+    if !games::settled_or_over(&spawns, elapsed) {
+        return Err(DomainError::Validation(
+            "这一局还没结束，稍后再结算".into(),
+        ));
+    }
     let mut tx = state.repo.db.begin().await.map_err(dberr)?;
-    if payout > 0 {
-        let paid =
-            earn_spark_tx(&mut tx, auth.id, payout, "game", &win_idem).await?;
-        // 上一笔已入账但没来得及标记 resolved（进程中断）时会重放：
-        // 钱已经在账上，这里继续收尾即可，不能因为重放就跳过结算
-        if matches!(paid, SpendOutcome::Replayed) {
-            tracing::warn!(round_id = body.round_id, "mole payout replayed");
-        }
-    }
-    let marked = sqlx::query(
-        "UPDATE arcade_mole_rounds SET resolved = true, score = $2, \
-                payout = $3, resolved_at = now() \
-          WHERE id = $1 AND NOT resolved",
-    )
-    .bind(body.round_id)
-    .bind(score)
-    .bind(payout)
-    .execute(&mut *tx)
-    .await
-    .map_err(dberr)?;
-    if marked.rows_affected() == 0 {
-        // 并发双击 finish：让对方那一笔赢，本笔回滚
-        let _ = tx.rollback().await;
-        return Err(DomainError::Validation("这一局已结算，请刷新战绩".into()));
-    }
-    // 图鉴/稀有播报的事实源：每只中奖地鼠一行（炸弹与空档不记）
-    record_tiers(&mut tx, auth.id, body.round_id, &hits).await?;
+    let (score, payout) =
+        settle_round_tx(&mut tx, auth.id, body.round_id, &idem, &hits).await?;
     tx.commit().await.map_err(dberr)?;
     state
         .repo
         .audit(Some(auth.id), "game.mole.finish", None)
         .await;
     Ok(ok(finish_view(body.round_id, bet, score, payout, &hits)))
-}
-
-/// 逐档落 arcade_pool_rounds（rarity/标签取当前池；值取排程，防池子中途改值）。
-async fn record_tiers(
-    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
-    uid: i64,
-    round_id: i64,
-    hits: &[(i32, i64)],
-) -> DomainResult<()> {
-    let schedule: serde_json::Value = sqlx::query_scalar(
-        "SELECT schedule FROM arcade_mole_rounds WHERE id = $1",
-    )
-    .bind(round_id)
-    .fetch_one(&mut **tx)
-    .await
-    .map_err(dberr)?;
-    let spawns: Vec<games::Spawn> =
-        serde_json::from_value(schedule).unwrap_or_default();
-    for (seq, value) in hits {
-        if *value <= 0 {
-            continue;
-        }
-        let Some(s) = spawns.iter().find(|s| s.seq == *seq) else {
-            continue;
-        };
-        sqlx::query(
-            "INSERT INTO arcade_pool_rounds \
-                (user_id, game, entry_index, rarity, prize, spark, value) \
-             VALUES ($1, 'mole', $2, $3, $4, $5, $5)",
-        )
-        .bind(uid)
-        .bind(i64::from(s.idx))
-        .bind(s.rarity)
-        .bind(&s.label)
-        .bind(value)
-        .execute(&mut **tx)
-        .await
-        .map_err(dberr)?;
-    }
-    Ok(())
 }
 
 fn finish_view(
