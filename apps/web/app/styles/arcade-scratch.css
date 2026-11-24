@@ -24,8 +24,15 @@
 
 /* 页面氛围：深紫星空（样图底色），压住 sweet 浅色遗留。
    真实层级 body > .site-shell > .flex > main > [data-arcade] >
-   .scratch-promo；壁纸挂在 body，中间层全透明，故背景须压到 shell。 */
-.site-shell:has(.scratch-promo) {
+   .scratch-promo；壁纸挂在 body，中间层全透明，故背景须压到 shell。
+   主题跟随（2026-11-24）：只在暗色族主题生效；浅色主题下不压这层，
+   页面底走站点主题色。条件挂在祖先 html 上（:where 不抬特异性）。 */
+:where(
+  html[data-theme$="-night"],
+  html[data-theme="shanhaijing"],
+  html[data-theme="brand-night"]
+)
+  .site-shell:has(.scratch-promo) {
   background:
     radial-gradient(120% 80% at 50% -12%, #3a2564 0%, transparent 55%),
     radial-gradient(
@@ -620,3 +627,57 @@
   }
 }
 
+
+/* ══════ 浅色主题档（主题跟随 2026-11-24）════════════════════════
+   红黄票卡（Banner / 票面 / 涂层框 / 票档）是玩法件的促销配色，两种主题
+   下都不动。要跟随主题的是票卡之外、按「深紫星空」设计的界面件：统计
+   卡 / 页头标题 / 副标题 / 返回钮 / 中奖率徽章——浅色主题下改走站点表面
+   与文字令牌。条件挂在祖先 html 上、只写一次，内部用 CSS 嵌套。 */
+:where(
+  html:not(
+      [data-theme$="-night"],
+      [data-theme="shanhaijing"],
+      [data-theme="brand-night"]
+    )
+) {
+  .scratch-promo {
+    & .sw-stat {
+      background: var(--surface-card);
+      box-shadow: inset 0 0 0 1px var(--border-soft);
+    }
+    & .sw-stat-lb {
+      color: var(--text-muted);
+    }
+    & .sw-stat-vl {
+      color: var(--text-strong);
+    }
+    & .gs-head-sub {
+      color: var(--text-muted);
+    }
+    & .gs-back {
+      border-color: var(--border-deep);
+      background: var(--surface-card);
+      color: var(--text-strong);
+    }
+    /* 亮金渐变是深底做法；浅底改深金实色字 */
+    & .gs-title {
+      background: none;
+      -webkit-text-fill-color: #8a6428;
+      color: #8a6428;
+    }
+    /* 金 / 珊瑚按钮在深底上是半透明底 + 亮色字；浅底上亮字读不出，
+       改深字（底色不动） */
+    & .sw-cta.cta-gold {
+      color: #8a6428;
+      border-color: var(--border-deep);
+    }
+    & .sw-cta.cta-auto:not(.on) {
+      color: #c0452f;
+    }
+  }
+  .sp-badge {
+    border-color: var(--border-deep);
+    background: var(--surface-card);
+    color: #8a6428;
+  }
+}

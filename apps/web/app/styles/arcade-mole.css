@@ -28,6 +28,41 @@
   color: var(--mo-ink);
 }
 
+/* 浅色主题档（2026-11-24）：上面的墨/次要字/面板/描边/投影是按样图
+   「深紫底」设计的浅色系，底变浅后会读不出来。浅色主题下这 9 个界面色
+   改走站点表面与文字令牌，随主题色相变化；金 / 薄荷 / 珊瑚 / 泥土 / 洞底
+   是玩法件固有色与语义强调色，两种主题下都不动。
+   写法：主题条件挂在祖先 html 上（:where 不抬特异性）——`.x:where(html…)`
+   是复合选择器，意为「同一元素既是 html 又是 .x」，永远不匹配。 */
+:where(
+  html:not(
+      [data-theme$="-night"],
+      [data-theme="shanhaijing"],
+      [data-theme="brand-night"]
+    )
+) .mole-page {
+  --mo-ink: var(--text-strong);
+  --mo-sub: var(--text-muted);
+  --mo-faint: var(--text-muted);
+  --mo-violet: var(--text-muted);
+  --mo-panel: var(--surface-card);
+  --mo-panel-hi: var(--surface-raised);
+  --mo-line: var(--border-soft);
+  --mo-line-strong: var(--border-deep);
+  --mo-shade: rgba(0, 0, 0, 0.08);
+  /* 金 / 薄荷是深底上的亮色，浅底上读不出：整体下压一档（仍取自本
+     色板），标题渐变、倍率、连胜等所有引用处一并生效。 */
+  --mo-gold-1: #a87f3c;
+  --mo-gold-2: #8a6428;
+  --mo-mint: #0f8f66;
+
+  /* 统计格的底在基础规则里写死为白色半透明（深底提亮），浅底上格子会散：
+     这里换成卡片底（嵌套写法，条件复用外层）。 */
+  & .wp-stat {
+    background: var(--surface-card);
+  }
+}
+
 .mole-page {
   position: relative;
   color: var(--mo-ink);
@@ -58,9 +93,16 @@
   animation: mo-star-tw 4s ease-in-out infinite alternate;
 }
 
+/* 主题跟随（2026-11-24）：本皮肤原按样图无条件整页深紫。现改为——
+   · 暗色族主题：保留样图的「紫夜」整套配色（下方带闸的规则生效）；
+   · 浅色主题：页面底/卡片/舞台/文字全部走站点表面与文字令牌，随主题色相变化，
+     与老虎机等页一致。金 / 珊瑚红 / 薄荷绿是语义强调色，两种主题下都不动。 */
 /* 样图整页是深紫星空：外壳选择器在 main 外侧，这里用 :has 反向上溯。
    变量挂到 :root，顶栏/页脚/底栏这些 main 外的全局壳子才能一起继承。 */
-:root:has(.mole-page) {
+:root:has(.mole-page):where(
+  html[data-theme$="-night"],
+  html[data-theme="shanhaijing"],
+  html[data-theme="brand-night"]) {
   color-scheme: dark;
   --surface-page: #171129;
   --surface-card: #2a1b45;
@@ -83,16 +125,23 @@
   --sky-soft: rgba(106, 182, 240, 0.12);
   --sky-deep: #6ab6f0;
 }
-body:has(.mole-page),
-main:has(.mole-page) {
+body:has(.mole-page):where(
+  html[data-theme$="-night"],
+  html[data-theme="shanhaijing"],
+  html[data-theme="brand-night"]),
+main:has(.mole-page):where(
+  html[data-theme$="-night"],
+  html[data-theme="shanhaijing"],
+  html[data-theme="brand-night"]) {
   background:
     radial-gradient(120% 80% at 50% -12%,
-      #3a2564 0%, transparent 55%),
+      var(--surface-raised) 0%, transparent 55%),
     radial-gradient(70% 50% at 90% 20%,
       rgba(106, 182, 240, 0.14), transparent 60%),
     radial-gradient(60% 50% at 6% 24%,
       rgba(255, 215, 0, 0.09), transparent 60%),
-    linear-gradient(180deg, #171129 0%, #0c0916 100%) !important;
+    linear-gradient(var(--surface-page), var(--surface-page))
+      !important;
 }
 
 .mole-page .gs-shell {
@@ -104,22 +153,43 @@ main:has(.mole-page) {
 }
 
 /* 全局顶栏 / 横幅 / 页脚 / 移动底栏一并收进紫夜，避免样图氛围被浅色外壳截断 */
-body:has(.mole-page) .site-news-banner,
-body:has(.mole-page) .tide-header,
-body:has(.mole-page) footer,
-body:has(.mole-page) .mobile-tabbar {
-  background: #171129 !important;
+body:has(.mole-page):where(
+  html[data-theme$="-night"],
+  html[data-theme="shanhaijing"],
+  html[data-theme="brand-night"]) .site-news-banner,
+body:has(.mole-page):where(
+  html[data-theme$="-night"],
+  html[data-theme="shanhaijing"],
+  html[data-theme="brand-night"]) .tide-header,
+body:has(.mole-page):where(
+  html[data-theme$="-night"],
+  html[data-theme="shanhaijing"],
+  html[data-theme="brand-night"]) footer,
+body:has(.mole-page):where(
+  html[data-theme$="-night"],
+  html[data-theme="shanhaijing"],
+  html[data-theme="brand-night"]) .mobile-tabbar {
+  background: var(--surface-page) !important;
   border-color: rgba(247, 226, 178, 0.16) !important;
-  color: #f6f0ff;
+  color: var(--text-strong);
 }
-body:has(.mole-page) footer > div > div {
-  background: #2a1b45 !important;
+body:has(.mole-page):where(
+  html[data-theme$="-night"],
+  html[data-theme="shanhaijing"],
+  html[data-theme="brand-night"]) footer > div > div {
+  background: var(--surface-card) !important;
   border-color: rgba(247, 226, 178, 0.16) !important;
 }
-body:has(.mole-page) .tide-header input,
-body:has(.mole-page) .tide-header button:not(:has(img)) {
+body:has(.mole-page):where(
+  html[data-theme$="-night"],
+  html[data-theme="shanhaijing"],
+  html[data-theme="brand-night"]) .tide-header input,
+body:has(.mole-page):where(
+  html[data-theme$="-night"],
+  html[data-theme="shanhaijing"],
+  html[data-theme="brand-night"]) .tide-header button:not(:has(img)) {
   background: rgba(255, 255, 255, 0.05);
-  color: #c3b3e0;
+  color: var(--text-muted);
   border-color: rgba(247, 226, 178, 0.16);
 }
 
@@ -132,6 +202,34 @@ body:has(.mole-page) .tide-header button:not(:has(img)) {
   color: transparent;
   letter-spacing: 0.18em;
   text-shadow: none;
+}
+/* 标题前的图标：此前靠根元素上的 wheel-page class 借大转盘的
+   .wheel-page .gs-title-ic 上色；该 class 已移除（见 mole/_inner.tsx），
+   这里自带同款金色，取标题渐变的中段色。 */
+.mole-page .gs-title-ic {
+  color: #f0cd86;
+}
+/* 浅色主题：标题的亮金渐变是深底上的做法，浅底上改为深金实色字
+   （下面三条共用同一个浅色档祖先条件）。 */
+:where(
+  html:not(
+      [data-theme$="-night"],
+      [data-theme="shanhaijing"],
+      [data-theme="brand-night"]
+    )
+) .mole-page .gs-title {
+  background: none;
+  -webkit-text-fill-color: #8a6428;
+  color: #8a6428;
+}
+:where(
+  html:not(
+      [data-theme$="-night"],
+      [data-theme="shanhaijing"],
+      [data-theme="brand-night"]
+    )
+) .mole-page .gs-title-ic {
+  color: #8a6428;
 }
 .mole-page .gs-head-sub,
 .mole-page .gs-head-mid {
@@ -203,7 +301,8 @@ body:has(.mole-page) .tide-header button:not(:has(img)) {
   border-color: rgba(240, 200, 120, 0.24) !important;
   background:
     radial-gradient(120% 120% at 50% 0%,
-      #322053 0%, #1a1130 68%, #120c1f 100%) !important;
+      var(--surface-raised) 0%, var(--surface-sunken) 68%,
+      var(--surface-sunken) 100%) !important;
   box-shadow:
     0 24px 50px rgba(0, 0, 0, 0.5),
     inset 0 1px 0 rgba(255, 255, 255, 0.08),
@@ -625,6 +724,7 @@ body:has(.mole-page) .tide-header button:not(:has(img)) {
   padding: 12px 10px;
   border-radius: 14px;
   border: 1px solid var(--mo-line);
+  /* 白色半透明是深底上的提亮；浅色主题在文件末「浅色主题档」里换成卡片底 */
   background: rgba(255, 255, 255, 0.055);
   text-align: center;
 }
@@ -640,7 +740,10 @@ body:has(.mole-page) .tide-header button:not(:has(img)) {
 .mole-page .wp-pool-panel,
 .mole-page .gr-panel {
   border-color: var(--mo-line) !important;
-  background: linear-gradient(160deg, #2a1b45, #1d1433) !important;
+  background:
+    linear-gradient(160deg,
+    var(--surface-card),
+    var(--surface-card)) !important;
   color: var(--mo-ink);
 }
 .mole-page .wp-h2 { color: var(--mo-gold-1); }
@@ -650,14 +753,14 @@ body:has(.mole-page) .tide-header button:not(:has(img)) {
 .mole-page .gr-panel h2 { color: var(--mo-gold-1); }
 .mole-page .gr-panel .text-sub,
 .mole-page .gr-panel .text-muted {
-  color: #b9a7d2;
+  color: var(--text-muted);
 }
 
 /* 战绩条目在夜场深卡上提亮 */
 .mole-page .gr-panel {
   color: #f1e6ff;
 }
-.mole-page .gr-panel .text-sub { color: #b9a7d2; }
+.mole-page .gr-panel .text-sub { color: var(--text-muted); }
 .mole-page .sw-stat {
   border: 1px solid var(--mo-line);
   background: rgba(255, 255, 255, 0.055);

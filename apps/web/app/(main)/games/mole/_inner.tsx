@@ -254,7 +254,10 @@ export default function MoleFocusPage({
     );
 
   return (
-    <div className={`wheel-page mole-page tab-${tab}`}>
+    // 不要带 wheel-page：大转盘皮肤有 33 条 .wheel-page 作用域规则（含把舞台
+    // 染成深紫的 !important），会压过打地鼠自己的样式——此前打地鼠的舞台
+    // 一直是被大转盘的规则染色的。标题图标的颜色已在 arcade-mole.css 自带。
+    <div className={`mole-page tab-${tab}`}>
       <GameShell
         icon={<ArcadeGlyph k="mole" />}
         title={tm.title}

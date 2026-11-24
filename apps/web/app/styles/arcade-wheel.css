@@ -40,7 +40,10 @@
   box-shadow: none !important;
 }
 
-/* 页面氛围：紫夜游戏厅（样图的暖紫，不是夜场默认的藏蓝） */
+/* 页面氛围：紫夜游戏厅（样图的暖紫，不是夜场默认的藏蓝）
+   ⚠ 实测这是条死规则（2026-11-24）：[data-arcade="sweet"] 是 main 的子元素
+   而非祖先，本选择器从不匹配，页面底实际走站点主题色。保留原文未动——
+   是否改成 `main:has(.wheel-page)` 让它在暗色主题下真的生效，属于视觉决定。 */
 [data-arcade="sweet"] main:has(.wheel-page) {
   background:
     radial-gradient(
@@ -274,6 +277,22 @@
   gap: 16px;
   border-radius: 24px;
   border-color: rgba(240, 200, 120, 0.24) !important;
+  /* 主题跟随（2026-11-24）：深紫面改走站点表面令牌，浅色主题下随色相
+     变浅；金线描边保留。阴影是深底用的重投影，浅底上会发脏——这里
+     减淡，暗色档由下方带闸的规则补回原投影。 */
+  background:
+    radial-gradient(120% 120% at 50% 0%, var(--surface-raised) 0%,
+      var(--surface-sunken) 68%, var(--surface-sunken) 100%) !important;
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35) !important;
+}
+/* 暗色族主题：补回样图的暖紫舞台面与重投影（浅色档用上方令牌版）。 */
+:where(
+  html[data-theme$="-night"],
+  html[data-theme="shanhaijing"],
+  html[data-theme="brand-night"]
+) [data-arcade="sweet"] .wheel-page .gs-stage-box {
   background:
     radial-gradient(120% 120% at 50% 0%, #322053 0%, #1a1130 68%,
       #120c1f 100%) !important;
@@ -884,4 +903,62 @@
   .wheel-page .wp-stage > .wp-cta-row { grid-area: cta; justify-self: center; }
   .wheel-page .wp-stage > .wp-stats { grid-area: stats; width: auto; gap: 8px; }
   .wheel-page .wp-stage > .wp-stat { padding: 8px 14px; }
+}
+
+/* ══════ 浅色主题档（主题跟随 2026-11-24）════════════════════════
+   本皮肤的页头 / 标签 / 统计格 / 返回钮用的是「深底上的白色半透明」，
+   奖池面板写死样图深紫——底随主题变浅后，白字读不出、紫块与页面割裂。
+   浅色主题下这些界面色改走站点表面与文字令牌；转盘盘面、金边、扇区是
+   玩法件固有色，两种主题下都不动。
+   主题条件挂在祖先 html 上、只写一次，内部用 CSS 嵌套（:where 不抬特异性）。
+   不能写成 `.x:where(html…)`——那是复合选择器，永远不匹配。 */
+:where(
+  html:not(
+      [data-theme$="-night"],
+      [data-theme="shanhaijing"],
+      [data-theme="brand-night"]
+    )
+) {
+  .wheel-page {
+    --wp-badge-ink: #8a6428;
+
+    & .gtab:not(.on) {
+      color: var(--text-muted);
+
+      &:hover {
+        color: var(--text-strong);
+      }
+    }
+    & .gs-back,
+    & .gs-head-center > button {
+      border-color: var(--border-deep);
+      background: var(--surface-card);
+      color: var(--text-strong);
+    }
+    & .wp-pool {
+      border-color: var(--border-soft);
+      background: var(--surface-card);
+    }
+  }
+  .wp-badge {
+    border-color: var(--border-deep);
+    background: var(--surface-card);
+    color: var(--wp-badge-ink, #8a6428);
+  }
+  /* 票价徽章：天蓝色是深底上的亮色，浅底改用站点深强调色 */
+  .wp-badge.ticket {
+    border-color: var(--border-deep);
+    background: var(--surface-card);
+    color: var(--sky-deep);
+  }
+  .wp-stat {
+    border-color: var(--border-soft);
+    background: var(--surface-card);
+  }
+  .wp-stat-lb {
+    color: var(--text-muted);
+  }
+  .wp-stat-vl {
+    color: var(--text-strong);
+  }
 }
