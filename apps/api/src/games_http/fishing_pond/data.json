@@ -48,6 +48,75 @@
   "epic",
   "legend"
  ],
+ "baits": [
+  {
+   "id": "worm",
+   "name": "蚯蚓打窝饵",
+   "price": 0,
+   "desc": "免费基础饵，自然恢复",
+   "recover": true,
+   "eff": {}
+  },
+  {
+   "id": "disguise",
+   "name": "伪装打窝饵",
+   "price": 1000,
+   "desc": "稀有鱼概率小幅提升",
+   "eff": {
+    "rare": 0.1
+   }
+  },
+  {
+   "id": "bloodworm",
+   "name": "红虫打窝饵",
+   "price": 2000,
+   "desc": "更易遇见史诗鱼",
+   "eff": {
+    "rare": 0.12,
+    "epic": 0.15
+   }
+  },
+  {
+   "id": "bladder",
+   "name": "泡囊打窝饵",
+   "price": 3000,
+   "desc": "吸引传说鱼",
+   "eff": {
+    "rare": 0.1,
+    "epic": 0.12,
+    "legend": 0.3
+   }
+  },
+  {
+   "id": "insect",
+   "name": "昆虫打窝饵",
+   "price": 4000,
+   "desc": "高级鱼机会提升",
+   "eff": {
+    "rare": 0.15,
+    "epic": 0.18,
+    "legend": 0.2
+   }
+  },
+  {
+   "id": "goldfish",
+   "name": "黄鱼打窝饵",
+   "price": 5000,
+   "desc": "向传说鱼招手",
+   "eff": {
+    "rare": 0.2,
+    "epic": 0.25,
+    "legend": 0.45
+   }
+  }
+ ],
+ "releaseLuck": {
+  "common": 1,
+  "fine": 3,
+  "rare": 5,
+  "epic": 20,
+  "legend": 100
+ },
  "scenes": [
   {
    "id": "bay",
@@ -931,6 +1000,7 @@
   "staminaRecoverMs": 360000,
   "staminaRefillCost": 40,
   "castStaminaCost": 1,
+  "baitMaxStack": 999,
   "bagTiers": [
    {
     "cap": 30,

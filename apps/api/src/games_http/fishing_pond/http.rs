@@ -9,12 +9,13 @@ use serde::Deserialize;
 use serde_json::{json, Value};
 
 use crate::dto::ok;
-use crate::economy_http::{earn_spark_tx, spend_spark_tx};
+use crate::economy_http::{spend_spark_tx, SpendOutcome};
 use crate::errors::{DomainError, DomainResult};
 use crate::games_http::helpers::check_minclass;
 use crate::http::require_auth;
 use crate::state::AppState;
 
+use super::bait;
 use super::data::data;
 use super::rules;
 use super::state::{
@@ -39,10 +40,12 @@ async fn spark_of(
         .map_err(|e| DomainError::Internal(e.into()))
 }
 
-/// 渔场只有一个货币：场内 `magic` 是站点余额的镜像。
-/// 规则层照旧对 `st["magic"]` 加减，这里把本次动作的净差额落成一条 spark 流水：
-/// 正差额入账、负差额扣款，然后把镜像改写成真实余额。
-/// 规则层已经用镜像余额做过一次校验，正常不会出现“余额不足”；真撞上并发就整个事务回滚。
+/// 渔场只有一个货币：站点魔力。规则层照旧对 `st["magic"]` 加减，这里把
+/// 净差额落成 spark 流水。**只扣不加**（2026-11-24 经济口径）：钓场是魔力
+/// 的回收口，任何路径都不返魔力 —— 此前正差额走 `earn_spark_tx` 入账，
+/// 等于「起手白送 3200 + 每竿再赚几十上百」的无成本增发口。规则层已不再
+/// 产生正差额（见 rules.rs / state.rs），闸留在 HTTP 层做纵深防御：将来
+/// 谁再加一条发奖路径，也发不出站点魔力。返回扣掉的额度；未扣返回 0。
 async fn mirror_magic(
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     uid: i64,
@@ -51,16 +54,17 @@ async fn mirror_magic(
     idem_prefix: &str,
 ) -> DomainResult<i64> {
     let delta = after - before;
-    if delta > 0 {
-        let idem = format!("{}:{}:{}", idem_prefix, uid, uuid::Uuid::new_v4());
-        let _ = earn_spark_tx(tx, uid, delta, "fishing_pond", &idem).await?;
-    } else if delta < 0 {
-        let idem = format!("{}:{}:{}", idem_prefix, uid, uuid::Uuid::new_v4());
-        let _ =
-            spend_spark_tx(tx, uid, -delta, "game", &idem, "fishing_pond", 0)
-                .await?;
+    if delta >= 0 {
+        return Ok(0);
     }
-    spark_of(tx, uid).await
+    let idem = format!("{}:{}:{}", idem_prefix, uid, uuid::Uuid::new_v4());
+    let out = spend_spark_tx(tx, uid, -delta, "game", &idem, "fishing_pond", 0)
+        .await?;
+    Ok(if matches!(out, SpendOutcome::Spent) {
+        -delta
+    } else {
+        0
+    })
 }
 
 async fn lock_state(
@@ -310,7 +314,8 @@ pub(super) async fn pond_settle(
     }
     let mut st = lock_state(&mut tx, auth.id).await?;
     advance(&mut st, now);
-    // 场内货币 = 站点魔力镜像；本次结算的净收益落 spark 流水
+    // 结算**不动账**：渔获不发魔力（钓场是回收口）。镜像余额只为规则层的
+    // 「买不买得起」判断服务，结算前后恒等于真实余额。
     let magic_before = spark_of(&mut tx, auth.id).await?;
     st["magic"] = json!(magic_before);
     let mut rng = rand::thread_rng();
@@ -359,16 +364,8 @@ pub(super) async fn pond_settle(
         };
         rules::settle_miss(&mut st, outcome);
     }
-    let magic_after = st::n(&st, "magic");
-    let balance = mirror_magic(
-        &mut tx,
-        auth.id,
-        magic_before,
-        magic_after,
-        "pond_settle",
-    )
-    .await?;
-    st["magic"] = json!(balance);
+    // 渔获不改变余额：写回镜像，免得把规则层残留的读数落库。
+    st["magic"] = json!(magic_before);
     sqlx::query(
         "UPDATE arcade_fishing_pond_rounds SET resolved = true, result = $2 \
           WHERE id = $1 AND resolved = false",
@@ -381,7 +378,7 @@ pub(super) async fn pond_settle(
     write_state(&mut tx, auth.id, &st).await?;
     tx.commit().await.map_err(internal)?;
     Ok(ok(
-        json!({"ok": true, "items": items, "state": st, "spark": balance}),
+        json!({"ok": true, "items": items, "state": st, "spark": magic_before}),
     ))
 }
 
@@ -409,19 +406,16 @@ pub(super) async fn pond_act(
     let r = apply_action(&mut st, &action, &body, now);
     match r {
         Ok(result) => {
-            // 重置只清渔场进度，不能把站点余额重置成 3200（否则就是印钞）
-            if action == "reset" {
-                st["magic"] = json!(magic_before);
-            }
-            let magic_after = st::n(&st, "magic");
-            let balance = mirror_magic(
+            // 只扣不加：买装备/升级/扩容/补体力的负差额落 spark 流水。
+            mirror_magic(
                 &mut tx,
                 auth.id,
                 magic_before,
-                magic_after,
+                st::n(&st, "magic"),
                 "pond_act",
             )
             .await?;
+            let balance = spark_of(&mut tx, auth.id).await?;
             st["magic"] = json!(balance);
             write_state(&mut tx, auth.id, &st).await?;
             tx.commit().await.map_err(internal)?;
@@ -437,91 +431,7 @@ pub(super) async fn pond_act(
     }
 }
 
-fn apply_action(
-    st: &mut Value,
-    a: &str,
-    b: &Value,
-    now: i64,
-) -> Result<Value, &'static str> {
-    let arg =
-        |k: &str| b.get(k).and_then(Value::as_str).unwrap_or("").to_string();
-    match a {
-        "buy" => {
-            let r = rules::buy_item(st, &arg("cat"), &arg("id"), now)?;
-            let _ = rules::equip_item(st, &arg("cat"), &arg("id"));
-            Ok(r)
-        }
-        "equip" => rules::equip_item(st, &arg("cat"), &arg("id")),
-        "upgrade" => rules::upgrade_item(st, &arg("cat"), &arg("id")),
-        "buyScene" => rules::buy_scene(st, &arg("id")),
-        "switchScene" => rules::switch_scene(st, &arg("id")),
-        "cond" => rules::set_cond(st, &arg("c")),
-        "expandBag" => rules::expand_bag(st),
-        "unlockAuto" => rules::unlock_auto(st),
-        "refill" => rules::refill_stamina(st, now),
-        "claimOrder" => rules::claim_order(
-            st,
-            b.get("idx").and_then(Value::as_u64).unwrap_or(0) as usize,
-        ),
-        "claimOrderBonus" => rules::claim_order_bonus(st),
-        "claimAch" => rules::claim_ach(st, &arg("id"), now),
-        "releaseBagFish" => rules::release_from_bag(st, &arg("uid")),
-        "takeFish" => rules::take_from_aquarium(st, &arg("uid")),
-        "releaseFish" => rules::release_from_aquarium(st, &arg("uid")),
-        "takeAll" => Ok(rules::take_all_from_aquarium(st)),
-        "releaseAll" => {
-            let n = st["aquarium"].as_array().map_or(0, |a| a.len());
-            st["aquarium"] = json!([]);
-            Ok(json!({"ok": true, "moved": 0, "released": n}))
-        }
-        "sign" => {
-            let (rw, idx) = st::sign_claim(st, now)?;
-            Ok(json!({"ok": true, "reward": rw, "idx": idx}))
-        }
-        "gift" => {
-            let left = st::friends_gift(st)?;
-            Ok(json!({"ok": true, "left": left}))
-        }
-        "receiveGifts" => {
-            let count = st::friends_receive(st)?;
-            Ok(json!({"ok": true, "count": count}))
-        }
-        "equipSet" => {
-            let id = arg("id");
-            let Some(set) = data().sets.iter().find(|s| s.id == id) else {
-                return Err("notfound");
-            };
-            if !st["scenesOwned"].as_array().map_or(false, |a| {
-                a.iter().any(|x| x.as_str() == Some(set.scene.as_str()))
-            }) {
-                return Err("locked");
-            }
-            st["scene"] = json!(set.scene);
-            for (cat, item) in &set.parts {
-                if st::is_owned(st, cat, item) {
-                    st["equipped"][cat] = json!(item);
-                }
-            }
-            Ok(json!({"ok": true, "setId": set.id}))
-        }
-        "gotoScene" => {
-            rules::switch_scene(st, &arg("id"))?;
-            rules::set_cond(st, &arg("cond"))?;
-            Ok(json!({"ok": true}))
-        }
-        "reset" => {
-            *st = st::default_state(now);
-            st::ensure_equipped(st, now);
-            Ok(json!({"ok": true}))
-        }
-        "setAuto" => {
-            st["auto"] =
-                json!(b.get("on").and_then(Value::as_bool).unwrap_or(false));
-            Ok(json!({"ok": true}))
-        }
-        _ => Err("unknown"),
-    }
-}
+use super::actions::apply_action;
 
 /* ================= 赛季榜 ================= */
 

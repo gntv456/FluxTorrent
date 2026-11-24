@@ -28,6 +28,10 @@ pub struct Data {
     pub items: HashMap<String, Vec<Item>>,
     pub sets: Vec<Set>,
     pub fish: Vec<Fish>,
+    /// 打窝饵（消耗品，每竿 1 枚）：首档免费、高档用魔力买 —— 主回收口。
+    pub baits: Vec<Bait>,
+    /// 放生渔运：按稀有度计点，只可兑换解锁、永不可换魔力。
+    pub release_luck: HashMap<String, i64>,
     #[serde(rename = "const")]
     pub k: Consts,
     pub ach: Vec<Ach>,
@@ -59,6 +63,32 @@ pub struct Item {
     pub id: String,
     pub name: String,
     pub price: i64,
+    #[serde(default)]
+    pub eff: HashMap<String, f64>,
+}
+
+impl Data {
+    /// 按键找打窝饵。
+    pub fn bait(&self, id: &str) -> Option<&Bait> {
+        self.baits.iter().find(|b| b.id == id)
+    }
+
+    /// 放生某稀有度的鱼得多少渔运。
+    pub fn release_luck(&self, rarity: &str) -> i64 {
+        self.release_luck.get(rarity).copied().unwrap_or(1)
+    }
+}
+
+/// 一次性打窝饵（消耗）：`eff` 里 rare/epic/legend 是该竿的稀有度权重
+/// 乘数加成（小数）。与装备位 bait（买断属性件）是两回事。
+#[derive(Deserialize, Debug)]
+pub struct Bait {
+    pub id: String,
+    pub name: String,
+    pub price: i64,
+    /// 免费档（蚯蚓）：不进库存账，靠自然恢复与签到赠送。
+    #[serde(default)]
+    pub recover: bool,
     #[serde(default)]
     pub eff: HashMap<String, f64>,
 }
@@ -105,6 +135,7 @@ pub struct Consts {
     pub stamina_recover_ms: i64,
     pub stamina_refill_cost: i64,
     pub cast_stamina_cost: i64,
+    pub bait_max_stack: i64,
     pub bag_tiers: Vec<BagTier>,
     pub aquarium_cap_per_tier: i64,
     pub auto_unlock_price: i64,

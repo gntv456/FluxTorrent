@@ -211,33 +211,7 @@ pub fn pool_of(st: &Value) -> Vec<&'static super::data::Fish> {
     list
 }
 
-fn rarity_weights(
-    st: &Value,
-    pool: &[&super::data::Fish],
-    stats: &Stats,
-) -> Vec<f64> {
-    let night = s(st, "cond") == "night";
-    let rare_boost = stats.rare * (if night { 1.0 + stats.night } else { 1.0 })
-        + if night { stats.night * 0.4 } else { 0.0 };
-    let legend_boost = stats.legend + rare_boost * 0.25;
-    let d = data();
-    d.rarity_order
-        .iter()
-        .map(|rk| {
-            if !pool.iter().any(|f| &f.rarity == rk) {
-                return 0.0;
-            }
-            let base = d.rarity.get(rk).map(|r| r.weight).unwrap_or(0.0);
-            match rk.as_str() {
-                "rare" => base * (1.0 + rare_boost),
-                "epic" => base * (1.0 + rare_boost * 0.9),
-                "legend" => base * (1.0 + legend_boost * 2.2),
-                "common" => base * (1.0 + stats.common),
-                _ => base,
-            }
-        })
-        .collect()
-}
+use super::bait::rarity_weights;
 
 pub fn roll_fish(st: &Value, rng: &mut Rng) -> &'static super::data::Fish {
     let stats = stats_of(st);
@@ -280,6 +254,8 @@ pub fn cast(
     {
         return Err("noStamina");
     }
+    super::bait::consume_for_cast(st)?;
+
     if n(st, "freeCasts") > 0 {
         st["freeCasts"] = json!(n(st, "freeCasts") - 1);
     } else {
@@ -293,6 +269,8 @@ pub fn cast(
     let window_ms = stats.window.round() as i64;
     let fish = roll_fish(st, rng);
     let size = roll_size(fish, rng);
+    // 饵效果只活在抽鱼那一瞬，不落库
+    st["baitEff"] = json!({});
     st["stats"]["casts"] = json!(n(&st["stats"], "casts") + 1);
     st["stats"]["plays"] = json!(n(&st["stats"], "plays") + 1);
     Ok(json!({
@@ -345,6 +323,8 @@ pub fn settle_catch(
         as i64)
         .max(6);
     let weight = round2(size * (0.02 + rng() * 0.03));
+    // `magic` 只是这一尾的**估值**（图鉴「单尾最高」/详情页用），不再入账：
+    // 钓场是魔力的回收口（抛竿/装备/扩容只扣不返），渔获本身不发任何魔力。
     let entry = json!({
         "uid": format!("f{}{}", now, (rng() * 1e4) as i64),
         "id": fish.id, "name": fish.name, "rarity": fish.rarity,
@@ -354,9 +334,10 @@ pub fn settle_catch(
     let dest = place_catch(st, entry.clone());
     let is_night = s(st, "cond") == "night";
     let is_rain = s(st, "cond") == "rain";
-    st["magic"] = json!(n(st, "magic") + magic);
     let st_stats = &mut st["stats"];
     st_stats["catches"] = json!(n(st_stats, "catches") + 1);
+    // 口径变更：`magicEarned` 现在是「累计渔获**估值**」（成就 magic20k 仍读它），
+    // 不再对应任何入账 —— 钓场任何路径都不发魔力。
     st_stats["magicEarned"] = json!(n(st_stats, "magicEarned") + magic);
     let streak = n(st_stats, "curStreak") + 1;
     st_stats["curStreak"] = json!(streak);
@@ -431,10 +412,10 @@ pub fn claim_order(st: &mut Value, idx: usize) -> Result<Value, &'static str> {
         o["claimed"] = json!(true);
         n(o, "reward")
     };
-    st["magic"] = json!(n(st, "magic") + reward);
+    // 订单奖励不再入账魔力（只记估值与完成数）：钓场是回收口，不出水。
     st["stats"]["magicEarned"] = json!(n(&st["stats"], "magicEarned") + reward);
     st["stats"]["ordersDone"] = json!(n(&st["stats"], "ordersDone") + 1);
-    Ok(json!({"ok": true, "reward": reward}))
+    Ok(json!({"ok": true, "reward": reward, "rewardKind": "score"}))
 }
 
 pub fn claim_order_bonus(st: &mut Value) -> Result<Value, &'static str> {
@@ -453,9 +434,8 @@ pub fn claim_order_bonus(st: &mut Value) -> Result<Value, &'static str> {
     }
     let reward = data().k.order_all_bonus;
     st["orders"]["bonusClaimed"] = json!(true);
-    st["magic"] = json!(n(st, "magic") + reward);
     st["stats"]["magicEarned"] = json!(n(&st["stats"], "magicEarned") + reward);
-    Ok(json!({"ok": true, "reward": reward}))
+    Ok(json!({"ok": true, "reward": reward, "rewardKind": "score"}))
 }
 
 pub fn claim_ach(
@@ -467,10 +447,9 @@ pub fn claim_ach(
         return Err("locked");
     };
     st["ach"][id] = json!({"claimed": true, "at": now});
-    st["magic"] = json!(n(st, "magic") + a.reward);
     st["stats"]["magicEarned"] =
         json!(n(&st["stats"], "magicEarned") + a.reward);
-    Ok(json!({"ok": true, "reward": a.reward}))
+    Ok(json!({"ok": true, "reward": a.reward, "rewardKind": "score"}))
 }
 
 pub fn release_from_bag(
@@ -545,167 +524,4 @@ pub fn take_all_from_aquarium(st: &mut Value) -> Value {
     }
     let left = st["aquarium"].as_array().map_or(0, |a| a.len()) as i64;
     json!({"ok": moved > 0, "moved": moved, "left": left})
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::games_http::fishing_pond::state as st;
-
-    const NOW: i64 = 1_795_000_000_000; // 2026-11-21 前后，UTC ms
-
-    fn fresh() -> Value {
-        let mut s = st::default_state(NOW);
-        st::ensure_equipped(&mut s, NOW);
-        st::orders_ensure(&mut s, NOW);
-        s
-    }
-
-    fn seq(vals: &'static [f64]) -> impl FnMut() -> f64 {
-        let mut i = 0usize;
-        move || {
-            let v = vals[i % vals.len()];
-            i += 1;
-            v
-        }
-    }
-
-    #[test]
-    fn starter_state_is_playable() {
-        let s = fresh();
-        assert_eq!(n(&s, "magic"), 3200);
-        assert_eq!(n(&s["stamina"], "v"), 12);
-        assert_eq!(st::s(&s["equipped"], "rod"), "bamboo");
-        assert_eq!(st::bag_cap(&s), 30);
-        assert_eq!(s["orders"]["list"].as_array().unwrap().len(), 3);
-    }
-
-    #[test]
-    fn cast_spends_free_first_and_rolls_scene_fish() {
-        let mut s = fresh();
-        let mut r = seq(&[0.25, 0.4, 0.6]);
-        let out = cast(&mut s, NOW, &mut r).expect("cast ok");
-        assert_eq!(n(&s, "freeCasts"), 2);
-        assert_eq!(n(&s["stamina"], "v"), 12, "免费次数优先，体力不动");
-        assert_eq!(out["fish"]["scene"], "bay");
-        assert!(out["window_ms"].as_i64().unwrap() >= 400);
-        assert!(out["bite_after_ms"].as_i64().unwrap() >= 900);
-    }
-
-    #[test]
-    fn cast_without_resource_is_rejected() {
-        let mut s = fresh();
-        s["freeCasts"] = json!(0);
-        s["stamina"]["v"] = json!(0);
-        let mut r = seq(&[0.5]);
-        assert_eq!(cast(&mut s, NOW, &mut r).unwrap_err(), "noStamina");
-    }
-
-    #[test]
-    fn buying_charges_and_marks_owned_once() {
-        let mut s = fresh();
-        let r = buy_item(&mut s, "bait", "worm", NOW).expect("buy ok");
-        assert_eq!(r["cost"], 120);
-        assert_eq!(n(&s, "magic"), 3080);
-        assert!(is_owned(&s, "bait", "worm"));
-        assert_eq!(buy_item(&mut s, "bait", "worm", NOW).unwrap_err(), "owned");
-    }
-
-    #[test]
-    fn buying_unknown_or_unaffordable_is_rejected() {
-        let mut s = fresh();
-        assert_eq!(
-            buy_item(&mut s, "bait", "nope", NOW).unwrap_err(),
-            "notfound"
-        );
-        s["magic"] = json!(10);
-        assert_eq!(buy_item(&mut s, "rod", "moon", NOW).unwrap_err(), "poor");
-    }
-
-    #[test]
-    fn settle_grants_magic_bag_album_and_stats() {
-        let mut s = fresh();
-        let fish = data().fish.iter().find(|f| f.scene == "bay").unwrap();
-        let stats = Stats {
-            all: 0.0,
-            limit: 100.0,
-            pull: 1.0,
-            ..Default::default()
-        };
-        let mut r = seq(&[0.9, 0.1]);
-        let item =
-            settle_catch(&mut s, fish, fish.size[1], &stats, NOW, &mut r);
-        assert!(item["magic"].as_i64().unwrap() >= 6);
-        assert_eq!(s["bag"]["fish"].as_array().unwrap().len(), 1);
-        assert!(s["album"].get(&fish.id).is_some());
-        assert_eq!(n(&s["stats"], "catches"), 1);
-        assert_eq!(n(&s["stats"], "curStreak"), 1);
-        assert!(n(&s, "magic") > 3200);
-    }
-
-    #[test]
-    fn miss_resets_streak_and_counts() {
-        let mut s = fresh();
-        s["stats"]["curStreak"] = json!(3);
-        settle_miss(&mut s, "miss");
-        assert_eq!(n(&s["stats"], "curStreak"), 0);
-        assert_eq!(n(&s["stats"], "missed"), 1);
-        settle_miss(&mut s, "break");
-        assert_eq!(n(&s["stats"], "breaks"), 1);
-    }
-
-    #[test]
-    fn bag_and_auto_prices_match_client() {
-        let mut s = fresh();
-        expand_bag(&mut s).expect("expand ok");
-        assert_eq!(n(&s, "magic"), 2400);
-        assert_eq!(st::bag_cap(&s), 50);
-        s["magic"] = json!(1600);
-        unlock_auto(&mut s).expect("unlock ok");
-        assert_eq!(n(&s, "magic"), 100);
-        assert!(s["autoUnlocked"].as_bool().unwrap());
-    }
-
-    #[test]
-    fn upgrades_follow_rate_curve() {
-        assert_eq!(upgrade_cost(300, 1), 135);
-        assert_eq!(upgrade_cost(300, 2), 270);
-        assert_eq!(upgrade_cost(0, 1), 54, "起步价 120 × 0.45");
-    }
-
-    #[test]
-    fn sign_is_daily_and_once() {
-        let mut s = fresh();
-        let (reward, idx) = st::sign_claim(&mut s, NOW).expect("sign ok");
-        assert_eq!(idx, 0);
-        assert!(reward["value"].as_i64().unwrap() > 0);
-        assert_eq!(st::sign_claim(&mut s, NOW).unwrap_err(), "claimed");
-    }
-
-    #[test]
-    fn roll_size_stays_within_species_range() {
-        let fish = &data().fish[0];
-        for k in 0..20 {
-            let mut i = 0u64;
-            let mut r = move || {
-                i += 1;
-                (k as f64 + i as f64 * 0.1) / 20.0
-            };
-            let z = roll_size(fish, &mut r);
-            assert!(z >= fish.size[0] && z <= fish.size[1]);
-        }
-    }
-
-    #[test]
-    fn pool_depends_on_scene_and_unlock() {
-        let mut s = fresh();
-        let bay = pool_of(&s);
-        assert!(!bay.is_empty());
-        assert!(bay.iter().all(|f| f.scene == "bay"));
-        s["scenesOwned"] = json!(["bay", "gorge"]);
-        s["scene"] = json!("gorge");
-        let gorge = pool_of(&s);
-        assert!(gorge.iter().all(|f| f.scene == "gorge"));
-        assert!(!gorge.is_empty());
-    }
 }

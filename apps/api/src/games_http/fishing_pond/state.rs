@@ -72,10 +72,17 @@ pub fn default_state(now: i64) -> Value {
             );
         }
     }
+    // stats 单独一个 json!：顶层宏键数已贴着 serde_json 默认递归深度。
+    let stats = json!({
+        "casts": 0, "catches": 0, "breaks": 0, "missed": 0, "plays": 0,
+        "magicEarned": 0, "rareCaught": 0, "epicCaught": 0, "legendCaught": 0,
+        "nightCatches": 0, "rainCatches": 0, "bigCaught": 0, "bestStreak": 0,
+        "curStreak": 0, "ordersDone": 0, "giftsSent": 0, "signFull": 0, "released": 0
+    });
     json!({
         "v": 1,
-        "magic": 3200,
-        "freeCasts": 3,
+        // 魔力=站点余额镜像，起手 0（不送魔力；读档时 spark_of 覆盖）。
+        "magic": 0, "freeCasts": 3, "baitId": "worm", "baits": {}, "luck": 0,
         "stamina": { "v": d.k.stamina_max, "at": now },
         "scene": "bay",
         "cond": "day",
@@ -91,15 +98,8 @@ pub fn default_state(now: i64) -> Value {
         "sign": { "idx": 0, "last": "", "cycle": 0 },
         "friends": { "day": "", "sent": 0, "received": [] },
         "season": { "id": 0, "catches": 0, "claimed": false },
-        // 站点魔力兑换台账：当日额度 + 累计兑出（累计兑出只用于限制“可提现”的捕获收益）
-        "exchange": { "day": "", "out": 0, "in": 0, "outTotal": 0 },
         "ach": {},
-        "stats": {
-            "casts": 0, "catches": 0, "breaks": 0, "missed": 0, "plays": 0,
-            "magicEarned": 0, "rareCaught": 0, "epicCaught": 0, "legendCaught": 0,
-            "nightCatches": 0, "rainCatches": 0, "bigCaught": 0,
-            "bestStreak": 0, "curStreak": 0, "ordersDone": 0, "giftsSent": 0, "signFull": 0
-        },
+        "stats": stats,
         "settings": { "reduceMotion": false },
         "createdAt": now
     })
@@ -497,55 +497,6 @@ pub fn bump_orders(st: &mut Value, fish_id: &str) -> i64 {
         }
     }
     hits
-}
-
-pub fn sign_claim(
-    st: &mut Value,
-    now: i64,
-) -> Result<(Value, i64), &'static str> {
-    let key = today_key(now);
-    if s(&st["sign"], "last") == key {
-        return Err("claimed");
-    }
-    let rewards = &data().k.sign_in_rewards;
-    let idx = (n(&st["sign"], "idx") % rewards.len() as i64) as usize;
-    let rw = &rewards[idx];
-    st["sign"]["last"] = json!(key);
-    st["sign"]["idx"] = json!(((idx + 1) as i64) % rewards.len() as i64);
-    if (idx + 1) == rewards.len() {
-        st["sign"]["cycle"] = json!(n(&st["sign"], "cycle") + 1);
-        st["stats"]["signFull"] = json!(n(&st["stats"], "signFull") + 1);
-    }
-    let mut magic = 0;
-    match rw.kind.as_str() {
-        "magic" => {
-            magic = rw.value;
-            st["stats"]["magicEarned"] =
-                json!(n(&st["stats"], "magicEarned") + rw.value);
-        }
-        "chest" => {
-            magic = rw.value;
-            st["freeCasts"] = json!(n(st, "freeCasts") + 4);
-            st["stats"]["magicEarned"] =
-                json!(n(&st["stats"], "magicEarned") + rw.value);
-        }
-        "stamina" => {
-            st["stamina"]["v"] =
-                json!((n(&st["stamina"], "v") + rw.value)
-                    .min(data().k.stamina_max));
-        }
-        "bait" => {
-            st["freeCasts"] = json!(n(st, "freeCasts") + rw.value);
-        }
-        _ => {}
-    }
-    if magic > 0 {
-        st["magic"] = json!(n(st, "magic") + magic);
-    }
-    Ok((
-        json!({"type": rw.kind, "value": rw.value, "label": rw.label}),
-        idx as i64,
-    ))
 }
 
 /// 好友园：每天每个好友寄 1 份鱼饵，收信上限 `giftReceiveCap`。
