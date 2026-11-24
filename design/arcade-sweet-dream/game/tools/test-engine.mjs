@@ -45,7 +45,8 @@ const st = E.defaultState(Date.now());
 E.hydrate(st, Date.now());
 ok(st.equipped.rod === 'bamboo', '默认鱼竿');
 ok(E.bagCap(st) === 30, '默认背包 30 格');
-ok(st.magic === 3200, '初始魔力 3200');
+ok(st.magic === 0, '初始魔力 0（回收口径：不送起手赠金）');
+ok(st.freeCasts === 3, '开荒靠 3 次免费竿');
 
 console.log('\n[3] 体力恢复');
 st.stamina = { v: 4, at: 1000 };
@@ -175,19 +176,74 @@ ok(st.orders.list.length === 3, '每日 3 单');
 ok(st.orders.list.every((o) => o.need >= 1 && o.need <= 3), '需求量 1–3');
 const o0 = st.orders.list[0];
 o0.got = o0.need;
+const magicBefore = st.magic;
 const cr = E.claimOrder(st, 0);
 ok(cr.ok === true, '订单可领取');
 ok(E.claimOrder(st, 0).ok === false, '不可重复领取');
-ok(st.magic > 0, '奖励入账');
+ok(st.magic === magicBefore, '订单奖励不入账（回收口径：只记估值）');
+ok(cr.rewardKind === 'score', '订单奖励是估值不是魔力');
 
 console.log('\n[14] 签到');
 st.sign = { idx: 0, last: '', cycle: 0 };
 st.magic = 0;
+const free0 = st.freeCasts;
 const sg = E.claimSign(st, Date.now());
-ok(sg.ok === true && st.magic === 20, 'D1 领到 ✦20', String(st.magic));
+ok(sg.ok === true && st.magic === 0, 'D1 签到不发魔力（回收口径）', String(st.magic));
+ok(st.freeCasts === free0 + 6, 'D1 的 ✦20 折成 6 次免费竿', String(st.freeCasts - free0));
 ok(E.claimSign(st, Date.now()).ok === false, '同一天不可重复签到');
 const sg2 = E.claimSign(st, Date.now() + 86400000);
 ok(sg2.ok === true && sg2.idx === 1, '次日进入 D2', String(sg2.idx));
+
+console.log('\n[14b] 打窝饵 / 放生渔运（回收口径）');
+{
+  const sb = E.defaultState(Date.now());
+  E.hydrate(sb, Date.now());
+  sb.magic = 20000;
+  const bb = E.buyBait(sb, 'bloodworm', 3);
+  ok(bb.ok === true && bb.cost === 6000, '买 3 枚红虫花 6000 魔力', JSON.stringify(bb));
+  ok(sb.baits.bloodworm === 3, '红虫库存 3');
+  ok(E.selectBait(sb, 'bloodworm').ok === true, '选中红虫');
+  const m0 = sb.magic;
+  ok(E.cast(sb, null, Date.now()).ok === true, '抛竿成功');
+  ok(sb.baits.bloodworm === 2, '每竿消耗 1 枚红虫');
+  ok(sb.magic === m0, '抛竿本身不再扣魔力（饵价购时已扣）');
+  ok(E.buyBait(sb, 'worm', 1).ok === false, '免费饵不可购买');
+  ok(E.selectBait({ baits: {} }, 'goldfish').ok === false, '无库存不可选中');
+}
+{
+  const sr = E.defaultState(Date.now());
+  E.hydrate(sr, Date.now());
+  sr.bag.fish = [
+    { uid: 'x1', rarity: 'common' }, { uid: 'x2', rarity: 'epic' },
+    { uid: 'x3', rarity: 'legend' },
+  ];
+  const magic0 = sr.magic;
+  ok(E.releaseForLuck(sr, 'bag', 'x1').luck === 1, '放生普通鱼得 1 渔运');
+  ok(E.releaseForLuck(sr, 'bag', 'x2').luck === 20, '史诗 20 渔运');
+  ok(E.releaseForLuck(sr, 'bag', 'x3').luck === 100, '传说 100 渔运');
+  ok(sr.luck === 121 && sr.magic === magic0, '渔运 121 且不碰魔力');
+  ok(sr.stats.released === 3, '放生计数 3');
+  sr.scenesOwned = ['bay'];
+  sr.luck += 300;  // 121 + 300 = 421 ≥ 360
+  ok(E.luckPrice(600) === 360, '渔运价=魔力价 60%');
+  const lb = E.luckBuyScene(sr, 'gorge');
+  ok(lb.ok === true && lb.cost === 360, '渔运买峡谷花 360');
+  ok(sr.luck === 61 && sr.scenesOwned.indexOf('gorge') >= 0, '扣渔运解锁');
+  ok(E.luckBuyScene(sr, 'reef').reason === 'locked', '跳买 reef 被锁（abyss 未开）');
+  // 渔运兑换扩展：装备 / 扩容 / 自动垂钓（同 60% 口径）
+  const sx = E.defaultState(Date.now()); E.hydrate(sx, Date.now());
+  sx.luck = 3000; sx.magic = 999;
+  const li = E.luckBuyItem(sx, 'rod', 'moon');
+  ok(li.ok === true && li.cost === 720, '渔运买月光竿 720');
+  ok((sx.owned.rod || []).some((x) => x.id === 'moon'), '渔运购物仅持有');
+  const lb2 = E.luckExpandBag(sx);
+  ok(lb2.ok === true && lb2.cost === 480 && lb2.cap === 50, '渔运扩容 480 → 50 格');
+  const la = E.luckUnlockAuto(sx);
+  ok(la.ok === true && la.cost === 900 && sx.autoUnlocked, '渔运买断自动垂钓 900');
+  ok(sx.luck === 3000 - 720 - 480 - 900 && sx.magic === 999, '渔运交易不碰魔力');
+  ok(E.luckBuyItem(sx, 'rod', 'moon').reason === 'owned', '重复购买被拒');
+}
+
 
 console.log('\n[15] 好友 / 赠饵');
 const fs1 = E.friendState(st, Date.now());

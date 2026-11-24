@@ -16,6 +16,25 @@
   };
   const RARITY_ORDER = ['common', 'fine', 'rare', 'epic', 'legend'];
 
+  /* ---------- 打窝饵（消耗品，每竿 1 枚，2026-11-24 思齐对标） ----------
+   * 与装备位的 bait（属性件，买断制）是两回事：打窝饵是抛竿时挂上的
+   * 一次性消耗，按档位拉开该竿的稀有度权重。蚯蚓免费（自然恢复 + 签到
+   * 赠送），高档饵用魔力购买 —— 这是钓场的主力魔力回收口。
+   * rareBoost/epicBoost/legendBoost：对应稀有度权重乘数加成（小数）。
+   */
+  const BAITS = [
+    { id: 'worm', name: '蚯蚓打窝饵', price: 0, desc: '免费基础饵，自然恢复', recover: true,
+      eff: {} },
+    { id: 'disguise', name: '伪装打窝饵', price: 1000, desc: '稀有鱼概率小幅提升', eff: { rare: 0.10 } },
+    { id: 'bloodworm', name: '红虫打窝饵', price: 2000, desc: '更易遇见史诗鱼', eff: { rare: 0.12, epic: 0.15 } },
+    { id: 'bladder', name: '泡囊打窝饵', price: 3000, desc: '吸引传说鱼', eff: { rare: 0.10, epic: 0.12, legend: 0.30 } },
+    { id: 'insect', name: '昆虫打窝饵', price: 4000, desc: '高级鱼机会提升', eff: { rare: 0.15, epic: 0.18, legend: 0.20 } },
+    { id: 'goldfish', name: '黄鱼打窝饵', price: 5000, desc: '向传说鱼招手', eff: { rare: 0.20, epic: 0.25, legend: 0.45 } },
+  ];
+
+  /* 放生回报（渔运）：按稀有度计点，渔运只可兑换解锁，永不可换魔力 */
+  const RELEASE_LUCK = { common: 1, fine: 3, rare: 5, epic: 20, legend: 100 };
+
   /* ---------- 场景（含时段 / 天气三态） ---------- */
   // palettes: 各时段水体渐变；unlockAt 为 0 表示默认拥有
   const SCENES = [
@@ -209,6 +228,7 @@
     staminaRecoverMs: 6 * 60 * 1000,   // 每 6 分钟 +1
     staminaRefillCost: 40,             // 魔力补满
     castStaminaCost: 1,
+    baitMaxStack: 999,          // 单种打窝饵库存上限
     bagTiers: [
       { cap: 30, price: 0, label: '默认容量', skin: '' },
       { cap: 50, price: 800, label: '扩容至 50 格', skin: '' },
@@ -295,7 +315,7 @@
   const RANK_REWARDS = [500, 300, 200, 120, 120, 80, 80, 50];
 
   G.FTData = {
-    RARITY, RARITY_ORDER, SCENES, CATS, ITEMS, SETS, FISH, CONST, ACH,
+    RARITY, RARITY_ORDER, BAITS, RELEASE_LUCK, SCENES, CATS, ITEMS, SETS, FISH, CONST, ACH,
     FRIENDS, RIVALS, RANK_REWARDS,
     // 便捷索引
     fishById: FISH.reduce((m, f) => (m[f.id] = f, m), {}),

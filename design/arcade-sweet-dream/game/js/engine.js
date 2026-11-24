@@ -311,13 +311,17 @@
     // 只给当前池里真实存在的稀有度分配权重，避免反复空档重抽
     const present = {};
     pool.forEach((f) => { present[f.rarity] = true; });
+    const eff = state.baitEff || {};
+    const er = Math.max(0, eff.rare || 0);
+    const ee = Math.max(Math.max(0, eff.epic || 0), er);
+    const el = Math.max(0, eff.legend || 0);
     return D.RARITY_ORDER.map((rk) => {
       if (!present[rk]) return 0;
       const base = D.RARITY[rk].weight;
       let w = base;
-      if (rk === 'rare') w = base * (1 + rareBoost);
-      if (rk === 'epic') w = base * (1 + rareBoost * 0.9);
-      if (rk === 'legend') w = base * (1 + legendBoost * 2.2);
+      if (rk === 'rare') w = base * (1 + rareBoost + er);
+      if (rk === 'epic') w = base * (1 + rareBoost * 0.9 + ee);
+      if (rk === 'legend') w = base * (1 + legendBoost * 2.2 + el);
       if (rk === 'common') w = base * (1 + (stats.common || 0));
       return w;
     });
@@ -356,6 +360,18 @@
     if (state.stamina.v < C.castStaminaCost && state.freeCasts <= 0) {
       return { ok: false, reason: 'noStamina' };
     }
+    // 打窝饵（每竿 1 枚）：免费档随手可得；高档饵无库存拒竿并回落
+    const baitDef = D.BAITS.find((b) => b.id === state.baitId);
+    if (baitDef && baitDef.price > 0) {
+      const have = (state.baits && state.baits[baitDef.id]) || 0;
+      if (have < 1) {
+        state.baitId = 'worm';
+        return { ok: false, reason: 'noBait' };
+      }
+      state.baits[baitDef.id] = have - 1;
+      if (state.baits[baitDef.id] <= 0) state.baitId = 'worm';
+    }
+    state.baitEff = (baitDef && baitDef.eff) || {};
     if (state.freeCasts > 0) state.freeCasts -= 1;
     else state.stamina.v -= C.castStaminaCost;
 
@@ -366,6 +382,7 @@
     const biteAfter = Math.round(base / (1 + stats.biteSpeed + condBoost));
     const windowMs = Math.round(stats.window);
     const fish = rollFish(state, r);
+    state.baitEff = {};  // 饵效果只活在抽鱼那一瞬
 
     state.stats.casts += 1;
     state.stats.plays += 1;
@@ -435,8 +452,7 @@
       at: Date.now(),
     };
     const dest = placeCatch(state, entry);
-    state.magic += magic;
-    state.stats.catches += 1;
+    state.stats.catches += 1;  // 回收口径：渔获 magic 仅估值
     state.stats.magicEarned += magic;
     state.stats.curStreak += 1;
     state.stats.bestStreak = Math.max(state.stats.bestStreak, state.stats.curStreak);
@@ -519,11 +535,10 @@
     if (!o) return { ok: false, reason: 'missing' };
     if (o.claimed) return { ok: false, reason: 'claimed' };
     if (o.got < o.need) return { ok: false, reason: 'progress' };
-    o.claimed = true;
-    state.magic += o.reward;
+    o.claimed = true;  // 回收口径：奖励只记估值（同服务端）
     state.stats.magicEarned += o.reward;
     state.stats.ordersDone += 1;
-    return { ok: true, reward: o.reward };
+    return { ok: true, reward: o.reward, rewardKind: 'score' };
   }
 
   function allOrdersDone(state) {
@@ -536,9 +551,8 @@
     if (!allOrdersDone(state)) return { ok: false, reason: 'progress' };
     if (state.orders.bonusClaimed) return { ok: false, reason: 'claimed' };
     state.orders.bonusClaimed = true;
-    state.magic += C.orderAllBonus;
     state.stats.magicEarned += C.orderAllBonus;
-    return { ok: true, reward: C.orderAllBonus };
+    return { ok: true, reward: C.orderAllBonus, rewardKind: 'score' };
   }
 
   /** 从背包放生一尾（清理容量，无二次收益：魔力已在钓获时入账） */
@@ -576,7 +590,103 @@
     return { ok: moved > 0, moved, left: state.aquarium.length };
   }
 
-  /* ================= 签到 ================= */
+  /* ================= 打窝饵 / 放生渔运（2026-11-24 思齐对标） ================= */
+
+  function buyBait(state, id, qty) {
+    const b = D.BAITS.find((x) => x.id === id);
+    if (!b) return { ok: false, reason: 'notfound' };
+    if (b.price <= 0) return { ok: false, reason: 'free' };
+    const n = Math.max(1, Math.min(99, qty || 1));
+    const cost = b.price * n;
+    if (state.magic < cost) return { ok: false, reason: 'poor' };
+    state.baits = state.baits || {};
+    const have = state.baits[b.id] || 0;
+    if (have + n > C.baitMaxStack) return { ok: false, reason: 'max' };
+    state.magic -= cost;
+    state.baits[b.id] = have + n;
+    return { ok: true, cost, qty: n, id: b.id };
+  }
+
+  function selectBait(state, id) {
+    const b = D.BAITS.find((x) => x.id === id);
+    if (!b) return { ok: false, reason: 'notfound' };
+    if (b.price > 0 && !(state.baits && state.baits[id] >= 1)) {
+      return { ok: false, reason: 'empty' };
+    }
+    state.baitId = id;
+    return { ok: true, id };
+  }
+
+  /** 放生一尾得渔运：只计点数不碰魔力（与 Rust rules::release_for_luck 同口径） */
+  function releaseForLuck(state, from, uid) {
+    const arr = from === 'bag' ? state.bag.fish
+      : from === 'aquarium' ? state.aquarium : null;
+    if (!arr) return { ok: false, reason: 'from' };
+    const idx = arr.findIndex((f) => f.uid === uid);
+    if (idx < 0) return { ok: false, reason: 'missing' };
+    const fish = arr.splice(idx, 1)[0];
+    const luck = D.RELEASE_LUCK[fish.rarity] || 1;
+    state.luck = (state.luck || 0) + luck;
+    state.stats.released = (state.stats.released || 0) + 1;
+    return { ok: true, luck, fish };
+  }
+
+  /** 渔运价：原魔力价 60%（向下取整；免费仍免费）——与 Rust luck_price 同口径 */
+  function luckPrice(magicPrice) {
+    return magicPrice <= 0 ? 0 : Math.max(1, Math.floor(magicPrice * 3 / 5));
+  }
+
+  function luckBuyScene(state, sceneId) {
+    const sc = D.sceneById[sceneId];
+    if (!sc) return { ok: false, reason: 'notfound' };
+    if (state.scenesOwned.indexOf(sceneId) >= 0) return { ok: false, reason: 'owned' };
+    const idx = D.SCENES.findIndex((s) => s.id === sceneId);
+    const prev = idx > 0 ? D.SCENES[idx - 1].id : null;
+    if (prev && state.scenesOwned.indexOf(prev) < 0) return { ok: false, reason: 'locked' };
+    const price = luckPrice(sc.price);
+    if (price > 0 && (state.luck || 0) < price) return { ok: false, reason: 'poor' };
+    if (price > 0) state.luck -= price;
+    state.scenesOwned.push(sceneId);
+    return { ok: true, cost: price, scene: sc.name };
+  }
+
+  /** 渔运买装备（只解锁持有，不自动装备；与 Rust bait::luck_buy_item 同口径） */
+  function luckBuyItem(state, cat, id) {
+    const list = D.ITEMS[cat] || [];
+    const it = list.find((x) => x.id === id);
+    if (!it) return { ok: false, reason: 'notfound' };
+    if (E_isOwned(state, cat, id)) return { ok: false, reason: 'owned' };
+    const price = luckPrice(it.price);
+    if (price > 0 && (state.luck || 0) < price) return { ok: false, reason: 'poor' };
+    if (price > 0) state.luck -= price;
+    state.owned[cat] = state.owned[cat] || [];
+    state.owned[cat].push({ id, lv: 1, at: 0 });
+    return { ok: true, cost: price, item: it.name, cat };
+  }
+  function E_isOwned(state, cat, id) {
+    return (state.owned[cat] || []).some((x) => x.id === id);
+  }
+  /** 渔运扩背包（与 rules 层 expand_bag 同档位顺序） */
+  function luckExpandBag(state) {
+    const next = C.bagTiers[state.bag.tier + 1];
+    if (!next) return { ok: false, reason: 'max' };
+    const price = luckPrice(next.price);
+    if (price > 0 && (state.luck || 0) < price) return { ok: false, reason: 'poor' };
+    if (price > 0) state.luck -= price;
+    state.bag.tier += 1;
+    return { ok: true, cost: price, cap: next.cap, tier: state.bag.tier };
+  }
+  /** 渔运买断自动垂钓 */
+  function luckUnlockAuto(state) {
+    if (state.autoUnlocked) return { ok: false, reason: 'owned' };
+    const price = luckPrice(C.autoUnlockPrice);
+    if ((state.luck || 0) < price) return { ok: false, reason: 'poor' };
+    state.luck -= price;
+    state.autoUnlocked = true;
+    return { ok: true, cost: price };
+  }
+
+    /* ================= 签到 ================= */
 
   function signState(state, now) {
     const key = todayKey(now);
@@ -601,11 +711,18 @@
       state.sign.cycle += 1;
       state.stats.signFull += 1;
     }
-    if (rw.type === 'magic') { state.magic += rw.value; state.stats.magicEarned += rw.value; }
-    else if (rw.type === 'stamina') { state.stamina.v = Math.min(C.staminaMax, state.stamina.v + rw.value); }
-    else if (rw.type === 'bait') { state.freeCasts += rw.value; }
-    else if (rw.type === 'chest') { state.magic += rw.value; state.freeCasts += 4; state.stats.magicEarned += rw.value; }
-    return { ok: true, reward: rw, idx };
+    // 回收口径：签到只发竿数/体力/鱼饵，不发魔力（⌈额度×3÷10⌉ 竿）
+    const casts = (v) => Math.max(1, Math.ceil(v * 3 / 10));
+    const free = rw.type === 'bait' ? rw.value
+              : rw.type !== 'stamina' ? casts(rw.value) + (rw.type === 'chest' ? 4 : 0) : 0;
+    const ty = free > 0 && rw.type !== 'bait' ? 'bait' : rw.type;
+    if (free > 0) {
+      state.freeCasts += free;
+      if (ty !== 'bait') state.stats.magicEarned += rw.value;
+    } else {
+      state.stamina.v = Math.min(C.staminaMax, state.stamina.v + rw.value);
+    }
+    return { ok: true, reward: { ...rw, type: ty, value: free || rw.value }, idx };
   }
 
   /* ================= 好友 / 赠饵 ================= */
@@ -723,9 +840,8 @@
     if (!view) return { ok: false, reason: 'notfound' };
     if (!view.claimable) return { ok: false, reason: 'locked' };
     state.ach[id] = { claimed: true, at: Date.now() };
-    state.magic += view.def.reward;
     state.stats.magicEarned += view.def.reward;
-    return { ok: true, reward: view.def.reward };
+    return { ok: true, reward: view.def.reward, rewardKind: 'score' };
   }
 
   /* ================= 图鉴分区 ================= */
@@ -766,7 +882,8 @@
   function defaultState(now) {
     const t = now == null ? Date.now() : now;
     return {
-      v: 1, magic: 3200, freeCasts: 3,
+      v: 1, magic: 0, freeCasts: 3,  // 回收口径：起手不送魔力
+      baitId: 'worm', baits: {}, luck: 0,
       stamina: { v: C.staminaMax, at: t },
       scene: 'bay', cond: 'day',
       scenesOwned: ['bay'],
@@ -788,7 +905,8 @@
         casts: 0, catches: 0, breaks: 0, missed: 0, plays: 0,
         magicEarned: 0, rareCaught: 0, epicCaught: 0, legendCaught: 0,
         nightCatches: 0, rainCatches: 0, bigCaught: 0,
-        bestStreak: 0, curStreak: 0, ordersDone: 0, giftsSent: 0, signFull: 0,
+        bestStreak: 0, curStreak: 0, ordersDone: 0, giftsSent: 0,
+        signFull: 0, released: 0,
       },
       settings: { reduceMotion: false },
       createdAt: t,
@@ -824,6 +942,8 @@
     expandBag, unlockAuto,
     computeSurface, poolOf, rollFish, cast, makeReelRuntime, reelStep,
     settleCatch, settleMiss,
+    buyBait, selectBait, releaseForLuck, luckPrice, luckBuyScene,
+    luckBuyItem, luckExpandBag, luckUnlockAuto,
     ensureOrders, bumpOrders, claimOrder, allOrdersDone, claimOrderBonus,
     releaseFromBag, takeFromAquarium, releaseFromAquarium, takeAllFromAquarium,
     signState, claimSign,

@@ -124,7 +124,7 @@ index.html?preview=bite      # 过程态：bite / reel / catch / batch / sheet /
    - `POST /api/v1/fishing/cast` → 扣体力 / 免费次数，返回 `biteAfter`、`windowMs`、`fish`（鱼种不下发具体稀有度以外的随机种子）
    - `POST /api/v1/fishing/settle` → 提交 `castId + 溜鱼结果`，服务端复核时长 / 张力曲线采样，发奖
    - `POST /api/v1/fishing/shop/{buy|equip|upgrade|expand}`、`/orders/{claim|bonus}`、`/sign`、`/gifts`、`/rank`
-2. **必须服务端裁决**：体力与免费次数、订单种子（按 `date + uid` 派生）、结算发奖、排行与赛季、赠饵上限。
+2. **必须服务端裁决**：体力与免费次数、订单种子（按 `date + uid` 派生）、结算判定（不发奖）、排行与赛季、赠饵上限。
    客户端只做表现，避免改本地时间 / 改存档刷魔力。
 3. **存档迁移**：`hydrate()` 的字段即服务端 DTO 形状；`ft.fishing.save.v1` 可直接作为一次性导入体。
 4. **复用方式**：已完成 **Shadow DOM 内嵌**（见第九节）：游戏壳、CSS、脚本整包挂进 `apps/web` 的独立路由，
@@ -147,7 +147,7 @@ index.html?preview=bite      # 过程态：bite / reel / catch / batch / sheet /
 | 服务端 | `apps/api/src/games_http/fishing_pond/` | 存档、掷骰、动作校验、赛季榜（`mod/data/state/rules/http`） |
 | 迁移 | `apps/api/migrations/0513_fishing_pond.sql` | `arcade_fishing_pond` + `arcade_fishing_pond_rounds` |
 
-**服务端权威**：抛竿抽到什么鱼、多大、何时咬钩、结算发多少魔力，全部由 Rust 决定并落库；
+**服务端权威**：抛竿抽到什么鱼、多大、何时咬钩、结算记录多少估值（不发魔力），全部由 Rust 决定并落库；
 客户端只负责表现与溜鱼手感。存档在 `POST/GET` 事务里 `SELECT … FOR UPDATE` 串行化，
 同一账号多标签页并发也不会互相覆盖。
 
@@ -162,15 +162,32 @@ index.html?preview=bite      # 过程态：bite / reel / catch / batch / sheet /
   统一按「动作前后 `magic` 差值」写站点魔力流水
 - `GET /games/fishing/pond/rank` — 真实玩家按 `state->season->catches` 排名，最多 50 行 + 自己补行
 
-**货币口径（场内即站点魔力，没有第二套币）**：`state.magic` 只是 `users.spark_balance`
-的镜像，每次读档/结算/动作都先取真实余额覆盖它，再交给规则层做「买不买得起」的判断：
+**货币口径（2026-11-24 起：钓场是魔力的回收口，只消耗不返还）**：
+`state.magic` 是 `users.spark_balance` 的镜像，每次读档/动作都先取真实余额覆盖它，
+再交给规则层做「买不买得起」的判断：
 
-- 支出（买装备、升级、扩背包、补体力、自动垂钓等）→ 负差额走 `spend_spark_tx`，kind `game`；
-- 收入（卖鱼、订单、签到、成就、赛季奖励等）→ 正差额走 `earn_spark_tx`，kind `fishing_pond`；
-- 每笔动作/结算各一条流水，幂等键 `pond_settle|pond_act:<uid>:<uuid>`，与渔场存档同一事务；
-- `reset` 只清渔场进度，**不会把站点余额重置回默认 3200**；新账号从站点真实余额（通常 0）起步，
-  先用每日 3 次免费抛竿渡过开荒。
-- 没有任何兑换入口：商店直接以 ✦ 标价，捕获收益直接进站点钱包，站内余额与渔场 HUD 永远一致。
+- 支出（买装备、升级、扩背包、补体力 40/次、自动垂钓、场景解锁）→ 负差额走
+  `spend_spark_tx`，kind `game`；幂等键 `pond_act:<uid>:<uuid>`，与存档同一事务。
+- **没有任何收入路径**：渔获 / 订单 / 全清奖 / 成就 / 签到 / 赛季名次一律不发魔力 ——
+  `http.rs::mirror_magic` 只扣不加（正差额直接丢弃，纵深防御），规则层的
+  `settle_catch / claim_order / claim_ach` 只记估值（`stats.magicEarned` 改义为
+  「累计渔获估值」，成就 magic20k 仍读它）。
+- 签到：魔力日 / 传说饵箱的额度折成免费竿（⌈额度×3÷10⌉，`state.rs::sign_casts`），
+  体力日 / 鱼饵日照旧；`default_state` 起手 `magic: 0`（旧版的 3200 白送是增发口，已废除）。
+- 体力是抛竿的节流阀（12 点上限、6 分钟回 1 点 ≈ 每天 240 竿免费）；想多钓，
+  40 魔力补满 —— 这是渔场的主回收口。
+- `reset` 只清渔场进度（装备/渔获/图鉴/订单/成就），站点余额原样保留。
+- 抛竿本身不扣魔力（免费竿优先、其次体力），钓到什么都不改变站点余额。
+
+**打窝饵与放生渔运（2026-11-24 思齐对标）**：
+- 打窝饵是**一次性消耗品**（与装备位的 bait 属性件两回事）：每竿消耗 1 枚，
+  六档 —— 蚯蚓免费随手可得；伪装 ✦1000 / 红虫 ✦2000 / 泡囊 ✦3000 /
+  昆虫 ✦4000 / 黄鱼 ✦5000 用魔力购买，档位越高该竿的稀有/史诗/传说权重加成越大。
+  这是渔场的**主力魔力回收口**（对标思齐「每竿一饵」）。
+- 放生渔获得**渔运**（普通 1 / 精良 3 / 稀有 5 / 史诗 20 / 传说 100）：
+  渔运是钓场内第二资源，按「原魔力价 60%」兑换解锁，**永不可换回魔力**。
+  可兑换面（`fishing_pond/bait.rs`）：场景 / 装备（`luck_buy_item`，仅持有
+  不自动装备）/ 背包扩容（`luck_expand_bag`）/ 自动垂钓（`luck_unlock_auto`）。
 
 ### 9.2 几条必须知道的约束
 
@@ -224,7 +241,7 @@ cd apps\web; pnpm exec tsc --noEmit
 
 - 无音效 / 无震动反馈（样图未定义，避免自行加戏）。
 - 好友鱼塘仍是 `FRIENDS` 配置的模拟好友（每日赠饵/收饵已服务端落库，但没有真实用户关系链）。
-- 场内不发行第二套货币：`magic` 就是站点 `spark_balance` 的镜像，收入/支出全部落 `spark_ledger`；
+- `magic` 就是站点 `spark_balance` 的镜像，且**只减不增**（2026-11-24 回收口径）：消费落 `spark_ledger`，任何渔获/奖励都不返魔力；
   赛季榜已是真实玩家，但只有玩过本玩法且本赛季有渔获的账号才会上榜。\n- 赛季名次奖励目前只展示额度（✦500/300/200），尚未做跨赛季自动发放；赛季切换时渔获清零。
 - 移动端浏览器地址栏会压缩可视高度；嵌入卡片按 `100dvh - 350px`（手机）/ `- 176px`（桌面）留出站点
   顶栏与底部导航，极矮窗口靠内部滚动。

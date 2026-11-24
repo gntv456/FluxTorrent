@@ -619,6 +619,55 @@
       openSheet(U.growSheet(state, el.dataset.cat, el.dataset.id));
       S.touch(state); paint();
     },
+    // 打窝饵（每竿消耗 1 枚；高档饵用魔力买 —— 回收口）
+    selectBait(el) {
+      const r = E.selectBait(state, el.dataset.id);
+      if (!r.ok) return fail(r);
+      toast('已挂饵 · 下竿生效', 'ok'); syncAction('selectBait', { id: el.dataset.id });
+    },
+    buyBait(el) {
+      const qty = Math.max(1, Math.min(99, (+($('baitQty') && $('baitQty').value)) || 1));
+      const r = E.buyBait(state, el.dataset.id, qty);
+      if (!r.ok) return fail(r);
+      toast(`已购 ${r.qty} 枚 · ✦${r.cost}`, 'ok');
+      syncAction('buyBait', { id: el.dataset.id, qty });
+      paint(true);
+    },
+    release(el) {
+      const r = E.releaseForLuck(state, el.dataset.from, el.dataset.uid);
+      if (!r.ok) return fail(r);
+      toast(`放生 ${r.fish.name || ''} · 渔运 +${r.luck}`, 'ok');
+      syncAction('release', { from: el.dataset.from, uid: el.dataset.uid });
+      paint(true);
+    },
+    luckBuyItem(el) {
+      const r = E.luckBuyItem(state, el.dataset.cat, el.dataset.id);
+      if (!r.ok) return fail(r);
+      toast(`渔运解锁 ${r.item} · -${r.cost}`, 'ok');
+      syncAction('luckBuyItem', { cat: el.dataset.cat, id: el.dataset.id });
+      closeSheet(); paint();
+    },
+    luckExpandBag() {
+      const r = E.luckExpandBag(state);
+      if (!r.ok) return fail(r);
+      toast(`扩容至 ${r.cap} 格 · 渔运 -${r.cost}`, 'ok');
+      syncAction('luckExpandBag', {});
+      paint(true);
+    },
+    luckUnlockAuto() {
+      const r = E.luckUnlockAuto(state);
+      if (!r.ok) return fail(r);
+      toast(`自动垂钓已解锁 · 渔运 -${r.cost}`, 'ok');
+      syncAction('luckUnlockAuto', {});
+      paint(true);
+    },
+    luckBuyScene(el) {
+      const r = E.luckBuyScene(state, el.dataset.id);
+      if (!r.ok) return fail(r);
+      toast(`渔运解锁 ${r.scene} · -${r.cost}`, 'ok');
+      syncAction('luckBuyScene', { id: el.dataset.id });
+      paint(true);
+    },
     buyScene(el) {
       const r = E.buyScene(state, el.dataset.id);
       if (!r.ok) return fail(r);
@@ -714,9 +763,11 @@
       openSheet(U.fishSheet(state, { id: el.dataset.id, uid: el.dataset.uid }));
     },
     releaseBagFish(el) {
-      const r = E.releaseFromBag(state, el.dataset.uid);
+      // 放生得渔运（2026-11-24）：背包一尾换渔运点，只计点不碰魔力
+      const r = E.releaseForLuck(state, 'bag', el.dataset.uid);
       if (!r.ok) return fail(r);
-      toast('已放生 · 腾出 1 格容量', 'ok'); syncAction('releaseBagFish', { uid: el.dataset.uid });
+      toast(`放生 ${r.fish.name || ''} · 渔运 +${r.luck}`, 'ok');
+      syncAction('release', { from: 'bag', uid: el.dataset.uid });
       closeSheet(); S.touch(state, true); paint();
     },
     takeFish(el) {
@@ -726,9 +777,10 @@
       S.touch(state, true); paint();
     },
     releaseFish(el) {
-      const r = E.releaseFromAquarium(state, el.dataset.uid);
+      const r = E.releaseForLuck(state, 'aquarium', el.dataset.uid);
       if (!r.ok) return fail(r);
-      toast('已放生', 'ok'); syncAction('releaseFish', { uid: el.dataset.uid });
+      toast(`放生 ${r.fish.name || ''} · 渔运 +${r.luck}`, 'ok');
+      syncAction('release', { from: 'aquarium', uid: el.dataset.uid });
       S.touch(state, true); paint();
     },
     takeAll() {
@@ -772,7 +824,7 @@
     resetConfirm() {
       openSheet(U.confirmSheet({
         title: '重置钓鱼进度',
-        sub: '将清空魔力、装备、渔获、图鉴、订单与成就进度，此操作不可撤销。',
+        sub: '将清空装备、渔获、图鉴、订单与成就进度（站点余额不受影响），此操作不可撤销。',
         okText: '确认重置',
         okAct: 'doReset',
         danger: true,

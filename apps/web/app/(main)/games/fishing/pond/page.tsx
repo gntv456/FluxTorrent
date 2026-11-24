@@ -12,8 +12,9 @@ import { CHIP_POND_BADGE } from "@/lib/ui-classes";
  * - 经典玩法走服务端判定的 round/cast/reel，动的是账号魔力；
  * - 这里是把设计稿落地的完整养成玩法，存档按登录账号保存在服务端
  *   （`arcade_fishing_pond`，写接口事务内锁行）；场内不使用独立软币，
- *   直接以站点魔力 `users.spark_balance` 计价：买装备、扩容、补体力即扣站点魔力，
- *   卖鱼、订单、签到奖励即入站点魔力，每次结算写一条 spark 流水。
+ *   直接以站点魔力 `users.spark_balance` 计价：买装备、扩容、补体力即扣站点魔力。
+ *   **钓场是魔力的回收口（2026-11-24 口径）**：渔获 / 订单 / 签到 / 成就 /
+ *   赛季名次一律不发魔力（只计图鉴估值），`mirror_magic` 只扣不加。
  */
 export default async function FishingPondPage() {
   const gate = await requireModule("games");

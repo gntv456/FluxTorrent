@@ -28,6 +28,8 @@ if (!D) throw new Error("data.js 未导出 window.FTData");
 const out = {
   rarity: D.RARITY,
   rarityOrder: D.RARITY_ORDER,
+  baits: D.BAITS,
+  releaseLuck: D.RELEASE_LUCK,
   scenes: D.SCENES.map((s) => ({
     id: s.id,
     name: s.name,
@@ -56,6 +58,8 @@ assert(out.items.rod.length >= 4 && out.items.bait.length >= 4, "渔具分类为
 assert(out.sets.length >= 4, "套装不足");
 assert(out.ach.length >= 10, "成就不足");
 assert(typeof out.const.staminaMax === "number", "CONST 字段缺失");
+assert(out.baits.length >= 5 && out.baits[0].price === 0, "打窝饵表异常（首档须免费）");
+assert(Object.keys(out.releaseLuck).length === 5, "放生渔运表异常");
 
 fs.writeFileSync(outPath, JSON.stringify(out, null, 1) + "\n");
 const size = fs.statSync(outPath).size;

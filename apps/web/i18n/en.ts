@@ -3834,7 +3834,7 @@ const enBase: Omit<
       pondSub: "Six gear lines & growth · Album · Daily orders · Bait gifting · Season ranking",
       pondOpenAlone: "Open standalone ↗",
       pondFootNote:
-        "The pond is a full progression game saved server-side per account; progress follows your login across devices. No separate soft currency: gear, stamina and bag upgrades debit site magic directly, selling fish and order rewards credit it. The classic betting mode is still served at the",
+        "The pond is a full progression game saved server-side per account; progress follows your login across devices. No separate soft currency: gear, stamina and bag upgrades debit site magic directly; the pond is a magic sink — catches and order rewards count as album score only, never credited back. The classic betting mode is still served at the",
       pondFootAfter: "fishing home page",
       pondFootTail: "with server settlement.",
       pondStageLabel: "Sweetream Pond full fishery",

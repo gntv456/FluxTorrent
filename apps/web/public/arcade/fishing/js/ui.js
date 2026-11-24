@@ -224,8 +224,16 @@
       <div class="cap-sub" style="padding:0 16px 10px;background:#fff;margin-top:-1px">
         <span>${esc(D.sceneById[state.scene].name)} · ${condName(state.cond)}</span>
         <span>${tip}</span>
-        <span>背包 ${E.bagUsed(state)}/${E.bagCap(state)}</span>
+        <span>背包 ${E.bagUsed(state)}/${E.bagCap(state)} · 渔运 ${state.luck || 0}</span>
         <span>${ctx.phase === 'idle' ? '窗口 ' + Math.round(E.statsOf(state).window) + 'ms' : ''}</span>
+      </div>
+      <div class="cap-sub" style="padding:0 16px 8px;background:#fff;gap:6px;flex-wrap:wrap">
+        ${D.BAITS.map((b) => {
+          const on = state.baitId === b.id;
+          const have = (state.baits && state.baits[b.id]) || 0;
+          const label = b.price === 0 ? b.name : `${b.name} ×${have}`;
+          return `<button class="stab" style="padding:4px 10px;font-size:12px${on ? ';border-color:var(--gold);color:var(--gold-deep)' : ''}" data-act="${on || (b.price > 0 && have < 1) ? 'openView' : 'selectBait'}" ${on || (b.price > 0 && have < 1) ? `data-view="shop" data-cat="bait"` : `data-id="${b.id}"`}>${label}</button>`;
+        }).join('')}
       </div>
     </div>`;
   }
@@ -236,6 +244,7 @@
     const tabs = [
       { id: 'scene', name: '场景', ic: 'scene' },
       ...D.CATS.map((c) => ({ id: c.id, name: c.name, ic: c.icon })),
+      { id: 'bait', name: '打窝饵', ic: 'bait' },
       { id: 'bag', name: '背包扩容', ic: 'bag' },
       { id: 'auto', name: '自动垂钓', ic: 'bolt' },
     ];
@@ -243,6 +252,7 @@
 
     let body = '';
     if (cat === 'scene') body = shopScene(state);
+    else if (cat === 'bait') body = shopBait(state);
     else if (cat === 'bag') body = shopBag(state);
     else if (cat === 'auto') body = shopAuto(state);
     else body = shopItems(state, cat);
@@ -251,7 +261,7 @@
       <div class="page-head">
         <div>
           <div class="ph-t">渔具商店</div>
-          <div class="ph-s">全场统一使用站点魔力 ✦ · 与站内余额实时同步</div>
+          <div class="ph-s">全场统一使用站点魔力 ✦ · 渔场只消耗不返还（渔获/订单/成就奖励仅为图鉴估值）</div>
         </div>
       </div>
       <div class="tabs-scroll" id="shopTabs">${tabsHtml}</div>
@@ -302,7 +312,8 @@
           ? `<button class="act owned" data-act="switchScene" data-id="${sc.id}">进入钓场</button>`
           : locked
             ? `<span class="act locked">需先解锁 ${esc(prev.name)}</span>`
-            : `<button class="act buy" data-act="buyScene" data-id="${sc.id}">${icon('sparkle')} ${fmt(sc.price)}</button>`;
+            : `<button class="act buy" data-act="buyScene" data-id="${sc.id}">${icon('sparkle')} ${fmt(sc.price)}</button>
+               <span class="act buy" data-act="luckBuyScene" data-id="${sc.id}" style="cursor:pointer" title="放生渔运兑换">🎣${E.luckPrice(sc.price)}</span>`;
       return `<div class="scene-card ${isOn ? 'on' : ''}">
         <div class="scene-thumb" style="background:linear-gradient(180deg,${sc.palettes.day[0]},${sc.palettes.day[1]} 55%,${sc.palettes.day[2]})">
           ${isOn ? '<span class="st-now">当前钓场</span>' : ''}
@@ -321,6 +332,30 @@
       <div class="group-note" style="padding-top:10px">场景决定鱼种池与稀有度倾向；时段与天气在钓场页右上角切换。</div>`;
   }
 
+  /** 打窝饵商店：每竿消耗 1 枚；高档饵花魔力（主回收口），蚯蚓免费。 */
+  function shopBait(state) {
+    const rows = D.BAITS.map((b) => {
+      const have = (state.baits && state.baits[b.id]) || 0;
+      const on = state.baitId === b.id;
+      const effTxt = Object.entries(b.eff || {})
+        .map(([k, v]) => `${k === 'rare' ? '稀有' : k === 'epic' ? '史诗' : '传说'} +${Math.round(v * 100)}%`)
+        .join(' · ') || '基础饵';
+      const btn = b.price === 0
+        ? `<span class="act ${on ? 'equipped' : 'owned'}">${on ? '使用中' : '免费'}</span>`
+        : `<span class="act buy" data-act="selectBait" data-id="${b.id}" style="cursor:pointer">${on ? '使用中' : '挂上'}</span>
+           <span class="act buy" data-act="buyBait" data-id="${b.id}" style="cursor:pointer">✦${fmt(b.price)}</span>`;
+      return `<div class="item-card">
+        <div class="ic-box tone-gold">${icon('bait')}</div>
+        <div class="im"><div class="im-top"><span class="im-nm">${b.name}</span>${b.price === 0 ? '<span class="rar r-fine">免费</span>' : ''}</div>
+        <div class="im-attr">${effTxt} · 每竿消耗 1 枚</div>
+        <div class="im-own">${b.desc}${b.price > 0 ? ` · 库存 ${have}` : ''}</div></div>
+        ${btn}
+      </div>`;
+    }).join('');
+    return `<div class="item-list" style="padding:0 0 20px">${rows}</div>
+      <div class="cap-sub" style="padding:0 16px 12px"><span>放生渔获可攒「渔运」（当前 ${state.luck || 0}）</span><span>蚯蚓打窝饵免费随手可得</span></div>`;
+  }
+
   function shopBag(state) {
     const tiers = D.CONST.bagTiers.map((t, i) => {
       const cur = state.bag.tier;
@@ -330,7 +365,7 @@
       const act = done
         ? `<span class="act equipped">${i === cur ? '当前档位' : '已解锁'}</span>`
         : isNext
-          ? `<button class="act buy" data-act="expandBag">${icon('sparkle')} ${fmt(t.price)}</button>`
+          ? `<button class="act buy" data-act="expandBag">${icon('sparkle')} ${fmt(t.price)}</button> <span class="act buy" data-act="luckExpandBag" style="cursor:pointer" title="放生渔运兑换">🎣${E.luckPrice(t.price)}</span>`
           : `<span class="act locked">需前档解锁</span>`;
       return `<div class="item-card">
         <div class="ic-box ${done ? 'tone-mint' : 'tone-sky'}">${icon('bag')}</div>
@@ -367,7 +402,7 @@
         <span class="wc-hint">${owned ? '在钓场点右侧「自动」即可开关' : '一次买断 · 永久生效'}</span>
         ${owned
           ? `<button class="cta cta-ghost cta-sm" data-act="toggleAuto">${state.auto ? '关闭自动' : '开启自动'}</button>`
-          : `<button class="act buy" data-act="unlockAuto">${icon('sparkle')} ${fmt(D.CONST.autoUnlockPrice)}</button>`}
+          : `<button class="act buy" data-act="unlockAuto">${icon('sparkle')} ${fmt(D.CONST.autoUnlockPrice)}</button> <span class="act buy" data-act="luckUnlockAuto" style="cursor:pointer" title="放生渔运兑换">🎣${E.luckPrice(D.CONST.autoUnlockPrice)}</span>`}
       </div>
     </div>
     <div class="wide-card">
@@ -783,7 +818,7 @@
     }).join('');
 
     return `<div class="view-inner">
-      <div class="page-head"><div><div class="ph-t">成就徽章墙</div><div class="ph-s">达成条件后可领魔力 · 徽章点亮即永久保留</div></div></div>
+      <div class="page-head"><div><div class="ph-t">成就徽章墙</div><div class="ph-s">达成条件点亮徽章 · 奖励额度仅计入渔获估值（不发魔力）</div></div></div>
       <div class="ach-summary">
         <div class="as-top"><span class="as-t">徽章进度</span><span class="as-n">${done} / ${views.length}</span></div>
         <div class="cap-bar gold"><div style="width:${done / views.length * 100}%"></div></div>
@@ -811,7 +846,7 @@
       </div>`).join('');
 
     return `<div class="view-inner">
-      <div class="page-head"><div><div class="ph-t">渔场排行榜</div><div class="ph-s">赛季 ${D.CONST.seasonDays} 天 · 按累计渔获尾数排名 · 结束按名次发魔力</div></div></div>
+      <div class="page-head"><div><div class="ph-t">渔场排行榜</div><div class="ph-s">赛季 ${D.CONST.seasonDays} 天 · 按累计渔获尾数排名 · 名次奖励不发魔力</div></div></div>
       <div class="rank-summary">
         <div><div class="rs-t">第 ${board.info.ordinal} 赛季 · 剩 ${board.info.leftDays} 天</div><div class="rs-s">我的渔获 ${board.season.catches} 尾 · 距上一名 ${board.me.rank > 1 ? fmt(board.rows[board.me.rank - 2].catches - board.me.catches + 1) + ' 尾' : '已是榜首'}</div></div>
         <div class="rs-me"><div class="rs-r">#${board.me.rank}</div><div class="rs-k">当前名次</div></div>
@@ -842,7 +877,7 @@
     return `<div class="view-inner">
       <div class="page-head"><div><div class="ph-t">临时鱼缸</div><div class="ph-s">背包满时的兜底暂存区 · 容量随背包档位提升</div></div>
         <div class="ph-act"><span class="magic-pill">${icon('aqua')}<b>${state.aquarium.length}/${cap}</b></span></div></div>
-      <div class="aqua-note">${icon('aqua')}<span>渔获满包后会先进入临时鱼缸，不丢失；取回受背包空位限制，放生可立即腾出鱼缸位置（魔力已在钓获时入账）。</span></div>
+      <div class="aqua-note">${icon('aqua')}<span>渔获满包后会先进入临时鱼缸，不丢失；取回受背包空位限制，放生可立即腾出鱼缸位置（渔获不返魔力，估值已计入图鉴）。</span></div>
       ${state.aquarium.length
         ? `<div class="sheet-actions" style="margin:10px 16px 0"><button class="cta cta-primary cta-sm" style="flex:1" data-act="takeAll">一键取回</button><button class="cta cta-ghost cta-sm" style="flex:1" data-act="releaseAll">全部放生</button></div>
            <div class="aqua-list">${rows}</div>`
@@ -885,7 +920,8 @@
       ? `<span class="act equipped" style="flex:1">使用中</span>`
       : owned
         ? `<button class="cta cta-primary" data-act="equip" data-cat="${cat}" data-id="${id}">装上使用</button>`
-        : `<button class="cta cta-gold" data-act="buy" data-cat="${cat}" data-id="${id}">${icon('sparkle')} ${fmt(it.price)} · 购买并装备</button>`;
+        : `<button class="cta cta-gold" data-act="buy" data-cat="${cat}" data-id="${id}">${icon('sparkle')} ${fmt(it.price)} · 购买并装备</button>
+           <button class="cta cta-ghost" data-act="luckBuyItem" data-cat="${cat}" data-id="${id}">🎣 ${E.luckPrice(it.price)} 渔运解锁（仅持有）</button>`;
 
     return sheetWrap(`
       <div class="modal-hero">
@@ -968,7 +1004,7 @@
         <div class="catch-title">${esc(it.name)} ${rarTag(it.rarity)}</div>
         <div class="catch-sub">${esc(D.sceneById[state.scene].name)} · ${condName(state.cond)} · 体型 ${it.size}cm · ${it.weight}kg</div>
         <div class="reward-list">
-          <div class="reward-row"><div class="rw-ic tone-gold">${icon('sparkle')}</div><div class="rw-meta"><div class="rw-k">魔力奖励</div><div class="rw-v">已计入余额</div></div><div class="rw-n">+${fmt(it.magic)}</div></div>
+          <div class="reward-row"><div class="rw-ic tone-gold">${icon('sparkle')}</div><div class="rw-meta"><div class="rw-k">渔获估值</div><div class="rw-v">计入图鉴（不返魔力）</div></div><div class="rw-n">+${fmt(it.magic)}</div></div>
           <div class="reward-row"><div class="rw-ic tone-sky">${icon('bag')}</div><div class="rw-meta"><div class="rw-k">渔获去向</div><div class="rw-v">${dest} · ${E.bagUsed(state)}/${E.bagCap(state)}</div></div><div class="rw-n" style="color:var(--sky-deep)">${it.dest === 'aquarium' ? '已暂存' : '已入包'}</div></div>
           <div class="reward-row"><div class="rw-ic tone-lilac">${icon('album')}</div><div class="rw-meta"><div class="rw-k">图鉴进度</div><div class="rw-v">${it.isNew ? '首次收录该鱼种' : '已收录 · 累计 ' + (state.album[it.id] ? state.album[it.id].count : 1) + ' 尾'}</div></div><div class="rw-n" style="color:var(--lilac-deep)">${it.albumCount}/${D.FISH.length}</div></div>
         </div>
@@ -988,7 +1024,7 @@
       <div class="catch-title" style="margin-bottom:4px">连竿 ${list.length} 尾</div>
       <div class="catch-sub">一竿多尾 · 逐尾结算 · 新鱼种已自动入鉴</div>
       <div class="batch-list">${rows}</div>
-      <div class="batch-sum"><span class="bs-k">合计入账</span><span class="bs-v">✦ ${fmt(sum)}</span></div>
+      <div class="batch-sum"><span class="bs-k">合计估值</span><span class="bs-v">✦ ${fmt(sum)}</span></div>
       <div class="sheet-actions"><button class="cta cta-primary" data-act="closeSheet">全部收下</button><button class="cta cta-ghost" data-act="cast">再抛一竿</button></div>
     `);
   }
@@ -1024,7 +1060,7 @@
         <div class="attr-row"><span class="ar-k">单尾最高魔力</span><span class="ar-v">✦${rec.best || '—'}</span></div></div>` : ''}
       ${inst ? `<div class="attr-list"><div class="al-t">本条渔获</div>
         <div class="attr-row"><span class="ar-k">体型 / 重量</span><span class="ar-v">${inst.size}cm · ${inst.weight}kg</span></div>
-        <div class="attr-row"><span class="ar-k">入账魔力</span><span class="ar-v">✦${inst.magic}</span></div>
+        <div class="attr-row"><span class="ar-k">渔获估值</span><span class="ar-v">✦${inst.magic}</span></div>
         <div class="attr-row"><span class="ar-k">钓获时间</span><span class="ar-v">${new Date(inst.at).toLocaleString('zh-CN', { hour12: false })}</span></div></div>
         <div class="sheet-actions"><button class="cta cta-ghost" data-act="releaseBagFish" data-uid="${inst.uid}">放生（腾出 1 格）</button></div>` : ''}
       ${!inst ? `<div class="sheet-actions"><button class="cta cta-primary" data-act="gotoScene" data-id="${f.scene}" data-cond="${f.cond}">前往该钓场</button></div>` : ''}
@@ -1064,7 +1100,7 @@
         <div class="attr-row"><span class="ar-k">2 · 等待咬钩</span><span class="ar-v">2.4–5.0s ÷ (1 + 咬钩速度)</span></div>
         <div class="attr-row"><span class="ar-k">3 · 起竿窗口</span><span class="ar-v">当前 ${Math.round(stats.window)}ms</span></div>
         <div class="attr-row"><span class="ar-k">4 · 溜鱼</span><span class="ar-v">按住收线，张力不越线</span></div>
-        <div class="attr-row"><span class="ar-k">5 · 结算</span><span class="ar-v">魔力 + 图鉴 + 订单进度</span></div>
+        <div class="attr-row"><span class="ar-k">5 · 结算</span><span class="ar-v">图鉴收录 + 订单进度（渔获仅计估值）</span></div>
       </div>
       <div class="attr-list">
         <div class="al-t">核心数值</div>

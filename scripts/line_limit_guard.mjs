@@ -63,6 +63,10 @@ const EXEMPT = [
   // 源文件逐字拷贝（源文件的超宽行基线以 styles/ 为准），public/ 下的
   // 构建产物不该重复记账——源文件的 368/426 条超宽行已在基线里。
   "apps/web/public/theme-css/",
+  // 街机游戏镜像拷贝件（2026-11-24 钓场打窝饵批）：design/arcade-sweet-dream/
+  // 是源（design/ 不在扫描范围），public/arcade/ 是运行时加载的逐字副本，
+  // 与 theme-css 同性质 —— 行数账记在源头，不在拷贝件上重复记账。
+  "apps/web/public/arcade/",
 ];
 
 const groups = [
