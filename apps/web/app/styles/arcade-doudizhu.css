@@ -18,6 +18,11 @@
   --dz-card-bg: #faf6ec;
   --dz-card-ink: #26221a;
   --dz-joker: #8a5ab8;
+  --dz-card-w: 44px;
+  --dz-card-h: 62px;
+  --dz-small-w: 34px;
+  --dz-small-h: 46px;
+  --dz-overlap: -10px;
   color: var(--dz-ink);
 }
 
@@ -101,16 +106,18 @@
   flex-direction: column;
   gap: 8px;
   padding: 12px;
-  padding-top: 132px;
+  padding-top: 128px;
   border: 1px solid var(--dz-line);
   border-radius: var(--r-lg);
   background:
+    url("/games/ddz/ddz-felt.webp") center / cover no-repeat,
     radial-gradient(
       ellipse at 50% 42%,
       var(--dz-felt) 0%,
       var(--dz-felt-2) 78%
     );
-  min-height: 320px;
+  box-shadow: inset 0 0 0 1px rgba(232, 200, 130, 0.08);
+  min-height: 264px;
 }
 /* 桌面毯纹暗角（灯光聚焦感，开源 landlord 的 bg.png 语义） */
 .dz-table::before {
@@ -164,7 +171,23 @@
   line-height: 1.2;
   border-radius: 50%;
   border: 2px solid var(--dz-line);
-  background: var(--dz-panel);
+  background:
+    radial-gradient(
+      circle at 50% 32%,
+      rgba(255, 255, 255, 0.12),
+      transparent 60%
+    ),
+    var(--dz-panel);
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+.dz-seat-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top center;
+  border-radius: 50%;
+  display: block;
 }
 /* 地主金冠环（身份一眼可辨，开源 landlord 的 icon_landlord 语义） */
 .dz-seat-avatar.is-landlord {
@@ -243,7 +266,14 @@
   height: 30px;
   border: 1px solid rgba(0, 0, 0, 0.3);
   border-radius: 3px;
+  overflow: hidden;
   background:
+    url("/games/ddz/ddz-card-back.webp") center / cover no-repeat,
+    repeating-linear-gradient(
+      45deg,
+      rgba(232, 200, 130, 0.18) 0 2px,
+      transparent 2px 7px
+    ),
     linear-gradient(
       135deg,
       #2e6c55 0%,
@@ -269,8 +299,8 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  min-height: 130px;
+  gap: 6px;
+  min-height: 96px;
   justify-content: center;
 }
 .dz-status {
@@ -293,7 +323,7 @@
   }
 }
 .dz-table-last {
-  min-height: 64px;
+  min-height: 52px;
   display: flex;
   align-items: center;
 }
@@ -386,28 +416,30 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 62px;
-  margin-right: -10px;
-  border: 1px solid rgba(0, 0, 0, 0.25);
+  width: var(--dz-card-w);
+  height: var(--dz-card-h);
+  border: 1px solid rgba(0, 0, 0, 0.18);
   border-radius: var(--r-md);
-  background: var(--dz-card-bg);
+  background:
+    linear-gradient(160deg, #fff 0%, var(--dz-card-bg) 70%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    0 2px 5px rgba(0, 0, 0, 0.28);
   color: var(--dz-card-ink);
   font-size: 16px;
   font-weight: 700;
   cursor: pointer;
   transition:
     transform var(--motion-fast) ease,
-    box-shadow var(--motion-fast) ease;
-}
-.dz-card:last-child {
-  margin-right: 0;
+    box-shadow var(--motion-fast) ease,
+    border-color var(--motion-fast) ease;
 }
 .dz-card.is-red {
   color: var(--dz-red);
 }
 .dz-card.is-joker {
   color: var(--dz-joker);
+  background: linear-gradient(160deg, #f4ecfb 0%, #e6d8f2 70%);
 }
 /* 癞子牌：金边 + 角标，玩家一眼识别万能牌 */
 .dz-card.is-wild {
@@ -421,13 +453,19 @@
   color: #f5c542;
   font-size: 10px;
 }
+.dz-card.is-pick:hover {
+  transform: translateY(-4px);
+}
 .dz-card.is-sel {
   transform: translateY(-10px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  border-color: var(--dz-gold);
+  box-shadow:
+    0 5px 14px rgba(0, 0, 0, 0.4),
+    0 0 0 1px var(--dz-gold);
 }
 .dz-card.is-small {
-  width: 34px;
-  height: 46px;
+  width: var(--dz-small-w);
+  height: var(--dz-small-h);
   font-size: 14px;
 }
 .dz-card-suit {
@@ -485,7 +523,7 @@
 /* 手牌发牌入场：逐张从下方滑入（deal 动画的 DOM 化） */
 .dz-hand-slot {
   display: inline-flex;
-  margin-right: -10px;
+  margin-right: var(--dz-overlap);
   animation: dz-deal-in var(--motion-normal) ease both;
 }
 .dz-hand-slot:last-child {
@@ -503,16 +541,28 @@
 }
 .dz-hand {
   display: flex;
+  align-items: flex-end;
   justify-content: center;
-  padding: 12px 0;
-  min-height: 86px;
+  gap: 0;
+  padding: 10px 0;
+  min-height: 78px;
+  overflow-x: auto;
+  overflow-y: visible;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.dz-hand::-webkit-scrollbar {
+  display: none;
 }
 
 /* ── 控制区 ───────────────────────────────────────────────── */
 .dz-controls {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   justify-content: center;
   gap: 12px;
+  row-gap: 10px;
 }
 .dz-controls.is-wait {
   color: var(--dz-sub);
@@ -525,17 +575,39 @@
   background: var(--dz-panel);
   color: var(--dz-ink);
   font-size: 14px;
+  white-space: nowrap;
   cursor: pointer;
-  transition: opacity var(--motion-fast) ease;
+  transition:
+    opacity var(--motion-fast) ease,
+    border-color var(--motion-fast) ease,
+    box-shadow var(--motion-fast) ease;
 }
 .dz-btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
 }
 .dz-btn.is-primary {
-  border-color: var(--dz-line-strong);
+  border-color: var(--dz-gold);
   color: var(--dz-gold);
   font-weight: 700;
+}
+/* 选牌阶段牌型徽章：合法金边，非法红边（前端软提示，合法性以后端为准） */
+.dz-combo {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 12px;
+  border: 1px solid var(--dz-gold);
+  border-radius: 999px;
+  background: rgba(232, 200, 130, 0.12);
+  color: var(--dz-gold);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.dz-combo.is-invalid {
+  border-color: var(--dz-red);
+  background: rgba(224, 82, 82, 0.12);
+  color: var(--dz-red);
 }
 
 /* ── 结算 ─────────────────────────────────────────────────── */
@@ -551,11 +623,17 @@
 }
 .dz-settle .is-win {
   color: var(--dz-mint);
-  font-size: 18px;
+  font-size: 22px;
+  font-weight: 800;
 }
 .dz-settle .is-lose {
   color: var(--dz-red);
-  font-size: 18px;
+  font-size: 22px;
+  font-weight: 800;
+}
+.dz-settle p:not(.is-win):not(.is-lose) {
+  color: var(--dz-sub);
+  font-size: 14px;
 }
 
 /* ── 王炸全屏演出：闪电劈落 + 白闪（rocket 一手触发，pointer-events 穿透） ── */
@@ -827,4 +905,77 @@ body:has(.doudizhu-page):where(
   .dz-seat.is-turn .dz-seat-avatar {
     animation: none;
   }
+}
+
+/* ── 平板/窄屏断点：牌面收窄、桌高与留白收紧 ─────────────── */
+@media (max-width: 768px) {
+  .doudizhu-page {
+    --dz-card-w: 38px;
+    --dz-card-h: 54px;
+    --dz-small-w: 30px;
+    --dz-small-h: 40px;
+    --dz-overlap: -9px;
+  }
+  .dz-table {
+    padding-top: 112px;
+    min-height: 232px;
+  }
+  .dz-center {
+    min-height: 84px;
+  }
+  .dz-hand {
+    min-height: 72px;
+  }
+  .dz-seat {
+    min-width: 104px;
+    padding: 8px 10px;
+  }
+}
+
+@media (max-width: 380px) {
+  .doudizhu-page {
+    --dz-card-w: 32px;
+    --dz-card-h: 46px;
+    --dz-small-w: 27px;
+    --dz-small-h: 36px;
+    --dz-overlap: -7px;
+  }
+  .dz-table {
+    padding-top: 96px;
+  }
+  .dz-seat-avatar {
+    width: 36px;
+    height: 36px;
+  }
+  .dz-btn {
+    padding: 7px 14px;
+    font-size: 13px;
+  }
+  .dz-tier strong {
+    font-size: 16px;
+  }
+  .dz-card-rank {
+    font-size: 12px;
+  }
+  .dz-card-pip {
+    font-size: 16px;
+  }
+  .dz-card.is-sel {
+    transform: translateY(-7px);
+  }
+}
+
+/* ── 整页牌局：page 纵向 flex，桌布在舞台富余空间内弹性吃满 ──
+   高度兜底由上方 .dz-table 的 264/232px 提供；外壳给定高度时
+   table/center 用 flex:1 吃富余，不再按 100vh 强制拉高，避免中段空荡。 */
+.doudizhu-page {
+  display: flex;
+  flex-direction: column;
+}
+.dz-table {
+  flex: 1;
+}
+.dz-center {
+  flex: 1;
+  justify-content: center;
 }

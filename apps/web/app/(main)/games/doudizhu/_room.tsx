@@ -8,10 +8,11 @@ import { GameRecordsPanel } from "@/components/game/game-records";
 import { useRounds } from "@/components/game/use-rounds";
 import { clientUuid } from "@/lib/client-uuid";
 import { useSfx } from "@/components/game/use-sfx";
-import type { SfxCue } from "@/lib/sfx";
+import { dzCueOf } from "./_parts/sfx-cue";
 import { DzTable } from "./_parts/table";
 import { DzControls } from "./_parts/controls";
 import { Hand } from "./_parts/cards";
+import { identifyCombo } from "./_parts/combo";
 import { SettlePanel } from "./_parts/settle";
 import { CountdownBar } from "./_parts/countdown";
 import { AiLobby, ModeSwitch } from "./_parts/ai-lobby";
@@ -22,18 +23,7 @@ import {
   type HintResp,
   type Overview,
   type StateResp,
-} from "./_parts/room-types";/** 按对局结果与动作选音效线索：终局按输赢；
- *  过牌 pass、叫分 deal、出牌 pop（资深玩家听声辨动作）。 */
-function cueOf(
-  done: boolean,
-  win: boolean,
-  action: string,
-  passed: boolean,
-): SfxCue {
-  if (done) return win ? "win" : "lose";
-  if (passed) return "pass";
-  return action === "play" ? "pop" : "deal";
-}
+} from "./_parts/room-types";
 
 /** 斗地主专注页：AI 房即开即玩 / PvP 房间匹配 → 叫分 → 出牌 → 结算。 */
 export default function DoudizhuRoom({
@@ -95,12 +85,15 @@ export default function DoudizhuRoom({
   }, [hasActiveGame, mode, loadRooms]);
   const game = st?.game ?? null;
   const me = game?.seats[0]; const turnSeconds = st?.turn_seconds ?? 20;
-  const toggle = (c: number) =>
+  const selCombo = sel.size > 0 ? identifyCombo([...sel]) : null;
+  const toggle = (c: number) => {
+    sfx.play("select");
     setSel((cur) => {
       const next = new Set(cur);
       void (next.has(c) ? next.delete(c) : next.add(c));
       return next;
     });
+  };
 
   // busy/err 统一管线：四个动作共用。
   const run = async (fn: () => Promise<void>) => {
@@ -137,8 +130,10 @@ export default function DoudizhuRoom({
         },
       );
       const done = r.game.phase === "done";
+      const win = r.game.result === "win";
       const passed = action === "play" && sel.size === 0;
-      sfx.play(cueOf(done, r.game.result === "win", action, passed));
+      const kind = r.game.last?.kind;
+      sfx.play(dzCueOf(done, win, action, passed, kind));
       setSt((cur) => (cur ? { ...cur, game: r.game } : cur));
       setSel(new Set());
       setHintBid(null); // 建议已消费/过期
@@ -167,7 +162,7 @@ export default function DoudizhuRoom({
       );
       const g = r.game ?? null;
       if (g?.phase === "done")
-        sfx.play(cueOf(true, g.result === "win", "play", false));
+        sfx.play(g.result === "win" ? "win" : "lose");
       if (g) setSt((cur) => (cur ? { ...cur, game: g } : cur));
       await loadRooms();
     });
@@ -194,6 +189,8 @@ export default function DoudizhuRoom({
       todayNet={todayNet}
       limitLeft={ov?.me?.limit_left ?? null}
       headerLayout="center"
+      // 牌桌要整页视口高度，不套 gs-stage-box 小盒（默认盒高随内容塌缩）。
+      stageBox={false}
       stage={
         tab === "play" && (
           <div className="doudizhu-page">
@@ -209,10 +206,7 @@ export default function DoudizhuRoom({
                   <AiLobby
                     ruleLine={variant === "wild" ? t.wildTip : t.rule}
                     stakeTiers={st.stake_tiers ?? [100, 500, 2000]}
-                    variant={variant}
                     busy={busy}
-                    onVariant={setVariant}
-                    onGoPvp={() => setMode("pvp")}
                     onStart={(s) => void start(s)}
                   />
                 ) : pvpRooms?.mine ? (
@@ -269,6 +263,7 @@ export default function DoudizhuRoom({
                       game={game}
                       hintBid={hintBid}
                       selectedCount={sel.size}
+                      combo={selCombo}
                       busy={busy}
                       onBid={(s) => void act("bid", s)}
                       onPlay={() => void act("play")}

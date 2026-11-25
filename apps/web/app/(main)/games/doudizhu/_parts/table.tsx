@@ -56,7 +56,7 @@ export function DzTable({ game }: { game: DzGame }) {
   const seatOf = (s: number) => game.seats.find((x) => x.seat === s);
   const me = seatOf(0);
   const revealed = game.landlord !== null;
-  const rocket = game.last?.kind === "rocket";
+  const rocket = game.last?.kind?.toLowerCase() === "rocket";
   const fromCls =
     game.last?.seat === 1
       ? "from-left"
@@ -71,6 +71,12 @@ export function DzTable({ game }: { game: DzGame }) {
       game.phase === "bidding"
         ? game.bids.find((b) => b[0] === s)
         : undefined;
+    const avatarSrc =
+      seat.role === "landlord"
+        ? "/games/ddz/ddz-landlord.webp"
+        : seat.is_ai
+          ? "/games/ddz/ddz-ai.webp"
+          : "/games/ddz/ddz-farmer.webp";
     return (
       <div
         className={`dz-seat is-pos-${s}${game.turn === s ? " is-turn" : ""}`}
@@ -85,7 +91,7 @@ export function DzTable({ game }: { game: DzGame }) {
           }`}
           aria-hidden
         >
-          {seat.role === "landlord" ? "🎩" : seat.is_ai ? "🤖" : "🧑"}
+          <img src={avatarSrc} alt="" draggable="false" />
         </div>
         <div className="dz-seat-name">
           {seatName(t, s)}

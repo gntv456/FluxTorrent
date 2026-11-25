@@ -1,22 +1,16 @@
 "use client";
 import { useI18n } from "@/i18n/client";
 
-/** AI 房大厅：底分选档 + 变体切换（经典/癞子）+ 去 PvP 入口。 */
+/** AI 房大厅：底分选档。模式/变体切换由顶部 ModeSwitch 统一承载，这里不重复。 */
 export function AiLobby({
   ruleLine,
   stakeTiers,
-  variant,
   busy,
-  onVariant,
-  onGoPvp,
   onStart,
 }: {
   ruleLine: string;
   stakeTiers: number[];
-  variant: "classic" | "wild";
   busy: boolean;
-  onVariant: (v: "classic" | "wild") => void;
-  onGoPvp: () => void;
   onStart: (stake: number) => void;
 }) {
   const { dict } = useI18n();
@@ -36,27 +30,6 @@ export function AiLobby({
           >
             <strong>{t.stakeTier.replace("{n}", String(s))}</strong>
             <span>{t.stakeSub}</span>
-          </button>
-        ))}
-      </div>
-      <div className="dz-controls" style={{ marginTop: 12 }}>
-        <button
-          type="button"
-          className="dz-btn"
-          disabled={busy}
-          onClick={onGoPvp}
-        >
-          {t.pvpTab}
-        </button>
-        {(["classic", "wild"] as const).map((v) => (
-          <button
-            key={v}
-            type="button"
-            className={`dz-btn${variant === v ? " is-primary" : ""}`}
-            disabled={busy}
-            onClick={() => onVariant(v)}
-          >
-            {v === "classic" ? t.modeClassic : t.modeWild}
           </button>
         ))}
       </div>

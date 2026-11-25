@@ -72,8 +72,6 @@ export function PvpLobby({
         >
           {t.leaveRoom}
         </button>
-      </div>
-      <div className="dz-controls" style={{ marginTop: 8 }}>
         <button
           type="button"
           className="dz-btn is-primary"
@@ -106,6 +104,10 @@ export function RoomWait({ room }: { room: PvpRoom }) {
     <div className="dz-settle">
       <h2 className="dz-h2">{t.roomWaiting}</h2>
       <p className="dz-rule-line">
+        {t.roomId.replace("{n}", String(room.id))}
+        {room.is_owner ? ` · ${t.ownerTag}` : ""}
+      </p>
+      <p className="dz-rule-line">
         {t.waitingPlayers.replace("{n}", String(filled))}
       </p>
       <div className="dz-seats">
@@ -114,7 +116,19 @@ export function RoomWait({ room }: { room: PvpRoom }) {
           return (
             <div key={seat} className="dz-seat">
               <div className="dz-seat-avatar" aria-hidden>
-                {s ? "🧑" : "⏳"}
+                {s ? (
+                  <img
+                    src={
+                      s.is_me
+                        ? "/games/ddz/ddz-farmer.webp"
+                        : "/games/ddz/ddz-ai.webp"
+                    }
+                    alt=""
+                    draggable="false"
+                  />
+                ) : (
+                  "⏳"
+                )}
               </div>
               <div className="dz-seat-name">
                 {s ? (s.is_me ? t.you : "P" + (seat + 1)) : "…"}

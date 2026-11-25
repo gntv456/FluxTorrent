@@ -15,6 +15,9 @@ export type SfxCue =
   | "pop" // 揭开涂层/开箱
   | "deal" // 斗地主发牌/叫分（轻扫弦）
   | "pass" // 斗地主过牌（低短滑音）
+  | "select" // 斗地主选牌/取消选牌（轻嗒）
+  | "bomb" // 斗地主炸弹（低频双冲击）
+  | "rocket" // 斗地主王炸（快速上行号角）
   | "win" // 普通赢（上行双音）
   | "jackpot" // 大奖（四音号角）
   | "lose"; // 输（低柔闷响，短且轻）
@@ -82,6 +85,16 @@ const CUES: Record<SfxCue, Note[]> = {
     { f: 660, t: 0.06, d: 0.08, v: 0.18, w: "triangle" },
   ],
   pass: [{ f: 330, t: 0, d: 0.09, v: 0.16, w: "sine" }],
+  select: [{ f: 1200, t: 0, d: 0.04, v: 0.18, w: "square" }],
+  bomb: [
+    { f: 120, t: 0, d: 0.18, v: 0.4, w: "sawtooth" },
+    { f: 80, t: 0.12, d: 0.22, v: 0.36, w: "sawtooth" },
+  ],
+  rocket: [
+    { f: 392, t: 0, d: 0.1, v: 0.3, w: "triangle" },
+    { f: 523, t: 0.09, d: 0.1, v: 0.32, w: "triangle" },
+    { f: 784, t: 0.18, d: 0.22, v: 0.34, w: "triangle" },
+  ],
   pop: [{ f: 520, t: 0, d: 0.09, v: 0.3, w: "sine" }],
   win: [
     { f: 523, t: 0, d: 0.12, v: 0.3, w: "triangle" }, // C5
