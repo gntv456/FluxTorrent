@@ -1,0 +1,489 @@
+/* ══════════════════════════════════════════════════════════════
+   斗地主专注页：墨绿牌桌 + 暗金框。作用域只在 .doudizhu-page。
+   主题跟随四步法（2026-11-24 mole/wheel/scratch 同款）：
+   局部令牌 → 浅色档闸 → 暗色族换血 → motion 令牌。
+   ══════════════════════════════════════════════════════════════ */
+
+.doudizhu-page {
+  --dz-ink: #f2ead8;
+  --dz-sub: #cfc4a8;
+  --dz-felt: #1d5c43;
+  --dz-felt-2: #0e3a2a;
+  --dz-panel: rgba(16, 46, 34, 0.55);
+  --dz-line: rgba(247, 226, 178, 0.18);
+  --dz-line-strong: rgba(247, 226, 178, 0.4);
+  --dz-gold: #e8c882;
+  --dz-red: #e05252;
+  --dz-mint: #46d3a4;
+  --dz-card-bg: #faf6ec;
+  --dz-card-ink: #26221a;
+  --dz-joker: #8a5ab8;
+  color: var(--dz-ink);
+}
+
+/* 浅色主题档：界面色改走站点令牌；牌面固有色（红/墨/绿桌）不动。
+   条件挂祖先 html（:where 不抬特异性）；不得写成 .x:where(html…)。 */
+:where(
+  html:not(
+      [data-theme$="-night"],
+      [data-theme="shanhaijing"],
+      [data-theme="brand-night"]
+    )
+) .doudizhu-page {
+  --dz-ink: var(--text-strong);
+  --dz-sub: var(--text-muted);
+  --dz-felt: var(--surface-card);
+  --dz-felt-2: var(--surface-raised);
+  --dz-panel: var(--surface-card);
+  --dz-line: var(--border-soft);
+  --dz-line-strong: var(--border-deep);
+  --dz-gold: #8a6428;
+  --dz-card-bg: #ffffff;
+  --dz-card-ink: #1f1c14;
+}
+
+.dz-h2 {
+  margin: 0 0 8px;
+  font-size: 18px;
+  color: var(--dz-gold);
+}
+
+.dz-rule-line {
+  margin: 0 0 12px;
+  font-size: 12px;
+  color: var(--dz-sub);
+}
+
+.dz-error {
+  margin: 0 0 8px;
+  color: var(--dz-red);
+  font-size: 14px;
+}
+
+/* ── 开局选档 ─────────────────────────────────────────────── */
+.dz-tiers {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+.dz-tier {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid var(--dz-line);
+  border-radius: var(--r-lg);
+  background: var(--dz-panel);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    transform var(--motion-fast) ease,
+    border-color var(--motion-fast) ease;
+}
+.dz-tier:hover {
+  border-color: var(--dz-line-strong);
+  transform: translateY(-1px);
+}
+.dz-tier strong {
+  font-size: 18px;
+  color: var(--dz-gold);
+}
+.dz-tier span {
+  font-size: 12px;
+  color: var(--dz-sub);
+}
+
+/* ── 牌桌 ─────────────────────────────────────────────────── */
+.dz-table {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--dz-line);
+  border-radius: var(--r-lg);
+  background:
+    radial-gradient(
+      ellipse at 50% 42%,
+      var(--dz-felt) 0%,
+      var(--dz-felt-2) 78%
+    );
+}
+.dz-seats {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.dz-seat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 10px;
+  border: 1px solid var(--dz-line);
+  border-radius: var(--r-md);
+  background: var(--dz-panel);
+  min-width: 96px;
+  transition: border-color var(--motion-fast) ease;
+}
+.dz-seat.is-turn {
+  border-color: var(--dz-gold);
+}
+.dz-seat-avatar {
+  font-size: 20px;
+  line-height: 1.2;
+}
+.dz-seat-name {
+  font-size: 12px;
+  color: var(--dz-ink);
+}
+.dz-seat-role {
+  color: var(--dz-gold);
+}
+.dz-seat-count,
+.dz-me-count {
+  font-size: 12px;
+  color: var(--dz-sub);
+}
+.dz-seat-bid {
+  font-size: 12px;
+  color: var(--dz-mint);
+}
+
+.dz-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  min-height: 130px;
+  justify-content: center;
+}
+.dz-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--dz-gold);
+}
+.dz-table-last {
+  min-height: 64px;
+  display: flex;
+  align-items: center;
+}
+.dz-table-empty {
+  font-size: 14px;
+  color: var(--dz-sub);
+}
+.dz-played {
+  display: flex;
+}
+.dz-kitty {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--dz-sub);
+}
+.dz-kitty-card {
+  padding: 1px 6px;
+  border: 1px solid var(--dz-line);
+  border-radius: var(--r-sm);
+  background: var(--dz-card-bg);
+  color: var(--dz-card-ink);
+}
+
+/* ── 扑克牌 ───────────────────────────────────────────────── */
+.dz-card {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 62px;
+  margin-right: -10px;
+  border: 1px solid rgba(0, 0, 0, 0.25);
+  border-radius: var(--r-md);
+  background: var(--dz-card-bg);
+  color: var(--dz-card-ink);
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    transform var(--motion-fast) ease,
+    box-shadow var(--motion-fast) ease;
+}
+.dz-card:last-child {
+  margin-right: 0;
+}
+.dz-card.is-red {
+  color: var(--dz-red);
+}
+.dz-card.is-joker {
+  color: var(--dz-joker);
+}
+/* 癞子牌：金边 + 角标，玩家一眼识别万能牌 */
+.dz-card.is-wild {
+  border-color: #f5c542;
+  box-shadow: 0 0 6px rgba(245, 197, 66, 0.7);
+}
+.dz-card-wild {
+  position: absolute;
+  top: 2px;
+  right: 3px;
+  color: #f5c542;
+  font-size: 10px;
+}
+.dz-card.is-sel {
+  transform: translateY(-10px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+.dz-card.is-small {
+  width: 34px;
+  height: 46px;
+  font-size: 14px;
+}
+.dz-card-suit {
+  font-size: 12px;
+  line-height: 1;
+}
+.dz-hand {
+  display: flex;
+  justify-content: center;
+  padding: 12px 0;
+  min-height: 86px;
+}
+
+/* ── 控制区 ───────────────────────────────────────────────── */
+.dz-controls {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+}
+.dz-controls.is-wait {
+  color: var(--dz-sub);
+  font-size: 14px;
+}
+.dz-btn {
+  padding: 8px 18px;
+  border: 1px solid var(--dz-line);
+  border-radius: var(--r-md);
+  background: var(--dz-panel);
+  color: var(--dz-ink);
+  font-size: 14px;
+  cursor: pointer;
+  transition: opacity var(--motion-fast) ease;
+}
+.dz-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.dz-btn.is-primary {
+  border-color: var(--dz-line-strong);
+  color: var(--dz-gold);
+  font-weight: 700;
+}
+
+/* ── 结算 ─────────────────────────────────────────────────── */
+.dz-settle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid var(--dz-line);
+  border-radius: var(--r-lg);
+  background: var(--dz-panel);
+}
+.dz-settle .is-win {
+  color: var(--dz-mint);
+  font-size: 18px;
+}
+.dz-settle .is-lose {
+  color: var(--dz-red);
+  font-size: 18px;
+}
+
+/* ── 暗色族整页换血（闸）：页面在场时把外壳表面令牌一并压进夜场。 */
+:root:has(.doudizhu-page):where(
+    html[data-theme$="-night"],
+    html[data-theme="shanhaijing"],
+    html[data-theme="brand-night"]
+  ) {
+  --surface-page: #0d241b;
+  --surface-card: rgba(16, 46, 34, 0.6);
+}
+body:has(.doudizhu-page):where(
+    html[data-theme$="-night"],
+    html[data-theme="shanhaijing"],
+    html[data-theme="brand-night"]
+  ) {
+  background:
+    radial-gradient(ellipse at 50% -8%, #1d5c43 0%, #0d241b 62%);
+}
+
+/* ── 降级：reduced-motion 关位移/阴影动效 ─────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .dz-card,
+  .dz-tier {
+    transition: none;
+  }
+  .dz-card.is-sel {
+    transform: none;
+    box-shadow: none;
+  }
+}
+
+/* ── 倒计时条 ─────────────────────────────────────────────── */
+.dz-countdown {
+  position: relative;
+  height: 22px;
+  border: 1px solid var(--dz-line);
+  border-radius: 999px;
+  background: var(--dz-panel);
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+.dz-countdown-fill {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--dz-mint), var(--dz-gold));
+  transition: width var(--motion-fast) ease;
+}
+.dz-countdown-num {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: var(--dz-ink);
+}
+.dz-countdown.is-low .dz-countdown-fill {
+  background: linear-gradient(90deg, var(--dz-red), #ffb37a);
+}
+.dz-countdown.is-low .dz-countdown-num {
+  color: var(--dz-red);
+  font-weight: 700;
+}
+
+/* ── 叫分浮字动效：座位角标出现时浮入 ─────────────────────── */
+@keyframes dz-bid-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(6px) scale(0.85);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(-2px) scale(1.06);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.dz-seat-bid {
+  animation: dz-bid-pop var(--motion-normal) ease both;
+  color: var(--dz-gold);
+  font-weight: 700;
+}
+
+/* ── 结算回放 ─────────────────────────────────────────────── */
+.dz-replay {
+  width: 100%;
+  max-height: 180px;
+  overflow-y: auto;
+  padding: 8px;
+  border: 1px solid var(--dz-line);
+  border-radius: var(--r-md);
+  background: var(--dz-panel);
+  font-size: 12px;
+}
+.dz-replay summary {
+  color: var(--dz-gold);
+  cursor: pointer;
+}
+.dz-replay-list {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  color: var(--dz-sub);
+}
+.dz-replay-list li {
+  margin: 2px 0;
+}
+.dz-replay-list li.is-me {
+  color: var(--dz-mint);
+}
+
+/* ── 降级：reduced-motion 关浮字动画 ─────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .dz-seat-bid {
+    animation: none;
+  }
+  .dz-countdown-fill {
+    transition: none;
+  }
+}
+
+/* ── AI 出牌浮入动效 ─────────────────────────────────────── */
+@keyframes dz-play-in {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.92);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.dz-played .dz-card {
+  animation: dz-play-in var(--motion-normal) ease both;
+}
+/* 逐张错峰：第 n 张延迟 n×80ms，拟人化甩牌节奏 */
+.dz-played .dz-card:nth-child(2) {
+  animation-delay: 0.08s;
+}
+.dz-played .dz-card:nth-child(3) {
+  animation-delay: 0.16s;
+}
+.dz-played .dz-card:nth-child(4) {
+  animation-delay: 0.24s;
+}
+.dz-played .dz-card:nth-child(5) {
+  animation-delay: 0.32s;
+}
+.dz-played .dz-card:nth-child(n + 6) {
+  animation-delay: 0.4s;
+}
+/* AI 座位头像在轮到时呼吸脉冲 */
+@keyframes dz-turn-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(232, 200, 130, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(232, 200, 130, 0);
+  }
+}
+.dz-seat.is-turn .dz-seat-avatar {
+  animation: dz-turn-pulse 1.6s ease-in-out infinite;
+  border-radius: 999px;
+}
+
+/* ── 叫分建议浮签（hintBid 预取显示） ────────────────────── */
+.dz-hint-bid {
+  display: inline-block;
+  padding: 4px 10px;
+  border: 1px dashed var(--dz-line-strong);
+  border-radius: var(--r-sm);
+  color: var(--dz-mint);
+  font-size: 12px;
+}
+
+/* ── 降级 ────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .dz-played .dz-card,
+  .dz-seat.is-turn .dz-seat-avatar {
+    animation: none;
+  }
+}
