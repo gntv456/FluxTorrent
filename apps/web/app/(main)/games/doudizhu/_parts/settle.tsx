@@ -3,7 +3,23 @@ import { useI18n } from "@/i18n/client";
 import type { DzGame } from "./room-types";
 import { ReplayPanel } from "./replay";
 
-/** 结算浮层：胜/负/流局 + 再来一局（回大厅重新选档）。 */
+/** 金币雨/碎裂演出层：胜利撒币、失败墨滴，纯 CSS 动画（商业结算演出）。 */
+function SettleFx({ win }: { win: boolean }) {
+  return (
+    <div className={`dz-settle-fx ${win ? "is-win" : "is-lose"}`} aria-hidden>
+      {Array.from({ length: 12 }, (_, i) => (
+        <i
+          key={i}
+          style={{ "--i": i } as React.CSSProperties}
+        >
+          {win ? "🪙" : "💧"}
+        </i>
+      ))}
+    </div>
+  );
+}
+
+/** 结算浮层：胜/负/流局 + 演出 + 再来一局（回大厅重新选档）。 */
 export function SettlePanel({
   game,
   onAgain,
@@ -16,6 +32,7 @@ export function SettlePanel({
   const magic = currency || t.magicUnit;
   return (
     <div className="dz-settle" role="status">
+      {game.result !== null && <SettleFx win={game.result === "win"} />}
       <h2 className="dz-h2">{t.gameDone}</h2>
       {game.result === "win" && (
         <p className="is-win">

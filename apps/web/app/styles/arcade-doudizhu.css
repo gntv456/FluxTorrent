@@ -94,12 +94,14 @@
   color: var(--dz-sub);
 }
 
-/* ── 牌桌 ─────────────────────────────────────────────────── */
+/* ── 牌桌（环形三座：AI 左上/右上，玩家手牌在桌外下方） ────── */
 .dz-table {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 8px;
   padding: 12px;
+  padding-top: 132px;
   border: 1px solid var(--dz-line);
   border-radius: var(--r-lg);
   background:
@@ -108,27 +110,50 @@
       var(--dz-felt) 0%,
       var(--dz-felt-2) 78%
     );
+  min-height: 320px;
+}
+/* 桌面毯纹暗角（灯光聚焦感，开源 landlord 的 bg.png 语义） */
+.dz-table::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      ellipse at 50% 46%,
+      transparent 42%,
+      rgba(0, 0, 0, 0.22) 100%
+    );
 }
 .dz-seats {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
+  display: contents;
 }
 .dz-seat {
-  position: relative;
+  position: absolute;
+  top: 12px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
-  padding: 6px 10px;
+  gap: 3px;
+  padding: 8px 12px;
   border: 1px solid var(--dz-line);
   border-radius: var(--r-md);
   background: var(--dz-panel);
-  min-width: 96px;
-  transition: border-color var(--motion-fast) ease;
+  min-width: 118px;
+  transition:
+    border-color var(--motion-fast) ease,
+    box-shadow var(--motion-fast) ease;
+}
+.dz-seat.is-pos-1 {
+  left: 12px;
+}
+.dz-seat.is-pos-2 {
+  right: 12px;
 }
 .dz-seat.is-turn {
   border-color: var(--dz-gold);
+  box-shadow: 0 0 14px rgba(232, 200, 130, 0.35);
 }
 .dz-seat-avatar {
   display: grid;
@@ -196,6 +221,49 @@
   font-size: 12px;
   color: var(--dz-mint);
 }
+.dz-seat-bid.is-wait {
+  color: var(--dz-sub);
+  opacity: 0.8;
+}
+
+/* ── AI 牌背扇堆：张数驱动密度（3/2/1 张档），商业斗地主座位牌堆语义 ── */
+.dz-fan {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  height: 30px;
+  min-width: 64px;
+}
+.dz-fan-back {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 22px;
+  height: 30px;
+  border: 1px solid rgba(0, 0, 0, 0.3);
+  border-radius: 3px;
+  background:
+    linear-gradient(
+      135deg,
+      #2e6c55 0%,
+      #1d5c43 45%,
+      #164a36 100%
+    );
+  box-shadow: inset 0 0 0 2px rgba(232, 200, 130, 0.28);
+  transform-origin: 50% 115%;
+  transform: translateX(-50%) rotate(calc((var(--i) - 1) * 16deg));
+}
+.dz-fan-count {
+  position: relative;
+  padding: 1px 8px;
+  margin-bottom: -2px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+  color: var(--dz-gold);
+  font-size: 11px;
+  font-weight: 700;
+}
 
 .dz-center {
   display: flex;
@@ -236,11 +304,23 @@
 .dz-played {
   display: flex;
 }
-/* 出牌逐张弹入（landlord 的落桌 tween 语义）：轻微下落+缩放 */
+/* 出牌逐张弹入（landlord 的落桌 tween 语义）：从出牌者方向飞入 */
 .dz-played-card {
   margin-right: -8px;
   animation: dz-drop-in var(--motion-normal)
     cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+.dz-played.from-left .dz-played-card {
+  --fx: -64px;
+  --fy: -40px;
+}
+.dz-played.from-right .dz-played-card {
+  --fx: 64px;
+  --fy: -40px;
+}
+.dz-played.from-me .dz-played-card {
+  --fx: 0px;
+  --fy: 56px;
 }
 .dz-played-card:last-child {
   margin-right: 0;
@@ -251,11 +331,11 @@
 @keyframes dz-drop-in {
   from {
     opacity: 0;
-    transform: translateY(-18px) scale(0.85);
+    transform: translate(var(--fx, 0px), var(--fy, -18px)) scale(0.85);
   }
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translate(0, 0) scale(1);
   }
 }
 .dz-kitty {
@@ -478,6 +558,76 @@
   font-size: 18px;
 }
 
+/* ── 王炸全屏演出：闪电劈落 + 白闪（rocket 一手触发，pointer-events 穿透） ── */
+.dz-fx-rocket {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  animation: dz-rocket-flash 0.9s ease-out both;
+  background:
+    linear-gradient(
+      115deg,
+      transparent 46%,
+      rgba(255, 244, 214, 0.85) 49%,
+      rgba(255, 255, 255, 0.95) 50%,
+      rgba(255, 244, 214, 0.85) 51%,
+      transparent 54%
+    );
+  mix-blend-mode: screen;
+}
+@keyframes dz-rocket-flash {
+  0% {
+    opacity: 0;
+    transform: translateY(-30%);
+  }
+  18% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  55% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* ── 结算演出层：胜=金币雨，负=墨滴，12 粒交错下落 ─────────── */
+.dz-settle-fx {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.dz-settle {
+  position: relative;
+}
+.dz-settle-fx i {
+  position: absolute;
+  top: -24px;
+  left: calc((var(--i) * 8.3%)+ 2%);
+  font-size: 18px;
+  font-style: normal;
+  animation: dz-rain 1.6s ease-in calc(var(--i) * 0.14s) both;
+}
+.dz-settle-fx.is-lose i {
+  filter: grayscale(0.6);
+}
+@keyframes dz-rain {
+  0% {
+    opacity: 0;
+    transform: translateY(0) rotate(0deg);
+  }
+  12% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(190px) rotate(340deg);
+  }
+}
+
 /* ── 暗色族整页换血（闸）：页面在场时把外壳表面令牌一并压进夜场。 */
 :root:has(.doudizhu-page):where(
     html[data-theme$="-night"],
@@ -510,8 +660,18 @@ body:has(.doudizhu-page):where(
   .dz-played-card,
   .dz-kitty-card,
   .dz-bubble,
-  .dz-status-bomb {
+  .dz-status-bomb,
+  .dz-fx-rocket,
+  .dz-settle-fx i,
+  .dz-fan-back {
     animation: none;
+  }
+  .dz-fan-back {
+    transform: translateX(-50%) rotate(calc((var(--i) - 1) * 16deg));
+  }
+  .dz-settle-fx i {
+    opacity: 0.9;
+    top: 8px;
   }
 }
 
