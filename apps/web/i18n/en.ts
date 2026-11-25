@@ -3682,6 +3682,8 @@ const enBase: Omit<
       ownerOnly: "Only the owner can deal",
       needThree: "Need three players to deal",
       variantLabel: "Mode",
+      handLabel: "Hand",
+      countdownLabel: "Turn countdown",
     },
     jgg: {
       title: "Lucky Grid",

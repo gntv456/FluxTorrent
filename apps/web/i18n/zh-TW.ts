@@ -3572,6 +3572,8 @@ const zhTwBase: Omit<
       ownerOnly: "只有房主可以開局",
       needThree: "滿三人始可開局",
       variantLabel: "模式",
+      handLabel: "手牌",
+      countdownLabel: "出牌倒數",
     },
     jgg: {
       title: "九宮格抽獎",

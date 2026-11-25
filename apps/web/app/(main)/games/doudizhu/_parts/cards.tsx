@@ -1,5 +1,6 @@
 "use client";
 import { cardColor, cardLabel } from "../_parts/room-types";
+import { useI18n } from "@/i18n/client";
 
 /** 一张扑克牌（DOM+CSS，无图片资产）。选中态由父层控制。 */
 export function PlayingCard({
@@ -57,8 +58,10 @@ export function Hand({
   onToggle: (c: number) => void;
   wildcards?: number[];
 }) {
+  const { dict } = useI18n();
+  const t = dict.games.doudizhu;
   return (
-    <div className="dz-hand" role="listbox" aria-label="hand">
+    <div className="dz-hand" role="listbox" aria-label={t.handLabel}>
       {cards.map((c) => (
         <PlayingCard
           key={c}

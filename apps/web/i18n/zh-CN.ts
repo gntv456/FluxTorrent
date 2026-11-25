@@ -3600,6 +3600,8 @@ const zhCnBase = {
       ownerOnly: "只有房主可以开局",
       needThree: "满三人才可开局",
       variantLabel: "模式",
+      handLabel: "手牌",
+      countdownLabel: "出牌倒计时",
     },
     jgg: {
       title: "九宫格抽奖",

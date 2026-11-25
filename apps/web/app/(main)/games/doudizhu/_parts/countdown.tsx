@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useI18n } from "@/i18n/client";
 import type { DzGame } from "./room-types";
 
 /** 出牌/叫分倒计时条：本地递减，归零触发 onExpire（代发托管动作）。
@@ -14,6 +15,8 @@ export function CountdownBar({
   onExpire: () => void;
 }) {
   const turnKey = `${game.id}:${game.phase}:${game.turn}`;
+  const { dict } = useI18n();
+  const t = dict.games.doudizhu;
   const [left, setLeft] = useState(seconds);
   useEffect(() => {
     setLeft(seconds);
@@ -36,7 +39,7 @@ export function CountdownBar({
     <div
       className={`dz-countdown${left <= 5 ? " is-low" : ""}`}
       role="timer"
-      aria-label="countdown"
+      aria-label={t.countdownLabel}
     >
       <span className="dz-countdown-fill" style={{ width: `${pct}%` }} />
       <span className="dz-countdown-num">{left}s</span>
