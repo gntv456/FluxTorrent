@@ -16,6 +16,21 @@
 
 mod bigsmall;
 mod bs_room;
+pub(crate) mod doudizhu;
+pub(crate) mod doudizhu_ai;
+mod doudizhu_ai_combo;
+#[cfg(test)]
+mod doudizhu_ai_combo_tests;
+pub(crate) mod doudizhu_game;
+mod doudizhu_play_repo;
+mod doudizhu_play_store;
+pub(crate) mod doudizhu_pvp_repo;
+pub(crate) mod doudizhu_pvp_view;
+pub(crate) mod doudizhu_repo;
+pub(crate) mod doudizhu_settle;
+mod doudizhu_settle_repo;
+pub(crate) mod doudizhu_variant;
+pub(crate) mod doudizhu_wild;
 mod farm;
 mod farm_land;
 mod jgg;
@@ -23,6 +38,30 @@ mod mole;
 pub(crate) mod mole_repo;
 mod scratch;
 
+#[cfg(test)]
+mod doudizhu_ai_tests;
+#[cfg(test)]
+mod doudizhu_db_harness;
+#[cfg(test)]
+mod doudizhu_db_tests;
+#[cfg(test)]
+mod doudizhu_econ_probe;
+#[cfg(test)]
+mod doudizhu_game_tests;
+#[cfg(test)]
+mod doudizhu_mirror_db_tests;
+#[cfg(test)]
+mod doudizhu_mirror_probe;
+#[cfg(test)]
+mod doudizhu_pvp_db_tests;
+#[cfg(test)]
+mod doudizhu_rule_probe;
+#[cfg(test)]
+mod doudizhu_sim_tests;
+#[cfg(test)]
+mod doudizhu_tests;
+#[cfg(test)]
+mod doudizhu_wild_tests;
 #[cfg(test)]
 mod farm_land_tests;
 #[cfg(test)]
@@ -57,6 +96,18 @@ pub use bigsmall::{
 pub use bs_room::{
     parse_side, payout, region_of, remaining_seconds, side_wins, win_idem,
     window_seconds, ROUND_SECONDS_DEFAULT,
+};
+#[allow(unused_imports)]
+pub use doudizhu::{
+    beats, deal, detect, Combo, ComboKind, Rank, DOU_DIZHU_RAKE,
+    MULTIPLIER_CAP, RAKE_PERMILLE_HARD_CAP,
+};
+#[allow(unused_imports)]
+pub use doudizhu_ai::legal_pick;
+#[allow(unused_imports)]
+pub use doudizhu_settle::{
+    doudizhu_expected_value, multiplier_of, settle_payout, win_idem as dz_win,
+    Role,
 };
 #[allow(unused_imports)]
 pub use farm::{

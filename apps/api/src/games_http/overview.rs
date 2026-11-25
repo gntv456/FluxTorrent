@@ -114,6 +114,7 @@ pub(super) async fn games_overview(
             "gacha": super::helpers::minclass_of(&state, "gacha").await,
             "pet": super::helpers::minclass_of(&state, "pet").await,
             "fishing": super::helpers::minclass_of(&state, "fishing").await,
+            "doudizhu": super::helpers::minclass_of(&state, "doudizhu").await,
         },
         "scratch": { "name": "刮刮乐", "max_bet": max_bet,
             "min_bet": spool.ticket,
@@ -224,9 +225,9 @@ struct GameHistoryRow {
 }
 
 #[derive(Deserialize)]
-struct HistoryQuery {
-    game: Option<String>,
-    limit: Option<i64>,
+pub(super) struct HistoryQuery {
+    pub(super) game: Option<String>,
+    pub(super) limit: Option<i64>,
 }
 
 #[get("/games/history")]
@@ -249,63 +250,4 @@ pub(super) async fn game_history(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(rows))
-}
-
-/// 我的对局战绩（一局一条）：以扣注流水为主体，按幂等键 LEFT JOIN 派彩。
-/// value 是物品档等值；历史幂等键兼容 `game-bs-win:` 与 `game-<ref_type>-win:`。
-#[derive(sqlx::FromRow, serde::Serialize)]
-struct GameRoundRow {
-    game: String,
-    bet: i64,
-    payout: i64,
-    value: i64,
-    net: i64,
-    at: chrono::DateTime<chrono::Utc>,
-}
-#[get("/games/rounds")]
-pub(super) async fn game_rounds(
-    req: HttpRequest,
-    state: web::Data<std::sync::Arc<AppState>>,
-    q: crate::http::Q<HistoryQuery>,
-) -> DomainResult<HttpResponse> {
-    let auth = require_auth(&req, &state).await?;
-    let rows: Vec<GameRoundRow> = sqlx::query_as(
-        "SELECT l.ref_type AS game, \
-                l.amount AS bet, \
-                COALESCE(w.amount, 0) AS payout, \
-                COALESCE(d.value, COALESCE(w.amount, 0)) AS value, \
-                l.amount + COALESCE(w.amount, 0) AS net, \
-                l.created_at AS at \
-         FROM spark_ledger l \
-         LEFT JOIN arcade_draw_results d \
-           ON d.idempotency_key = l.idempotency_key \
-         LEFT JOIN spark_ledger w \
-           ON w.idempotency_key IN ( \
-                'game-' || l.ref_type || '-win:' || l.idempotency_key, \
-                'game-bs-win:' || l.idempotency_key \
-              ) \
-         WHERE l.user_id = $1 AND l.kind = 'game' AND l.amount < 0 \
-           AND l.ref_type IN ('scratch', 'bigsmall', 'jgg', 'capsule', 'fruit', 'wheel', 'fishing', 'mole') \
-           AND ($2::text IS NULL OR l.ref_type = $2) \
-           AND l.created_at > now() - interval '90 days' \
-         ORDER BY l.id DESC LIMIT $3",
-    )
-    .bind(auth.id)
-    .bind(&q.game)
-    .bind(q.limit.unwrap_or(20).clamp(1, 50))
-    .fetch_all(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-    // 当前连胜（波3 留存层）：从最近一局向前数连续 net>0 的局数。
-    // 此前四页 StreakPill 是 useState——刷新即丢；现在服务端按流水算，
-    // 刷新/换设备口径一致。rows 按 id DESC 有序，线性扫即可。
-    let mut streak = 0i64;
-    for r in &rows {
-        if r.net > 0 {
-            streak += 1;
-        } else {
-            break;
-        }
-    }
-    Ok(ok(serde_json::json!({ "rows": rows, "streak": streak })))
 }

@@ -13,6 +13,8 @@
 export type SfxCue =
   | "tick" // 选注/下注确认
   | "pop" // 揭开涂层/开箱
+  | "deal" // 斗地主发牌/叫分（轻扫弦）
+  | "pass" // 斗地主过牌（低短滑音）
   | "win" // 普通赢（上行双音）
   | "jackpot" // 大奖（四音号角）
   | "lose"; // 输（低柔闷响，短且轻）
@@ -75,6 +77,11 @@ interface Note {
 /** 线索谱面：克制优先——输的音最短最轻，jackpot 是唯一隆重时刻 */
 const CUES: Record<SfxCue, Note[]> = {
   tick: [{ f: 880, t: 0, d: 0.05, v: 0.25, w: "square" }],
+  deal: [
+    { f: 520, t: 0, d: 0.08, v: 0.22, w: "triangle" },
+    { f: 660, t: 0.06, d: 0.08, v: 0.18, w: "triangle" },
+  ],
+  pass: [{ f: 330, t: 0, d: 0.09, v: 0.16, w: "sine" }],
   pop: [{ f: 520, t: 0, d: 0.09, v: 0.3, w: "sine" }],
   win: [
     { f: 523, t: 0, d: 0.12, v: 0.3, w: "triangle" }, // C5

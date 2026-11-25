@@ -28,6 +28,8 @@ mod career;
 mod casino;
 mod casino_bigsmall;
 mod collection;
+mod doudizhu_http;
+mod doudizhu_pvp_http;
 mod farm;
 mod farm_actions;
 mod farm_collection;
@@ -37,6 +39,9 @@ mod farm_land_write;
 mod fishing;
 mod fishing_extra;
 mod fishing_pond;
+mod fixed_lottery_admin_http;
+mod fixed_lottery_admin_write;
+mod fixed_lottery_http;
 mod food_coupon;
 mod fun;
 // pub(crate)：gacha_http/draw 也走同一把等级门（0490）
@@ -51,6 +56,7 @@ mod mole_settle;
 // 而 layer_guard 对 games_http/ 新文件零容忍 SQL，测试只能落在 games/ 侧）。
 #[cfg(test)]
 pub(crate) use crate::games::mole_repo::settle_stale_rounds_tx;
+mod game_rounds;
 mod overview;
 mod pet_custom;
 mod pet_log;
@@ -79,6 +85,8 @@ use career::*;
 use casino::*;
 use casino_bigsmall::*;
 use collection::*;
+use doudizhu_http::*;
+use doudizhu_pvp_http::*;
 use farm::*;
 use farm_actions::*;
 use farm_collection::*;
@@ -87,7 +95,11 @@ use farm_land_write::*;
 use fishing::*;
 use fishing_extra::*;
 use fishing_pond::*;
+use fixed_lottery_admin_http::*;
+use fixed_lottery_admin_write::*;
+use fixed_lottery_http::*;
 use fun::*;
+use game_rounds::*;
 use item_use::*;
 use linkage::*;
 use mole::*;
@@ -122,6 +134,28 @@ pub fn mount_games(scope: actix_web::Scope) -> actix_web::Scope {
         .service(mole_finish)
         .service(fishing_cast)
         .service(fishing_reel)
+        .service(dz_state)
+        .service(dz_start)
+        .service(dz_action)
+        .service(dz_pvp_rooms)
+        .service(dz_pvp_join)
+        .service(dz_pvp_leave)
+        .service(dz_pvp_deal)
+        .service(dz_pvp_state)
+        .service(lottery_list)
+        .service(lottery_detail)
+        .service(lottery_join)
+        .service(lottery_claim)
+        .service(admin_lottery_list)
+        .service(admin_lottery_create)
+        .service(admin_lottery_detail)
+        .service(admin_lottery_publish)
+        .service(admin_lottery_cancel)
+        .service(admin_lottery_draw)
+        .service(admin_lottery_winners)
+        .service(admin_lottery_retry)
+        .service(admin_lottery_claim_review)
+        .service(admin_lottery_claim_queue)
         .service(pond_state)
         .service(pond_cast)
         .service(pond_hook)
