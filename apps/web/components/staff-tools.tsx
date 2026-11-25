@@ -87,7 +87,8 @@ export type ToolTab =
   | "terms"
   | "donateorders"
   | "fundings"
-  | "panelentries";
+  | "panelentries"
+  | "flxlottery";
 
 /** 各域面板负责的 tab —— 既用于条件挂载，也是「谁渲染谁」的唯一声明处。
  *  新增工具时在这里归位，并同步 STAFF_TOOL_TABS（admin-tool-switch.tsx）
@@ -157,8 +158,8 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
   return (
     <div className="flex flex-col gap-3">
       {msg && (
-        <p className="rounded-[var(--r-md)] bg-sky-soft p-3 text-sm text-ink">
-          {msg}
+        <p className="rounded-[var(--r-md)] bg-[var(--sky-soft)] p-3">
+          <span className="text-sm text-ink">{msg}</span>
         </p>
       )}
 

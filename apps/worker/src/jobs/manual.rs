@@ -55,6 +55,9 @@ pub(crate) async fn run_named(
             n(crate::jobs::shop_fulfill::recover(db).await?)
         }
         "lottery_settle" => n(lottery_settle_due(db).await?),
+        "flx_settle" => n(fixed_lottery_settle_due(db).await?),
+        "flx_fulfill" => n(fixed_lottery_fulfill_due(db).await?),
+        "flx_claim_expire" => n(fixed_lottery_claim_expire(db).await?),
         "bank_daily" => {
             crate::bank_jobs::bank_daily(db).await;
             d(())

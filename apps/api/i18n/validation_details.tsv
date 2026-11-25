@@ -352,3 +352,60 @@ side 仅支持 small/big	side 僅支持 small/big	side must be small or big
 本期已截止，请等待新一期	本期已截止，請等待新一期	This round is closed; please wait for the next one
 该注已受理，请勿重复提交	該注已受理，請勿重複提交	This bet was already accepted; do not submit again
 鱼种已下架，请重抛	魚種已下架，請重拋	This fish species has been delisted; please cast again
+你不在本活动的参与名单内	你不在本活動的參與名單內	You are not on this campaign's participant list
+取消必须填写原因	取消必須填寫原因	A reason is required to cancel
+奖项数量须在 1-5 之间	獎項數量須在 1-5 之間	Prize count must be between 1 and 5
+必填字段未填写	必填欄位未填寫	A required field is empty
+报名尚未开始	報名尚未開始	Registration has not started yet
+报名已截止	報名已截止	Registration is closed
+无权操作	無權操作	Not permitted
+时间格式非法	時間格式非法	Invalid time format
+活动不在可开奖状态	活動不在可開獎狀態	Campaign is not in a drawable state
+活动不在报名期	活動不在報名期	Campaign is not open for registration
+活动不在草稿状态	活動不在草稿狀態	Campaign is not in draft state
+活动未配置有效奖项	活動未配置有效獎項	Campaign has no prizes configured
+活动标题不能为空	活動標題不能為空	Campaign title is required
+物品奖励的 item_key 不存在	物品獎勵的 item_key 不存在	The item_key of this prize does not exist
+等级不满足参与门槛	等級不滿足參與門檻	Your class does not meet the entry threshold
+等级超出参与范围	等級超出參與範圍	Your class exceeds the entry range
+该奖品已审核通过	該獎品已審核通過	This prize has already been approved
+该奖品无需领取流程	該獎品無需領取流程	This prize does not require a claim
+该领取不在待审核状态	該領取不在待審核狀態	This claim is not pending review
+领取期限已过	領取期限已過	The claim deadline has passed
+领取表单字段数超限	領取表單欄位數超限	Claim form has too many fields
+领取资料必须是对象	領取資料必須是物件	Claim data must be an object
+驳回必须填写原因	駁回必須填寫原因	A reason is required to reject
+奖项名额须在 1-1000 之间	獎項名額須在 1-1000 之間	Prize quantity must be between 1 and 1000
+物品奖励未配置 item_key	物品獎勵未配置 item_key	Item prize is missing item_key
+魔力奖励金额未配置	魔力獎勵金額未配置	Spark prize is missing its amount
+勋章奖励未配置 medal_id	勳章獎勵未配置 medal_id	Medal prize is missing medal_id
+只有中奖人本人可以提交领取资料	只有中獎人本人可以提交領取資料	Only the winner can submit a claim
+未知奖励类型	未知獎勵類型	Unknown reward kind
+action 仅支持 bid/play/hint	action 僅支援 bid/play/hint	action only supports bid/play/hint
+variant 仅支持 classic/wild	variant 僅支援 classic/wild	variant only supports classic/wild
+三人才可开局	三人才可開局	Three players required to start
+上传量奖励必须配置有效 gb	上傳量獎勵必須配置有效 gb	Upload reward requires a valid gb value
+不在任何房间	不在任何房間	Not in any room
+人数达标必须设置保底开奖时间	人數達標必須設置保底開獎時間	Headcount threshold requires a fallback draw time
+人数达标必须设置有效阈值	人數達標必須設置有效閾值	Headcount threshold requires a valid value
+勋章奖励必须配置有效 medal_id	勳章獎勵必須配置有效 medal_id	Medal reward requires a valid medal_id
+勋章奖励的 medal_id 不存在	勳章獎勵的 medal_id 不存在	Medal reward medal_id does not exist
+只有房主可以开局	只有房主可以開局	Only the room owner can start
+天数奖励配置非法	天數獎勵配置非法	Invalid days reward config
+奖励类型非法	獎勵類型非法	Invalid reward kind
+奖项名称不能为空	獎項名稱不能為空	Prize name cannot be empty
+定时开奖必须设置开奖时间	定時開獎必須設置開獎時間	Scheduled draw requires a draw time
+对局不存在	對局不存在	Game not found
+已有进行中的对局，请先完成	已有進行中的對局，請先完成	An active game exists; finish it first
+底分档位仅支持 100/500/2000	底分檔位僅支援 100/500/2000	Stake tier only supports 100/500/2000
+开奖方式非法	開獎方式非法	Invalid draw mode
+彩虹ID奖励必须配置有效 item_id	彩虹ID獎勵必須配置有效 item_id	Rainbow-ID reward requires a valid item_id
+房间已开局	房間已開局	Room already started
+房间已开局或已散	房間已開局或已散	Room already started or dismissed
+未知动作	未知動作	Unknown action
+没有进行中的对局	沒有進行中的對局	No active game
+注册时长不满足参与门槛	註冊時長不滿足參與門檻	Account age does not meet the entry threshold
+火花奖励必须配置有效金额	火花獎勵必須配置有效金額	Spark reward requires a valid amount
+物品奖励必须配置 item_key	物品獎勵必須配置 item_key	Item reward requires item_key
+领取资料字段内容过长	領取資料欄位內容過長	Claim form field too long
+领取资料字段数超限	領取資料欄位數超限	Too many claim form fields

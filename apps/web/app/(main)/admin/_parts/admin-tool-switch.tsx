@@ -45,6 +45,7 @@ export const STAFF_TOOL_TABS: ToolTab[] = [
   "agentrules", "forums", "reports", "menu", "roles", "perm", "seedstats",
   "userfields", "pages", "terms", "donateorders", "fundings", "panelentries",
   "wiki",
+  "flxlottery",
 ];
 
 /** renderTool 的简单直排分流（复杂 case 由 page.tsx 内联处理） */
@@ -177,6 +178,9 @@ export function renderSimpleTool(
     // 娱乐屋运营（P3 后台入口：EV 三口径 / 门禁 / 参数 / 定义）
     case "arcade":
       return <P.AdminArcade />;
+    // 固定抽签运营（0520）：活动/开奖/履约/领取审核
+    case "flxlottery":
+      return <P.AdminFixedLottery />;
     // 视图布局（E6）：列表列/详情段落显隐
     case "viewlayout":
       return (

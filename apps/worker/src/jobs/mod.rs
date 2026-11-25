@@ -40,6 +40,11 @@ pub(crate) use onboarding_followup::lifecycle_touch;
 pub(crate) use onboarding_followup::onboarding_followup;
 // 0487：IYUU 辅种查重定时批量刷新
 mod class_demote;
+mod fixed_lottery;
+mod fixed_lottery_claim_expire;
+mod fixed_lottery_fulfill;
+mod fixed_lottery_grant_effect;
+mod fixed_lottery_repo;
 mod iyuu_orphan_sweep;
 mod iyuu_refresh;
 mod jixiao;
@@ -65,6 +70,7 @@ mod request_expire;
 mod risk_backtest;
 mod risk_score;
 mod run;
+mod run_tick_groups;
 mod torrent_cache;
 // hour_jobs：小时批任务清单（run.rs 448→313 行拆出，见行数门禁）
 mod hour_jobs;
@@ -72,6 +78,7 @@ mod sanction_sweep;
 mod seeding;
 // 0354 邀请分润：seeding.rs 主结算后直接 super:: 调用，不对外 re-export
 mod catalog_jobs;
+mod catalog_jobs_slow;
 mod seeding_referral;
 mod settle;
 mod settle_periodic;
@@ -93,6 +100,8 @@ pub(crate) const JOB_BATCH: i64 = 500;
 pub(crate) use announce::*;
 pub(crate) use catalog::*;
 pub(crate) use contract::*;
+pub(crate) use fixed_lottery::*;
+pub(crate) use fixed_lottery_claim_expire::*;
 pub(crate) use iyuu_orphan_sweep::*;
 pub(crate) use iyuu_refresh::*;
 pub(crate) use locks::*;

@@ -185,6 +185,11 @@ export const LAZY_PANELS = {
       default: m.AdminArcade,
     })),
   ),
+    AdminFixedLottery: lazy(() =>
+    import("@/components/admin-fixed-lottery").then((m) => ({
+      default: m.AdminFixedLottery,
+    })),
+  ),
     HomeLayoutEditor: lazy(() =>
     import("@/components/home-layout-editor").then((m) => ({
       default: m.HomeLayoutEditor,

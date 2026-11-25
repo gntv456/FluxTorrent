@@ -39,11 +39,13 @@ export interface GameEntry {
     | "jgg"
     | "mole"
     | "bigsmall"
+    | "doudizhu"
     | "farm"
     | "capsule"
     | "fruit"
     | "wheel"
-    | "fishing";
+    | "fishing"
+    | "lottery";
   /** 大厅首屏「热门」标记 */
   hot?: boolean;
 }
@@ -52,6 +54,15 @@ export interface GameEntry {
  *  + 养成（农场/抽卡/宠物/钓鱼）。顺序即大厅展示顺序。
  *  旧扭蛋入口已替换为老虎机 + 水果机；老虎机后端复用旧 capsule 池键。 */
 export const GAMES: GameEntry[] = [
+  {
+    key: "doudizhu",
+    href: "/games/doudizhu",
+    icon: "🃏",
+    tone: "violet",
+    group: "session",
+    live: true,
+    hot: true,
+  },
   {
     key: "bigsmall",
     href: "/games/bigsmall",
@@ -146,5 +157,13 @@ export const GAMES: GameEntry[] = [
     group: "session",
     live: true,
     badge: "fishing",
+  },
+  {
+    key: "lottery",
+    href: "/games/lottery",
+    icon: "🎪",
+    tone: "coral",
+    group: "session",
+    live: true,
   },
 ];

@@ -14,7 +14,7 @@
  *
  *  用法：node scripts/job_catalog_guard.mjs
  *  exit 1 = 不一致。无基线、无豁免：这三份清单本来就该同源。 */
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, readdirSync, existsSync } from "node:fs";
 import path from "node:path";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
@@ -35,7 +35,7 @@ function names(text, re) {
  *  两处都扫，谁有算谁——拆文件不该让门禁瞎掉。 */
 function readCatalog() {
   const out = new Set();
-  for (const f of ["catalog.rs", "catalog_jobs.rs"]) {
+  for (const f of ["catalog.rs", "catalog_jobs.rs", "catalog_jobs_slow.rs"]) {
     const rel = `${JOBS}/${f}`;
     if (!existsSync(path.join(ROOT, rel))) continue;
     for (const m of src(rel).matchAll(/name:\s*"([a-z0-9_]+)"/g)) out.add(m[1]);
@@ -44,7 +44,14 @@ function readCatalog() {
 }
 const catalog = readCatalog();
 const manual = names(src(`${JOBS}/manual.rs`), /^\s{8}"([a-z0-9_]+)"\s*=>/gm);
-const scheduled = names(src(`${JOBS}/run.rs`), /"job:([a-z0-9_]+)"/g);
+const scheduled = new Set();
+for (const e of readdirSync(path.join(ROOT, JOBS))) {
+  if (!e.endsWith(".rs")) continue;
+  // run.rs / run_tick_groups.rs（300 行门禁拆出的任务组）……拆文件
+  // 不该让门禁瞎掉，调度清单扫 jobs 目录全部 .rs。
+  for (const m of src(`${JOBS}/${e}`).matchAll(/"job:([a-z0-9_]+)"/g))
+    scheduled.add(m[1]);
+}
 
 const diff = (a, b) => [...a].filter((x) => !b.has(x)).sort();
 

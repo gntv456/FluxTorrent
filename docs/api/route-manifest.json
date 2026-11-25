@@ -2,7 +2,7 @@
  "note": "actix 路由宏静态提取：get/post/put/patch/delete/route 六种方法宏，含 #[actix_web::get] 全限定形态；handler 关联自宏后首条 fn；注释内的宏不计（被注释掉的路由是死代码）",
  "path_scope": "path=宏原始字面量（scope 相对路径）；/api/v1 等挂载前缀由 mount 侧拼接，清单不还原 mount 链",
  "grep_baseline_note": "口径对齐 grep -rE '#\\[(actix_web::)?(get|post|put|patch|delete|route)\\(' apps/api/src --include=*.rs；grep 会数到注释里的宏，total 若比 grep 少，差额即被注释掉的死宏",
- "total": 885,
+ "total": 907,
  "routes": [
   {
    "method": "POST",
@@ -3012,6 +3012,54 @@
   },
   {
    "method": "GET",
+   "path": "/games/doudizhu/state",
+   "handler": "dz_state",
+   "file": "apps/api/src/games_http/doudizhu_http.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/games/doudizhu/start",
+   "handler": "dz_start",
+   "file": "apps/api/src/games_http/doudizhu_http.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/games/doudizhu/action",
+   "handler": "dz_action",
+   "file": "apps/api/src/games_http/doudizhu_http.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/games/doudizhu/pvp/rooms",
+   "handler": "dz_pvp_rooms",
+   "file": "apps/api/src/games_http/doudizhu_pvp_http.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/games/doudizhu/pvp/join",
+   "handler": "dz_pvp_join",
+   "file": "apps/api/src/games_http/doudizhu_pvp_http.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/games/doudizhu/pvp/leave",
+   "handler": "dz_pvp_leave",
+   "file": "apps/api/src/games_http/doudizhu_pvp_http.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/games/doudizhu/pvp/deal",
+   "handler": "dz_pvp_deal",
+   "file": "apps/api/src/games_http/doudizhu_pvp_http.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/games/doudizhu/pvp/state",
+   "handler": "dz_pvp_state",
+   "file": "apps/api/src/games_http/doudizhu_pvp_http.rs"
+  },
+  {
+   "method": "GET",
    "path": "/farm",
    "handler": "farm_overview",
    "file": "apps/api/src/games_http/farm.rs"
@@ -3132,6 +3180,90 @@
   },
   {
    "method": "GET",
+   "path": "/admin/lottery/campaigns",
+   "handler": "admin_lottery_list",
+   "file": "apps/api/src/games_http/fixed_lottery_admin_http.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/lottery/campaigns/{id}/publish",
+   "handler": "admin_lottery_publish",
+   "file": "apps/api/src/games_http/fixed_lottery_admin_http.rs"
+  },
+  {
+   "method": "DELETE",
+   "path": "/admin/lottery/campaigns/{id}",
+   "handler": "admin_lottery_cancel",
+   "file": "apps/api/src/games_http/fixed_lottery_admin_http.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/lottery/campaigns/{id}/draw",
+   "handler": "admin_lottery_draw",
+   "file": "apps/api/src/games_http/fixed_lottery_admin_http.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/lottery/fulfillments/{winner_id}/retry",
+   "handler": "admin_lottery_retry",
+   "file": "apps/api/src/games_http/fixed_lottery_admin_http.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/lottery/claims/{winner_id}/review",
+   "handler": "admin_lottery_claim_review",
+   "file": "apps/api/src/games_http/fixed_lottery_admin_http.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/lottery/claims",
+   "handler": "admin_lottery_claim_queue",
+   "file": "apps/api/src/games_http/fixed_lottery_admin_http.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/lottery/campaigns/{id}/winners",
+   "handler": "admin_lottery_winners",
+   "file": "apps/api/src/games_http/fixed_lottery_admin_http.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/lottery/campaigns/{id}",
+   "handler": "admin_lottery_detail",
+   "file": "apps/api/src/games_http/fixed_lottery_admin_http.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/lottery/campaigns",
+   "handler": "admin_lottery_create",
+   "file": "apps/api/src/games_http/fixed_lottery_admin_write.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/games/lottery",
+   "handler": "lottery_list",
+   "file": "apps/api/src/games_http/fixed_lottery_http.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/games/lottery/{code}",
+   "handler": "lottery_detail",
+   "file": "apps/api/src/games_http/fixed_lottery_http.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/games/lottery/{code}/join",
+   "handler": "lottery_join",
+   "file": "apps/api/src/games_http/fixed_lottery_http.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/games/lottery/claim/{winner_id}",
+   "handler": "lottery_claim",
+   "file": "apps/api/src/games_http/fixed_lottery_http.rs"
+  },
+  {
+   "method": "GET",
    "path": "/fun/polls",
    "handler": "fun_polls",
    "file": "apps/api/src/games_http/fun.rs"
@@ -3141,6 +3273,12 @@
    "path": "/fun/vote",
    "handler": "fun_vote",
    "file": "apps/api/src/games_http/fun.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/games/rounds",
+   "handler": "game_rounds",
+   "file": "apps/api/src/games_http/game_rounds.rs"
   },
   {
    "method": "POST",
@@ -3188,12 +3326,6 @@
    "method": "GET",
    "path": "/games/history",
    "handler": "game_history",
-   "file": "apps/api/src/games_http/overview.rs"
-  },
-  {
-   "method": "GET",
-   "path": "/games/rounds",
-   "handler": "game_rounds",
    "file": "apps/api/src/games_http/overview.rs"
   },
   {

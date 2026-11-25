@@ -58,12 +58,23 @@ const EXT = new Set([".rs", ".ts", ".tsx", ".js", ".mjs", ".sql", ".json"]);
  */
 function metaKeys() {
   const keys = new Map(); // key -> 首次登记的迁移文件
+  const retired = new Set(); // 被 DELETE FROM settings_meta 定点下线的键
   const sqls = readdirSync(MIGRATIONS)
     .filter((n) => n.endsWith(".sql"))
     .sort();
   const BLOCK = /INSERT\s+INTO\s+["']?settings_meta["']?\b[^;]*;/gi;
+  // 下线豁免（2026-11-25）：键在后续迁移里被按名 DELETE = 已下线，
+  // 不再判假开关（0523 下线 doudizhu_bid_seconds 首例）。
+  const DEL = new RegExp(
+    "DELETE\\s+FROM\\s+[\"']?settings_meta[\"']?\\s+WHERE\\s+" +
+      "name\\s*=\\s*'([a-zA-Z][a-zA-Z0-9_]*)'",
+    "gi",
+  );
   for (const f of sqls) {
     const text = readFileSync(path.join(MIGRATIONS, f), "utf-8");
+    let dm;
+    while ((dm = DEL.exec(text))) retired.add(dm[1]);
+    DEL.lastIndex = 0;
     // 两种登记形态都要收到，缺一种就是漏检：
     //   VALUES ('key', …)            —— 元组首列
     //   SELECT 'key', 'yesno', …     —— 配 WHERE NOT EXISTS 的补录写法
@@ -81,7 +92,7 @@ function metaKeys() {
       }
     }
   }
-  return keys;
+  return { keys, retired };
 }
 
 /** 源码全文（不含迁移）拼成一个 haystack，逐键判引用。 */
@@ -213,10 +224,11 @@ function dynamicHit(corpus, key) {
   return false;
 }
 
-const keys = metaKeys();
+const { keys, retired } = metaKeys();
 const corpus = sourceCorpus();
 const dead = [];
 for (const [k, mig] of keys) {
+  if (retired.has(k)) continue;
   if (corpus.includes(k)) continue;
   if (dynamicHit(corpus, k)) continue;
   dead.push({ key: k, migration: mig });

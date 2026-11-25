@@ -4,6 +4,8 @@
 use super::*;
 use sqlx::PgPool;
 
+use super::run_tick_groups::{reg_5min, reg_60s};
+
 /// 角色分片（0225 G30-B1）：FLUX_WORKER_JOBS=逗号分隔 job 名；空缺省=全量。
 pub(crate) fn job_shard() -> Option<Vec<String>> {
     let v = std::env::var("FLUX_WORKER_JOBS").unwrap_or_default();
@@ -68,6 +70,7 @@ macro_rules! spawn_lock {
         }
     };
 }
+pub(crate) use spawn_lock;
 
 pub(super) fn job_in_shard(n: &str, shard: &Option<Vec<String>>) -> bool {
     shard.as_ref().map_or(true, |l| l.iter().any(|s| s == n))
@@ -130,9 +133,9 @@ async fn bank_daily_gate(db: &PgPool, shard: &Option<Vec<String>>) {
     }
     let site_day =
         (chrono::Utc::now() + chrono::Duration::hours(8)).date_naive();
-    // 库里的健康游标是唯一真源：每轮重查，跨实例/重启都不会误判。
-    // init_bank_day 今日已结返回今天，否则返回昨天；结算失败不写游标，
-    // 下一 tick 自然会整轮重跑（各子步骤自带游标，重跑安全）。
+    // 库里的健康游标是唯一真源：每轮重查跨实例/重启不误判。
+    // init_bank_day 今日已结返回今天否则昨天；结算失败不写游标，
+    // 下一 tick 自然整轮重跑（各子步骤自带游标，重跑安全）。
     if init_bank_day(db).await >= site_day {
         return;
     }
@@ -180,8 +183,8 @@ pub async fn run_all(
         _ = tick.tick() => {
             // 手动触发认领（0218 G7）：与定时同函数、同 advisory 锁，不阻塞本循环
             poll_manual_triggers(&db, &redis, &mut manual_tasks).await;
-            // 多实例互斥（with_lock：advisory lock + 900s 超时，拿不到锁静默
-            // 跳过本轮；失败/超时记日志）
+            // 多实例互斥（with_lock：advisory lock + 900s 超时；拿不到锁
+            // 静默跳过本轮，失败/超时记日志）
             shard_lock!(&db, "job:expire_promotions",
                 expire_promotions(&db), &shard);
             // 邮件 outbox 消费（0404 §17-2）
@@ -189,11 +192,13 @@ pub async fn run_all(
                 mail_outbox::mail_outbox_drain(&db), &shard);
             shard_lock!(&db, "job:magic_pool_promo",
                 magic_pool_promo(&db), &shard);
-            shard_lock!(&db, "job:announce_site_promos", announce_site_promos(&db), &shard);
-            shard_lock!(&db, "job:preserve_exit", preserve_exit(&db), &shard);
+            shard_lock!(&db, "job:announce_site_promos",
+                announce_site_promos(&db), &shard);
+            shard_lock!(&db, "job:preserve_exit",
+                preserve_exit(&db), &shard);
             // consume_* 已改消费者组（0225 G30-B2）：组内投递唯一，多实例
-            // 并发消费是真分摊而非双计——不再需要 advisory 锁互斥（保留
-            // mark_start 登记则由面板覆盖写口径承担，executed_by 可见分实例）。
+            // 并发消费是真分摊而非双计——无需 advisory 锁互斥（保留
+            // mark_start 由面板覆盖写口径承担，executed_by 可见分实例）。
             let (db2, mut r) = (db.clone(), redis.clone());
             run_consumer(&db, "consume_announce",
                 consume_announce(&db2, &mut r)).await;
@@ -207,25 +212,7 @@ pub async fn run_all(
                 consume_xreport(&db2, &mut r)).await;
             // ZT81：分离到后台执行，不再 join/await——原实现会把整个 select 循环
             // 卡到任务跑完，全表任务一慢，同分支的计费消费就跟着停摆。
-            {
-                let (db2, shard2) = (db.clone(), shard.clone());
-                tokio::spawn(async move {
-                    let mut js = tokio::task::JoinSet::new();
-                    spawn_lock!(js, &db2, "job:backfill_pieces_hash",
-                                backfill_pieces_hash, &shard2);
-                    spawn_lock!(js, &db2, "job:sweep_stale_peers",
-                                sweep_stale_peers, &shard2);
-                    spawn_lock!(js, &db2, "job:task_settle",
-                                crate::task_jobs::task_settle, &shard2);
-                    spawn_lock!(js, &db2, "job:exam_assign",
-                                crate::task_jobs::exam_assign, &shard2);
-                    spawn_lock!(js, &db2, "job:lottery_settle",
-                                lottery_settle_due, &shard2);
-                    while let Some(res) = js.join_next().await {
-                        let _ = res.map_err(|e| tracing::error!(?e, "join 失败"));
-                    }
-                });
-            }
+            reg_60s(&db, &shard);
             bank_daily_gate(&db, &shard).await;
         }
         _ = hour_tick.tick() => {
@@ -238,23 +225,7 @@ pub async fn run_all(
         }
         _ = tick5.tick() => {
             // 重型巡检（ZT81 从 60s 迁来）：O(全表)，300s 一轮且分离到后台
-            let (db2, shard2) = (db.clone(), shard.clone());
-            tokio::spawn(async move {
-                let mut js = tokio::task::JoinSet::new();
-                spawn_lock!(js, &db2, "job:hr_enforce", hr_enforce, &shard2);
-                spawn_lock!(js, &db2, "job:hr_warn_ladder",
-                            hr_warn_ladder::run, &shard2);
-                spawn_lock!(js, &db2, "job:hr_punish", hr_punish, &shard2);
-                spawn_lock!(js, &db2, "job:collect_milestones",
-                            collect_milestones, &shard2);
-                spawn_lock!(js, &db2, "job:class_auto_adjust",
-                            class_auto_adjust, &shard2);
-                spawn_lock!(js, &db2, "job:preserve_seed",
-                            preserve_seed, &shard2);
-                while let Some(res) = js.join_next().await {
-                    let _ = res.map_err(|e| tracing::error!(?e, "j"));
-                }
-            });
+            reg_5min(&db, &shard);
         }
         _ = tick10.tick() => {
             if first_tick10 { first_tick10 = false; continue; }

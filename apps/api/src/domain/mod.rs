@@ -13,6 +13,9 @@ pub mod webhook;
 
 // 抽奖可验证公平（commit-reveal）：判定与哈希派生进 domain 纯函数层
 pub mod lottery_fair;
+
+// 固定抽签：报名-开奖-固定名额的 HMAC bottom-k 抽选纯函数
+pub mod fixed_lottery;
 pub mod mediainfo;
 
 // H&R 分档要求 + 做种减免（护肝核心）

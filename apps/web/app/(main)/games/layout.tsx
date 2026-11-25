@@ -29,6 +29,9 @@ import "@/app/styles/arcade-mole.css";
 /* arcade-scratch.css：刮刮乐红黄促销样图皮肤，只作用在 .scratch-promo，
    最后加载确保压住 sweet/night/wheel/mole 既有覆盖。 */
 import "@/app/styles/arcade-scratch.css";
+/* arcade-doudizhu.css：斗地主牌桌皮肤（墨绿桌面+暗金框），只作用在
+   .doudizhu-page，最后加载确保压住既有覆盖。 */
+import "@/app/styles/arcade-doudizhu.css";
 
 /**
  * 娱乐屋路由布局：在 /games/* 下挂 data-arcade="sweet" 属性，
