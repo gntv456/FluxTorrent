@@ -110,7 +110,7 @@ export function RoomWait({ room }: { room: PvpRoom }) {
       <p className="dz-rule-line">
         {t.waitingPlayers.replace("{n}", String(filled))}
       </p>
-      <div className="dz-seats">
+      <div className="dz-seats dz-wait-seats">
         {[0, 1, 2].map((seat) => {
           const s = room.seats.find((x) => x.seat === seat);
           return (

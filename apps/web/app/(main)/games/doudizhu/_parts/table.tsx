@@ -49,8 +49,9 @@ function CardBackFan({ count }: { count: number }) {
   );
 }
 
-/** 牌桌舞台：环形三座（左上/右上 AI + 下方玩家位）+ 中央落牌 + 底牌。 */
-export function DzTable({ game }: { game: DzGame }) {
+/** 牌桌舞台：环形三座（左上/右上 AI + 下方玩家位）+ 中央落牌 + 底牌。
+ *  full=全屏壳模式：状态行由外壳渲染，桌内不再重复。 */
+export function DzTable({ game, full }: { game: DzGame; full?: boolean }) {
   const { dict } = useI18n();
   const t = dict.games.doudizhu;
   const seatOf = (s: number) => game.seats.find((x) => x.seat === s);
@@ -133,21 +134,23 @@ export function DzTable({ game }: { game: DzGame }) {
       {renderSeat(1)}
       {renderSeat(2)}
       <div className="dz-center">
-        <div className="dz-status">
-          <span>{t.mult.replace("{n}", String(game.multiplier))}</span>
-          {game.bomb_count > 0 && (
-            <span className="dz-status-bomb">
-              💥 {t.bombs.replace("{n}", String(game.bomb_count))}
-            </span>
-          )}
-          {game.landlord !== null && (
-            <span>
-              {(game.landlord === 0 ? t.seatYou : t.seatLandlord) +
-                " · " +
-                seatName(t, game.landlord)}
-            </span>
-          )}
-        </div>
+        {!full && (
+          <div className="dz-status">
+            <span>{t.mult.replace("{n}", String(game.multiplier))}</span>
+            {game.bomb_count > 0 && (
+              <span className="dz-status-bomb">
+                💥 {t.bombs.replace("{n}", String(game.bomb_count))}
+              </span>
+            )}
+            {game.landlord !== null && (
+              <span>
+                {(game.landlord === 0 ? t.seatYou : t.seatLandlord) +
+                  " · " +
+                  seatName(t, game.landlord)}
+              </span>
+            )}
+          </div>
+        )}
         <div className="dz-table-last" aria-label={t.lastPlay}>
           {game.last && game.last.cards.length > 0 ? (
             <div className={`dz-played ${fromCls}`}>
@@ -184,7 +187,7 @@ export function DzTable({ game }: { game: DzGame }) {
             ))}
           </div>
         )}
-        {me && (
+        {!full && me && (
           <div className="dz-me-count">
             {t.cardsLeft.replace("{n}", String(me.count))}
           </div>

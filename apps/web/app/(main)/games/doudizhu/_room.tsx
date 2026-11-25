@@ -10,6 +10,7 @@ import { clientUuid } from "@/lib/client-uuid";
 import { useSfx } from "@/components/game/use-sfx";
 import { dzCueOf } from "./_parts/sfx-cue";
 import { DzTable } from "./_parts/table";
+import { FullGame } from "./_parts/fullgame";
 import { DzControls } from "./_parts/controls";
 import { Hand } from "./_parts/cards";
 import { identifyCombo } from "./_parts/combo";
@@ -180,6 +181,42 @@ export default function DoudizhuRoom({
     />
   );
 
+  // 对局中走全屏沉浸壳：牌桌占满视口，手牌/按钮悬浮叠层；
+  // 大厅/结算/战绩仍走 GameShell 常规布局。
+  if (tab === "play" && game && game.phase !== "done") {
+    return (
+      <FullGame
+        game={game}
+        me={me}
+        err={err}
+        balance={balance}
+        turnSeconds={turnSeconds}
+        sel={sel}
+        selCombo={selCombo}
+        hintBid={hintBid}
+        busy={busy}
+        onExit={() => {
+          setSt((cur) => (cur ? { ...cur, game: null } : cur));
+          setSel(new Set());
+        }}
+        onExpire={() => {
+          if (game.phase === "bidding") return void act("bid", 0);
+          const lead = !game.last || game.last.seat === 0;
+          const min = me?.cards.length
+            ? sortHand(me.cards).at(-1)
+            : undefined;
+          const cards = lead && min !== undefined ? [min] : [];
+          void act("play", undefined, cards);
+        }}
+        onToggle={toggle}
+        onBid={(s) => void act("bid", s)}
+        onPlay={() => void act("play")}
+        onPass={() => void act("play")}
+        onHint={() => void hint()}
+      />
+    );
+  }
+
   return (
     <GameShell
       icon="🃏"
@@ -223,55 +260,16 @@ export default function DoudizhuRoom({
                 )}
               </div>
             )}
-            {game && (
+            {game && game.phase === "done" && (
               <div className="dz-game">
-                {game.phase === "done" && (
-                  <SettlePanel
-                    game={game}
-                    onAgain={() =>
-                      void loadState().then(() =>
-                        setSt((c) => (c ? { ...c, game: null } : c)),
-                      )
-                    }
-                  />
-                )}
-                {game.phase !== "done" && (
-                  <>
-                    <CountdownBar
-                      game={game}
-                      seconds={turnSeconds}
-                      onExpire={() => {
-                        if (game.phase === "bidding") return void act("bid", 0);
-                        const lead = !game.last || game.last.seat === 0;
-                        const min = me?.cards.length
-                          ? sortHand(me.cards).at(-1)
-                          : undefined;
-                        const cards = lead && min !== undefined ? [min] : [];
-                        void act("play", undefined, cards);
-                      }}
-                    />
-                    <DzTable game={game} />
-                    {me && game.phase === "playing" && (
-                      <Hand
-                        cards={sortHand(me.cards)}
-                        selected={sel}
-                        wildcards={me.wildcards}
-                        onToggle={toggle}
-                      />
-                    )}
-                    <DzControls
-                      game={game}
-                      hintBid={hintBid}
-                      selectedCount={sel.size}
-                      combo={selCombo}
-                      busy={busy}
-                      onBid={(s) => void act("bid", s)}
-                      onPlay={() => void act("play")}
-                      onPass={() => void act("play")}
-                      onHint={() => void hint()}
-                    />
-                  </>
-                )}
+                <SettlePanel
+                  game={game}
+                  onAgain={() =>
+                    void loadState().then(() =>
+                      setSt((c) => (c ? { ...c, game: null } : c)),
+                    )
+                  }
+                />
               </div>
             )}
           </div>

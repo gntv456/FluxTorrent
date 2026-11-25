@@ -65,6 +65,15 @@
   font-size: 14px;
 }
 
+/* ── 大厅容器：纵向排布，限宽居中 ─────────────────────────── */
+.dz-lobby {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
 /* ── 开局选档 ─────────────────────────────────────────────── */
 .dz-tiers {
   display: grid;
@@ -135,6 +144,17 @@
 }
 .dz-seats {
   display: contents;
+}
+/* PvP 等待间座位：流式三列网格，不复用桌面环形 absolute 定位 */
+.dz-wait-seats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 4px;
+}
+.dz-wait-seats .dz-seat {
+  position: static;
+  min-width: 0;
 }
 .dz-seat {
   position: absolute;
@@ -374,6 +394,10 @@
   gap: 6px;
   font-size: 12px;
   color: var(--dz-sub);
+}
+.dz-kitty-label {
+  color: var(--dz-sub);
+  white-space: nowrap;
 }
 .dz-kitty-card {
   display: inline-flex;
@@ -963,11 +987,25 @@ body:has(.doudizhu-page):where(
   .dz-card.is-sel {
     transform: translateY(-7px);
   }
+  .dz-fulltop {
+    gap: 8px;
+  }
+  .dz-exit {
+    padding: 5px 10px;
+    font-size: 12px;
+  }
+  .dz-fullstatus {
+    font-size: 12px;
+  }
+  .dz-fullbalance {
+    font-size: 12px;
+  }
 }
 
-/* ── 整页牌局：page 纵向 flex，桌布在舞台富余空间内弹性吃满 ──
-   高度兜底由上方 .dz-table 的 264/232px 提供；外壳给定高度时
-   table/center 用 flex:1 吃富余，不再按 100vh 强制拉高，避免中段空荡。 */
+/* ── 整页牌局：page 纵向 flex，桌布弹性吃富余 ──
+   外壳给定高度时 table/center 用 flex:1 吃富余；无固定高度时
+   高度由内容决定，最小兜底取上方 .dz-table 的 264/232px，不按 100vh 强拉，
+   避免桌布中段空荡。全屏沉浸壳另有 .is-fullgame 规则接管高度。 */
 .doudizhu-page {
   display: flex;
   flex-direction: column;
@@ -978,4 +1016,64 @@ body:has(.doudizhu-page):where(
 .dz-center {
   flex: 1;
   justify-content: center;
+}
+
+/* ── 全屏沉浸壳（is-fullgame）：对局中整页=牌桌 ──────────────
+   fixed 铺满视口；顶部条（退出/状态/余额）与手牌/按钮悬浮叠层；
+   倒计时条贴顶。game-kit 的页面留白在此模式下不存在（脱离 GameShell）。 */
+.doudizhu-page.is-fullgame {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px 14px;
+  background:
+    url("/games/ddz/ddz-felt.webp") center / cover no-repeat,
+    radial-gradient(
+      ellipse at 50% 30%,
+      var(--dz-felt) 0%,
+      var(--dz-felt-2) 72%
+    );
+}
+.dz-fulltop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.dz-exit {
+  padding: 5px 14px;
+  font-size: 13px;
+}
+.dz-fullstatus {
+  flex: 1;
+  justify-content: center;
+  font-size: 13px;
+}
+.dz-fullbalance {
+  font-size: 13px;
+  color: var(--dz-gold);
+  font-weight: 700;
+}
+.is-fullgame .dz-countdown {
+  margin: 0;
+}
+.is-fullgame .dz-table {
+  flex: 1;
+  min-height: 0;
+  padding-top: 120px;
+}
+.is-fullgame .dz-hand {
+  min-height: 96px;
+  padding: 8px 0 2px;
+}
+.is-fullgame .dz-controls {
+  padding-bottom: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .doudizhu-page.is-fullgame {
+    position: static;
+  }
 }
