@@ -16,6 +16,13 @@ import {
   PANEL_MD,
 } from "@/lib/ui-classes";
 import { SkeletonBlock } from "@/components/ui/skeleton";
+import {
+  FULFILL_KEYS,
+  STATUS_KEYS,
+  TRIGGER_KEYS,
+  WINNER_KEYS,
+  dictLabel,
+} from "./admin-lottery-shared";
 
 type Row = {
   id: number;
@@ -133,8 +140,12 @@ export function AdminFixedLottery() {
                 <tr key={r.id} className="border-t border-line/40">
                   <td className="py-1.5 pr-2 font-bold">{r.title}</td>
                   <td className="py-1.5 pr-2 opacity-60">{r.code}</td>
-                  <td className="py-1.5 pr-2">{r.status}</td>
-                  <td className="py-1.5 pr-2">{r.trigger}</td>
+                  <td className="py-1.5 pr-2">
+                    {dictLabel(t, STATUS_KEYS, r.status)}
+                  </td>
+                  <td className="py-1.5 pr-2">
+                    {dictLabel(t, TRIGGER_KEYS, r.trigger)}
+                  </td>
                   <td className="py-1.5">
                     <div className="flex gap-1">
                       {r.status === "draft" && (
@@ -199,9 +210,14 @@ export function AdminFixedLottery() {
                 <tr key={w.winnerId} className="border-t border-line/40">
                   <td className="py-1 pr-2">{w.username}</td>
                   <td className="py-1 pr-2">{w.prizeName} #{w.slotNo}</td>
-                  <td className="py-1 pr-2">{w.status}</td>
+                  <td className="py-1 pr-2">
+                    {dictLabel(t, WINNER_KEYS, w.status)}
+                  </td>
                   <td className="py-1 pr-2 opacity-60">
-                    {w.fulfillStatus}{w.lastError ? `: ${w.lastError}` : ""}
+                    {w.fulfillStatus
+                      ? dictLabel(t, FULFILL_KEYS, w.fulfillStatus)
+                      : ""}
+                    {w.lastError ? `: ${w.lastError}` : ""}
                   </td>
                   <td className="py-1">
                     {(w.fulfillStatus === "failed" ||
