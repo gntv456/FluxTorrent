@@ -6,7 +6,11 @@ use super::*;
 // ---- 发种入库前的结构校验（实测审计 P0-6：畸形 .torrent 曾全部 200 入库）----
 
 /// 合法的最小种子：单文件、pieces 与大小匹配（1 MiB / 16 KiB = 64 片）
-fn valid_torrent(name: &[u8], length: i64, piece_len: i64) -> Vec<u8> {
+pub(super) fn valid_torrent(
+    name: &[u8],
+    length: i64,
+    piece_len: i64,
+) -> Vec<u8> {
     // 测试夹具自己不许除零：piece length=0 的用例只给一片哈希，
     // 让生产代码在「piece length 必须大于 0」这一步判死。
     let pieces = if piece_len > 0 {

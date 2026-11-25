@@ -17,6 +17,7 @@ mod ptgen_tmdb;
 // TMDB v3 客户端（PT-Gen 抓取与作品元数据缓存共用）
 mod tmdb_client;
 // 作品条目缓存（TMDB details 拉一次存 work_meta，作品页零外呼）
+mod source_stamp;
 mod upload;
 mod work_backfill;
 mod work_meta;

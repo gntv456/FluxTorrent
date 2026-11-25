@@ -213,10 +213,16 @@ nfo=<NFO 文本，≤1MiB>             # 可选
 元数据走查询参数（与网页发种同一套字段）：`category_id`（必填）、`name`、
 `small_descr`、`descr`、`anonymous`、`price`、`sections`（JSON 串）、`group_id` 等。
 
-**幂等**：按 `info_hash` / `raw_info_hash` 判重，已存在时返回 `200` 且
-`duplicate=true` 并附上既有 `id` —— 工具重试同一 `.torrent` 不会失败。
-新建成功时返回 `{ id, approval_status, auto_approved, duplicate:false,
-info_hash, pieces_hash, group_suggest }`。
+**幂等**：按 `info_hash` / `raw_info_hash` 判重（上传的**原始** hash，盖戳前），
+已存在时返回 `200` 且 `duplicate=true` 并附上既有 `id` —— 工具重试同一
+`.torrent` 不会失败。新建成功时返回 `{ id, approval_status, auto_approved,
+duplicate:false, info_hash, pieces_hash, group_suggest }`。
+
+**source 旗（2026-11-25 起）**：入库前服务端往 info 字典写入
+`source = "[tracker主机] 站名"` 并重算 hash（NP takeupload 口径）——返回的
+`info_hash` 是**盖戳后**的站内 hash，与上传文件的 hash 不同；每站 hash 唯一，
+转载种在下载器里各占一行、只向本站 tracker 汇报。`pieces_hash` 不受影响
+（只由 info.pieces 决定），跨站辅种/查重按 pieces_hash 匹配照旧。
 
 权限与网页发种同源（`torrent.upload`），过审/免审/被拒禁发/扣费规则完全一致。
 

@@ -7,8 +7,9 @@ mod torrent;
 mod validate;
 
 #[cfg(test)]
-mod tests;
+mod source_stamp_tests;
 #[cfg(test)]
+mod tests;
 mod validate_tests;
 
 // 门禁拆分：`parse`/`encode`/`ParsedTorrent` 等仅在模块内与单测使用，
@@ -21,7 +22,8 @@ pub use parse::parse;
 pub use torrent::{build_download_torrent, parse_torrent, ParsedTorrent};
 #[allow(unused_imports)]
 pub use validate::{
-    reject_off_tracker_sources, validate_for_upload, MAX_TORRENT_FILES,
+    reject_off_tracker_sources, stamp_source, validate_for_upload,
+    MAX_TORRENT_FILES,
 };
 
 #[derive(Debug, Clone, PartialEq)]

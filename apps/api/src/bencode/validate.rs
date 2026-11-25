@@ -3,8 +3,11 @@
 //! 为什么不做进 `parse_torrent`：那个函数还服务历史种子的再分发与站外导入，
 //! 收紧它会让存量种子当场不可下载。校验只挂在**发种入口**上。
 
+use super::encode::encode;
+use super::hex;
 use super::parse;
 use super::torrent::ParsedTorrent;
+use sha1::{Digest, Sha1};
 
 /// 单个种子允许的最大文件数（超大合集的真实上限，同时挡住「一个种塞几万条路径」的写库放大）。
 pub const MAX_TORRENT_FILES: i64 = 10_000;
@@ -115,4 +118,65 @@ pub fn reject_off_tracker_sources(bytes: &[u8]) -> Result<(), String> {
         }
     }
     Ok(())
+}
+
+/// 站点 source 旗（NP takeupload 口径）：上传时往 info 字典写入
+/// `source = "[<值>]"` 并重打包。效果与主流 NexusPHP/UNIT3D 站一致——
+/// 每站 hash 唯一，转载种在下载器里各占一行、各自向本站 tracker 独立
+/// 汇报（上传/下载/H&R 归因干净，不存在混 tracker 双计数）。
+///
+/// 三 hash 口径：info_hash / raw_info_hash 随重打包改变并入库（tracker
+/// 白名单、announce、piece cache 全按新 hash 服务）；pieces_hash 只由
+/// info.pieces 原始字节决定，source 不在 pieces 里 ⇒ 跨站「同内容」
+/// 指纹不变，IYUU/辅种匹配、重复发布策略（dup_policy）不受影响。
+///
+/// 刻意**不加** UNIT3D 的 `entropy` 随机字段：同内容重复上传 hash 仍相同，
+/// info_hash 判重/幂等闸照常工作（U3D 靠人工审核兜判重，代价不可取）。
+///
+/// `raw` 整体替换为打旗后的字节：下游 INSERT / torrent_files 存档 /
+/// 下载侧 `build_download_torrent` 全链自动一致，下载时 info 区间
+/// 原样透传 ⇒ 客户端拿到的 hash 与上传入库严格相等。
+pub fn stamp_source(
+    mut parsed: ParsedTorrent,
+    source: &str,
+) -> Result<ParsedTorrent, String> {
+    let (root, _) = parse(&parsed.raw)?;
+    let mut pairs = match root {
+        super::Bencode::Dict(p) => p,
+        _ => return Err("root not dict".into()),
+    };
+    let info = pairs
+        .iter()
+        .find(|(k, _)| k == b"info")
+        .map(|(_, v)| v)
+        .ok_or("missing info dict")?
+        .clone();
+    let mut info_pairs = match info {
+        super::Bencode::Dict(p) => p,
+        _ => return Err("info not dict".into()),
+    };
+    let flag = format!("[{source}]").into_bytes();
+    info_pairs.retain(|(k, _)| k != b"source");
+    info_pairs.push((b"source".to_vec(), super::Bencode::Bytes(flag)));
+    let new_info = super::Bencode::Dict(info_pairs);
+    // 双 hash 重算：encode() 按 BEP3 键序产出规范化口径。stamp 后的 raw
+    // 本身就是 encode 产物（键已序），原始字节口径与规范化口径恒等——
+    // 老种子两侧分叉（键序非标准）的问题对新上传种不再存在。
+    let mut info_buf = Vec::new();
+    encode(&new_info, &mut info_buf);
+    let mut h = Sha1::new();
+    h.update(&info_buf);
+    let ih = h.finalize();
+    parsed.info_hash_hex = hex(&ih);
+    parsed.raw_info_hash_hex = hex(&ih);
+    // pieces_hash 不重算：source 键不影响 info.pieces 字节
+    // 根字典重组：其余顶层键原样保留（announce-list 清洗是下载侧
+    // build_download_torrent 的职责，这里不做越权处理）
+    pairs.retain(|(k, _)| k != b"info");
+    pairs.push((b"info".to_vec(), new_info));
+    let new_root = super::Bencode::Dict(pairs);
+    let mut out = Vec::new();
+    encode(&new_root, &mut out);
+    parsed.raw = out;
+    Ok(parsed)
 }

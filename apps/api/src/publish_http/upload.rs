@@ -1,5 +1,4 @@
-//! 发种（M04）：POST /torrents 主上传链路。
-//! 从 publish_http.rs 按域拆出；NFO 解码助手在 ptgen.rs。
+//! 发种（M04）：POST /torrents 主上传链路，从 publish_http.rs 按域拆出。
 use actix_web::{post, web, HttpRequest, HttpResponse};
 
 use crate::dto::ok;
@@ -98,6 +97,7 @@ async fn upload_core(
         .map_err(DomainError::TorrentInvalid)?;
     // 重复检测（M04：info_hash 唯一）。同一作者的墓碑（status=3）不算重复，
     // 走复活路径——否则「删了再发」被唯一索引永久锁死（P0-4 实测）。
+    // 判重用**原始 hash**（盖戳前，见 source_stamp.rs）。
     let existing: Option<(i64, Option<i64>, i16)> = sqlx::query_as(
         "SELECT id, owner_id, approval_status FROM torrents \
          WHERE info_hash = $1 OR raw_info_hash = $2 ORDER BY id LIMIT 1",
@@ -122,8 +122,7 @@ async fn upload_core(
         None => None,
     };
     // 异主墓碑（P2-7）：内容仍被软删锁着，回「种子重复」等于死路——落一条
-    // staff 待办（reports 队列），站务恢复后即可重发；(ref_type, ref_id,
-    // reporter_id) 开件唯一约束保证不刷屏。
+    // staff 待办（reports 队列，(ref_type,ref_id,reporter_id) 唯一防刷屏），站务恢复后即可重发
     if let Some((id, owner, status)) = &existing {
         if *status == 3 && *owner != Some(auth.id) {
             let _ = sqlx::query(
@@ -145,6 +144,8 @@ async fn upload_core(
         .clone()
         .filter(|n| !n.trim().is_empty())
         .unwrap_or(parsed.name.clone());
+    // 站点 source 旗（NP 口径，抽件 source_stamp.rs：判重已按原始 hash 完成）
+    let parsed = super::source_stamp::stamped(&state, parsed).await?;
     // 封面外链 + IMDb 链接 → media_info（JSONB 键合并；搜索区 4 按 imdb 键命中）
     let media_info: Option<serde_json::Value> = build_media_info(&form);
     // 命中「自动过审」分类同样免审（categories.auto_approve）
@@ -226,8 +227,7 @@ async fn upload_core(
         .as_deref()
         .map(decode_nfo)
         .filter(|s| !s.trim().is_empty());
-    // ---- 以下全部在 INSERT 之前（P0-4：过去 tags / 推荐位 / 价格越界都在入库后
-    //      才报错，留下待审残种 + 同一 .torrent 永久「种子重复」）----
+    // ---- 以下全部在 INSERT 之前（P0-4：越界曾留待审残种+永久「种子重复」）----
     precheck::check_lengths(&form)?;
     let price = precheck::check_price(&state.repo.db, form.price).await?;
     precheck::check_tags(&state.repo.db, &form, auth).await?;
