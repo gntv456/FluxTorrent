@@ -1,5 +1,27 @@
 # 更新日志（Changelog）
 
+## [0.5.19-dev.44] - 2026-11-24
+
+定位：**娱乐屋新玩法——固定抽签（对标 tangpt fixed-lottery 全量）**。
+
+### 新增（固定抽签 fixed_lottery）
+- **报名-开奖-固定名额**：管理员建活动（≤5 奖项、每奖项 1-1000 名额）
+  → 用户报名（可配票价，默认免费，PK 幂等）→ 定时或人数达标开奖，
+  0 人报名正常流拍（draw_meta.voided）。
+- **可复算公平**：开奖瞬间生成 32B CSPRNG seed，候选人排序键 = 
+  HMAC-SHA256(seed, cid:uid) 升序取前 N（bottom-k 不放回，天然限中一次
+  + 唯一约束双保险）；seed/候选快照哈希落 draw_meta，第三方可离线重放。
+- **奖励全量**：火花/邀请名额/上传量GB/VIP/免广告/彩虹ID/改名卡
+  （走 flux_shared::apply_item_effect 商城同款口）/勋章（ON CONFLICT
+  幂等）/娱乐屋物品（idem 锚）/自定义领取（动态表单+审核）。
+- **两段式履约**：开奖事务只落 pending 行；发放走 fulfill 用例，
+  失败按 1/5/15/60/360 分钟退避重试，耗尽转人工（管理口可手动重试）。
+- **worker 双 job**：flx_settle（到期/达标/保底扫描 CAS 开奖）+
+  flx_fulfill（退避重试+领取超期翻转），60s tick，目录已登记可手触。
+- **前台 /games/lottery**：列表双 tab + 详情（奖项/倒计时/参与数/
+  中奖名单）+ 报名 + 领取资料提交；管理面板含活动 CRUD/发布/取消/
+  立即开奖/履约状态/领取审核队列。
+
 本文件记录面向部署者的显著变更。格式参照 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)；
 版本号在首个语义化 tag（v0.x）发布后启用。
 
