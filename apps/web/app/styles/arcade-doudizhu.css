@@ -115,6 +115,7 @@
   gap: 8px;
 }
 .dz-seat {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -130,8 +131,54 @@
   border-color: var(--dz-gold);
 }
 .dz-seat-avatar {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
   font-size: 20px;
   line-height: 1.2;
+  border-radius: 50%;
+  border: 2px solid var(--dz-line);
+  background: var(--dz-panel);
+}
+/* 地主金冠环（身份一眼可辨，开源 landlord 的 icon_landlord 语义） */
+.dz-seat-avatar.is-landlord {
+  border-color: var(--dz-gold);
+  box-shadow: 0 0 8px rgba(232, 200, 130, 0.45);
+}
+.dz-seat-avatar.is-ai {
+  filter: saturate(0.8);
+}
+/* 台词气泡：座位旁冒出，2.4s 淡出（landlord 的 say() 语义） */
+.dz-bubble {
+  position: absolute;
+  top: -10px;
+  right: -6px;
+  padding: 3px 10px;
+  border: 1px solid var(--dz-line-strong);
+  border-radius: 999px;
+  background: var(--dz-card-bg);
+  color: var(--dz-card-ink);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  animation: dz-bubble-pop 2.4s ease both;
+  pointer-events: none;
+}
+@keyframes dz-bubble-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(4px) scale(0.9);
+  }
+  12%,
+  80% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
 }
 .dz-seat-name {
   font-size: 12px;
@@ -165,6 +212,18 @@
   font-size: 12px;
   color: var(--dz-gold);
 }
+.dz-status-bomb {
+  animation: dz-bomb-pulse 1.2s ease-in-out infinite;
+}
+@keyframes dz-bomb-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.18);
+  }
+}
 .dz-table-last {
   min-height: 64px;
   display: flex;
@@ -177,6 +236,28 @@
 .dz-played {
   display: flex;
 }
+/* 出牌逐张弹入（landlord 的落桌 tween 语义）：轻微下落+缩放 */
+.dz-played-card {
+  margin-right: -8px;
+  animation: dz-drop-in var(--motion-normal)
+    cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+.dz-played-card:last-child {
+  margin-right: 0;
+}
+.dz-played-card .dz-card {
+  cursor: default;
+}
+@keyframes dz-drop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-18px) scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
 .dz-kitty {
   display: flex;
   align-items: center;
@@ -185,11 +266,37 @@
   color: var(--dz-sub);
 }
 .dz-kitty-card {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
   padding: 1px 6px;
   border: 1px solid var(--dz-line);
   border-radius: var(--r-sm);
   background: var(--dz-card-bg);
   color: var(--dz-card-ink);
+  animation: dz-flip-in var(--motion-normal) ease both;
+}
+/* 底牌逐张翻开（定庄亮底牌，landlord 的 showLastThreePoker 语义） */
+@keyframes dz-flip-in {
+  from {
+    opacity: 0;
+    transform: rotateY(70deg);
+  }
+  to {
+    opacity: 1;
+    transform: rotateY(0);
+  }
+}
+.dz-kitty-suit {
+  font-style: normal;
+  font-size: 11px;
+  color: var(--dz-card-ink);
+}
+.dz-kitty-suit.is-red {
+  color: var(--dz-red);
+}
+.dz-kitty-suit.is-joker {
+  color: var(--dz-joker);
 }
 
 /* ── 扑克牌 ───────────────────────────────────────────────── */
@@ -244,8 +351,75 @@
   font-size: 14px;
 }
 .dz-card-suit {
-  font-size: 12px;
+  font-size: 11px;
   line-height: 1;
+}
+/* 左上/右下角标（标准扑克排布） */
+.dz-card-corner {
+  position: absolute;
+  top: 3px;
+  left: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.05;
+}
+.dz-card-corner.is-br {
+  top: auto;
+  left: auto;
+  right: 4px;
+  bottom: 3px;
+  transform: rotate(180deg);
+}
+.dz-card-rank {
+  font-size: 15px;
+  font-weight: 800;
+}
+.dz-card.is-small .dz-card-rank {
+  font-size: 13px;
+}
+.dz-card.is-small .dz-card-corner {
+  top: 2px;
+  left: 3px;
+}
+.dz-card.is-small .dz-card-corner.is-br {
+  right: 3px;
+  bottom: 2px;
+}
+.dz-card.is-small .dz-card-pip {
+  font-size: 15px;
+}
+/* 中央大花色 */
+.dz-card-pip {
+  font-size: 22px;
+  line-height: 1;
+  opacity: 0.85;
+}
+.dz-card.is-red .dz-card-pip {
+  color: var(--dz-red);
+}
+.dz-card.is-joker .dz-card-pip {
+  color: var(--dz-joker);
+  font-size: 18px;
+}
+/* 手牌发牌入场：逐张从下方滑入（deal 动画的 DOM 化） */
+.dz-hand-slot {
+  display: inline-flex;
+  margin-right: -10px;
+  animation: dz-deal-in var(--motion-normal) ease both;
+}
+.dz-hand-slot:last-child {
+  margin-right: 0;
+}
+@keyframes dz-deal-in {
+  from {
+    opacity: 0;
+    transform: translateY(26px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 .dz-hand {
   display: flex;
@@ -331,6 +505,13 @@ body:has(.doudizhu-page):where(
   .dz-card.is-sel {
     transform: none;
     box-shadow: none;
+  }
+  .dz-hand-slot,
+  .dz-played-card,
+  .dz-kitty-card,
+  .dz-bubble,
+  .dz-status-bomb {
+    animation: none;
   }
 }
 

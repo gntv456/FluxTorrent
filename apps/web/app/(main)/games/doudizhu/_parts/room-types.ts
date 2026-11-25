@@ -86,6 +86,12 @@ export function cardColor(card: number): "red" | "black" | "joker" {
   return suit === 1 || suit === 2 ? "red" : "black";
 }
 
+/** 花色符号（黑桃/红心/方块/梅花按 suit 位；王牌固定 ★）。 */
+export function cardSuit(card: number): string {
+  if (card >= 52) return "★";
+  return ["♠", "♥", "♦", "♣"][card % 4];
+}
+
 /** 按 rank 从大到小排序手牌（与后端降序一致）。 */
 export function sortHand(cards: number[]): number[] {
   const rank = (c: number) => (c >= 52 ? 13 + (c - 52) : Math.floor(c / 4));
