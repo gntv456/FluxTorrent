@@ -122,7 +122,9 @@ pub async fn hourly_estimate(
 
 const EST_SQL: &str = r#"
         WITH p AS MATERIALIZED (
-            SELECT *, seeding_official_mult() AS official_mult
+            SELECT *, seeding_official_mult() AS official_mult,
+                   -- 0525 官区加成（与 worker/seeding.rs 同源镜像）
+                   seeding_area_official_rate() AS area_rate
             FROM seeding_params()
         ),
         per_torrent AS (
@@ -136,12 +138,15 @@ const EST_SQL: &str = r#"
                 * COALESCE(sb.bonus_factor, 1.0)
                 * (CASE WHEN t.official_tag
                         THEN p.official_mult ELSE 1.0 END)
+                * (1.0 + CASE WHEN t.official_tag
+                              THEN p.area_rate ELSE 0.0 END)
                 * seeding_publisher_mult(
                       t.owner_id = u.id,
                       (EXTRACT(EPOCH FROM (now() - t.created_at))
                        / 86400.0)::double precision)
                 AS b,
-                donor_privileged(u.id) AS donor
+                donor_privileged(u.id) AS donor,
+                u.class_id
             FROM users u
             JOIN snatches s ON s.user_id = u.id AND s.seeding
             LEFT JOIN seedbox_effective sb ON sb.user_id = u.id
@@ -169,16 +174,20 @@ const EST_SQL: &str = r#"
         s2 AS (
             SELECT count(*) AS n,
                    COALESCE(sum(b), 0) AS bonus_raw,
-                   COALESCE(bool_or(donor), FALSE) AS donor
+                   COALESCE(bool_or(donor), FALSE) AS donor,
+                   -- class_id 单用户恒定，max 即取值
+                   COALESCE(max(class_id), 0) AS class_id
             FROM per_torrent
         )
         -- 没有任何一颗种子通过结算过滤时，worker 侧根本不会为该用户开
         -- 流水（per_user 取不到行），预估必须同步回 0。若直接算
         -- seeding_hourly(0, ...) 会得到 base（默认 10），页面显示「每小时
         -- +10」而实际一分不到账 —— 这正是核对要堵的口子。
+        -- 0525 等级加成：×(1+class_rate)，与 worker/seeding.rs 同源镜像。
         SELECT CASE WHEN n = 0 THEN 0::bigint
-                    ELSE seeding_hourly(bonus_raw, p.base, p.cap, p.curve_k,
-                                        p.donor_mult, donor) END
+                    ELSE (seeding_hourly(bonus_raw, p.base, p.cap, p.curve_k,
+                                         p.donor_mult, donor)::double precision
+                          * (1.0 + seeding_class_rate(class_id)))::bigint END
         FROM s2 CROSS JOIN p
         "#;
 

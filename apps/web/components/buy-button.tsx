@@ -51,6 +51,8 @@ export function BuyButton({
   const [open, setOpen] = useState(false);
   const [qty, setQty] = useState(1);
   const [toName, setToName] = useState("");
+  // 0525 赠礼留言：gift 类可选，随 to 一起提交（后端 trim ≤100 字校验）
+  const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [bought, setBought] = useState(false);
   // 0479：购买成功后 10s 倒计时回退到「购买」——stackable 可连买，
@@ -99,6 +101,8 @@ export function BuyButton({
         qty: stackable ? qty : 1,
         idempotency_key: idem,
         ...(gift ? { to: toName.trim() } : {}),
+        // 0525：留言可选，trim 后非空才带上（后端同口径）
+        ...(gift && note.trim() ? { note: note.trim() } : {}),
       });
       // 成功反馈落在卡片按钮「已购买 ✓」（10s 倒计时后回退「购买」）+
       // 父层刷新的余额上（0207b）；换新幂等键，连买第二单不被上一单的键挡住
@@ -211,21 +215,40 @@ export function BuyButton({
         ) : null}
         {/* 赠礼接收人（0421）：gift 类必填——后端把效果记到接收方 */}
         {gift ? (
-          <label
-            className="mt-2 flex items-center justify-between
-              gap-3 text-sm"
-          >
-            <span className="text-sub">{t.giftTo}</span>
-            <input
-              type="text"
-              value={toName}
-              onChange={(e) => setToName(e.target.value)}
-              disabled={busy}
-              placeholder={t.giftToPh}
-              className="h-8 w-40 rounded-[var(--r-sm)] border
-                border-line bg-transparent px-2 text-right text-sm"
-            />
-          </label>
+          <>
+            <label
+              className="mt-2 flex items-center justify-between
+                gap-3 text-sm"
+            >
+              <span className="text-sub">{t.giftTo}</span>
+              <input
+                type="text"
+                value={toName}
+                onChange={(e) => setToName(e.target.value)}
+                disabled={busy}
+                placeholder={t.giftToPh}
+                className="h-8 w-40 rounded-[var(--r-sm)] border
+                  border-line bg-transparent px-2 text-right text-sm"
+              />
+            </label>
+            {/* 0525 赠礼留言：可选，随系统信送达接收方 */}
+            <label
+              className="mt-2 flex items-center justify-between
+                gap-3 text-sm"
+            >
+              <span className="text-sub">{t.giftNote}</span>
+              <input
+                type="text"
+                value={note}
+                maxLength={100}
+                onChange={(e) => setNote(e.target.value)}
+                disabled={busy}
+                placeholder={t.giftNotePh}
+                className="h-8 w-40 rounded-[var(--r-sm)] border
+                  border-line bg-transparent px-2 text-right text-sm"
+              />
+            </label>
+          </>
         ) : null}
         <p className="mt-2 flex items-baseline justify-between text-sm">
           <span className="text-sub">{t.total}</span>

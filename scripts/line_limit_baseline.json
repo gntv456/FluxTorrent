@@ -183,7 +183,7 @@
   "apps/web/components/upload-form-parts.tsx::wide": 1,
   "apps/web/components/upload-form-quality.tsx::wide": 1,
   "apps/web/components/upload-form-riplogs.tsx::wide": 1,
-  "apps/web/components/upload-form.tsx": 371,
+  "apps/web/components/upload-form.tsx": 367,
   "apps/web/components/upload-form.tsx::wide": 1,
   "apps/web/components/user-checkin.tsx::wide": 1,
   "apps/web/components/user-menu.tsx": 327,

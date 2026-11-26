@@ -66,6 +66,7 @@ pub(crate) async fn run_named(
             let secs = stale_peer_threshold_secs(db).await;
             n(seeding_reward(db, secs).await?)
         }
+        "traffic_reward" => n(traffic_reward(db).await?),
         "purge_old_login_events" => n(purge_old_login_events(db).await?),
         // 0295（运营轮 P1-1/P1-6）：这两条此前只在 run.rs 的定时 tick 里，
         // 目录/分派少了一边——usage_stats 在面板可见但手触永远「未知任务」，

@@ -21,7 +21,13 @@ pub async fn expire_promotions(db: &PgPool) -> anyhow::Result<u64> {
 
 /// 魔法池双免联动（原实现为死功能：promo_started 全库无写入点）。
 /// 站点时区 UTC+8 每月 1-3 号检查上月是否达标（donated_total >= goal），
-/// 达标则开全站 scope 双免促销（x2free，3 天），幂等靠 promo_started 标记。
+/// 达标则开全站 scope 双免促销（x2free），幂等靠 promo_started 标记。
+/// 0525（对照 StageAbove「戏台」口径）：促销窗从「检测日起滚动 3 天」
+/// 改为「当月 1 日 00:00 起 3 天」固定窗口——检测窗本就在 1-3 号，
+/// 无论哪天检测到，点亮的都是同一个「当月 1-3 日」窗，运营节奏可预期
+/// （i18n magicPool.rule 文案「下月 1–3 号自动开启」即此语义）。
+/// $1 是站点 +8h 伪 UTC 墙钟，date_trunc('month', $1) 即当月 1 号 00:00
+/// 墙钟；识别侧（promo.rs/billing）只比较时间窗，无需感知偏移。
 pub async fn magic_pool_promo(db: &PgPool) -> anyhow::Result<u64> {
     let now_site = chrono::Utc::now() + chrono::Duration::hours(8);
     if !(1..=3).contains(&now_site.day()) {
@@ -30,14 +36,14 @@ pub async fn magic_pool_promo(db: &PgPool) -> anyhow::Result<u64> {
     let res = sqlx::query(
         r#"
         WITH prev AS (
-            SELECT to_char(date_trunc('month', $1::date) 
+            SELECT to_char(date_trunc('month', $1::date)
                    - interval '1 month', 'YYYY-MM') AS month
         ),
         pool AS (
             SELECT mp.month, mp.promo_started
             FROM magic_pool mp, prev
-            WHERE mp.month = prev.month 
-              AND mp.donated_total >= mp.goal 
+            WHERE mp.month = prev.month
+              AND mp.donated_total >= mp.goal
               AND NOT mp.promo_started
         ),
         started AS (
@@ -45,10 +51,11 @@ pub async fn magic_pool_promo(db: &PgPool) -> anyhow::Result<u64> {
             FROM pool WHERE mp.month = pool.month
             RETURNING mp.month
         )
-        INSERT INTO promotions 
+        INSERT INTO promotions
             (scope, torrent_id, kind, starts_at, ends_at, source)
-        SELECT 'global', NULL, 'x2free', now(), 
-               now() + interval '3 days', 'magic_pool'
+        SELECT 'global', NULL, 'x2free',
+               date_trunc('month', $1),
+               date_trunc('month', $1) + interval '3 days', 'magic_pool'
         FROM started
         ON CONFLICT DO NOTHING
         "#,
@@ -58,7 +65,10 @@ pub async fn magic_pool_promo(db: &PgPool) -> anyhow::Result<u64> {
     .await?;
     let n = res.rows_affected();
     if n > 0 {
-        tracing::info!(n, "magic_pool promo started (x2free, 3d)");
+        tracing::info!(
+            n,
+            "magic_pool promo started (x2free, month 1-3 window)"
+        );
     }
     Ok(n)
 }

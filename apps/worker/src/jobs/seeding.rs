@@ -14,6 +14,9 @@ use sqlx::PgPool;
 ///                × (1 + rarity_k × seeders^-rarity_exp)         -- 稀有度加成
 ///                × scale                                        -- 总标定
 ///   时魔 = ( base + floor( (2/π)·cap·atan(Σ × curve_k) ) ) × (donor ? donor_mult : 1)
+///        × (1 + class_rate(class_id))                    -- 0525 等级加成
+///   单种积分额外乘：bonus_factor（盒子）× official_mult（0488 官种）
+///                × (1 + area_rate 官区)（0525）× publisher_mult（0425）
 ///
 /// 档位分：
 ///   种子维度（第一命中优先）—— 濒危 2.0（seeders≤1 且 完成≥3）/ 高龄 1.5（>365天）/ 老种 1.0（>180天）
@@ -46,7 +49,10 @@ pub async fn seeding_reward(
             -- 0488 官种倍率：与 API 预估同源调用 seeding_official_mult()，
             -- 物化一次（STABLE 函数内联进 nestloop 会逐颗种子读 settings）。
             WITH p AS MATERIALIZED (
-                SELECT *, seeding_official_mult() AS official_mult
+                SELECT *, seeding_official_mult() AS official_mult,
+                       -- 0525 官区加成：官方种单种积分额外 +(rate)，
+                       -- 与 API 预估同源（STABLE 函数物化一次）。
+                       seeding_area_official_rate() AS area_rate
                 FROM seeding_params()
             ),
             per_torrent AS (
@@ -61,6 +67,7 @@ pub async fn seeding_reward(
                 -- cheat 拉黑（P1 累进处置）：存在任一未处置的 ghost/speed/reset
                 -- 类作弊事件的用户整体停发（管理组处置后自动恢复）。
                 SELECT u.id AS user_id, donor_privileged(u.id) AS donor,
+                       u.class_id,
                        seeding_torrent_bonus(
                            t.size,
                            t.seeders,
@@ -73,6 +80,10 @@ pub async fn seeding_reward(
                        -- Σ → arctan 封顶；不叠加独立 A 值，避免击穿标定。
                        * (CASE WHEN t.official_tag
                                THEN p.official_mult ELSE 1.0 END)
+                       -- 0525 官区加成：官种单种积分 ×(1+rate)，第二层
+                       -- 口径（区域维度），与 0488 倍率（数值维度）并存。
+                       * (1.0 + CASE WHEN t.official_tag
+                                     THEN p.area_rate ELSE 0.0 END)
                        -- 0425 发布者三档衰减（同类站对标 A-）：自发种按种龄
                        -- 乘 publisher 乘数；非发布者恒 1.0（函数内判）。
                        * seeding_publisher_mult(
@@ -120,11 +131,15 @@ pub async fn seeding_reward(
                   AND s.last_seen_at > now() - ($2::bigint * interval '1 second')
                 ),
             per_user AS (
-                SELECT user_id, donor, sum(b) AS bonus_raw
-                FROM per_torrent GROUP BY user_id, donor
+                SELECT user_id, donor, class_id, sum(b) AS bonus_raw
+                FROM per_torrent GROUP BY user_id, donor, class_id
             )
             SELECT pu.user_id AS id,
-                   seeding_hourly(pu.bonus_raw, p.base, p.cap, p.curve_k, p.donor_mult, pu.donor) AS amount,
+                   -- 0525 等级加成：class 越高收益越厚（+0..22% / 贵宾10%），
+                   -- 与 API 预估同源调用 seeding_class_rate()。
+                   (seeding_hourly(pu.bonus_raw, p.base, p.cap, p.curve_k,
+                                   p.donor_mult, pu.donor)::double precision
+                    * (1.0 + seeding_class_rate(pu.class_id)))::bigint AS amount,
                    'seeding:' || pu.user_id || ':' || $1 AS idem
             FROM per_user pu CROSS JOIN p
         ) d JOIN users u ON u.id = d.id

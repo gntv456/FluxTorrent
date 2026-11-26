@@ -9,6 +9,49 @@ use sqlx::PgPool;
 
 use crate::errors::{DomainError, DomainResult};
 
+/// 赠礼留言清洗（0525，对照 StageAbove）：trim 后 ≤100 字，超限
+/// Validation（不静默截断——送礼人应知道自己的话被删了）。
+/// None/空白都合法（留言可选），空白归一为 None。
+pub(crate) fn sanitize_gift_note(
+    raw: Option<&str>,
+) -> DomainResult<Option<String>> {
+    let Some(raw) = raw else {
+        return Ok(None);
+    };
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return Ok(None);
+    }
+    if trimmed.chars().count() > 100 {
+        return Err(DomainError::Validation(
+            "赠礼留言过长：最多 100 字".into(),
+        ));
+    }
+    Ok(Some(trimmed.to_string()))
+}
+
+/// 赠礼留言快照键（0525）：gift_note + 买方署名一并写入订单快照——
+/// flux-shared 生效分支与 worker 兜底补发共用同一源码，两路都能发留言信。
+pub(crate) async fn attach_gift_note(
+    cfg: &mut serde_json::Value,
+    note: Option<&str>,
+    buyer_id: i64,
+    db: &PgPool,
+) -> DomainResult<()> {
+    let Some(note) = note else {
+        return Ok(());
+    };
+    let buyer: Option<String> =
+        sqlx::query_scalar("SELECT username FROM users WHERE id = $1")
+            .bind(buyer_id)
+            .fetch_optional(db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+    cfg["gift_note"] = serde_json::json!(note);
+    cfg["gift_from_name"] = serde_json::json!(buyer.as_deref().unwrap_or(""));
+    Ok(())
+}
+
 /// 把赠礼接收人用户名落成 user id。空 / 不存在 / 已注销或封禁 / 就是
 /// 买家自己，一律 Validation（400）——动账之前拦干净。
 pub async fn resolve_gift_recipient(

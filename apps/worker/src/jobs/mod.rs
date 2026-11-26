@@ -86,6 +86,7 @@ mod staff_alert;
 mod subtitle_cert;
 mod subtitle_flow;
 mod sweep;
+mod traffic_reward;
 mod xreport;
 
 mod shop_fulfill;
@@ -106,6 +107,7 @@ pub(crate) use iyuu_orphan_sweep::*;
 pub(crate) use iyuu_refresh::*;
 pub(crate) use locks::*;
 pub(crate) use lottery::*;
+pub(crate) use traffic_reward::traffic_reward;
 // medal_achv / shop_fulfill 是 0382 / 0383 的新域，其入口经 run.rs
 // 的 spawn_lock! 路径直接引用，无需在此再导出。
 

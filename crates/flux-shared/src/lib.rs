@@ -377,6 +377,51 @@ pub async fn apply_item_effect(
                         )
                     });
                 earn_spark(db, user_id, sparks, "shop", &idem).await?;
+                // 0525 赠礼留言：随入账发系统信（sender NULL=系统，kind
+                // 与 funding 通知同风格）。api 首发与 worker 兜底补发走
+                // 同一份源码——幂等随 earn_spark 键，天然不漏发不双发。
+                // 拿不到买方名/留言时静默跳过（礼物本体不受影响）。
+                let note = config
+                    .get("gift_note")
+                    .and_then(|v| v.as_str())
+                    .filter(|s| !s.trim().is_empty());
+                if note.is_some() {
+                    let buyer: Option<String> = sqlx::query_scalar(
+                        "SELECT username FROM users WHERE id = $1",
+                    )
+                    .bind(user_id)
+                    .fetch_optional(db)
+                    .await
+                    .ok()
+                    .flatten();
+                    // 此处 user_id 是效果目标（收礼人），买方名从 config 的
+                    // gift_from_name 取（shop.rs 下单时写入）；缺失则跳过留言信。
+                    if let Some(from_name) = config
+                        .get("gift_from_name")
+                        .and_then(|v| v.as_str())
+                        .filter(|s| !s.is_empty())
+                    {
+                        let body = format!(
+                            "{} 赠予你 {} 积分：\n{}",
+                            from_name,
+                            sparks,
+                            note.unwrap_or("")
+                        );
+                        let _ = sqlx::query(
+                            "INSERT INTO messages \
+                             (sender_id, receiver_id, subject, body, kind) \
+                             VALUES (NULL, $1, $2, $3, 'gift_spark')",
+                        )
+                        .bind(user_id)
+                        .bind(format!(
+                            "来自 {} 的赠礼",
+                            buyer.unwrap_or(from_name.to_string())
+                        ))
+                        .bind(&body)
+                        .execute(db)
+                        .await;
+                    }
+                }
             }
         }
         "charity" => {

@@ -1,11 +1,22 @@
 "use client";
 
-import { useState, type RefObject } from "react";
+import { useMemo, useState, type RefObject } from "react";
 import { api } from "@/lib/api-client";
 import { apiErrorMessage, useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
 import { FormRow, fieldCls } from "@/components/upload-form-parts";
 import { UploadNfoAttach } from "@/components/upload-form-nfo-attach";
+import { UploadNameWizard } from "@/components/upload-name-wizard";
+import {
+  UploadPricePosterRows,
+  UploadMetaIdsRow,
+  UploadImdbRow,
+} from "@/components/upload-price-poster";
+import {
+  buildName,
+  resolveSecName,
+  type SecDictRow,
+} from "@/lib/name-builder";
 
 /** 发布表单·文件与 NFO / 附件块（从 upload-form.tsx 按域拆出，300 行门禁）：
  *  种子文件选择、标题/副标题、IMDb 与 PT-Gen、NFO、图床附件、MediaInfo、
@@ -46,6 +57,8 @@ export function UploadFilesBlock({
   setMsg,
   setFileErr,
   metaSources,
+  secVals,
+  secDict,
 }: {
   fileRef: RefObject<HTMLInputElement | null>;
   nfoRef: RefObject<HTMLInputElement | null>;
@@ -76,10 +89,30 @@ export function UploadFilesBlock({
   /** 选到文件后立刻撤掉「请先选择 .torrent」错误条（P1-4） */
   setFileErr: (v: boolean) => void;
   metaSources: string[];
+  /** 命名向导（0525）：质量维度选中值与字典——主表单透传，
+   *  与「更多选项」同款折叠面板挂在主标题输入框下。 */
+  secVals: Record<string, string>;
+  secDict: Record<string, SecDictRow[]>;
 }) {
   const { dict, currency } = useI18n();
   // 窄屏：辅助元数据字段默认折起（桌面照旧全展开）
   const [moreOpen, setMoreOpen] = useState(false);
+  // 命名向导（0525）折叠态 + PT-Gen 回包的建议名（此前被丢弃）
+  const [wizardOpen, setWizardOpen] = useState(false);
+  const [metaName, setMetaName] = useState("");
+
+  /** 向导预览：元数据建议名 + 维度选中名实时拼装（与 buildName 同口径） */
+  const wizardPreview = useMemo(() => {
+    if (!wizardOpen) return "";
+    return buildName({
+      metaName,
+      source: resolveSecName("source", secVals, secDict),
+      standard: resolveSecName("standard", secVals, secDict),
+      codec: resolveSecName("codec", secVals, secDict),
+      audio: resolveSecName("audio_codec", secVals, secDict),
+      team: resolveSecName("team", secVals, secDict),
+    });
+  }, [wizardOpen, metaName, secVals, secDict]);
 
   /** 元数据自动拉取（G7）：IMDb 链接失焦、且用户还没自己填 PT-Gen 链接时
    *  自动拉一次简介。手动按钮行为不变（仍可改链接后重拉）。 */
@@ -98,6 +131,12 @@ export function UploadFilesBlock({
         `/api/v1/ptgen?url=${encodeURIComponent(url)}`,
       );
       setDescr((prev) => (prev.trim() ? `${prev.trim()}\n\n` : "") + r.descr);
+      // 0525 命名向导：回包 name（中文名+外文名+年份）此前被丢弃——
+      // 存为向导建议段；主标题为空时直接预填，否则等用户在向导里应用。
+      if (r.name?.trim()) {
+        setMetaName(r.name.trim());
+        if (!name.trim()) setName(r.name.trim());
+      }
     } catch (e) {
       setMsg(apiErrorMessage(dict, e));
     } finally {
@@ -138,6 +177,14 @@ export function UploadFilesBlock({
             maxLength={200}
             className={fieldCls}
           />
+          {/* 命名向导（0525）：拆独立件防行数门禁，状态就近（300 行门禁） */}
+          <UploadNameWizard
+            open={wizardOpen}
+            setOpen={setWizardOpen}
+            metaName={metaName}
+            preview={wizardPreview}
+            onApply={setName}
+          />
         </div>
       </FormRow>
       <FormRow label={dict.upload.smallDescr}>
@@ -152,38 +199,20 @@ export function UploadFilesBlock({
         />
       </FormRow>
       {metaSources.includes("imdb") && (
-        <FormRow label={dict.upload.imdb}>
-          <div className="flex flex-col gap-1">
-            <input
-              type="url"
-              name="imdb"
-              value={imdb}
-              onChange={(e) => setImdb(e.target.value)}
-              onBlur={autoFill}
-              placeholder="https://www.imdb.com/title/tt0468569/"
-              maxLength={300}
-              className={fieldCls}
-            />
-            <span className="text-xs text-sub">{dict.upload.imdbHint}</span>
-          </div>
-        </FormRow>
+        <UploadImdbRow
+          imdb={imdb}
+          setImdb={setImdb}
+          onAutoFill={autoFill}
+        />
       )}
+      {/* 0525 豆瓣/TMDB 双输入拆至 upload-price-poster.tsx 同族件（行数门禁） */}
       {(metaSources.includes("douban") || metaSources.includes("tmdb")) && (
-        <FormRow label={dict.upload.metaIds}>
-          {/* 窄屏上下堆叠：并排时两个 placeholder 都被截成
-              「movie.douban.com/s」「themoviedb.org/mov」，看不出该填什么 */}
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <input value={douban} name="douban"
-              onChange={(e) => setDouban(e.target.value)}
-              placeholder="movie.douban.com/subject/1292052" maxLength={300}
-              className={`${fieldCls} min-w-0 sm:flex-1`} />
-            <input value={tmdb} name="tmdb"
-              onChange={(e) => setTmdb(e.target.value)}
-              placeholder="themoviedb.org/movie/603" maxLength={300}
-              className={`${fieldCls} min-w-0 sm:flex-1`} />
-          </div>
-          <span className="text-xs text-sub">{dict.upload.metaIdsHint}</span>
-        </FormRow>
+        <UploadMetaIdsRow
+          douban={douban}
+          setDouban={setDouban}
+          tmdb={tmdb}
+          setTmdb={setTmdb}
+        />
       )}
       {/* 窄屏：辅助元数据字段（PT-Gen / NFO / MediaInfo）折进「更多选项」，
           桌面照旧全展开（桌面表格放得下）。 */}
@@ -215,13 +244,19 @@ export function UploadFilesBlock({
                   })
                 }
                 maxLength={300}
-                className="min-h-10 flex-1 rounded-[var(--r-sm)] border border-[var(--compat-line)] bg-[var(--compat-paper)] px-3 text-sm text-ink outline-none focus:border-[var(--compat-orange)]"
+                className={"min-h-10 flex-1 rounded-[var(--r-sm)] " +
+                  "border border-[var(--compat-line)] " +
+                  "bg-[var(--compat-paper)] px-3 text-sm text-ink " +
+                  "outline-none focus:border-[var(--compat-orange)]"}
               />
               <button
                 type="button"
                 disabled={ptgenBusy || !ptgenUrl.trim()}
                 onClick={() => genDescr()}
-                className="min-h-10 rounded-[10px] border border-[var(--compat-line)] px-4 text-sm font-bold text-ink hover:border-[var(--compat-orange)] disabled:opacity-50"
+                className={"min-h-10 rounded-[10px] " +
+                  "border border-[var(--compat-line)] px-4 text-sm " +
+                  "font-bold text-ink hover:border-[var(--compat-orange)] " +
+                  "disabled:opacity-50"}
               >
                 {ptgenBusy ? dict.upload.ptgenBusy : dict.upload.ptgenBtn}
               </button>
@@ -247,45 +282,19 @@ export function UploadFilesBlock({
             value={mediainfo}
             onChange={(e) => setMediainfo(e.target.value)}
             placeholder={dict.upload.mediainfoHint}
-            className="w-full rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] p-2 font-mono text-xs"
+            className={"w-full rounded-[var(--r-sm)] border border-line " +
+              "bg-[var(--surface-card)] p-2 font-mono text-xs"}
             maxLength={60000}
           />
         </FormRow>
       )}
-      <FormRow label={dict.upload.price}>
-        <div className="flex flex-col gap-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <input
-              type="number"
-              name="price"
-              aria-label={dict.upload.price}
-              min={0}
-              max={1000000}
-              value={price}
-              onChange={(e) => setPrice(Number(e.target.value))}
-              className="min-h-10 w-36 rounded-[var(--r-sm)] border border-[var(--compat-line)] bg-[var(--compat-paper)] px-3 text-sm text-ink outline-none focus:border-[var(--compat-orange)]"
-            />
-            <span className="text-sm text-sub">
-              {currency}（0 = 免费，最大 1000000）
-            </span>
-          </div>
-          <span className="text-xs text-sub">{dict.upload.priceHint}</span>
-        </div>
-      </FormRow>
-      <FormRow label={dict.upload.poster}>
-        <div className="flex flex-col gap-1">
-          <input
-            type="url"
-            name="poster"
-            value={poster}
-            onChange={(e) => setPoster(e.target.value)}
-            placeholder={dict.upload.posterPh}
-            maxLength={500}
-            className={fieldCls}
-          />
-          <span className="text-xs text-sub">{dict.upload.posterHint}</span>
-        </div>
-      </FormRow>
+      {/* 0525 定价/海报拆至 upload-price-poster.tsx（行数门禁） */}
+      <UploadPricePosterRows
+        price={price}
+        setPrice={setPrice}
+        poster={poster}
+        setPoster={setPoster}
+      />
     </>
   );
 }

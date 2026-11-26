@@ -45,6 +45,10 @@ pub const JOBS_SLOW: &[JobDef] = &[
         cadence: "1h",
     },
     JobDef {
+        name: "traffic_reward",
+        cadence: "1h",
+    },
+    JobDef {
         name: "purge_old_login_events",
         cadence: "1h",
     },

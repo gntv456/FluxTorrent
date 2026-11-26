@@ -113,7 +113,56 @@ async fn my_spark(
         .collect();
     // 0417 F6 / 0488：系数表构造按域拆到 spark_tiers.rs（300 行门禁）。
     // 参数仍从 seeding_params() + seeding_official_mult() 取真值，与结算同源。
-    let tiers = super::spark_tiers::build_tiers(&state.repo.db).await;
+    // 0525：传入用户 id，系数表带上该用户的等级加成率。
+    let tiers = super::spark_tiers::build_tiers(&state.repo.db, auth.id).await;
+    // 0525 流量积分待结算块：与 worker/traffic_reward.rs 同源口径——
+    // 基线差（GREATEST 钳 0）按 GB 换算，floor 后即下次结算预计入账。
+    // delta 重算式较长，收成子查询 pend 一处求值，外层只引用。
+    let traffic: Option<(f64, f64, f64, f64, i64)> = sqlx::query_as(
+        "WITH rates AS ( \
+           SELECT COALESCE((SELECT value::float8 FROM site_settings \
+                     WHERE name='seeding_traffic_up_rate'), 0.5) AS up, \
+                  COALESCE((SELECT value::float8 FROM site_settings \
+                     WHERE name='seeding_traffic_down_rate'), 0.1) AS down), \
+         pend AS ( \
+           SELECT GREATEST(u.uploaded - COALESCE(t.last_uploaded, \
+                                        u.uploaded), 0)::float8 AS up_b, \
+                  GREATEST(u.downloaded - COALESCE(t.last_downloaded, \
+                                          u.downloaded), 0)::float8 AS down_b \
+           FROM users u \
+           LEFT JOIN traffic_settle_state t ON t.user_id = u.id \
+           WHERE u.id = $1), \
+         scored AS ( \
+           SELECT p.up_b, p.down_b, \
+                  FLOOR(p.up_b / 1073741824.0 * rates.up \
+                      + p.down_b / 1073741824.0 * rates.down)::bigint AS est \
+           FROM pend p CROSS JOIN rates) \
+         SELECT rates.up, rates.down, s.up_b, s.down_b, s.est \
+         FROM scored s CROSS JOIN rates",
+    )
+    .bind(auth.id)
+    .fetch_optional(&state.repo.db)
+    .await
+    .ok()
+    .flatten();
+    let traffic_json = match traffic {
+        Some((up, down, up_bytes, down_bytes, est)) => serde_json::json!({
+            "up_rate_per_gb": up,
+            "down_rate_per_gb": down,
+            "pending_up_gb": (up_bytes / 1073741824.0 * 1000.0).round()
+                / 1000.0,
+            "pending_down_gb": (down_bytes / 1073741824.0 * 1000.0).round()
+                / 1000.0,
+            "pending_points_estimate": est,
+        }),
+        None => serde_json::json!({
+            "up_rate_per_gb": 0.5,
+            "down_rate_per_gb": 0.1,
+            "pending_up_gb": 0.0,
+            "pending_down_gb": 0.0,
+            "pending_points_estimate": 0,
+        }),
+    };
     Ok(ok(serde_json::json!({
         "balance": balance,
         "seeding_count": seeding_count,
@@ -129,6 +178,8 @@ async fn my_spark(
         "official_seeding_size": official_seeding_size,
         "hourly_estimate": hourly_estimate,
         "hourly_points_estimate": hourly_points_estimate,
+        // 0525 流量积分：费率 + 待结算量与预计积分（基线差口径）
+        "traffic": traffic_json,
         // 兼容旧消费点（my-spark pill 渲染）：保持 [规则名, 颗数] 数组形态
         "reward_rules": my_rules,
         "tiers": tiers,

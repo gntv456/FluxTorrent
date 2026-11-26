@@ -20,6 +20,8 @@ pub(super) async fn hour_jobs(
         seeding_reward(&db, stale_secs),
     )
     .await;
+    // 0525 流量积分：上传/下载量换积分的独立收益线（基线差结算）
+    run_sharded(&db, &shard, "job:traffic_reward", traffic_reward(&db)).await;
     run_sharded(
         &db,
         &shard,

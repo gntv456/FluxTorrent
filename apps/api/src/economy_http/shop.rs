@@ -3,7 +3,9 @@
 //! 0207：购买支持数量（stackable 类）；装扮类 SKU 拆分后 config 驱动候选选择。
 
 use super::shop_effects::apply_item_effect;
-use super::shop_gift::resolve_gift_recipient;
+use super::shop_gift::{
+    attach_gift_note, resolve_gift_recipient, sanitize_gift_note,
+};
 use super::shop_guards::{card_kind_probe, ensure_deliverable};
 use super::shop_list::buffer_cap_check;
 use super::shop_list::shop_items;
@@ -21,11 +23,12 @@ struct BuyReq {
     /// 购买数量（0207）：仅 stackable 类生效；装扮/头衔类强制 1
     #[serde(default)]
     qty: Option<i64>,
-    /// 赠礼接收人用户名（0421）：仅 gift_spark 类必填——效果记接收方
-    /// 而非买家本人（旧实现无此参数且效果记买家，花 1200 得 1000 的
-    /// 亏本陷阱；界面文案「赠予其他用户」自此才名副其实）
+    /// 赠礼接收人用户名（0421）：仅 gift_spark 类必填；校验见 shop_gift.rs。
     #[serde(default)]
     to: Option<String>,
+    /// 赠礼留言（0525）：trim ≤100 字，清洗见 sanitize_gift_note。
+    #[serde(default)]
+    note: Option<String>,
 }
 
 use crate::dto::ok;
@@ -54,10 +57,8 @@ async fn shop_buy(
     body: web::Json<BuyReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    // 0383 递增价格：price_step/price_max/price_anchor_qty 一并读出，
-    // 单价在下方按**已售量**现算——限量商品卖得越多越贵。
-    // `domain::shop::price_with_step` 此前**无任何调用方**，即
-    // 「配了 price_step 也不涨」；档位列建了半年没人读。
+    // 0383 递增价格：三键一并读出，单价按**已售量**现算（此前
+    // price_with_step 无调用方，「配了 step 也不涨」半年没人发现）。
     let item: Option<RepoItem> =
         crate::repo::shop::item_for_buy(&state.repo, body.item_id).await?;
     let Some(item) = item else {
@@ -67,8 +68,8 @@ async fn shop_buy(
     let kind = item.kind;
     let config = item.config;
 
-    // 数量口径（0207）：stackable 类可 1..=100；其余一律 1。
-    // 唯一性道具（装扮/头衔类）叠加购买 = 花钱买空气，由 stackable 缺省挡住。
+    // 数量口径（0207）：stackable 类可 1..=100；其余一律 1（唯一性道具
+    // 叠加购买 = 花钱买空气，由 stackable 缺省挡住）。
     let stackable = config
         .get("stackable")
         .and_then(|v| v.as_bool())
@@ -95,11 +96,9 @@ async fn shop_buy(
         .checked_mul(qty)
         .ok_or(DomainError::Validation("数量超出可计算范围".into()))?;
 
-    // 审计修复（P1 花钱买空气）：唯一性道具（装扮/头衔类）重复购买此前照扣全价、
-    // 效果 ON CONFLICT DO NOTHING —— 已拥有者再买 = 花钱买空气。可叠加类
-    //（邀请/券/上传量/VIP 时长）不在此列。拥有判定与 apply_item_effect 同表
-    //（0207 起直接按 shop_items.id 判，旧口径读 config.item_id 对种子 SKU 永远
-    // 为空、护栏从未生效）。
+    // 审计修复（P1 花钱买空气）：唯一性道具重复购买此前照扣全价、
+    // 效果 ON CONFLICT DO NOTHING。拥有判定与 apply_item_effect 同表
+    //（0207 起按 shop_items.id 判，旧口径对种子 SKU 护栏从未生效）。
     if matches!(
         kind.as_str(),
         "avatar_frame" | "animated_avatar" | "rainbow_id" | "rainbow_name"
@@ -148,18 +147,16 @@ async fn shop_buy(
         buffer_cap_check(&state.repo.db, auth.id).await?;
     }
 
-    // 赠礼类（gift_spark，0421）：扣款前必须落实接收人。效果记接收方，
-    // 不是买家自己——旧实现既无接收人参数、效果又 earn_spark 记买家
-    // （花 1200 只回账 1000 且收礼人什么都收不到），与货架文案
-    // 「赠予其他用户，可指定份数」完全相反。校验见 shop_gift.rs。
+    // 赠礼类（gift_spark，0421）：扣款前必须落实接收人+清洗留言（0525）。
     let mut gift_to: Option<i64> = None;
+    let mut gift_note: Option<String> = None;
     if kind == "gift_spark" {
         gift_to = Some(
             resolve_gift_recipient(&state.repo.db, auth.id, body.to.as_deref())
                 .await?,
         );
+        gift_note = sanitize_gift_note(body.note.as_deref())?;
     }
-
     // 扣款前先确认这个品类发得出东西（P-348，判定见 shop_guards.rs）
     ensure_deliverable(&kind)?;
     // 幂等键必填（P1）：网络层重试必须携带同一键，否则双扣款。
@@ -322,15 +319,20 @@ async fn shop_buy(
         replay_ctx = Some(paid);
     }
 
-    // 订单落库（幂等键唯一）。卡牌类（补签/改名/临时邀请）库存口径 = 订单行数
-    //（checkin/gaps 按「无 resub_uses 的订单」计数），因此 qty 张就插 qty 行
-    //（键加序号后缀保持幂等）；其余类一行、price 记总额（0207）。
-    // 0421：赠礼单把接收人写进快照（gift_to）——worker 兜底补发时从
-    // config_snapshot 读它，否则卡单会把礼物补发给买家本人。
+    // 订单落库（幂等键唯一）。卡牌类库存口径 = 订单行数（qty 张插 qty 行，
+    // 键加序号后缀保持幂等）；其余类一行。0421：赠礼单把接收人写进快照
+    //（gift_to）——worker 兜底补发时从 config_snapshot 读它（0525 留言同挂）。
     let mut order_cfg = config.clone();
     if let Some(t) = gift_to {
         order_cfg["gift_to"] = serde_json::json!(t);
     }
+    attach_gift_note(
+        &mut order_cfg,
+        gift_note.as_deref(),
+        auth.id,
+        &state.repo.db,
+    )
+    .await?;
     let card_kind =
         matches!(kind.as_str(), "makeup_card" | "rename_card" | "temp_invite");
     let card_rows: usize = match replay_ctx {
@@ -420,11 +422,16 @@ async fn shop_buy(
         )));
     }
 
-    // 效果执行（CAS 置位，0085）：首次成功扣款 OR 重试补发（此前 Replayed 直接跳过
-    // 效果分支——扣款成功但效果失败后重试 = 花钱买空气）。置位失败 = 效果已发过，跳过。
-    // 卡牌多行订单：逐行 CAS，每次置位成功发一轮效果。
-    // 0421：赠礼类的效果目标 = 接收人（gift_to），其余 = 买家本人。
+    // 效果执行（CAS 置位，0085）：首次成功扣款 OR 重试补发；置位失败 =
+    // 已发过跳过；卡牌多行逐行 CAS。0421：赠礼效果目标 = 接收人；
+    // 0525：留言与署名并入 cfg。
     let effect_user = gift_to.unwrap_or(auth.id);
+    let mut cfg_base = config.clone();
+    cfg_base["item_id"] = serde_json::json!(body.item_id);
+    cfg_base["gift_note"] = serde_json::json!(gift_note);
+    if let Some(bn) = order_cfg.get("gift_from_name") {
+        cfg_base["gift_from_name"] = bn.clone();
+    }
     let mut applied = 0usize;
     loop {
         let hit: Option<i64> = sqlx::query_scalar(
@@ -444,8 +451,7 @@ async fn shop_buy(
         }
         applied += 1;
         // 数量类效果按件发（上传量×N、券×N、邀请×N、卡牌入库×N）
-        let mut cfg = config.clone();
-        cfg["item_id"] = serde_json::json!(body.item_id);
+        let mut cfg = cfg_base.clone();
         cfg["gift_idem"] = serde_json::json!(idem);
         apply_item_effect(&state.repo.db, effect_user, &kind, &cfg, "buy")
             .await?;
@@ -455,23 +461,17 @@ async fn shop_buy(
     }
     if !card_kind && applied > 0 {
         let rounds: usize = match replay_ctx {
-            // 重放补发：件数 = 已付总额 ÷ 单价（首次已发 1 轮，见下循环从 1 起）
+            // 重放补发：件数 = 已付总额 ÷ 单价（首次已发 1 轮，从 1 起补）
             Some(PaidQty::Amount(amt)) if unit_price > 0 => {
                 ((amt / unit_price).max(1)) as usize
             }
-            _ => {
-                if stackable {
-                    qty.max(1) as usize
-                } else {
-                    1
-                }
-            }
+            _ if stackable => qty.max(1) as usize,
+            _ => 1,
         };
-        let mut cfg = config.clone();
-        cfg["item_id"] = serde_json::json!(body.item_id);
         for k in 1..rounds {
             // 多件时每轮一个唯一键：同一 gift_idem 会被 earn_spark 幂等
             // 静默吞掉后几轮（接收方凭空少收 (rounds-1) 份）
+            let mut cfg = cfg_base.clone();
             cfg["gift_idem"] = serde_json::json!(format!("{idem}:{k}"));
             apply_item_effect(&state.repo.db, effect_user, &kind, &cfg, "buy")
                 .await?;

@@ -271,20 +271,16 @@ export function UploadForm({ initialName }: { initialName?: string }) {
             setImdb={setImdb}
             douban={douban} setDouban={setDouban}
             tmdb={tmdb} setTmdb={setTmdb}
-            ptgenUrl={ptgenUrl}
-            setPtgenUrl={setPtgenUrl}
-            ptgenBusy={ptgenBusy}
-            setPtgenBusy={setPtgenBusy}
+            ptgenUrl={ptgenUrl} setPtgenUrl={setPtgenUrl}
+            ptgenBusy={ptgenBusy} setPtgenBusy={setPtgenBusy}
             setDescr={setDescr}
-            mediainfo={mediainfo}
-            setMediainfo={setMediainfo}
-            poster={poster}
-            setPoster={setPoster}
-            price={price}
-            setPrice={setPrice}
+            mediainfo={mediainfo} setMediainfo={setMediainfo}
+            poster={poster} setPoster={setPoster}
+            price={price} setPrice={setPrice}
             setMsg={setMsg}
             setFileErr={setFileErr}
             metaSources={metaSources}
+            secVals={secVals} secDict={secDict}
           />
           <UploadDescrBlock
             descr={descr}
