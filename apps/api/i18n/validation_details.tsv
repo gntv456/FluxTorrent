@@ -413,3 +413,4 @@ action 仅支持 bid/grab/discard/double/play/hint	action 僅支援 bid/grab/dis
 账号已被禁言	賬號已被禁言	Account is muted
 赠礼留言过长：最多 100 字	贈禮留言過長：最多 100 字	Gift message too long: max 100 chars
 消息不能为空	訊息不能為空	Message cannot be empty
+variant 仅支持 classic/wild/nolook	variant 僅支援 classic/wild/nolook	variant only supports classic/wild/nolook
