@@ -29,6 +29,15 @@ const CAPTCHA_CONNECT_SRC = [
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  // 加速批四期（2026-11-26）：客户端路由缓存窗口。Next 默认 dynamic: 0——
+  // 全站 61 个 force-dynamic 页面每次 Back/Forward 都完整重取重渲染，
+  // 后退/前进转一圈加载态。30s 窗口内客户端段缓存直接回显（秒开），
+  // 过窗照常重取——个性化数据（余额/未读/工单角标）30s 陈旧与站内
+  // 惯例一致（profile 取档本就有 60s revalidate）。只影响客户端路由
+  // 器的缓存复用，浏览器直开/刷新照常走服务端新渲染。
+  experimental: {
+    staleTimes: { dynamic: 30, static: 300 },
+  },
   // 方案 §8.1：前端仅公开配置
   env: {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL ?? "",

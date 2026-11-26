@@ -35,8 +35,15 @@ interface HallOverview {
 
 /** 后端清单行：展示字段，与 lib/games-registry 的 GameEntry 一一对应 */
 interface RegRow {
-  key: string; title_key: string; icon: string; href: string;
-  tone: string; grp: string; module: string; badge: string; hot: boolean;
+  key: string;
+  title_key: string;
+  icon: string;
+  href: string;
+  tone: string;
+  grp: string;
+  module: string;
+  badge: string;
+  hot: boolean;
 }
 
 function toEntry(r: RegRow): GameEntry {
@@ -64,15 +71,19 @@ export default async function GamesPage() {
   const gate = await requireModule("games");
   if (gate) return gate;
 
-  const { dict, currency } = await getDict();
-  const profile = await getSiteProfile();
+  // 加速批四期：四数据源并发挂起（此前三段串行尾延相加，TTFB=最慢一段）
+  const [{ dict, currency }, profile, [ov, me], arcadeMeta] =
+    await Promise.all([
+      getDict(),
+      getSiteProfile(),
+      Promise.all([
+        api.get<HallOverview>("/api/v1/games").catch(() => null),
+        api.get<{ class_id: number }>("/api/v1/me").catch(() => null),
+      ]),
+      api.get<ArcadeMetaData>("/api/v1/games/arcade-meta").catch(() => null),
+    ]);
   // 模块开关口径与 requireModule / 页脚一致：缺键视为开
   const mod = (k: string) => profile.modules[k] !== false;
-  // 等级门槛（0490）：置灰只是入口显隐，API 侧另有硬闸；匿名全展示
-  const [ov, me] = await Promise.all([
-    api.get<HallOverview>("/api/v1/games").catch(() => null),
-    api.get<{ class_id: number }>("/api/v1/me").catch(() => null),
-  ]);
   const myClass = me?.class_id ?? null;
   const lockedAt = (e: GameEntry): number => {
     // 门槛键以后端概览字段为准：老虎机复用旧 capsule 池键
@@ -107,7 +118,8 @@ export default async function GamesPage() {
         return dict.games.bigsmall.winMult.replace("{n}", fmtMult(winMult));
       case "scratch":
         return `${fmtMult(scratchTop)}x`;
-      case "jgg": case "mole":
+      case "jgg":
+      case "mole":
         return `${fmtMult(moleTop)}x`;
       case "capsule":
         return capsuleTop > 0 ? `${fmtMult(capsuleTop)}x` : null;
@@ -138,10 +150,6 @@ export default async function GamesPage() {
     { key: "instant", label: dict.games.hall.groupInstant },
     { key: "session", label: dict.games.hall.groupSession },
   ];
-
-  const arcadeMeta = await api
-    .get<ArcadeMetaData>("/api/v1/games/arcade-meta")
-    .catch(() => null);
 
   return (
     <div className="flex flex-col gap-5">

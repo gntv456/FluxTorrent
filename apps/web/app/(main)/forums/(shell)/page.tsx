@@ -34,9 +34,16 @@ export default async function ForumsPage({
     typeRaw === "notice" || typeRaw === "sticky" || typeRaw === "digest"
       ? typeRaw
       : undefined;
+  // 加速批四期（2026-11-26）：关注流与字典并发挂起。此前 recent 串行在
+  // dict 之后（两个网络请求尾延相加）；recent 只依赖 type（searchParams
+  // 已解析完），signed 只是消费闸——未登录时白丢一次请求的旧口径改为
+  // 挂起后按闸取舍（未登录不 await 即不触发）。
+  const recentP = hasSessionToken().then((signed) =>
+    signed ? getForumRecent(type) : null,
+  );
   const { dict } = await dictP;
   const signed = await signedP;
-  const recent = signed ? await getForumRecent(type) : null;
+  const recent = await recentP;
   const searchBox = (
     <ForumSearch
       placeholder={dict.forums2.searchPh}
@@ -77,11 +84,7 @@ export default async function ForumsPage({
           <p>{dict.forums3.failDesc}</p>
         </div>
       ) : (
-        <ForumHomeStream
-          topics={recent.topics ?? []}
-          type={type}
-          dict={dict}
-        />
+        <ForumHomeStream topics={recent.topics ?? []} type={type} dict={dict} />
       )}
     </>
   );
