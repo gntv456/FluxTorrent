@@ -3570,6 +3570,7 @@ const zhCnBase = {
       playBtn: "出牌",
       passBtn: "不出",
       hintBtn: "提示",
+      hintNone: "现在轮不到你，轮到你时再点提示",
       playWait: "等待其他玩家出牌…",
       tableEmpty: "新一轮由你领出",
       selectFirst: "先选牌再出",

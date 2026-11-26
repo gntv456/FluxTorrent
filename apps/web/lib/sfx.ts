@@ -16,6 +16,12 @@ export type SfxCue =
   | "deal" // 斗地主发牌/叫分（轻扫弦）
   | "pass" // 斗地主过牌（低短滑音）
   | "select" // 斗地主选牌/取消选牌（轻嗒）
+  | "grab" // 斗地主抢地主（上行短号角）
+  | "discard" // 斗地主弃三张（下行轻滑）
+  | "double" // 斗地主加倍/超级加倍（厚重双音）
+  | "thud" // 斗地主出牌落桌（低频木闷响）
+  | "turn" // 轮到我方（清脆双音提示）
+  | "warn" // 倒计时末段加急脉冲
   | "bomb" // 斗地主炸弹（低频双冲击）
   | "rocket" // 斗地主王炸（快速上行号角）
   | "win" // 普通赢（上行双音）
@@ -86,6 +92,27 @@ const CUES: Record<SfxCue, Note[]> = {
   ],
   pass: [{ f: 330, t: 0, d: 0.09, v: 0.16, w: "sine" }],
   select: [{ f: 1200, t: 0, d: 0.04, v: 0.18, w: "square" }],
+  grab: [
+    { f: 440, t: 0, d: 0.08, v: 0.25, w: "square" },
+    { f: 587, t: 0.07, d: 0.13, v: 0.25, w: "square" },
+  ],
+  discard: [
+    { f: 392, t: 0, d: 0.09, v: 0.2, w: "sine" },
+    { f: 262, t: 0.08, d: 0.12, v: 0.18, w: "sine" },
+  ],
+  double: [
+    { f: 220, t: 0, d: 0.1, v: 0.28, w: "sawtooth" },
+    { f: 220, t: 0.1, d: 0.16, v: 0.26, w: "sawtooth" },
+  ],
+  thud: [
+    { f: 160, t: 0, d: 0.09, v: 0.32, w: "triangle" },
+    { f: 90, t: 0.05, d: 0.12, v: 0.28, w: "sine" },
+  ],
+  turn: [
+    { f: 660, t: 0, d: 0.07, v: 0.22, w: "square" },
+    { f: 880, t: 0.07, d: 0.1, v: 0.2, w: "square" },
+  ],
+  warn: [{ f: 980, t: 0, d: 0.05, v: 0.18, w: "square" }],
   bomb: [
     { f: 120, t: 0, d: 0.18, v: 0.4, w: "sawtooth" },
     { f: 80, t: 0.12, d: 0.22, v: 0.36, w: "sawtooth" },
@@ -98,7 +125,8 @@ const CUES: Record<SfxCue, Note[]> = {
   pop: [{ f: 520, t: 0, d: 0.09, v: 0.3, w: "sine" }],
   win: [
     { f: 523, t: 0, d: 0.12, v: 0.3, w: "triangle" }, // C5
-    { f: 784, t: 0.1, d: 0.18, v: 0.3, w: "triangle" }, // G5
+    { f: 659, t: 0.09, d: 0.12, v: 0.3, w: "triangle" }, // E5
+    { f: 784, t: 0.18, d: 0.2, v: 0.32, w: "triangle" }, // G5
   ],
   jackpot: [
     { f: 523, t: 0, d: 0.14, v: 0.32, w: "triangle" }, // C5
@@ -106,7 +134,10 @@ const CUES: Record<SfxCue, Note[]> = {
     { f: 784, t: 0.24, d: 0.14, v: 0.32, w: "triangle" }, // G5
     { f: 1046, t: 0.36, d: 0.3, v: 0.34, w: "triangle" }, // C6
   ],
-  lose: [{ f: 196, t: 0, d: 0.16, v: 0.18, w: "sine" }], // G3 低柔
+  lose: [
+    { f: 196, t: 0, d: 0.14, v: 0.18, w: "sine" }, // G3
+    { f: 147, t: 0.12, d: 0.18, v: 0.16, w: "sine" }, // D3 下坠
+  ],
 };
 
 /** 播一条线索。静音/无手势解锁/超 voice 上限/无 AudioContext 时安静返回。 */

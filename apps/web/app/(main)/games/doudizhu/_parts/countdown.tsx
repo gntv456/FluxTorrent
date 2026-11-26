@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useI18n } from "@/i18n/client";
+import { playSfx } from "@/lib/sfx";
 import type { DzGame } from "./room-types";
 
 /** 出牌/叫分倒计时条：本地递减，归零触发 onExpire（代发托管动作）。
@@ -20,12 +21,16 @@ export function CountdownBar({
   const [left, setLeft] = useState(seconds);
   useEffect(() => {
     setLeft(seconds);
+    if (game.my_turn) playSfx("turn");
     const tick = window.setInterval(
       () => setLeft((c) => Math.max(0, c - 1)),
       1000,
     );
     return () => window.clearInterval(tick);
-  }, [turnKey, seconds]);
+  }, [turnKey, seconds, game.my_turn]);
+  useEffect(() => {
+    if (game.my_turn && left >= 1 && left <= 5) playSfx("warn");
+  }, [left, game.my_turn]);
   const idle = game.my_turn && left <= 0;
   useEffect(() => {
     if (idle) onExpire();

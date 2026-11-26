@@ -3542,6 +3542,7 @@ const zhTwBase: Omit<
       playBtn: "出牌",
       passBtn: "不出",
       hintBtn: "提示",
+      hintNone: "現在輪不到你，輪到你時再點提示",
       playWait: "等待其他玩家出牌…",
       tableEmpty: "新一輪由你領出",
       selectFirst: "先選牌再出",

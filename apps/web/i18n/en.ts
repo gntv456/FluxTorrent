@@ -3652,6 +3652,7 @@ const enBase: Omit<
       playBtn: "Play",
       passBtn: "Pass",
       hintBtn: "Hint",
+      hintNone: "Not your turn — tap Hint again when it is",
       playWait: "Waiting for others…",
       tableEmpty: "New round — you lead",
       selectFirst: "Select cards first",

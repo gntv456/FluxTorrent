@@ -14,5 +14,8 @@ export function dzCueOf(
   if (kind === "rocket") return "rocket";
   if (kind === "bomb") return "bomb";
   if (passed) return "pass";
-  return action === "play" ? "pop" : "deal";
+  if (action === "grab") return "grab";
+  if (action === "discard") return "discard";
+  if (action === "double") return "double";
+  return action === "play" ? "thud" : "deal";
 }

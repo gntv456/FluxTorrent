@@ -20,6 +20,7 @@ export function FullGame({
   sel,
   selCombo,
   hintBid,
+  hintNote,
   busy,
   onExit,
   onExpire,
@@ -41,6 +42,8 @@ export function FullGame({
   sel: Set<number>;
   selCombo: ComboResult | null;
   hintBid: number | null;
+  /** 提示不可用的行内说明（非错误色）。 */
+  hintNote: string | null;
   busy: boolean;
   onExit: () => void;
   onExpire: () => void;
@@ -164,6 +167,7 @@ export function FullGame({
       <DzControls
         game={game}
         hintBid={hintBid}
+        hintNote={hintNote}
         selectedCount={sel.size}
         combo={selCombo}
         busy={busy}

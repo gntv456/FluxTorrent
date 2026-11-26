@@ -50,6 +50,11 @@ export function PlayingCard({
     .filter(Boolean)
     .join(" ");
   const jokerCorner = card === 53 ? "大" : "小";
+  const jokerImg = isJoker
+    ? card === 53
+      ? "/games/ddz/ddz-joker-big.webp"
+      : "/games/ddz/ddz-joker-small.webp"
+    : null;
   return (
     <button
       type="button"
@@ -76,6 +81,9 @@ export function PlayingCard({
       ) : (
         !small && (
           <span className="dz-card-pip" aria-hidden>
+            {jokerImg && (
+              <img className="dz-card-joker-img" src={jokerImg} alt="" />
+            )}
             {isJoker ? (card === 53 ? "★" : "☆") : suit}
           </span>
         )

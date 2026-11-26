@@ -23,6 +23,10 @@
   --dz-small-w: 34px;
   --dz-small-h: 46px;
   --dz-overlap: -10px;
+  --dz-gold-soft: rgba(232, 200, 130, 0.16);
+  --dz-glow: rgba(232, 200, 130, 0.35);
+  --dz-felt-deep: #08281c;
+  --dz-reflect: rgba(255, 255, 255, 0.05);
   color: var(--dz-ink);
 }
 
@@ -45,6 +49,37 @@
   --dz-gold: #8a6428;
   --dz-card-bg: #ffffff;
   --dz-card-ink: #1f1c14;
+  background:
+    radial-gradient(ellipse at 50% -8%, var(--surface-raised, #f3efe6) 0%, var(--surface-page, #ece6d8) 72%);
+}
+
+/* 浅色档按钮对比度修复（2026-11-26 实测反馈：墨字浮在写死的墨绿渐变上
+   看不清）：浅卡底 + 深墨字；hover 抬一档不换金边逻辑。is-primary 金底
+   墨字本来就清晰，不在此覆盖。 */
+:where(
+  html:not(
+      [data-theme$="-night"],
+      [data-theme="shanhaijing"],
+      [data-theme="brand-night"]
+    )
+) .doudizhu-page .dz-btn {
+  background: linear-gradient(180deg, #ffffff, #f0ead9);
+  color: #1f2a1f;
+  border-color: #9aa892;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 2px 6px rgba(31, 42, 31, 0.18);
+}
+:where(
+  html:not(
+      [data-theme$="-night"],
+      [data-theme="shanhaijing"],
+      [data-theme="brand-night"]
+    )
+) .doudizhu-page .dz-btn:not(:disabled):hover {
+  background: linear-gradient(180deg, #fff7e0, #f3e6bd);
+  border-color: #8a6428;
+  color: #1f2a1f;
 }
 
 .dz-h2 {
@@ -205,16 +240,20 @@
   border: 1px solid rgba(232, 200, 130, 0.28);
   border-radius: var(--r-lg);
   background:
+    radial-gradient(circle at 20% 16%, rgba(255, 186, 116, 0.1), transparent 26%),
+    radial-gradient(circle at 80% 12%, rgba(255, 186, 116, 0.08), transparent 24%),
+    radial-gradient(ellipse at 50% 0%, rgba(126, 92, 184, 0.16), transparent 56%),
     url("/games/ddz/ddz-felt.webp") center / cover no-repeat,
     radial-gradient(
       ellipse at 50% 40%,
       var(--dz-felt) 0%,
-      var(--dz-felt-2) 78%
+      var(--dz-felt-deep) 82%
     );
   box-shadow:
     inset 0 0 0 1px rgba(232, 200, 130, 0.1),
     inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    0 10px 30px rgba(0, 0, 0, 0.35);
+    inset 0 -20px 34px rgba(0, 0, 0, 0.35),
+    0 12px 34px rgba(0, 0, 0, 0.45);
   min-height: 264px;
 }
 /* 桌面毯纹暗角（灯光聚焦感，开源 landlord 的 bg.png 语义） */
@@ -227,8 +266,22 @@
   background:
     radial-gradient(
       ellipse at 50% 46%,
-      transparent 42%,
-      rgba(0, 0, 0, 0.22) 100%
+      transparent 40%,
+      rgba(0, 0, 0, 0.28) 100%
+    );
+}
+/* 顶部暖光弧反光：中央落牌区被打亮，两侧压暗（参考夜景桌面聚光） */
+.dz-table::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      ellipse 62% 38% at 50% 30%,
+      rgba(255, 232, 180, 0.08),
+      transparent 70%
     );
 }
 .dz-seats {
@@ -257,12 +310,13 @@
   border-radius: 16px;
   background: linear-gradient(
     180deg,
-    rgba(20, 52, 39, 0.82),
-    rgba(12, 36, 27, 0.82)
+    rgba(24, 60, 45, 0.86),
+    rgba(10, 32, 24, 0.86)
   );
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.07),
-    0 6px 18px rgba(0, 0, 0, 0.3);
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -8px 16px rgba(0, 0, 0, 0.24),
+    0 8px 20px rgba(0, 0, 0, 0.36);
   min-width: 118px;
   transition:
     border-color var(--motion-fast) ease,
@@ -276,25 +330,41 @@
 }
 .dz-seat.is-turn {
   border-color: var(--dz-gold);
-  box-shadow: 0 0 14px rgba(232, 200, 130, 0.35);
+  animation: dz-turn-breathe 1.6s ease-in-out infinite;
+}
+@keyframes dz-turn-breathe {
+  0%,
+  100% {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      0 0 12px rgba(232, 200, 130, 0.28);
+  }
+  50% {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      0 0 22px rgba(232, 200, 130, 0.5);
+  }
 }
 .dz-seat-avatar {
   display: grid;
   place-items: center;
-  width: 40px;
-  height: 40px;
+  width: 46px;
+  height: 46px;
   font-size: 20px;
   line-height: 1.2;
   border-radius: 50%;
   border: 2px solid var(--dz-line);
   background:
     radial-gradient(
-      circle at 50% 32%,
-      rgba(255, 255, 255, 0.12),
-      transparent 60%
+      circle at 50% 30%,
+      rgba(255, 255, 255, 0.16),
+      transparent 62%
     ),
     var(--dz-panel);
-  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 0 0 3px rgba(232, 200, 130, 0.14),
+    0 3px 10px rgba(0, 0, 0, 0.4),
+    inset 0 1px 2px rgba(255, 255, 255, 0.1);
   overflow: hidden;
 }
 .dz-seat-avatar img {
@@ -320,7 +390,10 @@
 /* 地主金冠环（身份一眼可辨，开源 landlord 的 icon_landlord 语义） */
 .dz-seat-avatar.is-landlord {
   border-color: var(--dz-gold);
-  box-shadow: 0 0 8px rgba(232, 200, 130, 0.45);
+  box-shadow:
+    0 0 0 3px rgba(232, 200, 130, 0.3),
+    0 0 14px rgba(232, 200, 130, 0.5),
+    inset 0 1px 2px rgba(255, 255, 255, 0.12);
 }
 .dz-seat-avatar.is-ai {
   filter: saturate(0.8);
@@ -534,6 +607,9 @@
 }
 .dz-played-card .dz-card {
   cursor: default;
+  box-shadow:
+    0 6px 14px rgba(0, 0, 0, 0.4),
+    0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 /* ── 落牌堆：徽章 + 炸弹/王炸光晕分层（纯 CSS，不依赖位图） ── */
@@ -800,9 +876,24 @@
 }
 /* 中央大花色 */
 .dz-card-pip {
+  position: relative;
   font-size: 22px;
   line-height: 1;
   opacity: 0.85;
+}
+/* 王牌徽章位图：叠在星号降级之上，图缺失仍见角标符号 */
+.dz-card-joker-img {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+  pointer-events: none;
+}
+.dz-card.is-small .dz-card-joker-img {
+  width: 22px;
+  height: 22px;
 }
 .dz-card.is-red .dz-card-pip {
   color: var(--dz-red);
@@ -859,6 +950,13 @@
   overflow-y: visible;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(0, 0, 0, 0.22) 55%,
+    rgba(0, 0, 0, 0.34) 100%
+  );
+  border-radius: var(--r-md) var(--r-md) 0 0;
 }
 .dz-hand::-webkit-scrollbar {
   display: none;
@@ -961,7 +1059,10 @@
 .dz-counter {
   position: relative;
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
+  align-items: center;
+  gap: 8px 12px;
   margin-bottom: 10px;
 }
 .dz-counter-btn {
@@ -983,16 +1084,15 @@
   font-weight: 800;
 }
 .dz-counter-panel {
-  position: absolute;
-  bottom: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  margin-bottom: 10px;
+  position: static;
+  flex-basis: 100%;
   padding: 10px;
-  border: 1px solid var(--dz-line);
+  border: 1px solid var(--dz-line-strong);
   border-radius: var(--r-md);
-  background: rgba(10, 32, 24, 0.96);
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+  background: rgba(10, 32, 24, 0.78);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.4);
   z-index: 20;
   max-width: min(92vw, 460px);
 }
@@ -1147,6 +1247,10 @@
   border: 1px solid var(--dz-line);
   border-radius: var(--r-lg);
   background: var(--dz-panel);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -18px 30px rgba(0, 0, 0, 0.22),
+    0 16px 40px rgba(0, 0, 0, 0.4);
   overflow: hidden;
 }
 .dz-settle .is-win {
@@ -1155,6 +1259,7 @@
   font-weight: 900;
   letter-spacing: 0.01em;
   text-shadow: 0 2px 10px rgba(70, 211, 164, 0.35);
+  animation: dz-settle-pop 0.5s cubic-bezier(0.18, 1.3, 0.3, 1) both;
 }
 .dz-settle .is-lose {
   color: var(--dz-red);
@@ -1162,12 +1267,33 @@
   font-weight: 900;
   letter-spacing: 0.01em;
   text-shadow: 0 2px 10px rgba(224, 82, 82, 0.3);
+  animation: dz-settle-pop 0.5s cubic-bezier(0.18, 1.3, 0.3, 1) both;
+}
+@keyframes dz-settle-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.86);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(0) scale(1.04);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 .dz-settle p:not(.is-win):not(.is-lose) {
   color: var(--dz-sub);
   font-size: 14px;
 }
 .dz-settle .dz-spring {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--dz-gold);
+  background: var(--dz-gold-soft);
   color: var(--dz-gold);
   font-weight: 700;
 }
@@ -1519,6 +1645,14 @@ body:has(.doudizhu-page):where(
   color: var(--dz-mint);
   font-size: 12px;
 }
+/* 提示不可用的行内说明：非错误色，中性小字（随控制条排布）。 */
+.dz-hint-note {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: var(--r-sm);
+  color: var(--dz-sub);
+  font-size: 12px;
+}
 
 /* ── 降级 ────────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
@@ -1634,7 +1768,16 @@ body:has(.doudizhu-page):where(
 .doudizhu-page {
   display: flex;
   flex-direction: column;
+  background:
+    linear-gradient(180deg, rgba(8, 24, 18, 0.5) 0%, rgba(8, 24, 18, 0.74) 100%),
+    url("/games/ddz/ddz-bg-night.webp") center / cover no-repeat,
+    radial-gradient(
+      ellipse at 50% 30%,
+      var(--dz-felt) 0%,
+      var(--dz-felt-deep) 78%
+    );
 }
+/* 背景图缺失时仍由底层渐变兜底；浅色档不挂深色夜景，改用浅底渐变 */
 .dz-table {
   flex: 1;
 }

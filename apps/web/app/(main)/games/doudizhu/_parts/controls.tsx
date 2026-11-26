@@ -24,6 +24,7 @@ export const COMBO_KEY: Record<ComboKind, keyof DzDict> = {
 export function DzControls({
   game,
   hintBid,
+  hintNote,
   selectedCount,
   combo,
   busy,
@@ -38,6 +39,8 @@ export function DzControls({
 }: {
   game: DzGame;
   hintBid: number | null;
+  /** 提示不可用的行内说明（非错误色，仅出牌阶段显示）。 */
+  hintNote: string | null;
   selectedCount: number;
   combo: ComboResult | null;
   busy: boolean;
@@ -178,6 +181,11 @@ export function DzControls({
       {selectedCount > 0 && (
         <span className="dz-combo-count">
           {t.selectedCount.replace("{n}", String(selectedCount))}
+        </span>
+      )}
+      {hintNote && (
+        <span className="dz-hint-note" role="status">
+          {hintNote}
         </span>
       )}
       <button

@@ -51,6 +51,8 @@ export default function DoudizhuRoom({
   const [tab, setTab] = useState("play");
   const [mode, setMode] = useState<"ai" | "pvp">("ai");
   const [hintBid, setHintBid] = useState<number | null>(null);
+  /** 提示不可用时的行内说明（非错误色，自动随下次有效提示清除）。 */
+  const [hintNote, setHintNote] = useState<string | null>(null);
   const [variant, setVariant] = useState<"classic" | "wild" | "nolook">(
     "classic",
   );
@@ -159,6 +161,7 @@ export default function DoudizhuRoom({
       setSt((cur) => (cur ? { ...cur, game: r.game } : cur));
       setSel(new Set());
       setHintBid(null); // 建议已消费/过期
+      setHintNote(null);
       void loadMeta();
     });
   }
@@ -176,6 +179,9 @@ export default function DoudizhuRoom({
       );
       if (r.hintBid !== undefined) setHintBid(r.hintBid); // 显示浮签
       else if (r.hint) setSel(new Set(r.hint));
+      // 轮转到别人/阶段切换瞬间点提示：后端给 null。静默会让玩家以为
+      // 按钮坏了（2026-11-26 实测反馈），行内状态行说一声，不弹错误色。
+      else setHintNote(dict.games.doudizhu.hintNone);
     });
   }
   /** PvP 动作封装：join/leave/deal 同一错误与 busy 管线。 */
@@ -198,6 +204,7 @@ export default function DoudizhuRoom({
   function toggleReady() {
     const mine = pvpRooms?.mine;
     const ready = !(mine?.seats.find((s) => s.is_me)?.ready ?? false);
+    sfx.play("tick");
     void run(async () => {
       await api.post("/api/v1/games/doudizhu/pvp/ready", { ready });
       await loadRooms();
@@ -229,6 +236,7 @@ export default function DoudizhuRoom({
         sel={sel}
         selCombo={selCombo}
         hintBid={hintBid}
+        hintNote={hintNote}
         busy={busy}
         onExit={() => {
           setSt((cur) => (cur ? { ...cur, game: null } : cur));
@@ -301,7 +309,10 @@ export default function DoudizhuRoom({
                     <input
                       type="checkbox"
                       checked={reveal}
-                      onChange={(e) => setReveal(e.target.checked)}
+                      onChange={(e) => {
+                        setReveal(e.target.checked);
+                        sfx.play("select");
+                      }}
                     />
                     {t.revealTip}
                   </label>
