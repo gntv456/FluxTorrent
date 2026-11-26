@@ -247,12 +247,31 @@ export default function DoudizhuRoom({
           if (game.phase === "grab") return void act("grab", 0);
           if (game.phase === "discard") return void act("discard", undefined, []);
           if (game.phase === "double") return void act("double", 0);
+          // 托管口径（2026-11-26 拍板）：领出出最小单张；跟牌先用后端
+          // hint 找压得过的候选——有就出，没有才过。与 PvP 服务端托管
+          // （ai_choose）同口径，不再一律 pass。
           const lead = !game.last || game.last.seat === 0;
           const min = me?.cards.length
             ? sortHand(me.cards).at(-1)
             : undefined;
-          const cards = lead && min !== undefined ? [min] : [];
-          void act("play", undefined, cards);
+          if (lead) {
+            const cards = min !== undefined ? [min] : [];
+            return void act("play", undefined, cards);
+          }
+          // hint 走独立管线：失败/候选为空都落到过牌，绝不空转——
+          // 倒计时归零后 idle 恒真，出错不落牌会每渲染重触发成请求风暴。
+          void (async () => {
+            try {
+              const r = await api.post<HintResp>(
+                "/api/v1/games/doudizhu/action",
+                { action: "hint" },
+              );
+              const cards = r.hint ?? [];
+              void act("play", undefined, cards);
+            } catch {
+              void act("play", undefined, []);
+            }
+          })();
         }}
         onToggle={toggle}
         onBid={(s) => void act("bid", s)}
