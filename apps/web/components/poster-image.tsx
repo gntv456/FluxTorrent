@@ -41,6 +41,7 @@ export function PosterImage({
   rounded = "none",
   sizes,
   fallback,
+  loading,
 }: {
   /** 海报外链；null/undefined 时直接走 fallback（不渲染 <img>） */
   src?: string | null;
@@ -52,6 +53,10 @@ export function PosterImage({
   sizes?: string;
   /** 无图/挂图时的整块替换渲染（如分类色块 + 唱片图标）；缺省用内置占位 */
   fallback?: React.ReactNode;
+  /** 加载策略（加速批二期 2026-11-26）：缺省 lazy 维持全站行为；
+   *  首屏视觉带（PosterRibbon 前 N 张）传 "eager" 提升为立即加载——
+   *  首屏海报是 LCP 候选，写死 lazy 会把 LCP 主动降级。 */
+  loading?: "lazy" | "eager";
 }) {
   const [broken, setBroken] = useState(false);
   // 豆瓣图床防盗链（2026-11）：外链图床一律改走 api 代理出站
@@ -72,7 +77,8 @@ export function PosterImage({
       <img
         src={realSrc}
         alt={alt}
-        loading="lazy"
+        loading={loading ?? "lazy"}
+        fetchPriority={loading === "eager" ? "high" : undefined}
         decoding="async"
         referrerPolicy="no-referrer"
         sizes={sizes}

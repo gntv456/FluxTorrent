@@ -118,7 +118,10 @@ function useLoopCopy(items: PosterItem[], enabled: boolean) {
   return { copies, wrapRef };
 }
 
-/** 轨道渲染：copies 遍 × 每卡右缘留 gap（末张也有 ⇒ -50% 严格对齐） */
+/** 轨道渲染：copies 遍 × 每卡右缘留 gap（末张也有 ⇒ -50% 严格对齐）。
+ *  renderItem 多收一个 copy 序号 c：加速批二期首屏 eager 只给第一遍
+ *  （c===0）的前几张，后续 copy 是跑马灯无缝复制的同一批图，浏览器
+ *  缓存去重后不会真下第二次，但仍不该抢首屏带宽优先级。 */
 function Track({
   items,
   copies,
@@ -132,7 +135,7 @@ function Track({
   cardClass: string;
   cardW: string;
   duration: string;
-  renderItem: (t: PosterItem, i: number) => React.ReactNode;
+  renderItem: (t: PosterItem, i: number, c: number) => React.ReactNode;
 }) {
   return (
     <div
@@ -150,7 +153,7 @@ function Track({
             className={cardClass}
             style={{ width: cardW, marginRight: 12 }}
           >
-            {renderItem(t, i)}
+            {renderItem(t, i, c)}
           </div>
         )),
       )}
@@ -188,8 +191,15 @@ export function PosterRibbon({ items }: { items: PosterItem[] }) {
           }
           cardW="88px"
           duration={`${Math.max(base.length * 4, 24)}s`}
-          renderItem={(t) => (
-            <PosterImage src={t.poster || posterArt(t.id)} alt="" size="lg" />
+          renderItem={(t, i) => (
+            // 加速批二期：首屏视觉带是 LCP 候选，前 4 张（首屏可见范围）
+            // 提升为 eager + 高优先级；其余维持 lazy 跑马灯循环加载
+            <PosterImage
+              src={t.poster || posterArt(t.id)}
+              alt=""
+              size="lg"
+              loading={i < 4 ? "eager" : undefined}
+            />
           )}
         />
       ) : (
@@ -203,8 +213,15 @@ export function PosterRibbon({ items }: { items: PosterItem[] }) {
           }
           cardW="104px"
           duration={`${Math.max(base.length * 4, 24)}s`}
-          renderItem={(t) => (
-            <PosterImage src={t.poster || posterArt(t.id)} alt="" size="lg" />
+          renderItem={(t, i, c) => (
+            // 同上：首屏可见的前 4 张 eager（copies≥2 的循环轨只 eager
+            // 第一遍的前 4 张，后续 copy 维持 lazy 不重复抢带宽）
+            <PosterImage
+              src={t.poster || posterArt(t.id)}
+              alt=""
+              size="lg"
+              loading={c === 0 && i < 4 ? "eager" : undefined}
+            />
           )}
         />
       )}

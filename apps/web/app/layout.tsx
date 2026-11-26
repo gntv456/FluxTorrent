@@ -177,17 +177,23 @@ function ThemeTokenStyle({ tokens }: { tokens?: Record<string, string> }) {
 export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  const { locale, currency } = await getDict();
-  // 术语规则 prop 下发（TermRule 仅 canonical/replacement 两字段，hxpt 实测
-  // 0 条）：i18n/dict-impl.ts 用同一 applyTerms 改写懒加载的原始字典，与 RSC
-  // 出口的 getDict 同函数同输入 → 水合前后逐字一致。
-  // 第二轮瘦身的核心：字典不再作为 LocaleProvider 的 prop 进入 flight
-  // payload（曾按 174KB/页重复计费且 HTML 不可缓存），改为每语言一颗
-  // 懒加载 chunk（SW cache-first，服务端模块初始化预热、SSR 零挂起）。
-  // Suspense 只在字典未就绪时接住挂起，fallback 不写内容——预热使 promise
-  // 在抛出前已落定，React 同步重试，绝不显示空白。
-  const terms = await getAllTerms();
-  const profile = await getSiteProfile();
+  // 加速批二期（2026-11-26）：三连 await 改一次并发。三者最终都落
+  // getSiteProfile（cache() 已去重网络请求——第一次触发取档，其余共享
+  // 同一 promise），此前的串行只是把同一次取档的三段消费排了队；
+  // 并发后 getDict 的术语改写（遍历数千叶子）与 profile 消费重叠执行。
+  const [{ locale, currency }, terms, profile] = await Promise.all([
+    getDict(),
+    // 术语规则 prop 下发（TermRule 仅 canonical/replacement 两字段，hxpt 实测
+    // 0 条）：i18n/dict-impl.ts 用同一 applyTerms 改写懒加载的原始字典，与 RSC
+    // 出口的 getDict 同函数同输入 → 水合前后逐字一致。
+    // 第二轮瘦身的核心：字典不再作为 LocaleProvider 的 prop 进入 flight
+    // payload（曾按 174KB/页重复计费且 HTML 不可缓存），改为每语言一颗
+    // 懒加载 chunk（SW cache-first，服务端模块初始化预热、SSR 零挂起）。
+    // Suspense 只在字典未就绪时接住挂起，fallback 不写内容——预热使 promise
+    // 在抛出前已落定，React 同步重试，绝不显示空白。
+    getAllTerms(),
+    getSiteProfile(),
+  ]);
   // 板块磨砂玻璃（0448）：作用域挂在 <html> 上——顶栏搜索框与部分弹层是
   // portal 到 body 的，挂在 .site-shell 上会漏掉它们（见 glass.css 注释）。
   const glass = glassStyle(profile?.glass);
@@ -213,6 +219,24 @@ export default async function RootLayout({
         {/* TIDE 字体（P5）：已改为**自托管**（见 app/styles/fonts-tide.css + public/fonts/），
             不再请求 Google Fonts —— 保留 unicode-range 分片，浏览器按需加载，
             首访体积不变但彻底摆脱外网依赖；回退链（Songti SC / SimSun）仍是衬线。 */}
+        {/* 加速批二期（2026-11-26）：标题字体 preload。--font-display（全站
+            h1/h2 标题 utility）默认主题 = Bricolage Grotesque，latin 分片
+            一个可变字重文件（400-700）覆盖标题全部字重。@font-face 挂在
+            CSS 链里，浏览器要等 globals.css 解析完才发起字体请求——preload
+            让它与 CSS 并行下载，首屏标题不再先闪回退字体再换装（FOUC）。
+            unicode-range 不拦 preload（提示性而非强约束），中文用户多下这
+            ~15KB latin 分片可接受；山海经主题标题走 Ma Shan Zheng（按需
+            注入链），不 preload 它避免给非默认主题用户白拉两个字体。 */}
+        <link
+          rel="preload"
+          href={
+            "/fonts/bricolage-3y9K6as8bTXq_nANBjzKo3IeZx8z6up5BeSl9D4dj_" +
+            "x9PpZBMlGIInE.woff2"
+          }
+          as="font"
+          type="font/woff2"
+          crossOrigin="anonymous"
+        />
       </head>
       <body>
         {/* 旧内核 polyfill 必须最先执行（先于 next 的路由器水合；见组件注释） */}
