@@ -81,6 +81,21 @@ const nextConfig: NextConfig = {
         source: "/:path(login|register|forgot|reset|offline)",
         headers: [{ key: "Cache-Control", value: "no-store, must-revalidate" }],
       },
+      // 性能（2026-11-26 加速批）：public/ 静态资产此前默认无 Cache-Control，
+      // 回访用户对 197 个字体分片、牌面/勋章/主题 CSS 每次都要条件重验
+      // （一堆 304 往返）。字体/牌图/勋章内容寻址不变，给 30 天；
+      // theme-css 按主题名固定路径但内容会随版本改（gen-theme-css 重新生成），
+      // 只给 1 天。public/ 无内容哈希文件名，故不用 immutable。
+      {
+        source:
+          "/:path(fonts|games|medals|avatars|arcade|brand|backgrounds|" +
+          "icons|cat-icons)/:path*",
+        headers: [{ key: "Cache-Control", value: "public, max-age=2592000" }],
+      },
+      {
+        source: "/theme-css/:path*",
+        headers: [{ key: "Cache-Control", value: "public, max-age=86400" }],
+      },
       // 安全响应头基线（§5.7）：全站生效。
       // HSTS 经 TLS 终结的反代透传后生效；CSP（E1）：Next 内联引导脚本
       // （主题 no-flash / SW 注册 / 主题令牌注入）走 'unsafe-inline' 基线——

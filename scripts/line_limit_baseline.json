@@ -280,7 +280,7 @@
   "apps/api/src/i18n.rs::wide": 2,
   "apps/api/src/invite_http.rs::wide": 1,
   "apps/api/src/iyuu_bridge.rs": 367,
-  "apps/api/src/main.rs": 356,
+  "apps/api/src/main.rs": 331,
   "apps/api/src/main.rs::wide": 10,
   "apps/api/src/mediainfo_service.rs::wide": 2,
   "apps/api/src/push_http.rs::wide": 2,

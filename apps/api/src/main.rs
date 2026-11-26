@@ -46,6 +46,7 @@ mod games;
 mod games_http;
 mod gaps_http;
 mod geo;
+mod gzip_exempt;
 mod http;
 mod i18n;
 mod i18n_validation;
@@ -53,6 +54,7 @@ mod invite_http;
 mod iyuu_bridge; // 抓轨日志识别与打分（0312 音乐站 Logchecker）
 mod iyuu_icon;
 mod logcheck;
+mod logging;
 mod mailer;
 mod mailer_notify;
 mod maintenance;
@@ -143,38 +145,8 @@ fn build_cors() -> actix_cors::Cors {
 #[actix_web::main]
 async fn main() -> anyhow::Result<()> {
     dotenvy::dotenv().ok();
-    use tracing_subscriber::layer::SubscriberExt;
-    use tracing_subscriber::util::SubscriberInitExt;
-    // fmt 层保留 stdout 输出；runtime_log 层把 WARN+ 也写进库（后台「运行日志」页）
-    // FLUX_LOG_JSON=1/true（任务3）：fmt 层切 JSON 输出（容器/日志采集器友好，
-    // flatten_event 把事件字段提到顶层）；缺省保持人读格式不变。runtime_log
-    // 落库层是独立 Layer（只消费字段，与 fmt 格式无关），WARN+ 落库不受影响。
-    let log_json = matches!(
-        std::env::var("FLUX_LOG_JSON")
-            .unwrap_or_default()
-            .to_ascii_lowercase()
-            .as_str(),
-        "1" | "true"
-    );
-    if log_json {
-        tracing_subscriber::registry()
-            .with(
-                tracing_subscriber::EnvFilter::try_from_default_env()
-                    .unwrap_or_else(|_| "info,sqlx=warn".into()),
-            )
-            .with(tracing_subscriber::fmt::layer().json().flatten_event(true))
-            .with(runtime_log::layer("api"))
-            .init();
-    } else {
-        tracing_subscriber::registry()
-            .with(
-                tracing_subscriber::EnvFilter::try_from_default_env()
-                    .unwrap_or_else(|_| "info,sqlx=warn".into()),
-            )
-            .with(tracing_subscriber::fmt::layer())
-            .with(runtime_log::layer("api"))
-            .init();
-    }
+    // 订阅器初始化（FLUX_LOG_JSON 口径）在 logging.rs
+    logging::init_tracing();
 
     let cfg = config::AppConfig::from_env()?;
     let bind = cfg.bind.clone();
@@ -290,6 +262,9 @@ async fn main() -> anyhow::Result<()> {
             .app_data(crate::path_cfg::path_config())
             // 访问日志与凭据脱敏（口径见 access_log.rs）
             .wrap(crate::access_log::build())
+            // JSON gzip：豁免口径与顺序见 gzip_exempt.rs
+            .wrap(actix_web::middleware::Compress::default())
+            .wrap(actix_web::middleware::from_fn(gzip_exempt::gzip_exempt_mw))
             // 0424 traceId（同类站对标 B 批）：响应头 X-Trace-Id + 索引日志
             .wrap(crate::trace_id::TraceId)
             .wrap(build_cors()) // 来源白名单（CORS_ORIGINS）；空则开发态宽松 + 警告

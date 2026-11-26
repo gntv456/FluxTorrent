@@ -140,5 +140,22 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image).*)"],
+  // 性能（2026-11-26 加速批）：matcher 负向前缀收窄 + 静态扩展名豁免。
+  // 此前只排除 _next/static|_next/image，每个字体分片（public/fonts 下
+  // 197 个 woff2）、牌面/勋章/主题 CSS 请求都要进 Edge runtime 解析
+  // cookie、走 isAnonymousOk 白名单。这些前缀在 isAnonymousOk 里本就
+  // 匿名放行（行为=next()），从 matcher 直接排除是等价且零开销的。
+  // /games 特例：既是页面路由又是牌图目录（public/games），不能按前缀
+  // 排除（会把玩法页摘出准入闸）；靠下面的静态扩展名正则豁免 —— 页面
+  // 路由无扩展名照走闸门，/games/ddz/*.webp 这类静态件被豁免。
+  // robots/sitemap/sw.js/manifest/favicon 同理：本就匿名可达，带扩展名
+  // 一并豁免，不再逐请求过闸。
+  matcher: [
+    "/((" +
+      "!_next/static|_next/image|fonts/|medals/|avatars/|theme-css/" +
+      "|arcade/|brand/|backgrounds/|icons/|cat-icons/|i18n/" +
+      "|.*\\.(?:webp|png|jpg|jpeg|gif|svg|ico|woff2?|ttf|css|js|mjs" +
+      "|json|webmanifest|mp4|webm|mp3|txt|xml)$" +
+      ").*)",
+  ],
 };

@@ -36,23 +36,31 @@ export default async function HomePage() {
   // 现在关 showcase = 不拉不渲染（与其它模块同口径）
   const profile = await getSiteProfile().catch(() => null);
   const showcaseOn = profile?.modules?.showcase !== false;
-  let latest: Page<TorrentListItem> | null = null;
-  // 置顶促销公告条（0041 sticky_promotions 的前台消费端；空/失败静默隐藏）
-  let promos: {
-    id: number;
-    title: string;
-    url: string | null;
-    badge: string | null;
-  }[] = [];
-  try {
-    promos = await api.get<
-      { id: number; title: string; url: string | null; badge: string | null }[]
-    >("/api/v1/sticky-promos");
-  } catch {
-    promos = [];
-  }
-  // M3 移动问候条数据（/me/overview 摘要；失败回落 null 只渲染问候语）
-  const ov = await api.get<HomeMeRaw>("/api/v1/me/overview").catch(() => null);
+  // 加速批（2026-11-26）：promos/overview/home/latest 四路数据此前逐段
+  // await，TTFB 是四段内网往返之和；它们相互独立（latest 的显隐判断
+  // 只在渲染侧消费 homeData，不需要先等 home 才发起请求），改一次并发，
+  // TTFB 变四段中的最慢一段。latest 无条件拉取：showcase 关闭时多花的
+  // 一次查询换来首屏并发，渲染侧仍按 showcaseOn/showLatest 裁剪显隐。
+  const [promos, ov, homeData, latest] = await Promise.all([
+    api
+      .get<
+        {
+          id: number;
+          title: string;
+          url: string | null;
+          badge: string | null;
+        }[]
+      >("/api/v1/sticky-promos")
+      .catch(() => []),
+    // M3 移动问候条数据（/me/overview 摘要；失败回落 null 只渲染问候语）
+    api.get<HomeMeRaw>("/api/v1/me/overview").catch(() => null),
+    // 首页数据（SSR 直出，P1 修复）：一次取回完整 HomeData 传给 HomeSections，
+    // 首屏即渲染真内容；后端未启动/异常时降级 null，HomeSections 客户端再拉
+    api.get<HomeData>("/api/v1/home").catch(() => null),
+    paged<TorrentListItem>("/api/v1/torrents", { limit: 12 }).catch(
+      () => null,
+    ),
+  ]);
   const meSummary = homeMeSummary(ov, dateLocale(locale));
   const brandName = profile?.brand || dict.common.brand;
   // 驾驶舱多读 username / seeding：沿用同一份已取到的 overview，不新增请求
@@ -72,15 +80,6 @@ export default async function HomePage() {
         }
       : meSummary;
 
-  // 首页数据（SSR 直出，P1 修复）：一次取回完整 HomeData 传给 HomeSections，
-  // 首屏即渲染真内容，不再退化到"加载中…"客户端壳（伤首屏与 SEO）。
-  let homeData: HomeData | null = null;
-  try {
-    homeData = await api.get<HomeData>("/api/v1/home");
-  } catch {
-    // 后端未启动/异常时降级：HomeSections 客户端会再拉一次
-    homeData = null;
-  }
   // 首页排版（0089 + 四审 L6 单源化）：是否显示海报墙、以及它排在第几格、占多宽，
   // 全部由同一份排版解析结果决定（清单来自 /home.home_sections，解析函数与
   // HomeSections / 后台编辑器共用），页面不再自己数 key、也不再硬拼末尾位置。
@@ -96,13 +95,7 @@ export default async function HomePage() {
     )
       showLatest = layout.some((x) => x.key === "latest");
   }
-  if (showLatest && showcaseOn) {
-    try {
-      latest = await paged<TorrentListItem>("/api/v1/torrents", { limit: 12 });
-    } catch {
-      // 后端未启动时首页降级为空态（本地开发体验）
-    }
-  }
+  const showPosterWall = showLatest && showcaseOn;
   // 已通过审核的资源总数（home.site_data 同源计数）：空态据此区分「冷启动」
   // 与「有资源但都不是活种」两种口径
   const hasApproved = (homeData?.site_data?.torrents ?? 0) > 0;
@@ -198,17 +191,10 @@ export default async function HomePage() {
         me={meView}
         brand={brandName}
         latest={
-          latest === null ? null : latest.items.length > 0 ? (
-            <section className="flex flex-col gap-1">
-              <div className="flex items-baseline justify-between px-1">
-                <h2 className="font-display">{dict.home.latest}</h2>
-                <Link href="/torrents" className="text-xs">
-                  {dict.home.viewAll}
-                </Link>
-              </div>
-              <LatestPosters items={posterItems} />
-            </section>
-          ) : (
+          // 加速批：latest 已改无条件并发拉取，这里补回渲染闸——
+          // showcase 关闭或排版不含 latest 时不再渲染（与旧口径等价）
+          !showPosterWall ? null : latest === null ||
+            latest.items.length === 0 ? (
             <section className="ux-latest-empty">
               <h2 className="ux-latest-empty__head">{dict.home.latest}</h2>
               {/* 主视觉=分类引导（不误导搜索用户）；发布/看活种降为次要动作 */}
@@ -232,6 +218,16 @@ export default async function HomePage() {
                   </Link>
                 )}
               </div>
+            </section>
+          ) : (
+            <section className="flex flex-col gap-1">
+              <div className="flex items-baseline justify-between px-1">
+                <h2 className="font-display">{dict.home.latest}</h2>
+                <Link href="/torrents" className="text-xs">
+                  {dict.home.viewAll}
+                </Link>
+              </div>
+              <LatestPosters items={posterItems} />
             </section>
           )
         }
