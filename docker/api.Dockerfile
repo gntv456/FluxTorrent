@@ -33,6 +33,11 @@ COPY crates ./crates
 RUN cargo chef prepare --recipe-path recipe.json
 
 FROM chef AS builder
+# ort(onnxruntime) 链接需要 libstdc++（rust-lld: unable to find library
+# -lstdc++ 实测）；slim 镜像默认没有。运行时层 bookworm-slim 自带 libstdc++6
+# （v0.5.x 已有二进制依赖同款），只需 builder 层补。
+RUN apt-get update && apt-get install -y --no-install-recommends libstdc++-12-dev \
+    && rm -rf /var/lib/apt/lists/*
 COPY --from=planner /build/recipe.json recipe.json
 # 依赖层：recipe 未变（Cargo.toml/lock 不动）时命中缓存，跳过依赖编译
 RUN cargo chef cook --release --recipe-path recipe.json
@@ -67,7 +72,7 @@ ARG APT_MIRROR=deb.debian.org
 # （pg_dump 15 连 16 服务器直接「version mismatch」），从 PGDG 官方源装 16；
 # PGDG 不可达时回退主源 client（裸机部署自带匹配 pg_dump 的场景不受影响）。
 RUN sed -i s/deb.debian.org/${APT_MIRROR}/g /etc/apt/sources.list.d/debian.sources 2>/dev/null; sed -i s/deb.debian.org/${APT_MIRROR}/g /etc/apt/sources.list 2>/dev/null; apt-get update \
-  && apt-get install -y --no-install-recommends ca-certificates wget gnupg \
+  && apt-get install -y --no-install-recommends ca-certificates wget gnupg libstdc++6 \
   && (wget -qO- https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor -o /usr/share/keyrings/pgdg.grep 2>/dev/null || true) \
   && echo "deb [signed-by=/usr/share/keyrings/pgdg.grep] http://apt.postgresql.org/pub/repos/apt bookworm-pgdg main" > /etc/apt/sources.list.d/pgdg.list \
   && (apt-get update && apt-get install -y --no-install-recommends postgresql-client-16 \
