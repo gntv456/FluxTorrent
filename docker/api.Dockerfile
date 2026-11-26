@@ -47,16 +47,21 @@ RUN cargo build --release -p flux-api --features douzero \
 # 保证下方 COPY 可复现——空目录 = geo.rs 找不到 mmdb，GeoIP 字段静默降级为 null
 RUN mkdir -p apps/api/geoip
 # DouZero 模型权重不入仓库（.gitignore，Apache-2.0）；构建时从 HF 镜像拉取。
-# sha256 与 palemoky/douzero-baselines 的 models_onnx/douzero_WP 一致
-# （下载校验在 RUN 内完成，错一个字节即断构建）。缺模型时运行时静默回落
-# 启发式 ai_choose，不阻塞启动。
+# sha256 逐一核对（错一个字节即断构建），三件齐才放行——此前 `|| rm -f` 掩错
+# 使失败层被缓存固化（空目录进镜像，2026-11-26 dev.48 双站实测踩坑）。
+# 缺模型时运行时静默回落启发式 ai_choose，不阻塞启动。
 ARG HF_MIRROR=hf-mirror.com
+# 缓存钉子：改失效该层缓存时 bump（MODEL_CACHE_BUST=2 起）
+ARG MODEL_CACHE_BUST=2
 RUN mkdir -p apps/api/models/doudizhu \
     && for f in landlord landlord_down landlord_up; do \
          wget -q "https://${HF_MIRROR}/palemoky/douzero-baselines/resolve/main/models_onnx/douzero_WP/$f.onnx" \
-           -O "apps/api/models/doudizhu/$f.onnx" || rm -f "apps/api/models/doudizhu/$f.onnx"; \
+           -O "apps/api/models/doudizhu/$f.onnx"; \
        done \
-    && ls apps/api/models/doudizhu | grep -c onnx || true
+    && echo "5ba2f1bb414483a3ecdf0d000159c1322b02e2d096e6d83be8a18765b56d6d32  apps/api/models/doudizhu/landlord.onnx" \
+           "9b816457615f8007dd3a657dde1f78dac4fec7c3b0041f6f89321a1c6335cbd1  apps/api/models/doudizhu/landlord_down.onnx" \
+           "244ec62a549a0141c6532dffd02bee7675621d095cb194362b47c8a923c95883  apps/api/models/doudizhu/landlord_up.onnx" | sha256sum -c - \
+    && ls -la apps/api/models/doudizhu
 
 FROM ${BASE_REGISTRY}/library/debian:bookworm-slim
 # apt 走官方源：GitHub runner 在海外，换国内镜像（tuna）反被墙/超时——
