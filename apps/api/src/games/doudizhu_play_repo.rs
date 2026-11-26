@@ -55,46 +55,77 @@ pub(crate) async fn expire_stale_tx(
                 "托管代打死循环"
             )));
         }
-        if row.state.phase == Phase::Bidding {
-            let suggested = GameState::suggested_bid(&row.state.hands[0]);
-            let high = row.state.bids.iter().map(|b| b.1).max().unwrap_or(0);
-            row.state
-                .bid(0, ai_bid(suggested, high))
-                .map_err(|e| DomainError::Validation(e.to_string()))?;
-        } else {
-            let seat = 0u8;
-            let hand = row.state.hands[0].clone();
-            let pick = match (&row.state.last, row.state.last_seat) {
-                (Some(c), Some(s)) => {
-                    let prev = c.clone();
-                    let l = row.state.landlord;
-                    ai_choose(&hand, Some((&prev, s)), seat, false, l)
-                }
-                _ => ai_choose(&hand, None, seat, false, row.state.landlord),
-            };
-            // 癞子座退化同 run_ai_segments（出最小非癞子牌）
-            let cards = pick
-                .or_else(|| {
-                    let wilds = &row.state.wildcards[0];
-                    if wilds.is_empty() {
-                        return None;
+        match row.state.phase {
+            Phase::Bidding => {
+                let suggested = GameState::suggested_bid(&row.state.hands[0]);
+                let high =
+                    row.state.bids.iter().map(|b| b.1).max().unwrap_or(0);
+                row.state
+                    .bid(0, ai_bid(suggested, high))
+                    .map_err(|e| DomainError::Validation(e.to_string()))?;
+            }
+            Phase::Grab => {
+                let take = GameState::suggested_bid(&row.state.hands[0]) >= 2;
+                row.state
+                    .grab(0, take)
+                    .map_err(|e| DomainError::Validation(e.to_string()))?;
+            }
+            Phase::Discard => {
+                row.state
+                    .discard(0, &[])
+                    .map_err(|e| DomainError::Validation(e.to_string()))?;
+            }
+            Phase::Double => {
+                let s = GameState::suggested_bid(&row.state.hands[0]);
+                let level = if s >= 3 {
+                    2
+                } else if s >= 2 {
+                    1
+                } else {
+                    0
+                };
+                row.state
+                    .double(0, level)
+                    .map_err(|e| DomainError::Validation(e.to_string()))?;
+            }
+            Phase::Playing => {
+                let seat = 0u8;
+                let hand = row.state.hands[0].clone();
+                let pick = match (&row.state.last, row.state.last_seat) {
+                    (Some(c), Some(s)) => {
+                        let prev = c.clone();
+                        let l = row.state.landlord;
+                        ai_choose(&hand, Some((&prev, s)), seat, false, l)
                     }
-                    hand.iter()
-                        .copied()
-                        .filter(|c| !wilds.contains(c))
-                        .min_by_key(|c| {
-                            std::cmp::Reverse(super::doudizhu::Rank::of(*c))
-                        })
-                        .map(|c| vec![c])
-                })
-                .unwrap_or_default();
-            // 领出必须出牌；候选被拒（癞子面外的边角）则降级过牌
-            if cards.is_empty() && row.state.last.is_none() {
-                break; // 无牌可领的保险出口（手牌空不应到这）
+                    _ => {
+                        ai_choose(&hand, None, seat, false, row.state.landlord)
+                    }
+                };
+                // 癞子座退化同 run_ai_segments（出最小非癞子牌）
+                let cards = pick
+                    .or_else(|| {
+                        let wilds = &row.state.wildcards[0];
+                        if wilds.is_empty() {
+                            return None;
+                        }
+                        hand.iter()
+                            .copied()
+                            .filter(|c| !wilds.contains(c))
+                            .min_by_key(|c| {
+                                std::cmp::Reverse(super::doudizhu::Rank::of(*c))
+                            })
+                            .map(|c| vec![c])
+                    })
+                    .unwrap_or_default();
+                // 领出必须出牌；候选被拒（癞子面外的边角）则降级过牌
+                if cards.is_empty() && row.state.last.is_none() {
+                    break; // 无牌可领的保险出口（手牌空不应到这）
+                }
+                if row.state.play(seat, &cards).is_err() && !cards.is_empty() {
+                    let _ = row.state.play(seat, &[]);
+                }
             }
-            if row.state.play(seat, &cards).is_err() && !cards.is_empty() {
-                let _ = row.state.play(seat, &[]);
-            }
+            Phase::Done => break,
         }
         // 推进对手段
         run_ai_segments(tx, uid, &mut row).await?;
@@ -191,6 +222,11 @@ pub(crate) async fn sync_mirror_tx(
             let seat = ((ev.seat as usize) + shift) % 3;
             let res = match ev.action.as_str() {
                 "bid" => row.state.bid(seat as u8, ev.score.unwrap_or(0)),
+                "grab" => {
+                    row.state.grab(seat as u8, ev.score.unwrap_or(0) != 0)
+                }
+                "discard" => row.state.discard(seat as u8, &ev.cards),
+                "double" => row.state.double(seat as u8, ev.score.unwrap_or(0)),
                 "play" => row.state.play(seat as u8, &ev.cards),
                 _ => Ok(()),
             };
@@ -233,6 +269,37 @@ pub(crate) async fn run_ai_segments(
         let high = row.state.bids.iter().map(|b| b.1).max().unwrap_or(0);
         row.state
             .bid(seat, ai_bid(suggested, high))
+            .map_err(|e| DomainError::Validation(e.to_string()))?;
+    }
+    // AI 抢地主：牌力够（建议叫分 ≥2）才抢，否则不抢。
+    while row.state.phase == Phase::Grab && row.state.turn != 0 {
+        let seat = row.state.turn;
+        let take =
+            GameState::suggested_bid(&row.state.hands[seat as usize]) >= 2;
+        row.state
+            .grab(seat, take)
+            .map_err(|e| DomainError::Validation(e.to_string()))?;
+    }
+    // AI 地主弃三张：托管口径弃 0 张（纯整理阶段，不弃牌不影响推进）。
+    while row.state.phase == Phase::Discard && row.state.turn != 0 {
+        let seat = row.state.turn;
+        row.state
+            .discard(seat, &[])
+            .map_err(|e| DomainError::Validation(e.to_string()))?;
+    }
+    // AI 加倍：强牌超级加倍(2)，中等加倍(1)，弱牌不倍(0)。
+    while row.state.phase == Phase::Double && row.state.turn != 0 {
+        let seat = row.state.turn;
+        let s = GameState::suggested_bid(&row.state.hands[seat as usize]);
+        let level = if s >= 3 {
+            2
+        } else if s >= 2 {
+            1
+        } else {
+            0
+        };
+        row.state
+            .double(seat, level)
             .map_err(|e| DomainError::Validation(e.to_string()))?;
     }
     // AI 出牌

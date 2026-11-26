@@ -46,10 +46,10 @@ export function ModeSwitch({
   onVariant,
 }: {
   mode: "ai" | "pvp";
-  variant: "classic" | "wild";
+  variant: "classic" | "wild" | "nolook";
   busy: boolean;
   onMode: (m: "ai" | "pvp") => void;
-  onVariant: (v: "classic" | "wild") => void;
+  onVariant: (v: "classic" | "wild" | "nolook") => void;
 }) {
   const { dict } = useI18n();
   const t = dict.games.doudizhu;
@@ -66,7 +66,7 @@ export function ModeSwitch({
           {m === "ai" ? t.aiTab : t.pvpTab}
         </button>
       ))}
-      {(["classic", "wild"] as const).map((v) => (
+      {(["classic", "wild", "nolook"] as const).map((v) => (
         <button
           key={v}
           type="button"
@@ -74,7 +74,7 @@ export function ModeSwitch({
           disabled={busy}
           onClick={() => onVariant(v)}
         >
-          {v === "classic" ? t.modeClassic : t.modeWild}
+          {v === "classic" ? t.modeClassic : v === "wild" ? t.modeWild : t.modeNolook}
         </button>
       ))}
     </div>

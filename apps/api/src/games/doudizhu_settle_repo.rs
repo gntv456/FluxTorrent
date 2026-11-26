@@ -4,7 +4,7 @@
 use super::doudizhu::DOU_DIZHU_RAKE;
 use super::doudizhu_game::GameState;
 use super::doudizhu_repo::GameRow;
-use super::doudizhu_settle::{multiplier_of, settle_payout, Role};
+use super::doudizhu_settle::{multiplier_full, settle_payout, Role};
 use crate::economy_http::{earn_spark_tx, SpendOutcome};
 use crate::errors::{DomainError, DomainResult};
 
@@ -103,7 +103,14 @@ pub(crate) async fn settle_finished_tx(
         .unwrap_or(1)
         .max(1);
     let spring = row.state.is_spring();
-    let mult = multiplier_of(call_base, row.state.bombs, spring);
+    let mult = multiplier_full(
+        call_base,
+        row.state.bombs,
+        spring,
+        row.state.reveal,
+        row.state.grabs,
+        &row.state.double_levels,
+    );
     let payout = if player_won {
         let rake = rake_permille_tx(tx).await;
         settle_payout(role, row.stake, mult, rake)

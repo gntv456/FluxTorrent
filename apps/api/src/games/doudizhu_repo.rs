@@ -5,7 +5,7 @@
 //! 结算一笔提交。玩家超时不另起 worker：`expire_stale_tx` 懒托管——
 //! `turn_deadline` 过期就按 AI 到底打完并结算。
 
-use super::doudizhu::deal;
+use super::doudizhu::{deal, deal_nolook};
 use super::doudizhu_game::{GameState, Phase};
 use crate::economy_http::{spend_spark_tx, SpendOutcome};
 use crate::errors::{DomainError, DomainResult};
@@ -117,6 +117,7 @@ pub(crate) async fn start_game_tx(
     stake: i64,
     idem: &str,
     variant: &str,
+    reveal: bool,
 ) -> DomainResult<GameRow> {
     // 幂等重放：同一键已开局则直接还给那一局
     let replay: Option<(i64,)> = sqlx::query_as(
@@ -147,13 +148,18 @@ pub(crate) async fn start_game_tx(
     }
     // 发牌建局：癞子桌按 variant 选 new_wild（此前 variant 参数挂着
     // 却无条件用经典初始化，玩家选癞子实际拿到经典局）。
-    let (hands, kitty) = deal();
+    let (hands, kitty) = if variant == "nolook" {
+        deal_nolook()
+    } else {
+        deal()
+    };
     let hands_vec = [hands[0].to_vec(), hands[1].to_vec(), hands[2].to_vec()];
-    let state = if variant == "wild" {
+    let mut state = if variant == "wild" {
         super::doudizhu_variant::new_wild(hands_vec, kitty.to_vec())
     } else {
-        GameState::new(hands_vec, kitty.to_vec())
+        super::doudizhu_variant::new_nolook(hands_vec, kitty.to_vec())
     };
+    state.reveal = reveal;
     let snapshot = snapshot_of(&state)?;
     let gid: i64 = sqlx::query_scalar(
         "INSERT INTO arcade_doudizhu_games \
@@ -221,6 +227,38 @@ fn snapshot_of(state: &GameState) -> DomainResult<serde_json::Value> {
         .map_err(|e| DomainError::Internal(anyhow::anyhow!(e)))
 }
 
+/// 玩家对局统计（段位派生用，只读 settled 局）。流局 result=NULL 不计胜负。
+pub(crate) struct RankSummary {
+    pub plays: i64,
+    pub wins: i64,
+    pub losses: i64,
+    pub net: i64,
+}
+
+pub(crate) async fn rank_summary(
+    pool: &sqlx::PgPool,
+    uid: i64,
+) -> DomainResult<RankSummary> {
+    let row: (i64, i64, i64, i64) = sqlx::query_as(
+        "SELECT count(*)::bigint, \
+                COALESCE(sum(CASE WHEN result = 'win' THEN 1 ELSE 0 END), 0)::bigint, \
+                COALESCE(sum(CASE WHEN result = 'lose' THEN 1 ELSE 0 END), 0)::bigint, \
+                COALESCE(sum(net), 0)::bigint \
+         FROM arcade_doudizhu_games \
+         WHERE user_id = $1 AND status = 'settled'",
+    )
+    .bind(uid)
+    .fetch_one(pool)
+    .await
+    .map_err(dberr)?;
+    Ok(RankSummary {
+        plays: row.0,
+        wins: row.1,
+        losses: row.2,
+        net: row.3,
+    })
+}
+
 /// 玩家动作（bid/play）入口：先懒托管（挂机代打），再校验 + 推进
 /// + AI + 落库。
 pub(crate) async fn apply_action_tx(
@@ -244,6 +282,23 @@ pub(crate) async fn apply_action_tx(
             let score = score.unwrap_or(0);
             row.state
                 .bid(0, score)
+                .map_err(|e| DomainError::Validation(e.to_string()))?;
+        }
+        "grab" => {
+            let take = score.unwrap_or(0) != 0;
+            row.state
+                .grab(0, take)
+                .map_err(|e| DomainError::Validation(e.to_string()))?;
+        }
+        "discard" => {
+            row.state
+                .discard(0, cards)
+                .map_err(|e| DomainError::Validation(e.to_string()))?;
+        }
+        "double" => {
+            let level = score.unwrap_or(0);
+            row.state
+                .double(0, level)
                 .map_err(|e| DomainError::Validation(e.to_string()))?;
         }
         "play" => {

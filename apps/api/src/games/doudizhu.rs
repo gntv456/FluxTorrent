@@ -64,6 +64,23 @@ pub fn deal() -> ([[u8; 17]; 3], [u8; 3]) {
     (hands, kitty)
 }
 
+/// 不洗牌变体发牌：牌堆按点数成段聚类（段内小幅扰动），起手牌更容易
+/// 凑成顺/对/三条；分配仍严格 17/17/17 + 3 底牌，口径与 [`deal`] 一致。
+pub fn deal_nolook() -> ([[u8; 17]; 3], [u8; 3]) {
+    let mut deck: Vec<u8> = (0..54u8).collect();
+    deck.shuffle(&mut thread_rng());
+    deck.sort_by_key(|c| Rank::of(*c).0);
+    let mut hands = [[0u8; 17]; 3];
+    for seat in 0..3 {
+        let mut cards: Vec<u8> = deck[seat * 17..(seat + 1) * 17].to_vec();
+        cards.sort_by_key(|c| std::cmp::Reverse(Rank::of(*c)));
+        hands[seat].copy_from_slice(&cards);
+    }
+    let mut kitty = [0u8; 3];
+    kitty.copy_from_slice(&deck[51..54]);
+    (hands, kitty)
+}
+
 /// 出牌牌型。`cards` 保持调用方传入的编码列表（识别只用 rank 计数）。
 /// Serialize/Deserialize 供对局快照落 jsonb（`doudizhu_game::GameState`）。
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]

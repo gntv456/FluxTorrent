@@ -118,3 +118,27 @@ export function identifyCombo(cards: number[]): ComboResult {
 
   return { kind: "invalid", valid: false, count };
 }
+
+/** 后端 ComboKind（PascalCase，无 rename_all）→ 前端 ComboKind 归并。
+ *  细分的飞机带单/带对、四带二单/对在前端合并为 plane / fourTwo。 */
+const BACKEND_TO_COMBO: Record<string, ComboKind> = {
+  single: "single",
+  pair: "pair",
+  triple: "triple",
+  triplesingle: "tripleOne",
+  triplepair: "triplePair",
+  straight: "straight",
+  pairstraight: "doublePair",
+  plane: "plane",
+  planesingle: "plane",
+  planepair: "plane",
+  fourtwosingle: "fourTwo",
+  fourtwopair: "fourTwo",
+  bomb: "bomb",
+  rocket: "rocket",
+};
+
+export function comboFromBackend(kind?: string | null): ComboKind | null {
+  if (!kind) return null;
+  return BACKEND_TO_COMBO[kind.toLowerCase()] ?? null;
+}

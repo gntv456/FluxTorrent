@@ -167,8 +167,12 @@ pub(crate) async fn deal_room_tx(
             SpendOutcome::Replayed => {}
         }
     }
-    // 发一副牌（三座共用）
-    let (hands, kitty) = super::doudizhu::deal();
+    // 发一副牌（三座共用）；不洗牌变体走聚类发牌。
+    let (hands, kitty) = if variant == "nolook" {
+        super::doudizhu::deal_nolook()
+    } else {
+        super::doudizhu::deal()
+    };
     let is_wild = variant == "wild";
     let mut first_game_id: Option<i64> = None;
     for (idx, (_seat, uid)) in seats.iter().enumerate() {
@@ -280,4 +284,39 @@ pub(crate) async fn leave_room_tx(
     .await
     .map_err(dberr)?;
     Ok(Some(rid))
+}
+
+/// 切换本人准备状态（waiting 房内有效）；同时刷新 last_seen。
+pub(crate) async fn set_ready_tx(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    uid: i64,
+    ready: bool,
+) -> DomainResult<()> {
+    sqlx::query(
+        "UPDATE arcade_doudizhu_room_seats \
+            SET ready = $2, last_seen = now() \
+          WHERE user_id = $1 AND active",
+    )
+    .bind(uid)
+    .bind(ready)
+    .execute(&mut **tx)
+    .await
+    .map_err(dberr)?;
+    Ok(())
+}
+
+/// 刷新本人活跃座 last_seen（心跳：进房/看房间/动作时调用）。
+pub(crate) async fn touch_seen_db(
+    db: &sqlx::PgPool,
+    uid: i64,
+) -> DomainResult<()> {
+    sqlx::query(
+        "UPDATE arcade_doudizhu_room_seats SET last_seen = now() \
+          WHERE user_id = $1 AND active",
+    )
+    .bind(uid)
+    .execute(db)
+    .await
+    .map_err(dberr)?;
+    Ok(())
 }

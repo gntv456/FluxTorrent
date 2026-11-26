@@ -35,7 +35,7 @@ export function ReplayPanel({
   if (!events.length) return null;
   return (
     <details className="dz-replay">
-      <summary>{t.ruleTitle}</summary>
+      <summary>{t.replayTitle}</summary>
       <ol className="dz-replay-list">
         {events.map((e, i) => (
           <li

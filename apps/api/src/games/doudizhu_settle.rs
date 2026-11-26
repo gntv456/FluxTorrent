@@ -15,6 +15,31 @@ pub fn multiplier_of(call_base: i64, bombs: u32, spring: bool) -> i64 {
     m.min(MULTIPLIER_CAP)
 }
 
+/// 完整倍数链（P2-1）：在基础倍数上叠 明牌×2、抢地主×2^抢次（封顶 2 次）、
+/// 加倍档（1 ×2 / 2 ×4，取三座最高档）；整体仍封顶 [`MULTIPLIER_CAP`]，
+/// 不突破既有 EV<1 回收口径。
+pub fn multiplier_full(
+    call_base: i64,
+    bombs: u32,
+    spring: bool,
+    reveal: bool,
+    grabs: u8,
+    double_levels: &[u8; 3],
+) -> i64 {
+    let mut m = multiplier_of(call_base, bombs, spring);
+    if reveal {
+        m <<= 1;
+    }
+    m <<= grabs.min(2) as u32;
+    let d = double_levels.iter().copied().max().unwrap_or(0);
+    if d >= 2 {
+        m <<= 2;
+    } else if d == 1 {
+        m <<= 1;
+    }
+    m.min(MULTIPLIER_CAP)
+}
+
 /// 抽水后倍率（千分比）：倍数 × (1000 − rake)，向下取整；rake 钳硬上限。
 pub fn raked_mult_permille(mult: i64, rake_permille: i64) -> i64 {
     let rake = rake_permille.clamp(0, RAKE_PERMILLE_HARD_CAP);
@@ -87,4 +112,26 @@ pub fn doudizhu_expected_value(rake_permille: i64) -> f64 {
         win_rate_landlord * 2.0 * avg_mult * rake - (1.0 - win_rate_landlord);
     let farm_ev = win_rate_farmer * avg_mult * rake - (1.0 - win_rate_farmer);
     p_landlord * land_ev + (1.0 - p_landlord) * farm_ev
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn multiplier_full_stacks_and_caps() {
+        // 基础：叫 1 分、无炸弹无春天无加成 = 1
+        assert_eq!(multiplier_full(1, 0, false, false, 0, &[0, 0, 0]), 1);
+        // 明牌 ×2
+        assert_eq!(multiplier_full(1, 0, false, true, 0, &[0, 0, 0]), 2);
+        // 抢地主一次 ×2 + 加倍一档 ×2 = 4
+        assert_eq!(multiplier_full(1, 0, false, false, 1, &[1, 0, 0]), 4);
+        // 超级加倍 ×4 + 明牌 ×2 = 8（封顶）
+        assert_eq!(multiplier_full(1, 0, false, true, 0, &[2, 0, 0]), 8);
+        // 全部叠乘仍封顶 8
+        assert_eq!(
+            multiplier_full(3, 3, true, true, 2, &[2, 2, 2]),
+            MULTIPLIER_CAP
+        );
+    }
 }

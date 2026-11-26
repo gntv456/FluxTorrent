@@ -58,6 +58,30 @@ fn simulate(seed: u32) -> (usize, u8) {
     if g.phase == Phase::Done {
         return (0, u8::MAX);
     }
+    // 抢地主：AI 按牌力表态抢/不抢
+    while g.phase == Phase::Grab {
+        let seat = g.turn;
+        let take = GameState::suggested_bid(&g.hands[seat as usize]) >= 2;
+        g.grab(seat, take).unwrap();
+    }
+    // 弃三张：AI 地主不弃牌
+    if g.phase == Phase::Discard {
+        let seat = g.turn;
+        g.discard(seat, &[]).unwrap();
+    }
+    // 加倍：AI 按牌力表态加倍档
+    while g.phase == Phase::Double {
+        let seat = g.turn;
+        let s = GameState::suggested_bid(&g.hands[seat as usize]);
+        let level = if s >= 3 {
+            2
+        } else if s >= 2 {
+            1
+        } else {
+            0
+        };
+        g.double(seat, level).unwrap();
+    }
     // 出牌轮转：三家全用 ai_choose 决策，验证不卡死
     let mut steps = 0;
     while g.phase == Phase::Playing {

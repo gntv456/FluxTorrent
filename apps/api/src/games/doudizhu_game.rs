@@ -17,6 +17,12 @@ use serde::{Deserialize, Serialize};
 pub enum Phase {
     /// 叫分中（按座轮流报 0..3 分）。
     Bidding,
+    /// 抢地主：候选地主之外两家表态抢/不抢，每抢一次换候选并计一次。
+    Grab,
+    /// 弃三张：地主从手牌弃 0..3 张弱牌（整理手牌，不改倍数）。
+    Discard,
+    /// 加倍：三家出牌前表态加倍档（0 不倍 / 1 加倍×2 / 2 超级加倍×4）。
+    Double,
     /// 出牌中。
     Playing,
     /// 已终局（结算数据回填 DB 列，快照保留 events）。
@@ -63,6 +69,21 @@ pub struct GameState {
     /// 缺省空 = 经典模式（0521 存量快照无此字段，serde default 兼容）。
     #[serde(default)]
     pub wildcards: WildMap,
+    /// 明牌：开局选择，倍数 ×2（P2-1）。
+    #[serde(default)]
+    pub reveal: bool,
+    /// 抢地主表态记录 (seat, take)。
+    #[serde(default)]
+    pub grab_votes: Vec<(u8, bool)>,
+    /// 抢地主成功次数（每次抢换候选地主 +1）。
+    #[serde(default)]
+    pub grabs: u8,
+    /// 地主弃出的牌（不入桌面出牌）。
+    #[serde(default)]
+    pub discards: Vec<u8>,
+    /// 各座位加倍档 0..2（0 不倍 / 1 加倍 / 2 超级加倍）。
+    #[serde(default)]
+    pub double_levels: [u8; 3],
 }
 
 /// 癞子映射：seat → 该座手牌中被指定为癞子的牌编码列表。
@@ -86,6 +107,11 @@ impl GameState {
             events: Vec::new(),
             finished: None,
             wildcards: [Vec::new(), Vec::new(), Vec::new()],
+            reveal: false,
+            grab_votes: Vec::new(),
+            grabs: 0,
+            discards: Vec::new(),
+            double_levels: [0, 0, 0],
         }
     }
 
@@ -127,10 +153,10 @@ impl GameState {
             score: Some(score),
             cards: Vec::new(),
         });
-        // 有人叫 3：立刻定地主
+        // 有人叫 3：立刻定候选地主，进入抢地主环节
         if score == 3 {
             self.landlord = Some(seat);
-            self.enter_playing(seat);
+            self.enter_grab(seat);
             return Ok(());
         }
         if self.bids.len() == 3 {
@@ -148,15 +174,24 @@ impl GameState {
                 return Ok(());
             };
             self.landlord = Some(seat);
-            self.enter_playing(seat);
+            self.enter_grab(seat);
             return Ok(());
         }
         self.turn = (self.turn + 1) % 3;
         Ok(())
     }
 
-    fn enter_playing(&mut self, landlord: u8) {
-        self.phase = Phase::Playing;
+    /// 叫分落定候选地主：进入抢地主环节（底牌暂不并入，地主最终落定后再发）。
+    fn enter_grab(&mut self, candidate: u8) {
+        self.phase = Phase::Grab;
+        self.landlord = Some(candidate);
+        // 候选下家先表态，候选本人不表态。
+        self.turn = (candidate + 1) % 3;
+    }
+
+    /// 抢地主结束、地主最终落定：并入底牌，进入弃三张环节。
+    fn enter_discard(&mut self, landlord: u8) {
+        self.phase = Phase::Discard;
         // 地主拿底牌
         let kitty = std::mem::take(&mut self.kitty);
         let hand = &mut self.hands[landlord as usize];
@@ -183,6 +218,124 @@ impl GameState {
                 }
             }
         }
+    }
+
+    /// 抢地主表态：`take` = 是否抢。抢成功则候选换人、抢次 +1。
+    /// 候选本人不表态；另两家各表态一次后结束。
+    pub fn grab(&mut self, seat: u8, take: bool) -> Result<(), &'static str> {
+        if self.phase != Phase::Grab {
+            return Err("当前不在抢地主阶段");
+        }
+        if seat != self.turn {
+            return Err("还没轮到该座表态");
+        }
+        let Some(candidate) = self.landlord else {
+            return Err("候选地主未定");
+        };
+        if seat == candidate {
+            return Err("候选地主本人不抢");
+        }
+        self.grab_votes.push((seat, take));
+        self.events.push(Event {
+            seat,
+            action: "grab".into(),
+            score: Some(if take { 1 } else { 0 }),
+            cards: Vec::new(),
+        });
+        if take {
+            self.landlord = Some(seat);
+            self.grabs += 1;
+        }
+        if self.grab_votes.len() >= 2 {
+            let landlord = self.landlord.unwrap_or(candidate);
+            self.enter_discard(landlord);
+            return Ok(());
+        }
+        // 轮转下一个非候选、未表态座位
+        let mut next = (self.turn + 1) % 3;
+        while next == self.landlord.unwrap_or(candidate)
+            || self.grab_votes.iter().any(|(s, _)| *s == next)
+        {
+            next = (next + 1) % 3;
+        }
+        self.turn = next;
+        Ok(())
+    }
+
+    /// 地主弃三张：从手牌弃 0..3 张弱牌（纯整理，不改倍数）。
+    pub fn discard(
+        &mut self,
+        seat: u8,
+        cards: &[u8],
+    ) -> Result<(), &'static str> {
+        if self.phase != Phase::Discard {
+            return Err("当前不在弃牌阶段");
+        }
+        let Some(landlord) = self.landlord else {
+            return Err("地主未定");
+        };
+        if seat != landlord {
+            return Err("只有地主可以弃牌");
+        }
+        if cards.len() > 3 {
+            return Err("最多弃三张");
+        }
+        // 手牌校验
+        let hand = &self.hands[seat as usize];
+        let mut known: Vec<u8> = hand.clone();
+        for &c in cards {
+            let Some(pos) = known.iter().position(|&k| k == c) else {
+                return Err("手里没有这张牌");
+            };
+            known.remove(pos);
+        }
+        for &c in cards {
+            let pos = self.hands[seat as usize]
+                .iter()
+                .position(|&k| k == c)
+                .expect("上面已校验");
+            self.hands[seat as usize].remove(pos);
+        }
+        self.discards.extend(cards.iter().copied());
+        self.events.push(Event {
+            seat,
+            action: "discard".into(),
+            score: None,
+            cards: cards.to_vec(),
+        });
+        // 进加倍环节：三家从座位 0 起轮流表态
+        self.phase = Phase::Double;
+        self.turn = 0;
+        Ok(())
+    }
+
+    /// 加倍表态：level 0 不倍 / 1 加倍×2 / 2 超级加倍×4。三家各表态一次后进出牌。
+    pub fn double(&mut self, seat: u8, level: i64) -> Result<(), &'static str> {
+        if self.phase != Phase::Double {
+            return Err("当前不在加倍阶段");
+        }
+        if seat != self.turn {
+            return Err("还没轮到该座表态");
+        }
+        let level = level.clamp(0, 2) as u8;
+        self.double_levels[seat as usize] = level;
+        self.events.push(Event {
+            seat,
+            action: "double".into(),
+            score: Some(level as i64),
+            cards: Vec::new(),
+        });
+        if self.turn == 2 {
+            // 三票齐：进出牌，地主首出
+            self.phase = Phase::Playing;
+            self.last = None;
+            self.last_seat = None;
+            self.passes = 0;
+            self.turn = self.landlord.unwrap_or(0);
+            return Ok(());
+        }
+        self.turn = (self.turn + 1) % 3;
+        Ok(())
     }
 
     /// 玩家出牌：`cards` 为空 = 过牌（领出者不许过）。

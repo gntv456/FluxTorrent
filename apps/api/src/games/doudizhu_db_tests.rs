@@ -19,7 +19,7 @@ async fn start_debits_and_creates_game() {
     let (uid, balance) = mk_user(&db, 10_000).await;
     let idem = format!("game-dz:{}:t1", uid);
     let mut tx = db.begin().await.unwrap();
-    let row = start_game_tx(&mut tx, uid, 100, &idem, "classic")
+    let row = start_game_tx(&mut tx, uid, 100, &idem, "classic", false)
         .await
         .unwrap();
     tx.commit().await.unwrap();
@@ -44,7 +44,7 @@ async fn start_debits_and_creates_game() {
     assert_ne!(row.state.phase, Phase::Done);
     // 幂等重放：同键再开，返回同一局不重扣
     let mut tx = db.begin().await.unwrap();
-    let row2 = start_game_tx(&mut tx, uid, 100, &idem, "classic")
+    let row2 = start_game_tx(&mut tx, uid, 100, &idem, "classic", false)
         .await
         .unwrap();
     tx.commit().await.unwrap();
@@ -68,7 +68,7 @@ async fn full_game_settles_with_ledger() {
     let (uid, balance) = mk_user(&db, 100_000).await;
     let idem = format!("game-dz:{}:t2", uid);
     let mut tx = db.begin().await.unwrap();
-    let mut row = start_game_tx(&mut tx, uid, 100, &idem, "classic")
+    let mut row = start_game_tx(&mut tx, uid, 100, &idem, "classic", false)
         .await
         .unwrap();
     tx.commit().await.unwrap();
@@ -138,7 +138,7 @@ async fn start_wild_initializes_wildcards() {
     let (uid, _) = mk_user(&db, 10_000).await;
     let idem = format!("game-dz:{}:wild-init", uid);
     let mut tx = db.begin().await.unwrap();
-    let row = start_game_tx(&mut tx, uid, 100, &idem, "wild")
+    let row = start_game_tx(&mut tx, uid, 100, &idem, "wild", false)
         .await
         .unwrap();
     tx.commit().await.unwrap();
@@ -176,7 +176,7 @@ async fn full_wild_game_settles() {
     let (uid, balance) = mk_user(&db, 100_000).await;
     let idem = format!("game-dz:{}:wild-full", uid);
     let mut tx = db.begin().await.unwrap();
-    start_game_tx(&mut tx, uid, 100, &idem, "wild")
+    start_game_tx(&mut tx, uid, 100, &idem, "wild", false)
         .await
         .unwrap();
     tx.commit().await.unwrap();
@@ -235,7 +235,7 @@ async fn concurrent_start_rejected_by_unique_index() {
     let (uid, _) = mk_user(&db, 10_000).await;
     let idem_a = format!("game-dz:{}:ca", uid);
     let mut tx = db.begin().await.unwrap();
-    start_game_tx(&mut tx, uid, 100, &idem_a, "classic")
+    start_game_tx(&mut tx, uid, 100, &idem_a, "classic", false)
         .await
         .unwrap();
     tx.commit().await.unwrap();

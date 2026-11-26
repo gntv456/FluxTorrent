@@ -8,7 +8,7 @@ use serde::Deserialize;
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
 use crate::games::doudizhu_pvp_repo::{
-    deal_room_tx, join_or_create_tx, leave_room_tx,
+    deal_room_tx, join_or_create_tx, leave_room_tx, set_ready_tx, touch_seen_db,
 };
 use crate::games::doudizhu_pvp_view::{list_waiting, load_room, my_room};
 use crate::games::doudizhu_repo::load_active;
@@ -24,6 +24,7 @@ fn parse_variant(v: &str) -> Option<&'static str> {
     match v {
         "classic" => Some("classic"),
         "wild" => Some("wild"),
+        "nolook" => Some("nolook"),
         _ => None,
     }
 }
@@ -40,12 +41,13 @@ fn room_view_json(
         "status": room.status,
         "is_owner": false, // 由调用方按 uid 覆写
         "my_seat": my_seat,
-        "seats": room.seats.iter().map(|(_id, seat, uid, ready)| {
+        "seats": room.seats.iter().map(|(_id, seat, uid, ready, online)| {
             serde_json::json!({
                 "seat": seat,
                 "filled": true,
                 "is_me": my_seat.is_some_and(|ms| ms == *seat),
                 "ready": ready,
+                "online": online,
                 "user_id": if my_seat == Some(*seat) {
                     *uid
                 } else {
@@ -54,7 +56,7 @@ fn room_view_json(
             })
         }).collect::<Vec<_>>(),
         "empty_seats": (0..3i16).filter(|s|
-            !room.seats.iter().any(|(_, seat, _, _)| seat == s))
+            !room.seats.iter().any(|(_, seat, _, _, _)| seat == s))
             .collect::<Vec<_>>(),
         "_owner_id": room.owner_id,
         "_seat_ids": room.seats.iter().map(|(id, ..)| id).collect::<Vec<_>>(),
@@ -75,7 +77,7 @@ pub(super) async fn dz_pvp_rooms(
     let my_seat = mine.as_ref().and_then(|r| {
         r.seats
             .iter()
-            .find(|(_, _, uid, _)| *uid == auth.id)
+            .find(|(_, _, uid, _, _)| *uid == auth.id)
             .map(|s| s.1)
     });
     Ok(ok(serde_json::json!({
@@ -126,12 +128,13 @@ pub(super) async fn dz_pvp_join(
         ));
     }
     let variant = parse_variant(&body.variant).ok_or_else(|| {
-        DomainError::Validation("variant 仅支持 classic/wild".into())
+        DomainError::Validation("variant 仅支持 classic/wild/nolook".into())
     })?;
     let mut tx = state.repo.db.begin().await.map_err(dberr)?;
     let (rid, seat, joined) =
         join_or_create_tx(&mut tx, auth.id, body.stake, variant).await?;
     tx.commit().await.map_err(dberr)?;
+    touch_seen_db(&state.repo.db, auth.id).await?;
     state
         .repo
         .audit(Some(auth.id), "game.doudizhu_pvp", None)
@@ -160,6 +163,41 @@ pub(super) async fn dz_pvp_leave(
     let left = leave_room_tx(&mut tx, auth.id).await?;
     tx.commit().await.map_err(dberr)?;
     Ok(ok(serde_json::json!({ "left_room": left })))
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct DzReadyReq {
+    ready: bool,
+}
+
+/// 准备/取消准备（waiting 房内）。满三人且全部准备好，房主即可开局。
+#[post("/games/doudizhu/pvp/ready")]
+pub(super) async fn dz_pvp_ready(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<DzReadyReq>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    check_minclass(&state, "doudizhu", auth.class_id).await?;
+    let mut tx = state.repo.db.begin().await.map_err(dberr)?;
+    set_ready_tx(&mut tx, auth.id, body.ready).await?;
+    tx.commit().await.map_err(dberr)?;
+    let room = my_room(&state.repo.db, auth.id).await?;
+    let my_seat = room.as_ref().and_then(|r| {
+        r.seats
+            .iter()
+            .find(|(_, _, uid, _, _)| *uid == auth.id)
+            .map(|s| s.1)
+    });
+    Ok(ok(serde_json::json!({
+        "ready": body.ready,
+        "room": room.as_ref().map(|r| {
+            let mut v = room_view_json(r, my_seat);
+            v["is_owner"] = serde_json::json!(r.owner_id == auth.id);
+            v
+        }),
+    })))
 }
 
 /// 房主开局：满员即发牌建三行镜像局；此时各座的活跃局即可通过
@@ -205,11 +243,12 @@ pub(super) async fn dz_pvp_state(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     check_minclass(&state, "doudizhu", auth.class_id).await?;
+    touch_seen_db(&state.repo.db, auth.id).await?;
     let room = my_room(&state.repo.db, auth.id).await?;
     let my_seat = room.as_ref().and_then(|r| {
         r.seats
             .iter()
-            .find(|(_, _, uid, _)| *uid == auth.id)
+            .find(|(_, _, uid, _, _)| *uid == auth.id)
             .map(|s| s.1)
     });
     let game = load_active(&state.repo.db, auth.id).await?;

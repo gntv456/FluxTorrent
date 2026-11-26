@@ -5,7 +5,7 @@ import type { ComboKind, ComboResult } from "./combo";
 
 /** 牌型 → 三语文案键（识别器仅用于选牌阶段软提示，合法性仍以后端为准）。 */
 type DzDict = ReturnType<typeof useI18n>["dict"]["games"]["doudizhu"];
-const COMBO_KEY: Record<ComboKind, keyof DzDict> = {
+export const COMBO_KEY: Record<ComboKind, keyof DzDict> = {
   single: "comboSingle",
   pair: "comboPair",
   triple: "comboTriple",
@@ -31,6 +31,10 @@ export function DzControls({
   onPlay,
   onPass,
   onHint,
+  onGrab,
+  onDiscard,
+  onKeep,
+  onDouble,
 }: {
   game: DzGame;
   hintBid: number | null;
@@ -41,6 +45,10 @@ export function DzControls({
   onPlay: () => void;
   onPass: () => void;
   onHint: () => void;
+  onGrab: (take: boolean) => void;
+  onDiscard: () => void;
+  onKeep: () => void;
+  onDouble: (level: number) => void;
 }) {
   const { dict } = useI18n();
   const t = dict.games.doudizhu;
@@ -60,11 +68,88 @@ export function DzControls({
             type="button"
             className="dz-btn"
             disabled={busy || !game.my_turn}
+            aria-keyshortcuts={String(s)}
             onClick={() => onBid(s)}
           >
             {bidLabel(s)}
           </button>
         ))}
+      </div>
+    );
+  }
+  if (game.phase === "grab") {
+    return (
+      <div className="dz-controls" role="group" aria-label={t.grabTitle}>
+        <button
+          type="button"
+          className="dz-btn"
+          disabled={busy || !game.my_turn}
+          onClick={() => onGrab(true)}
+        >
+          {t.grabYes}
+        </button>
+        <button
+          type="button"
+          className="dz-btn"
+          disabled={busy || !game.my_turn}
+          onClick={() => onGrab(false)}
+        >
+          {t.grabNo}
+        </button>
+      </div>
+    );
+  }
+  if (game.phase === "discard") {
+    const invalid = selectedCount > 3;
+    return (
+      <div className="dz-controls" role="group" aria-label={t.discardTitle}>
+        <span className="dz-combo-count">{t.discardTip}</span>
+        <button
+          type="button"
+          className="dz-btn"
+          disabled={busy}
+          onClick={onKeep}
+        >
+          {t.discardKeep}
+        </button>
+        <button
+          type="button"
+          className="dz-btn is-primary"
+          disabled={busy || invalid}
+          onClick={() => onDiscard()}
+        >
+          {t.discardBtn}
+        </button>
+      </div>
+    );
+  }
+  if (game.phase === "double") {
+    return (
+      <div className="dz-controls" role="group" aria-label={t.doubleTitle}>
+        <button
+          type="button"
+          className="dz-btn"
+          disabled={busy || !game.my_turn}
+          onClick={() => onDouble(0)}
+        >
+          {t.double0}
+        </button>
+        <button
+          type="button"
+          className="dz-btn"
+          disabled={busy || !game.my_turn}
+          onClick={() => onDouble(1)}
+        >
+          {t.double1}
+        </button>
+        <button
+          type="button"
+          className="dz-btn is-primary"
+          disabled={busy || !game.my_turn}
+          onClick={() => onDouble(2)}
+        >
+          {t.double2}
+        </button>
       </div>
     );
   }
@@ -90,13 +175,27 @@ export function DzControls({
           {t[COMBO_KEY[combo.kind]]}
         </span>
       )}
-      <button type="button" className="dz-btn" disabled={busy} onClick={onHint}>
+      {selectedCount > 0 && (
+        <span className="dz-combo-count">
+          {t.selectedCount.replace("{n}", String(selectedCount))}
+        </span>
+      )}
+      <button
+        type="button"
+        className="dz-btn"
+        disabled={busy}
+        aria-keyshortcuts="h"
+        title="H"
+        onClick={onHint}
+      >
         {t.hintBtn}
       </button>
       <button
         type="button"
         className="dz-btn"
         disabled={busy || mustLead}
+        aria-keyshortcuts="Space"
+        title="Space"
         onClick={onPass}
       >
         {t.passBtn}
@@ -105,6 +204,8 @@ export function DzControls({
         type="button"
         className="dz-btn is-primary"
         disabled={!canPlay}
+        aria-keyshortcuts="Enter"
+        title="Enter"
         onClick={onPlay}
       >
         {t.playBtn}

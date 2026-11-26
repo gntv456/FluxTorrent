@@ -770,6 +770,8 @@ export const jaPart3 = {
     giftTo: "贈る相手",
     giftToPh: "受取人のユーザー名",
     giftToNeed: "受取人のユーザー名を入力してください",
+    giftNote: "メッセージ",
+    giftNotePh: "任意、ギフトと一緒に届く（最大100字）",
   },
   vouchers: {
     title: "自分のクーポン",

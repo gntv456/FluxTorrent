@@ -202,10 +202,11 @@ async fn pvp_idle_kicks_ai_to_settlement() {
     let idem = format!("game-dz:{}:idle", a);
     // AI 房走同一条 apply_action_tx 管线（idle_secs 参数一致）
     let mut tx = db.begin().await.unwrap();
-    let row =
-        super::doudizhu_repo::start_game_tx(&mut tx, a, 100, &idem, "classic")
-            .await
-            .unwrap();
+    let row = super::doudizhu_repo::start_game_tx(
+        &mut tx, a, 100, &idem, "classic", false,
+    )
+    .await
+    .unwrap();
     tx.commit().await.unwrap();
     // 回拨 updated_at 61 秒（阈值 60）模拟挂机
     sqlx::query(

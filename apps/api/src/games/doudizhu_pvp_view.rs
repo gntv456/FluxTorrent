@@ -14,7 +14,20 @@ pub(crate) struct RoomRow {
     pub stake: i64,
     pub status: String,
     pub owner_id: i64,
-    pub seats: Vec<(i64, i16, i64, bool)>, // (seat, seat_no, user_id, ready)
+    pub seats: Vec<(i64, i16, i64, bool, bool)>,
+}
+
+/// 座位在线判定窗口（秒）：last_seen 在该窗口内视为在线。
+pub(crate) const ONLINE_WINDOW_SECS: i64 = 30;
+
+fn seat_rows(
+    rows: Vec<(i16, i64, bool, bool)>,
+) -> Vec<(i64, i16, i64, bool, bool)> {
+    rows.into_iter()
+        .map(|(seat, user_id, ready, online)| {
+            (i64::from(seat), seat, user_id, ready, online)
+        })
+        .collect()
 }
 
 /// 读房间 + 座位。
@@ -34,11 +47,14 @@ pub(crate) async fn load_room(
     let Some((id, variant, stake, status, owner_id)) = head else {
         return Ok(None);
     };
-    let seats: Vec<(i16, i64, bool)> = sqlx::query_as(
-        "SELECT seat, user_id, ready FROM arcade_doudizhu_room_seats \
+    let seats: Vec<(i16, i64, bool, bool)> = sqlx::query_as(
+        "SELECT seat, user_id, ready, \
+                (now() - last_seen < make_interval(secs => $2)) AS online \
+           FROM arcade_doudizhu_room_seats \
           WHERE room_id = $1 ORDER BY seat",
     )
     .bind(rid)
+    .bind(ONLINE_WINDOW_SECS)
     .fetch_all(db)
     .await
     .map_err(dberr)?;
@@ -48,12 +64,7 @@ pub(crate) async fn load_room(
         stake,
         status,
         owner_id,
-        seats: seats
-            .into_iter()
-            .map(|(seat, user_id, ready)| {
-                (i64::from(seat), seat, user_id, ready)
-            })
-            .collect(),
+        seats: seat_rows(seats),
     }))
 }
 /// 玩家的活跃房间（含座位）。
@@ -96,11 +107,14 @@ pub(crate) async fn list_waiting(
     .map_err(dberr)?;
     let mut out = Vec::new();
     for (id, variant, stake, status, owner_id) in heads {
-        let seats: Vec<(i16, i64, bool)> = sqlx::query_as(
-            "SELECT seat, user_id, ready FROM arcade_doudizhu_room_seats \
+        let seats: Vec<(i16, i64, bool, bool)> = sqlx::query_as(
+            "SELECT seat, user_id, ready, \
+                    (now() - last_seen < make_interval(secs => $2)) AS online \
+               FROM arcade_doudizhu_room_seats \
               WHERE room_id = $1 ORDER BY seat",
         )
         .bind(id)
+        .bind(ONLINE_WINDOW_SECS)
         .fetch_all(db)
         .await
         .map_err(dberr)?;
@@ -110,12 +124,7 @@ pub(crate) async fn list_waiting(
             stake,
             status,
             owner_id,
-            seats: seats
-                .into_iter()
-                .map(|(seat, user_id, ready)| {
-                    (i64::from(seat), seat, user_id, ready)
-                })
-                .collect(),
+            seats: seat_rows(seats),
         });
     }
     Ok(out)

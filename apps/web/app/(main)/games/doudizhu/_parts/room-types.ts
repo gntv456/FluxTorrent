@@ -29,7 +29,7 @@ export interface TableLast {
 
 export interface DzEvent {
   seat: number;
-  action: "bid" | "play" | "pass";
+  action: "bid" | "grab" | "discard" | "double" | "play" | "pass";
   score?: number | null;
   cards?: number[];
 }
@@ -37,7 +37,7 @@ export interface DzEvent {
 export interface DzGame {
   id: number;
   status: "bidding" | "playing" | "settled";
-  phase: "bidding" | "playing" | "done";
+  phase: "bidding" | "grab" | "discard" | "double" | "playing" | "done";
   turn: number;
   my_turn: boolean;
   stake: number;
@@ -51,6 +51,18 @@ export interface DzGame {
   result: "win" | "lose" | null;
   payout: number;
   net: number;
+  /** 春天/反春：终局时一方几乎未出牌，倍数翻倍。 */
+  spring: boolean;
+  /** 明牌：开局选择，倍数 ×2。 */
+  reveal: boolean;
+  /** 抢地主成功次数。 */
+  grabs: number;
+  /** 地主弃出的牌。 */
+  discards: number[];
+  /** 各座位加倍档 0/1/2。 */
+  double_levels: number[];
+  /** 抢地主投票：[座位, 是否抢]。 */
+  grab_votes?: [number, boolean][];
   seats: Seat[];
   events_tail: DzEvent[];
     events?: DzEvent[];

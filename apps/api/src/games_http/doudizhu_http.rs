@@ -65,6 +65,12 @@ pub(super) fn room_view(row: &GameRow) -> serde_json::Value {
         "result": row.result,
         "payout": row.payout,
         "net": row.net,
+        "spring": row.spring,
+        "reveal": g.reveal,
+        "grabs": g.grabs,
+        "discards": g.discards.clone(),
+        "double_levels": g.double_levels,
+        "grab_votes": g.grab_votes.clone(),
         "seats": seats,
         "events_tail": g.events.iter().rev().take(12).rev()
             .map(|e| serde_json::json!({
@@ -127,9 +133,12 @@ pub(super) async fn dz_state(
 #[serde(deny_unknown_fields)]
 struct DzStartReq {
     stake: i64,
-    /// 规则变体：classic（缺省）| wild（癞子）。
+    /// 规则变体：classic（缺省）| wild（癞子）| nolook（不洗牌）。
     #[serde(default)]
     variant: String,
+    /// 明牌：开局选择，倍数 ×2。
+    #[serde(default)]
+    reveal: bool,
     #[serde(default)]
     idempotency_key: Option<String>,
 }
@@ -159,16 +168,24 @@ pub(super) async fn dz_start(
     let variant = match body.variant.as_str() {
         "" | "classic" => "classic",
         "wild" => "wild",
+        "nolook" => "nolook",
         _ => {
             return Err(DomainError::Validation(
-                "variant 仅支持 classic/wild".into(),
+                "variant 仅支持 classic/wild/nolook".into(),
             ))
         }
     };
     let idem = idem_key("dz", auth.id, &body.idempotency_key);
     let mut tx = state.repo.db.begin().await.map_err(dberr)?;
-    let row =
-        start_game_tx(&mut tx, auth.id, body.stake, &idem, variant).await?;
+    let row = start_game_tx(
+        &mut tx,
+        auth.id,
+        body.stake,
+        &idem,
+        variant,
+        body.reveal,
+    )
+    .await?;
     tx.commit().await.map_err(dberr)?;
     state.repo.audit(Some(auth.id), "game.doudizhu", None).await;
     Ok(ok(serde_json::json!({ "game": room_view(&row) })))
@@ -212,6 +229,10 @@ pub(super) async fn dz_action(
             (Some(c), Some(s)) if s != 0 => Some(c),
             _ => None,
         };
+        // 抢/弃/加倍阶段不出牌，不给出牌候选。
+        if g.phase != crate::games::doudizhu_game::Phase::Playing {
+            return Ok(ok(serde_json::json!({ "hint": null })));
+        }
         let wilds = &g.wildcards[0];
         // 癞子座走枚举替身面的 wild_hint——经典 ai_choose 不懂癞子，
         // 会给压不过/被拒的牌。
@@ -228,9 +249,12 @@ pub(super) async fn dz_action(
         };
         return Ok(ok(serde_json::json!({ "hint": suggestion })));
     }
-    if !matches!(body.action.as_str(), "bid" | "play") {
+    if !matches!(
+        body.action.as_str(),
+        "bid" | "grab" | "discard" | "double" | "play"
+    ) {
         return Err(DomainError::Validation(
-            "action 仅支持 bid/play/hint".into(),
+            "action 仅支持 bid/grab/discard/double/play/hint".into(),
         ));
     }
     // 动作必须轮到玩家（AI 段在 repo 内即时推进）

@@ -70,6 +70,64 @@
   display: flex;
   flex-direction: column;
   gap: 14px;
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+/* 大厅 hero 横幅：扇形牌 + 筹码氛围装饰（透明底 webp） */
+.dz-lobby-hero {
+  display: flex;
+  justify-content: center;
+  margin: 0 auto;
+  max-width: 540px;
+}
+.dz-lobby-hero img {
+  width: 100%;
+  height: auto;
+  max-height: 188px;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.35));
+}
+
+/* 大厅初始加载占位 */
+.dz-loading {
+  min-height: 220px;
+  align-items: center;
+  justify-content: center;
+}
+.dz-loading-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--dz-sub);
+  font-size: 14px;
+}
+.dz-loading-text::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--dz-gold);
+  animation: dz-loading-pulse 1.2s ease-in-out infinite;
+}
+@keyframes dz-loading-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+}
+
+/* ── 结算容器：纵向排布，限宽居中 ─────────────────────────── */
+.dz-game {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
   max-width: 720px;
   margin: 0 auto;
 }
@@ -78,30 +136,58 @@
 .dz-tiers {
   display: grid;
   gap: 12px;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
+}
+@media (max-width: 768px) {
+  .dz-tiers {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 380px) {
+  .dz-tiers {
+    grid-template-columns: 1fr;
+  }
 }
 .dz-tier {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: 12px;
-  border: 1px solid var(--dz-line);
+  padding: 14px 16px;
+  border: 1px solid rgba(232, 200, 130, 0.24);
   border-radius: var(--r-lg);
-  background: var(--dz-panel);
+  background: linear-gradient(
+    180deg,
+    rgba(30, 66, 50, 0.72),
+    rgba(16, 46, 34, 0.72)
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    0 4px 12px rgba(0, 0, 0, 0.25);
   color: inherit;
   text-align: left;
   cursor: pointer;
   transition:
     transform var(--motion-fast) ease,
-    border-color var(--motion-fast) ease;
+    border-color var(--motion-fast) ease,
+    box-shadow var(--motion-fast) ease;
 }
 .dz-tier:hover {
-  border-color: var(--dz-line-strong);
-  transform: translateY(-1px);
+  border-color: var(--dz-gold);
+  transform: translateY(-3px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 10px 22px rgba(0, 0, 0, 0.35),
+    0 0 18px rgba(232, 200, 130, 0.18);
+}
+.dz-tier:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
 }
 .dz-tier strong {
   font-size: 18px;
   color: var(--dz-gold);
+  letter-spacing: 0.01em;
 }
 .dz-tier span {
   font-size: 12px;
@@ -116,16 +202,19 @@
   gap: 8px;
   padding: 12px;
   padding-top: 128px;
-  border: 1px solid var(--dz-line);
+  border: 1px solid rgba(232, 200, 130, 0.28);
   border-radius: var(--r-lg);
   background:
     url("/games/ddz/ddz-felt.webp") center / cover no-repeat,
     radial-gradient(
-      ellipse at 50% 42%,
+      ellipse at 50% 40%,
       var(--dz-felt) 0%,
       var(--dz-felt-2) 78%
     );
-  box-shadow: inset 0 0 0 1px rgba(232, 200, 130, 0.08);
+  box-shadow:
+    inset 0 0 0 1px rgba(232, 200, 130, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 10px 30px rgba(0, 0, 0, 0.35);
   min-height: 264px;
 }
 /* 桌面毯纹暗角（灯光聚焦感，开源 landlord 的 bg.png 语义） */
@@ -163,10 +252,17 @@
   flex-direction: column;
   align-items: center;
   gap: 3px;
-  padding: 8px 12px;
-  border: 1px solid var(--dz-line);
-  border-radius: var(--r-md);
-  background: var(--dz-panel);
+  padding: 10px 14px;
+  border: 1px solid rgba(232, 200, 130, 0.22);
+  border-radius: 16px;
+  background: linear-gradient(
+    180deg,
+    rgba(20, 52, 39, 0.82),
+    rgba(12, 36, 27, 0.82)
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    0 6px 18px rgba(0, 0, 0, 0.3);
   min-width: 118px;
   transition:
     border-color var(--motion-fast) ease,
@@ -208,6 +304,18 @@
   object-position: top center;
   border-radius: 50%;
   display: block;
+}
+.dz-seat-avatar:empty {
+  border-style: dashed;
+  border-color: var(--dz-line-strong);
+}
+.dz-seat-avatar:empty::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--dz-sub);
+  opacity: 0.6;
 }
 /* 地主金冠环（身份一眼可辨，开源 landlord 的 icon_landlord 语义） */
 .dz-seat-avatar.is-landlord {
@@ -260,6 +368,10 @@
   font-size: 12px;
   color: var(--dz-sub);
 }
+.dz-me-count.is-low {
+  color: var(--dz-red);
+  font-weight: 700;
+}
 .dz-seat-bid {
   font-size: 12px;
   color: var(--dz-mint);
@@ -306,13 +418,34 @@
 }
 .dz-fan-count {
   position: relative;
-  padding: 1px 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  padding: 2px 8px;
   margin-bottom: -2px;
+  border: 1px solid rgba(232, 200, 130, 0.4);
   border-radius: 999px;
-  background: rgba(0, 0, 0, 0.55);
+  background: rgba(0, 0, 0, 0.62);
   color: var(--dz-gold);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 800;
+}
+.dz-fan.is-low .dz-fan-count {
+  background: var(--dz-red);
+  color: #fff;
+  animation: dz-low-pulse 1.2s ease-in-out infinite;
+}
+@keyframes dz-low-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 1px rgba(224, 82, 82, 0.6),
+      0 0 6px rgba(224, 82, 82, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 0 1px rgba(224, 82, 82, 0.9),
+      0 0 14px rgba(224, 82, 82, 0.6);
+  }
 }
 
 .dz-center {
@@ -331,7 +464,31 @@
   color: var(--dz-gold);
 }
 .dz-status-bomb {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   animation: dz-bomb-pulse 1.2s ease-in-out infinite;
+}
+.dz-status-bomb::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #ff8a6a, #d63b2f);
+  box-shadow: 0 0 6px rgba(214, 59, 47, 0.7);
+}
+/* 底分筹码片：金棕渐变胶囊，区别于普通状态文字 */
+.dz-status-stake {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-weight: 700;
+  color: #2a1d08;
+  background: linear-gradient(180deg, #f2d488, #d9a93f);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    0 2px 6px rgba(0, 0, 0, 0.3);
 }
 @keyframes dz-bomb-pulse {
   0%,
@@ -377,6 +534,107 @@
 }
 .dz-played-card .dz-card {
   cursor: default;
+}
+
+/* ── 落牌堆：徽章 + 炸弹/王炸光晕分层（纯 CSS，不依赖位图） ── */
+.dz-played-wrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.dz-play-fx {
+  position: absolute;
+  inset: -14px -10px;
+  border-radius: var(--r-lg);
+  pointer-events: none;
+  z-index: 0;
+}
+.dz-play-fx.is-bomb {
+  background:
+    radial-gradient(
+      ellipse at 50% 62%,
+      rgba(224, 116, 40, 0.52),
+      transparent 60%
+    ),
+    radial-gradient(
+      ellipse at 50% 62%,
+      rgba(214, 59, 47, 0.3),
+      transparent 78%
+    );
+  animation: dz-play-glow 0.8s ease-out both;
+}
+.dz-play-fx.is-rocket {
+  background:
+    radial-gradient(
+      ellipse at 50% 62%,
+      rgba(255, 244, 214, 0.52),
+      transparent 58%
+    ),
+    radial-gradient(
+      ellipse at 50% 62%,
+      rgba(232, 200, 130, 0.32),
+      transparent 78%
+    );
+  animation: dz-play-glow 0.9s ease-out both;
+}
+.dz-played {
+  position: relative;
+  z-index: 1;
+}
+.dz-play-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 12px;
+  border: 1px solid var(--dz-gold);
+  border-radius: 999px;
+  background: rgba(232, 200, 130, 0.14);
+  color: var(--dz-gold);
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+  animation: dz-badge-in 0.42s cubic-bezier(0.18, 1.3, 0.3, 1) both;
+}
+.dz-play-badge.is-flash {
+  border-color: #46a0d6;
+  background: rgba(70, 160, 214, 0.16);
+  color: #8fd0f2;
+}
+.dz-play-badge.is-bomb {
+  border-color: #e07428;
+  background: rgba(224, 116, 40, 0.18);
+  color: #ffb27a;
+}
+.dz-play-badge.is-rocket {
+  border-color: var(--dz-red);
+  background: rgba(224, 82, 82, 0.2);
+  color: #ff9a9a;
+  box-shadow: 0 0 12px rgba(224, 82, 82, 0.35);
+}
+@keyframes dz-play-glow {
+  0% {
+    opacity: 0;
+    transform: scale(0.86);
+  }
+  35% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+  100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+}
+@keyframes dz-badge-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 @keyframes dz-drop-in {
   from {
@@ -442,13 +700,14 @@
   justify-content: center;
   width: var(--dz-card-w);
   height: var(--dz-card-h);
-  border: 1px solid rgba(0, 0, 0, 0.18);
-  border-radius: var(--r-md);
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  border-radius: 10px;
   background:
     linear-gradient(160deg, #fff 0%, var(--dz-card-bg) 70%);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.85),
-    0 2px 5px rgba(0, 0, 0, 0.28);
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 -1px 2px rgba(0, 0, 0, 0.06),
+    0 2px 6px rgba(0, 0, 0, 0.3);
   color: var(--dz-card-ink);
   font-size: 16px;
   font-weight: 700;
@@ -486,6 +745,14 @@
   box-shadow:
     0 5px 14px rgba(0, 0, 0, 0.4),
     0 0 0 1px var(--dz-gold);
+}
+/* 选中组牌型非法：红边警示，与控制区非法标签呼应 */
+.dz-card.is-sel.is-bad {
+  border-color: var(--dz-red);
+  box-shadow:
+    0 5px 14px rgba(0, 0, 0, 0.4),
+    0 0 0 1px var(--dz-red),
+    0 0 10px rgba(224, 82, 82, 0.35);
 }
 .dz-card.is-small {
   width: var(--dz-small-w);
@@ -544,6 +811,24 @@
   color: var(--dz-joker);
   font-size: 18px;
 }
+/* 数字牌花色阵列（3..9，3×3 网格） */
+.dz-card-pips {
+  position: absolute;
+  inset: 13px 9px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  place-items: center;
+}
+.dz-card-pips i {
+  font-style: normal;
+  font-size: 11px;
+  line-height: 1;
+  opacity: 0.9;
+}
+.dz-card.is-red .dz-card-pips i {
+  color: var(--dz-red);
+}
 /* 手牌发牌入场：逐张从下方滑入（deal 动画的 DOM 化） */
 .dz-hand-slot {
   display: inline-flex;
@@ -592,28 +877,239 @@
   color: var(--dz-sub);
   font-size: 14px;
 }
-.dz-btn {
-  padding: 8px 18px;
+
+/* 明牌勾选（AI 房开局前） */
+.dz-reveal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 2px 0 10px;
+  color: var(--dz-sub);
+  font-size: 14px;
+  cursor: pointer;
+  user-select: none;
+}
+.dz-reveal input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--dz-accent, #7c5cff);
+  cursor: pointer;
+}
+
+/* 更多服务入口：跳转全站已有底座；阻塞项灰显待产品定稿 */
+.dz-extras {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 8px;
+  padding-top: 14px;
+  border-top: 1px solid var(--dz-line, rgba(255, 255, 255, 0.12));
+}
+.dz-extras-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--dz-ink, inherit);
+  text-align: center;
+}
+.dz-extras-group {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+}
+.dz-extras-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 10px;
+  border-radius: 12px;
+  background: var(--dz-card, rgba(255, 255, 255, 0.06));
+  border: 1px solid var(--dz-line, rgba(255, 255, 255, 0.1));
+  text-decoration: none;
+  color: var(--dz-ink, inherit);
+  text-align: center;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+.dz-extras-item:hover {
+  transform: translateY(-2px);
+  border-color: var(--dz-accent, #7c5cff);
+}
+.dz-extras-icon {
+  font-size: 22px;
+  line-height: 1;
+}
+.dz-extras-label {
+  font-size: 13px;
+  font-weight: 500;
+}
+.dz-extras-tip {
+  font-size: 11px;
+  color: var(--dz-sub, rgba(255, 255, 255, 0.55));
+}
+.dz-extras-item.is-blocked {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.dz-extras-item.is-blocked:hover {
+  transform: none;
+  border-color: var(--dz-line, rgba(255, 255, 255, 0.1));
+}
+
+/* ── 记牌器：折叠按钮 + 上浮网格面板（本机推算剩余张数） ── */
+.dz-counter {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+.dz-counter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.dz-counter-total {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: rgba(232, 200, 130, 0.2);
+  color: var(--dz-gold);
+  font-size: 11px;
+  font-weight: 800;
+}
+.dz-counter-panel {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 10px;
+  padding: 10px;
   border: 1px solid var(--dz-line);
   border-radius: var(--r-md);
+  background: rgba(10, 32, 24, 0.96);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+  z-index: 20;
+  max-width: min(92vw, 460px);
+}
+.dz-counter-grid {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(38px, 1fr));
+  gap: 6px;
+}
+.dz-counter-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 5px 2px;
+  border: 1px solid var(--dz-line);
+  border-radius: var(--r-sm);
   background: var(--dz-panel);
+}
+.dz-counter-cell b {
+  font-size: 13px;
+  color: var(--dz-ink);
+  line-height: 1.1;
+}
+.dz-counter-cell span {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--dz-gold);
+}
+.dz-counter-cell.is-joker b {
+  font-size: 11px;
+  color: var(--dz-joker);
+}
+.dz-counter-cell.is-full {
+  border-color: rgba(232, 200, 130, 0.6);
+  box-shadow: 0 0 8px rgba(232, 200, 130, 0.25);
+}
+.dz-counter-cell.is-zero {
+  opacity: 0.45;
+  filter: grayscale(0.6);
+}
+.dz-counter-cell.is-zero span {
+  color: var(--dz-sub);
+}
+.dz-btn {
+  padding: 9px 20px;
+  border: 1px solid var(--dz-line-strong);
+  border-radius: 999px;
+  background: linear-gradient(
+    180deg,
+    rgba(30, 66, 50, 0.92),
+    rgba(16, 46, 34, 0.92)
+  );
   color: var(--dz-ink);
   font-size: 14px;
+  font-weight: 600;
   white-space: nowrap;
   cursor: pointer;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 2px 8px rgba(0, 0, 0, 0.28);
   transition:
     opacity var(--motion-fast) ease,
     border-color var(--motion-fast) ease,
-    box-shadow var(--motion-fast) ease;
+    box-shadow var(--motion-fast) ease,
+    transform var(--motion-fast) ease,
+    background var(--motion-fast) ease;
+}
+.dz-btn:not(:disabled):hover {
+  border-color: var(--dz-gold);
+  background: linear-gradient(
+    180deg,
+    rgba(40, 82, 62, 0.95),
+    rgba(22, 56, 42, 0.95)
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 4px 12px rgba(0, 0, 0, 0.32);
+}
+.dz-btn:not(:disabled):active {
+  transform: translateY(1px);
 }
 .dz-btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+  box-shadow: none;
+}
+/* 键盘可达性：统一金色焦点环（鼠标点击不触发 focus-visible） */
+.dz-btn:focus-visible,
+.dz-tier:focus-visible,
+.dz-counter-btn:focus-visible,
+.dz-replay summary:focus-visible {
+  outline: 2px solid var(--dz-gold);
+  outline-offset: 2px;
+}
+.dz-card.is-pick:focus-visible {
+  outline: 2px solid var(--dz-gold);
+  outline-offset: 2px;
 }
 .dz-btn.is-primary {
-  border-color: var(--dz-gold);
-  color: var(--dz-gold);
-  font-weight: 700;
+  border-color: transparent;
+  background: linear-gradient(180deg, #f8d271 0%, #eca03c 100%);
+  color: #3a2708;
+  font-weight: 800;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    0 4px 14px rgba(236, 160, 60, 0.4);
+}
+.dz-btn.is-primary:not(:disabled):hover {
+  border-color: transparent;
+  background: linear-gradient(180deg, #ffe08a 0%, #f2ab47 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    0 6px 18px rgba(236, 160, 60, 0.5);
+}
+.dz-btn.is-primary:disabled {
+  background: linear-gradient(180deg, #8a7a55, #6e6040);
+  color: rgba(58, 39, 8, 0.6);
 }
 /* 选牌阶段牌型徽章：合法金边，非法红边（前端软提示，合法性以后端为准） */
 .dz-combo {
@@ -633,31 +1129,122 @@
   background: rgba(224, 82, 82, 0.12);
   color: var(--dz-red);
 }
+.dz-combo-count {
+  font-size: 12px;
+  color: var(--dz-sub);
+  white-space: nowrap;
+}
 
 /* ── 结算 ─────────────────────────────────────────────────── */
 .dz-settle {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  padding: 16px;
+  gap: 10px;
+  width: 100%;
+  padding: 24px;
   border: 1px solid var(--dz-line);
   border-radius: var(--r-lg);
   background: var(--dz-panel);
+  overflow: hidden;
 }
 .dz-settle .is-win {
   color: var(--dz-mint);
-  font-size: 22px;
-  font-weight: 800;
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: 0.01em;
+  text-shadow: 0 2px 10px rgba(70, 211, 164, 0.35);
 }
 .dz-settle .is-lose {
   color: var(--dz-red);
-  font-size: 22px;
-  font-weight: 800;
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: 0.01em;
+  text-shadow: 0 2px 10px rgba(224, 82, 82, 0.3);
 }
 .dz-settle p:not(.is-win):not(.is-lose) {
   color: var(--dz-sub);
   font-size: 14px;
+}
+.dz-settle .dz-spring {
+  color: var(--dz-gold);
+  font-weight: 700;
+}
+/* 结算倍率分解明细：标题一行 + 徽章胶囊组 */
+.dz-settle-detail {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  max-width: 340px;
+}
+.dz-settle-detail-title {
+  width: 100%;
+  text-align: center;
+  font-size: 12px;
+  color: var(--dz-sub);
+}
+.dz-detail-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  color: var(--dz-gold);
+  border: 1px solid var(--dz-line);
+  background: rgba(232, 200, 130, 0.08);
+}
+/* 结算胜负氛围：顶部光带 + 底色倾向（纯 CSS，不依赖位图） */
+.dz-settle.is-win {
+  border-color: rgba(70, 211, 164, 0.42);
+  background:
+    radial-gradient(ellipse 72% 46% at 50% -8%, rgba(70, 211, 164, 0.22), transparent 72%),
+    linear-gradient(
+      180deg,
+      rgba(70, 211, 164, 0.12),
+      var(--dz-panel) 58%
+    );
+}
+.dz-settle.is-lose {
+  border-color: rgba(224, 82, 82, 0.4);
+  background:
+    radial-gradient(ellipse 72% 46% at 50% -8%, rgba(224, 82, 82, 0.2), transparent 72%),
+    linear-gradient(
+      180deg,
+      rgba(224, 82, 82, 0.12),
+      var(--dz-panel) 58%
+    );
+}
+.dz-settle.is-win::before,
+.dz-settle.is-lose::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 12%;
+  right: 12%;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--dz-mint);
+  opacity: 0.85;
+  box-shadow: 0 0 16px rgba(70, 211, 164, 0.55);
+}
+.dz-settle.is-lose::before {
+  background: var(--dz-red);
+  box-shadow: 0 0 16px rgba(224, 82, 82, 0.5);
+}
+/* 胜利皇冠徽章（透明底 webp） */
+.dz-settle-badge {
+  display: flex;
+  justify-content: center;
+}
+.dz-settle-badge img {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 14px rgba(232, 200, 130, 0.35));
+  animation: dz-badge-in 0.5s cubic-bezier(0.18, 1.3, 0.3, 1) both;
 }
 
 /* ── 王炸全屏演出：闪电劈落 + 白闪（rocket 一手触发，pointer-events 穿透） ── */
@@ -702,18 +1289,23 @@
   overflow: hidden;
   pointer-events: none;
 }
-.dz-settle {
-  position: relative;
-}
 .dz-settle-fx i {
   position: absolute;
   top: -24px;
-  left: calc((var(--i) * 8.3%)+ 2%);
-  font-size: 18px;
+  left: calc(5% + var(--i) * 7.5%);
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
   font-style: normal;
   animation: dz-rain 1.6s ease-in calc(var(--i) * 0.14s) both;
 }
+.dz-settle-fx.is-win i {
+  background: radial-gradient(circle at 35% 30%, #ffe9a8 0%, #f2b93e 60%, #c8841f 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 1px 3px rgba(0, 0, 0, 0.3);
+}
 .dz-settle-fx.is-lose i {
+  background: radial-gradient(circle at 35% 30%, #5d6b78 0%, #2c3742 70%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
   filter: grayscale(0.6);
 }
 @keyframes dz-rain {
@@ -764,8 +1356,13 @@ body:has(.doudizhu-page):where(
   .dz-bubble,
   .dz-status-bomb,
   .dz-fx-rocket,
+  .dz-play-fx,
+  .dz-play-badge,
+  .dz-settle-badge img,
   .dz-settle-fx i,
-  .dz-fan-back {
+  .dz-loading-text::before,
+  .dz-fan-back,
+  .dz-fan.is-low .dz-fan-count {
     animation: none;
   }
   .dz-fan-back {
@@ -950,9 +1547,21 @@ body:has(.doudizhu-page):where(
   .dz-hand {
     min-height: 72px;
   }
+  .dz-card-pips {
+    inset: 11px 7px;
+  }
+  .dz-card-pips i {
+    font-size: 10px;
+  }
   .dz-seat {
     min-width: 104px;
     padding: 8px 10px;
+  }
+  .dz-counter-grid {
+    grid-template-columns: repeat(5, minmax(34px, 1fr));
+  }
+  .dz-lobby-hero img {
+    max-height: 150px;
   }
 }
 
@@ -984,8 +1593,24 @@ body:has(.doudizhu-page):where(
   .dz-card-pip {
     font-size: 16px;
   }
+  .dz-card-pips {
+    inset: 9px 5px;
+  }
+  .dz-card-pips i {
+    font-size: 8.5px;
+  }
   .dz-card.is-sel {
     transform: translateY(-7px);
+  }
+  .dz-counter-grid {
+    grid-template-columns: repeat(4, minmax(32px, 1fr));
+  }
+  .dz-lobby-hero img {
+    max-height: 120px;
+  }
+  .dz-settle-badge img {
+    width: 56px;
+    height: 56px;
   }
   .dz-fulltop {
     gap: 8px;
@@ -1053,9 +1678,20 @@ body:has(.doudizhu-page):where(
   font-size: 13px;
 }
 .dz-fullbalance {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-size: 13px;
   color: var(--dz-gold);
   font-weight: 700;
+}
+.dz-fullbalance::before {
+  content: "";
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #ffe9a8 0%, #f2b93e 60%, #c8841f 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 .is-fullgame .dz-countdown {
   margin: 0;
@@ -1064,6 +1700,12 @@ body:has(.doudizhu-page):where(
   flex: 1;
   min-height: 0;
   padding-top: 120px;
+}
+.is-fullgame .dz-fullcount {
+  text-align: center;
+  font-size: 12px;
+  color: var(--dz-sub);
+  letter-spacing: 0.02em;
 }
 .is-fullgame .dz-hand {
   min-height: 96px;
@@ -1076,4 +1718,54 @@ body:has(.doudizhu-page):where(
   .doudizhu-page.is-fullgame {
     position: static;
   }
+}
+
+/* P1：在线状态点 / 准备标签 / 段位徽章 */
+.dz-seat-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--dz-sub);
+}
+.dz-online-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(207, 196, 168, 0.45);
+  flex: none;
+}
+.dz-online-dot.is-online {
+  background: var(--dz-mint);
+  box-shadow: 0 0 6px rgba(70, 211, 164, 0.7);
+}
+.dz-rank {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  align-self: center;
+  padding: 7px 14px;
+  border: 1px solid var(--dz-line-strong);
+  border-radius: 999px;
+  background: linear-gradient(
+    180deg,
+    rgba(232, 200, 130, 0.14),
+    rgba(232, 200, 130, 0.04)
+  );
+}
+.dz-rank-name {
+  font-weight: 700;
+  color: var(--dz-gold);
+}
+.dz-rank-stars {
+  color: var(--dz-gold);
+  font-size: 13px;
+  letter-spacing: 1px;
+}
+.dz-rank-stars-off {
+  color: rgba(232, 200, 130, 0.25);
+}
+.dz-rank-meta {
+  font-size: 12px;
+  color: var(--dz-sub);
 }

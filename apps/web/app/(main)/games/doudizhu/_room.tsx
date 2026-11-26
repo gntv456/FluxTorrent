@@ -17,7 +17,15 @@ import { identifyCombo } from "./_parts/combo";
 import { SettlePanel } from "./_parts/settle";
 import { CountdownBar } from "./_parts/countdown";
 import { AiLobby, ModeSwitch } from "./_parts/ai-lobby";
-import { PvpLobby, RoomWait, fetchRooms } from "./_parts/pvp-lobby";
+import { DzExtras } from "./_parts/extras";
+import {
+  PvpLobby,
+  RoomWait,
+  fetchRooms,
+  fetchRank,
+  RankBadge,
+  type DzRank,
+} from "./_parts/pvp-lobby";
 import {
   sortHand,
   type DzGame,
@@ -38,14 +46,19 @@ export default function DoudizhuRoom({
   const [st, setSt] = useState<StateResp | null>(null);
   const [sel, setSel] = useState<Set<number>>(new Set());
   const [busy, setBusy] = useState(false);
+  const [booted, setBooted] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [tab, setTab] = useState("play");
   const [mode, setMode] = useState<"ai" | "pvp">("ai");
   const [hintBid, setHintBid] = useState<number | null>(null);
-  const [variant, setVariant] = useState<"classic" | "wild">("classic");
+  const [variant, setVariant] = useState<"classic" | "wild" | "nolook">(
+    "classic",
+  );
+  const [reveal, setReveal] = useState(false);
   const [pvpRooms, setPvpRooms] = useState<Awaited<
     ReturnType<typeof fetchRooms>
   >>(null);
+  const [rank, setRank] = useState<DzRank | null>(null);
   const { reload: reloadRounds } = useRounds("doudizhu", 20);
   const sfx = useSfx();
 
@@ -54,6 +67,8 @@ export default function DoudizhuRoom({
       setSt(await api.get<StateResp>("/api/v1/games/doudizhu/state"));
     } catch {
       /* 状态拉取失败不阻断页面 */
+    } finally {
+      setBooted(true);
     }
   }, []);
 
@@ -64,6 +79,7 @@ export default function DoudizhuRoom({
       /* ignore */
     }
     void reloadRounds();
+    fetchRank().then(setRank);
   }, [reloadRounds]);
 
   const loadRooms = useCallback(
@@ -113,22 +129,27 @@ export default function DoudizhuRoom({
     void run(async () => {
       const r = await api.post<{ game: DzGame }>(
         "/api/v1/games/doudizhu/start",
-        { stake, variant, idempotency_key: clientUuid() },
+        { stake, variant, reveal, idempotency_key: clientUuid() },
       );
       setSt((cur) => (cur ? { ...cur, game: r.game } : cur));
       setSel(new Set());
       void loadMeta();
     });
   }
-  function act(action: "bid" | "play", score?: number, cards?: number[]) {
+  type Act = "bid" | "grab" | "double" | "play" | "discard";
+  function act(action: Act, score?: number, cards?: number[]) {
     void run(async () => {
+      const body: Record<string, unknown> = {
+        action,
+        idempotency_key: clientUuid(),
+      };
+      if (score !== undefined) body.score = score;
+      if (action === "play" || action === "discard") {
+        body.cards = cards ?? [...sel];
+      }
       const r = await api.post<{ game: DzGame }>(
         "/api/v1/games/doudizhu/action",
-        {
-          action,
-          ...(action === "bid" ? { score } : { cards: cards ?? [...sel] }),
-          idempotency_key: clientUuid(),
-        },
+        body,
       );
       const done = r.game.phase === "done";
       const win = r.game.result === "win";
@@ -141,6 +162,11 @@ export default function DoudizhuRoom({
       void loadMeta();
     });
   }
+
+  const onGrab = (take: boolean) => void act("grab", take ? 1 : 0);
+  const onDiscard = () => void act("discard", undefined, [...sel]);
+  const onKeep = () => void act("discard", undefined, []);
+  const onDouble = (level: number) => void act("double", level);
 
   function hint() {
     void run(async () => {
@@ -165,6 +191,15 @@ export default function DoudizhuRoom({
       if (g?.phase === "done")
         sfx.play(g.result === "win" ? "win" : "lose");
       if (g) setSt((cur) => (cur ? { ...cur, game: g } : cur));
+      await loadRooms();
+    });
+  }
+  /** 准备/取消准备（waiting 房）。 */
+  function toggleReady() {
+    const mine = pvpRooms?.mine;
+    const ready = !(mine?.seats.find((s) => s.is_me)?.ready ?? false);
+    void run(async () => {
+      await api.post("/api/v1/games/doudizhu/pvp/ready", { ready });
       await loadRooms();
     });
   }
@@ -201,6 +236,9 @@ export default function DoudizhuRoom({
         }}
         onExpire={() => {
           if (game.phase === "bidding") return void act("bid", 0);
+          if (game.phase === "grab") return void act("grab", 0);
+          if (game.phase === "discard") return void act("discard", undefined, []);
+          if (game.phase === "double") return void act("double", 0);
           const lead = !game.last || game.last.seat === 0;
           const min = me?.cards.length
             ? sortHand(me.cards).at(-1)
@@ -213,6 +251,10 @@ export default function DoudizhuRoom({
         onPlay={() => void act("play")}
         onPass={() => void act("play")}
         onHint={() => void hint()}
+        onGrab={onGrab}
+        onDiscard={onDiscard}
+        onKeep={onKeep}
+        onDouble={onDouble}
       />
     );
   }
@@ -236,9 +278,34 @@ export default function DoudizhuRoom({
                 {err}
               </p>
             )}
-            {!game && st && (
+            {!game && !booted && (
+              <div className="dz-lobby dz-loading">
+                <span className="dz-loading-text" role="status">
+                  {dict.common?.loading ?? "…"}
+                </span>
+              </div>
+            )}
+            {!game && booted && st && (
               <div className="dz-lobby">
+                <div className="dz-lobby-hero" aria-hidden>
+                  <img
+                    src="/games/ddz/ddz-hero.webp"
+                    alt=""
+                    draggable="false"
+                  />
+                </div>
+                {rank && <RankBadge rank={rank} />}
                 {modeSwitch}
+                {mode === "ai" && (
+                  <label className="dz-reveal">
+                    <input
+                      type="checkbox"
+                      checked={reveal}
+                      onChange={(e) => setReveal(e.target.checked)}
+                    />
+                    {t.revealTip}
+                  </label>
+                )}
                 {mode === "ai" ? (
                   <AiLobby
                     ruleLine={variant === "wild" ? t.wildTip : t.rule}
@@ -247,7 +314,12 @@ export default function DoudizhuRoom({
                     onStart={(s) => void start(s)}
                   />
                 ) : pvpRooms?.mine ? (
-                  <RoomWait room={pvpRooms.mine} />
+                  <RoomWait
+                    room={pvpRooms.mine}
+                    busy={busy}
+                    onToggleReady={toggleReady}
+                    onDeal={() => void pvp("deal")}
+                  />
                 ) : (
                   <PvpLobby
                     mode={variant}
@@ -258,6 +330,7 @@ export default function DoudizhuRoom({
                     onDeal={() => void pvp("deal")}
                   />
                 )}
+                <DzExtras />
               </div>
             )}
             {game && game.phase === "done" && (

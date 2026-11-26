@@ -3,6 +3,8 @@ import { useI18n } from "@/i18n/client";
 import { Badge } from "@/components/ui/badge";
 import { cardColor, cardLabel, cardSuit, type DzGame } from "./room-types";
 import { PlayingCard } from "./cards";
+import { comboFromBackend, type ComboKind } from "./combo";
+import { COMBO_KEY } from "./controls";
 
 function seatName(
   t: ReturnType<typeof useI18n>["dict"]["games"]["doudizhu"],
@@ -35,8 +37,9 @@ function seatBubble(
 /** AI 牌背扇堆：张数三档密度（商业斗地主的座位牌堆语义），纯 CSS。 */
 function CardBackFan({ count }: { count: number }) {
   const n = count === 0 ? 0 : count > 10 ? 3 : count > 4 ? 2 : 1;
+  const low = count > 0 && count <= 3;
   return (
-    <div className="dz-fan" aria-hidden>
+    <div className={`dz-fan${low ? " is-low" : ""}`} aria-hidden>
       {Array.from({ length: n }, (_, i) => (
         <i
           key={i}
@@ -49,6 +52,15 @@ function CardBackFan({ count }: { count: number }) {
   );
 }
 
+/** 落牌徽章分级：王炸金红、炸弹橙、连牌（顺/连对/飞机）蓝、其余金。 */
+function badgeTier(kind: ComboKind): "rocket" | "bomb" | "flash" | "base" {
+  if (kind === "rocket") return "rocket";
+  if (kind === "bomb") return "bomb";
+  if (kind === "plane" || kind === "straight" || kind === "doublePair")
+    return "flash";
+  return "base";
+}
+
 /** 牌桌舞台：环形三座（左上/右上 AI + 下方玩家位）+ 中央落牌 + 底牌。
  *  full=全屏壳模式：状态行由外壳渲染，桌内不再重复。 */
 export function DzTable({ game, full }: { game: DzGame; full?: boolean }) {
@@ -58,6 +70,7 @@ export function DzTable({ game, full }: { game: DzGame; full?: boolean }) {
   const me = seatOf(0);
   const revealed = game.landlord !== null;
   const rocket = game.last?.kind?.toLowerCase() === "rocket";
+  const lastCombo = comboFromBackend(game.last?.kind);
   const fromCls =
     game.last?.seat === 1
       ? "from-left"
@@ -136,10 +149,13 @@ export function DzTable({ game, full }: { game: DzGame; full?: boolean }) {
       <div className="dz-center">
         {!full && (
           <div className="dz-status">
+            <span className="dz-status-stake">
+              {t.stakeTier.replace("{n}", String(game.stake))}
+            </span>
             <span>{t.mult.replace("{n}", String(game.multiplier))}</span>
             {game.bomb_count > 0 && (
               <span className="dz-status-bomb">
-                💥 {t.bombs.replace("{n}", String(game.bomb_count))}
+                {t.bombs.replace("{n}", String(game.bomb_count))}
               </span>
             )}
             {game.landlord !== null && (
@@ -153,20 +169,41 @@ export function DzTable({ game, full }: { game: DzGame; full?: boolean }) {
         )}
         <div className="dz-table-last" aria-label={t.lastPlay}>
           {game.last && game.last.cards.length > 0 ? (
-            <div className={`dz-played ${fromCls}`}>
-              {game.last.cards.map((c, i) => (
-                <div
-                  key={c}
-                  className="dz-played-card"
-                  style={{ animationDelay: `${i * 70}ms` }}
-                >
-                  <PlayingCard key={c} card={c} small />
-                </div>
-              ))}
+            <div className="dz-played-wrap">
+              {lastCombo === "bomb" || lastCombo === "rocket" ? (
+                <span
+                  className={`dz-play-fx is-${lastCombo}`}
+                  aria-hidden
+                />
+              ) : null}
+              <div className={`dz-played ${fromCls}`}>
+                {game.last.cards.map((c, i) => (
+                  <div
+                    key={c}
+                    className="dz-played-card"
+                    style={{ animationDelay: `${i * 70}ms` }}
+                  >
+                    <PlayingCard key={c} card={c} small />
+                  </div>
+                ))}
+              </div>
+              {lastCombo && (
+                <span className={`dz-play-badge is-${badgeTier(lastCombo)}`}>
+                  {t[COMBO_KEY[lastCombo]]}
+                </span>
+              )}
             </div>
           ) : (
             <span className="dz-table-empty">
-              {game.phase === "bidding" ? t.bidTitle : t.tableEmpty}
+              {game.phase === "bidding"
+                ? t.bidTitle
+                : game.phase === "grab"
+                  ? t.grabTitle
+                  : game.phase === "discard"
+                    ? t.discardTitle
+                    : game.phase === "double"
+                      ? t.doubleTitle
+                      : t.tableEmpty}
             </span>
           )}
         </div>
@@ -188,7 +225,7 @@ export function DzTable({ game, full }: { game: DzGame; full?: boolean }) {
           </div>
         )}
         {!full && me && (
-          <div className="dz-me-count">
+          <div className={`dz-me-count${me.count <= 3 ? " is-low" : ""}`}>
             {t.cardsLeft.replace("{n}", String(me.count))}
           </div>
         )}

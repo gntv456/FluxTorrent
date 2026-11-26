@@ -11,6 +11,22 @@ fn c(rank: u8, suit: usize) -> u8 {
     }
 }
 
+/// 测试辅助：走完抢地主（不抢）/弃三张（不弃）/加倍（不倍），进入出牌阶段。
+fn advance_to_playing(g: &mut GameState) {
+    while g.phase == Phase::Grab {
+        let seat = g.turn;
+        let _ = g.grab(seat, false);
+    }
+    if g.phase == Phase::Discard {
+        let seat = g.turn;
+        let _ = g.discard(seat, &[]);
+    }
+    while g.phase == Phase::Double {
+        let seat = g.turn;
+        let _ = g.double(seat, 0);
+    }
+}
+
 #[test]
 fn bidding_flow_three_call() {
     let (hands, kitty) = deal();
@@ -20,6 +36,7 @@ fn bidding_flow_three_call() {
     g.bid(1, 2).unwrap();
     g.bid(2, 3).unwrap();
     assert_eq!(g.landlord, Some(2));
+    advance_to_playing(&mut g);
     assert_eq!(g.phase, Phase::Playing);
     assert_eq!(g.turn, 2);
     // 地主手牌 17+3 = 20
@@ -64,6 +81,7 @@ fn play_flow_and_table_clear() {
     let (hands, kitty) = deal();
     let mut g = GameState::new(hands.map(Vec::from), kitty.to_vec());
     g.bid(0, 3).unwrap(); // 玩家地主，先出
+    advance_to_playing(&mut g);
     let s0 = g.hands[0][0]; // 最大单张
     let before = g.hands[0].len();
     g.play(0, &[s0]).unwrap();
@@ -82,6 +100,7 @@ fn play_validation() {
     let (hands, kitty) = deal();
     let mut g = GameState::new(hands.map(Vec::from), kitty.to_vec());
     g.bid(0, 3).unwrap();
+    advance_to_playing(&mut g);
     // 领出不能过
     assert!(g.play(0, &[]).is_err());
     // 别人手里的牌不能用
@@ -98,6 +117,7 @@ fn finish_when_hand_empty() {
     let (hands, kitty) = deal();
     let mut g = GameState::new(hands.map(Vec::from), kitty.to_vec());
     g.bid(0, 3).unwrap();
+    advance_to_playing(&mut g);
     // 直接把玩家手牌打空（单张逐张出）
     while !g.hands[0].is_empty() && g.turn == 0 && g.phase == Phase::Playing {
         // AI 座位轮转时强制过牌到回玩家
@@ -171,4 +191,70 @@ fn suggested_bid_scale() {
     assert_eq!(GameState::suggested_bid(&[c(12, 0)]), 1);
     // 什么都没有 → 0 分
     assert_eq!(GameState::suggested_bid(&[c(0, 0), c(1, 1)]), 0);
+}
+
+#[test]
+fn grab_replaces_landlord_and_counts() {
+    let (hands, kitty) = deal();
+    let mut g = GameState::new(hands.map(Vec::from), kitty.to_vec());
+    g.bid(0, 3).unwrap(); // 候选 0
+    assert_eq!(g.phase, Phase::Grab);
+    // seat1 抢 → 候选换 1，抢次 +1
+    g.grab(1, true).unwrap();
+    assert_eq!(g.landlord, Some(1));
+    assert_eq!(g.grabs, 1);
+    // seat2 不抢 → 表态完毕，进入弃牌阶段
+    g.grab(2, false).unwrap();
+    assert_eq!(g.phase, Phase::Discard);
+    assert_eq!(g.landlord, Some(1));
+}
+
+#[test]
+fn discard_removes_up_to_three() {
+    let (hands, kitty) = deal();
+    let mut g = GameState::new(hands.map(Vec::from), kitty.to_vec());
+    g.bid(0, 3).unwrap();
+    g.grab(1, false).unwrap();
+    g.grab(2, false).unwrap();
+    assert_eq!(g.phase, Phase::Discard);
+    let before = g.hands[0].len();
+    let drop = g.hands[0][..2].to_vec();
+    g.discard(0, &drop).unwrap();
+    assert_eq!(g.hands[0].len(), before - 2);
+    assert_eq!(g.discards.len(), 2);
+    assert_eq!(g.phase, Phase::Double);
+    // 弃超 3 张非法
+    let over: Vec<u8> = g.hands[0].iter().take(4).copied().collect();
+    assert!(g.discard(0, &over).is_err());
+}
+
+#[test]
+fn double_levels_then_play() {
+    let (hands, kitty) = deal();
+    let mut g = GameState::new(hands.map(Vec::from), kitty.to_vec());
+    g.bid(0, 3).unwrap();
+    g.grab(1, false).unwrap();
+    g.grab(2, false).unwrap();
+    g.discard(0, &[]).unwrap();
+    assert_eq!(g.phase, Phase::Double);
+    g.double(0, 1).unwrap();
+    g.double(1, 0).unwrap();
+    g.double(2, 2).unwrap();
+    assert_eq!(g.double_levels, [1, 0, 2]);
+    assert_eq!(g.phase, Phase::Playing);
+    assert_eq!(g.turn, 0);
+}
+
+#[test]
+fn nolook_deal_keeps_hand_balance() {
+    let (hands, kitty) = super::doudizhu::deal_nolook();
+    assert_eq!(hands[0].len(), 17);
+    assert_eq!(hands[1].len(), 17);
+    assert_eq!(hands[2].len(), 17);
+    assert_eq!(kitty.len(), 3);
+    let mut all: Vec<u8> =
+        hands.iter().flatten().copied().chain(kitty).collect();
+    all.sort();
+    let expect: Vec<u8> = (0..54u8).collect();
+    assert_eq!(all, expect);
 }

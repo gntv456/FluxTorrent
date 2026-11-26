@@ -33,7 +33,9 @@ pub(crate) async fn persist_state_tx(
 pub(crate) fn phase_status(state: &GameState) -> &'static str {
     match state.phase {
         Phase::Bidding => "bidding",
-        Phase::Playing => "playing",
+        Phase::Grab | Phase::Discard | Phase::Double | Phase::Playing => {
+            "playing"
+        }
         Phase::Done => "settled",
     }
 }

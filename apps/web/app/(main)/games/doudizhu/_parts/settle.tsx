@@ -10,10 +10,9 @@ function SettleFx({ win }: { win: boolean }) {
       {Array.from({ length: 12 }, (_, i) => (
         <i
           key={i}
+          aria-hidden
           style={{ "--i": i } as React.CSSProperties}
-        >
-          {win ? "🪙" : "💧"}
-        </i>
+        />
       ))}
     </div>
   );
@@ -30,9 +29,33 @@ export function SettlePanel({
   const { dict, currency } = useI18n();
   const t = dict.games.doudizhu;
   const magic = currency || t.magicUnit;
+  const meSeat = game.seats.find((s) => s.seat === 0);
+  const detail: string[] = [
+    t.detailStake.replace("{n}", String(game.stake)),
+    t.detailMult.replace("{n}", String(game.multiplier)),
+  ];
+  if (game.bomb_count > 0)
+    detail.push(t.detailBomb.replace("{n}", String(game.bomb_count)));
+  if (meSeat?.role === "landlord") detail.push(t.detailShareLandlord);
+  else if (meSeat?.role === "farmer") detail.push(t.detailShareFarmer);
+  const tone =
+    game.result === "win"
+      ? "is-win"
+      : game.result === "lose"
+        ? "is-lose"
+        : "is-draw";
   return (
-    <div className="dz-settle" role="status">
+    <div className={`dz-settle ${tone}`} role="status">
       {game.result !== null && <SettleFx win={game.result === "win"} />}
+      {game.result === "win" && (
+        <div className="dz-settle-badge" aria-hidden>
+          <img
+            src="/games/ddz/ddz-crown.webp"
+            alt=""
+            draggable="false"
+          />
+        </div>
+      )}
       <h2 className="dz-h2">{t.gameDone}</h2>
       {game.result === "win" && (
         <p className="is-win">
@@ -47,6 +70,17 @@ export function SettlePanel({
         </p>
       )}
       {game.result === null && <p>{t.settleDraw}</p>}
+      {game.spring && <p className="dz-spring">{t.spring}</p>}
+      {game.result !== null && detail.length > 0 && (
+        <div className="dz-settle-detail" aria-label={t.detailTitle}>
+          <span className="dz-settle-detail-title">{t.detailTitle}</span>
+          {detail.map((label, i) => (
+            <span key={i} className="dz-detail-chip">
+              {label}
+            </span>
+          ))}
+        </div>
+      )}
       <ReplayPanel events={game.events ?? game.events_tail} mySeat={0} />
       <div className="dz-controls">
         <button

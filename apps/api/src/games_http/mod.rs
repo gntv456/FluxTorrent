@@ -30,6 +30,7 @@ mod casino_bigsmall;
 mod collection;
 mod doudizhu_http;
 mod doudizhu_pvp_http;
+mod doudizhu_rank_http;
 mod farm;
 mod farm_actions;
 mod farm_collection;
@@ -87,6 +88,7 @@ use casino_bigsmall::*;
 use collection::*;
 use doudizhu_http::*;
 use doudizhu_pvp_http::*;
+use doudizhu_rank_http::*;
 use farm::*;
 use farm_actions::*;
 use farm_collection::*;
@@ -137,9 +139,11 @@ pub fn mount_games(scope: actix_web::Scope) -> actix_web::Scope {
         .service(dz_state)
         .service(dz_start)
         .service(dz_action)
+        .service(dz_rank)
         .service(dz_pvp_rooms)
         .service(dz_pvp_join)
         .service(dz_pvp_leave)
+        .service(dz_pvp_ready)
         .service(dz_pvp_deal)
         .service(dz_pvp_state)
         .service(lottery_list)

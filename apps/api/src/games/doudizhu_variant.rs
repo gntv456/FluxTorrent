@@ -13,6 +13,11 @@ pub fn new_wild(hands: [Vec<u8>; 3], kitty: Vec<u8>) -> GameState {
     g
 }
 
+/// 不洗牌模式开局：聚类发牌后的三家手牌 + 底牌，状态同经典。
+pub fn new_nolook(hands: [Vec<u8>; 3], kitty: Vec<u8>) -> GameState {
+    GameState::new(hands, kitty)
+}
+
 /// 春天判定（从 GameState::is_spring 下沉）。
 pub fn is_spring(g: &GameState) -> bool {
     let Some(winner) = g.finished else {
@@ -105,9 +110,11 @@ mod tests {
         let mut g = new_wild(hands, kitty);
         assert_eq!(g.wildcards[0], vec![c(7, 0)]);
         assert!(g.wildcards[2].is_empty());
-        // 玩家叫 3 当地主 → 拿 3 张底牌（含 7）
+        // 玩家叫 3 当地主 → 抢地主两家不抢，地主落定后拿 3 张底牌（含 7）
         g.bid(0, 3).unwrap();
         assert_eq!(g.landlord, Some(0));
+        g.grab(1, false).unwrap();
+        g.grab(2, false).unwrap();
         assert!(
             g.wildcards[0].contains(&c(7, 3)),
             "底牌中的癞子必须登记进地主 wildcards"
