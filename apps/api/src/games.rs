@@ -31,6 +31,7 @@ pub(crate) mod doudizhu_dz_serial;
 pub(crate) mod doudizhu_game;
 mod doudizhu_play_repo;
 mod doudizhu_play_store;
+pub(crate) mod doudizhu_pvp_idle;
 pub(crate) mod doudizhu_pvp_repo;
 pub(crate) mod doudizhu_pvp_view;
 pub(crate) mod doudizhu_repo;
