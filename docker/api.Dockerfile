@@ -78,14 +78,14 @@ RUN sed -i s/deb.debian.org/${APT_MIRROR}/g /etc/apt/sources.list.d/debian.sourc
 # 继承镜像目录属主；宿主绑定目录需站长自行 chown 1000:1000）
 RUN useradd --system --uid 1000 --create-home flux
 # onnxruntime 动态库（load-dynamic 运行时 dlopen，ORT_DYLIB_PATH 缺省指向这里）。
-# pyke CDN 与 ort-sys rc.15 默认 dist 同源（ms@1.31.0）；解出的 .so 放 /app/lib。
-# glibc 不兼容时 dlopen 失败 → dz_nn::available()=false → 回落启发式，服务不受影响。
-RUN apt-get update && apt-get install -y --no-install-recommends xz-utils \
-    && mkdir -p /app/lib /tmp/ort_x \
-    && wget -q "https://cdn.pyke.io/0/pyke:ort-rs/ms@1.31.0/x86_64-unknown-linux-gnu.tar.lzma2" -O /tmp/ort.bin \
-    && tar --lzma -xf /tmp/ort.bin -C /tmp/ort_x \
-    && find /tmp/ort_x -name "libonnxruntime.so*" -exec cp {} /app/lib/ \; \
-    && rm -rf /tmp/ort.bin /tmp/ort_x /var/lib/apt/lists/* \
+# 官方 release（manylinux_2_28，glibc≥2.28 < bookworm 2.36 兼容）；GitHub runner
+# 下载 github.com release 不走本机屏蔽网段。tar 内 lib/ 下是 libonnxruntime.so。
+# dlopen 失败时 dz_nn::available()=false → 回落启发式，服务不受影响。
+RUN mkdir -p /app/lib /tmp/ort_x \
+    && wget -q "https://github.com/microsoft/onnxruntime/releases/download/v1.32.0/onnxruntime-linux-x64-1.32.0.tgz" -O /tmp/ort.tgz \
+    && tar -xzf /tmp/ort.tgz -C /tmp/ort_x \
+    && cp /tmp/ort_x/onnxruntime-linux-x64-1.32.0/lib/libonnxruntime.so /app/lib/ \
+    && rm -rf /tmp/ort.tgz /tmp/ort_x /var/lib/apt/lists/* \
     && ls -la /app/lib
 COPY --from=builder /usr/local/bin/flux-api /usr/local/bin/flux-api
 COPY --from=builder /build/apps/api/migrations /app/migrations
