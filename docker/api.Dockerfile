@@ -61,9 +61,11 @@ RUN mkdir -p apps/api/models/doudizhu \
          wget -q "https://${HF_MIRROR}/palemoky/douzero-baselines/resolve/main/models_onnx/douzero_WP/$f.onnx" \
            -O "apps/api/models/doudizhu/$f.onnx"; \
        done \
-    && echo "5ba2f1bb414483a3ecdf0d000159c1322b02e2d096e6d83be8a18765b56d6d32  apps/api/models/doudizhu/landlord.onnx" \
-           "9b816457615f8007dd3a657dde1f78dac4fec7c3b0041f6f89321a1c6335cbd1  apps/api/models/doudizhu/landlord_down.onnx" \
-           "244ec62a549a0141c6532dffd02bee7675621d095cb194362b47c8a923c95883  apps/api/models/doudizhu/landlord_up.onnx" | sha256sum -c - \
+    && echo "5ba2f1bb414483a3ecdf0d000159c1322b02e2d096e6d83be8a18765b56d6d32  apps/api/models/doudizhu/landlord.onnx" > /tmp/dz.sha \
+    && echo "9b816457615f8007dd3a657dde1f78dac4fec7c3b0041f6f89321a1c6335cbd1  apps/api/models/doudizhu/landlord_down.onnx" >> /tmp/dz.sha \
+    && echo "244ec62a549a0141c6532dffd02bee7675621d095cb194362b47c8a923c95883  apps/api/models/doudizhu/landlord_up.onnx" >> /tmp/dz.sha \
+    && sha256sum -c /tmp/dz.sha \
+    && rm /tmp/dz.sha \
     && ls -la apps/api/models/doudizhu
 
 FROM ${BASE_REGISTRY}/library/debian:bookworm-slim
