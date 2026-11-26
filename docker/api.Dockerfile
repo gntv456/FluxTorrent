@@ -78,14 +78,15 @@ RUN sed -i s/deb.debian.org/${APT_MIRROR}/g /etc/apt/sources.list.d/debian.sourc
 # 继承镜像目录属主；宿主绑定目录需站长自行 chown 1000:1000）
 RUN useradd --system --uid 1000 --create-home flux
 # onnxruntime 动态库（load-dynamic 运行时 dlopen，ORT_DYLIB_PATH 缺省指向这里）。
-# 官方 release（manylinux_2_28，glibc≥2.28 < bookworm 2.36 兼容）；GitHub runner
-# 下载 github.com release 不走本机屏蔽网段。tar 内 lib/ 下是 libonnxruntime.so。
-# dlopen 失败时 dz_nn::available()=false → 回落启发式，服务不受影响。
-RUN mkdir -p /app/lib /tmp/ort_x \
-    && wget -q "https://github.com/microsoft/onnxruntime/releases/download/v1.32.0/onnxruntime-linux-x64-1.32.0.tgz" -O /tmp/ort.tgz \
-    && tar -xzf /tmp/ort.tgz -C /tmp/ort_x \
-    && cp /tmp/ort_x/onnxruntime-linux-x64-1.32.0/lib/libonnxruntime.so /app/lib/ \
-    && rm -rf /tmp/ort.tgz /tmp/ort_x /var/lib/apt/lists/* \
+# 源 = npm onnxruntime-node@1.31.1 内置 napi 二进制（registry.npmjs.org 全网可达；
+# 官方 GitHub releases 部分网络段被屏蔽 404 实测）。ELF x86-64 动态库，符号需求
+# GLIBC 2.28 / GLIBCXX 3.4.22（GCC 8.1），bookworm(2.36/12) 兼容；API 层与
+# ort-sys rc.15 的 api-31 对齐。dlopen 失败 → available()=false → 回落启发式。
+RUN mkdir -p /app/lib /tmp/ort_npm \
+    && wget -q "https://registry.npmjs.org/onnxruntime-node/-/onnxruntime-node-1.31.1.tgz" -O /tmp/ort.tgz \
+    && tar -xzf /tmp/ort.tgz -C /tmp/ort_npm \
+    && cp /tmp/ort_npm/package/bin/napi-v6/linux/x64/libonnxruntime.so.1 /app/lib/libonnxruntime.so \
+    && rm -rf /tmp/ort.tgz /tmp/ort_npm \
     && ls -la /app/lib
 COPY --from=builder /usr/local/bin/flux-api /usr/local/bin/flux-api
 COPY --from=builder /build/apps/api/migrations /app/migrations
