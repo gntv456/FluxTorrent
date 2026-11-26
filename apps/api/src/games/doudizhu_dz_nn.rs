@@ -55,7 +55,14 @@ static SESSIONS: OnceLock<Result<Sessions, String>> = OnceLock::new();
 #[cfg(feature = "douzero")]
 fn sessions() -> Result<&'static Sessions, &'static str> {
     let init = || -> Result<Sessions, String> {
-        let env = ort::init().build().map_err(|e| format!("ort env: {e}"))?;
+        // load-dynamic：按 ORT_DYLIB_PATH（缺省 /app/lib/libonnxruntime.so）
+        // 运行时加载，绕开编译期 glibc/libstdc++ 版本要求
+        let dylib = std::env::var("ORT_DYLIB_PATH")
+            .unwrap_or_else(|_| "/app/lib/libonnxruntime.so".into());
+        let env = ort::init_from(&dylib)
+            .map_err(|e| format!("dylib load: {e}"))?
+            .build()
+            .map_err(|e| format!("ort env: {e}"))?;
         let mut sess = Vec::with_capacity(3);
         for f in FILES {
             let path = format!("{MODEL_DIR}/{f}");

@@ -58,7 +58,10 @@ utoipa.workspace = true
 sqlparser = { version = "0.52", features = ["visitor"] }
 # DouZero ONNX 推理（可选）：默认关闭，CI/本地不带 onnxruntime 也过门禁；
 # 镜像构建以 --features douzero 启用，模型文件缺失时运行时自动回落启发式
-ort = { version = "2.0.0-rc", optional = true, default-features = false, features = ["download-binaries", "tls-rustls", "std"] }
+# load-dynamic：运行时 dlopen libonnxruntime.so，绕开预编译静态库的
+# glibc 2.38/GCC13 libstdc++ 要求（bookworm 2.36/12 编不过实测）；
+# .so 由镜像从官方 GitHub release 拉取放 /app/lib
+ort = { version = "2.0.0-rc", optional = true, default-features = false, features = ["load-dynamic", "std"] }
 
 [features]
 douzero = ["dep:ort"]

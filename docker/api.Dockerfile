@@ -33,11 +33,6 @@ COPY crates ./crates
 RUN cargo chef prepare --recipe-path recipe.json
 
 FROM chef AS builder
-# ort(onnxruntime) 链接需要 libstdc++（rust-lld: unable to find library
-# -lstdc++ 实测）；slim 镜像默认没有。运行时层 bookworm-slim 自带 libstdc++6
-# （v0.5.x 已有二进制依赖同款），只需 builder 层补。
-RUN apt-get update && apt-get install -y --no-install-recommends libstdc++-12-dev \
-    && rm -rf /var/lib/apt/lists/*
 COPY --from=planner /build/recipe.json recipe.json
 # 依赖层：recipe 未变（Cargo.toml/lock 不动）时命中缓存，跳过依赖编译
 RUN cargo chef cook --release --recipe-path recipe.json
@@ -82,6 +77,16 @@ RUN sed -i s/deb.debian.org/${APT_MIRROR}/g /etc/apt/sources.list.d/debian.sourc
 # 备份卷 /backups 由 compose 卷首次创建时按此属主落盘（named volume 初次挂载会
 # 继承镜像目录属主；宿主绑定目录需站长自行 chown 1000:1000）
 RUN useradd --system --uid 1000 --create-home flux
+# onnxruntime 动态库（load-dynamic 运行时 dlopen，ORT_DYLIB_PATH 缺省指向这里）。
+# pyke CDN 与 ort-sys rc.15 默认 dist 同源（ms@1.31.0）；解出的 .so 放 /app/lib。
+# glibc 不兼容时 dlopen 失败 → dz_nn::available()=false → 回落启发式，服务不受影响。
+RUN apt-get update && apt-get install -y --no-install-recommends xz-utils \
+    && mkdir -p /app/lib /tmp/ort_x \
+    && wget -q "https://cdn.pyke.io/0/pyke:ort-rs/ms@1.31.0/x86_64-unknown-linux-gnu.tar.lzma2" -O /tmp/ort.bin \
+    && tar --lzma -xf /tmp/ort.bin -C /tmp/ort_x \
+    && find /tmp/ort_x -name "libonnxruntime.so*" -exec cp {} /app/lib/ \; \
+    && rm -rf /tmp/ort.bin /tmp/ort_x /var/lib/apt/lists/* \
+    && ls -la /app/lib
 COPY --from=builder /usr/local/bin/flux-api /usr/local/bin/flux-api
 COPY --from=builder /build/apps/api/migrations /app/migrations
 # GeoLite2 离线库（apps/api/geoip，.gitignore 不入库；缺失时 GeoIP 字段为 null 静默降级）
