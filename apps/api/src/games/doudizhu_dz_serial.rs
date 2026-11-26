@@ -1,8 +1,6 @@
 //! 斗地主 DouZero 连型枚举工具（上游 `move_generator.py` 内部件拆出，
 //! 守 300 行门禁）：连续段切分、滑窗生成、rank 组合选取。
 
-use std::collections::HashMap;
-
 use super::doudizhu_dz_move_gen::rank_counts;
 
 /// 组合选取 C(n, k)（上游 `itertools.combinations`，输入须升序去重）。

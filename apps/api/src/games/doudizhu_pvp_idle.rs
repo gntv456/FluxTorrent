@@ -5,7 +5,6 @@
 use super::doudizhu_ai::{ai_bid, ai_choose};
 use super::doudizhu_game::{GameState, Phase};
 use super::doudizhu_play_repo::{load_row_by, run_ai_segments};
-use super::doudizhu_repo::GameRow;
 use crate::errors::{DomainError, DomainResult};
 
 fn dberr(e: sqlx::Error) -> DomainError {

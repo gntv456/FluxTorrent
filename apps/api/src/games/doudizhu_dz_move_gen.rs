@@ -15,9 +15,7 @@
 
 use std::collections::HashMap;
 
-use super::doudizhu_dz_serial::{
-    combinations, gen_serial, seq_records, sorted_ranks,
-};
+use super::doudizhu_dz_serial::{combinations, gen_serial, sorted_ranks};
 
 /// DouZero rank 常量（避免魔数满天飞）。
 pub(super) const R2: i16 = 14; // 本仓 rank 11

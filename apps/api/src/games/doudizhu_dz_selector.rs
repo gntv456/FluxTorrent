@@ -63,7 +63,7 @@ fn major_of(mv: &[i16], ty: u8) -> i16 {
 /// 领出全量动作 + pass（响应时追加，上游 `get_legal_card_play_actions`
 /// 尾部：rival 非空时追加 [] pass）。
 pub(super) fn legal_responses(hand: &[i16], rival: &[i16]) -> Vec<Vec<i16>> {
-    let mut mg = super::doudizhu_dz_move_gen::MoveGen::new(hand);
+    let mg = super::doudizhu_dz_move_gen::MoveGen::new(hand);
     let (rty, _rrank, rlen) = move_type(rival);
     let mut moves: Vec<Vec<i16>> = match rty {
         T_PASS => {

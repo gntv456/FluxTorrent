@@ -185,7 +185,6 @@ pub(super) fn extract(g: &GameState, seat: u8) -> DzObs {
         .filter(|&i| seats[i] != seat)
         .flat_map(|i| dz_ranks(&g.hands[seats[i] as usize]))
         .collect();
-    let my_pos = seats.iter().position(|&s| s == seat).unwrap_or(0);
     DzObs {
         hand: dz_ranks(&g.hands[seat as usize]),
         other,
