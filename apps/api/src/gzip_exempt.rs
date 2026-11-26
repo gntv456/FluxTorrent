@@ -15,22 +15,25 @@
 //! Compress 之后注册、先于其执行，拦得到请求头。附件图/视频本就被
 //! actix 内置谓词豁免；RSS 的 XML 值得压，不豁免。
 
-/// 前缀与各口 utoipa 路径逐字核对过（download-link 用子串会被
-/// `/torrents/{id}/download-link` 命中，前缀同样命中；batch-download 同理）。
+/// 前缀与各口 utoipa 路径逐字核对过。
 const GZIP_EXEMPT_PREFIXES: &[&str] = &[
+    // SSE（message_stream.rs /me/messages/stream）：EventSource 逐帧消费，
+    // 压缩缓冲会让未读数推送整段卡住直到连接结束
     "/api/v1/me/messages/stream",
+    // .torrent 批量口（网页批量下载，bencode 已紧凑再压白烧 CPU）
     "/api/v1/torrents/batch-download",
+    // .torrent compat 口（download_keys /downloads/{torrent_id} +
+    // nexusphp/download.php，np 兼容口）
     "/api/v1/downloads/",
     "/api/v1/compat/nexusphp/download.php",
     // /metrics 文本：Prometheus 拉取端，文本小，压了反而增加解析面
     "/metrics",
-    // 网页单击下载口（路径参数在尾部，前缀比对到 /torrents/ 段即可：
-    // 精确前缀 + contains 双闸避免误吞列表口）
-    "/api/v1/torrents/",
 ];
 
-/// download-link 是 `/torrents/{id}/download-link`，前缀闸没法精确到它，
-/// 用子串兜底（列表/详情口都不含该字面量，无误伤面）。
+/// .torrent 网页单击口是 `/torrents/{id}/download-link`，路径参数在尾部
+/// 没法用稳定前缀命中，用子串兜底（browse 列表/详情/收藏等其余
+/// /torrents/ 口都不含该字面量，无误伤面——严禁放宽成整个 /torrents/
+/// 前缀，那会把压缩收益主体全豁免掉）。
 const GZIP_EXEMPT_CONTAINS: &[&str] = &["/download-link"];
 
 /// 薄闸入口：见模块注释。
