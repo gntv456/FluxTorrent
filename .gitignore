@@ -130,3 +130,6 @@ design/emails/_shots/
 #   管不到 _doc/ 子目录，导致其中的 .ts/.mjs/.md 仍挂在未跟踪区；
 #   这里按最后匹配优先原则封死整个目录树。
 /_doc/**
+# DouZero 模型权重不入库（Apache-2.0，镜像构建时 vendor）
+apps/api/models/doudizhu/*.onnx
+models/doudizhu/*.onnx

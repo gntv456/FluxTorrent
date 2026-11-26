@@ -21,6 +21,13 @@ pub(crate) mod doudizhu_ai;
 mod doudizhu_ai_combo;
 #[cfg(test)]
 mod doudizhu_ai_combo_tests;
+pub(crate) mod doudizhu_dz;
+pub(crate) mod doudizhu_dz_detector;
+pub(crate) mod doudizhu_dz_encode;
+pub(crate) mod doudizhu_dz_move_gen;
+pub(crate) mod doudizhu_dz_nn;
+pub(crate) mod doudizhu_dz_selector;
+pub(crate) mod doudizhu_dz_serial;
 pub(crate) mod doudizhu_game;
 mod doudizhu_play_repo;
 mod doudizhu_play_store;
@@ -45,6 +52,8 @@ mod doudizhu_db_harness;
 #[cfg(test)]
 mod doudizhu_db_tests;
 #[cfg(test)]
+mod doudizhu_dz_tests;
+#[cfg(test)]
 mod doudizhu_econ_probe;
 #[cfg(test)]
 mod doudizhu_game_tests;
@@ -58,8 +67,6 @@ mod doudizhu_pvp_db_tests;
 mod doudizhu_rule_probe;
 #[cfg(test)]
 mod doudizhu_sim_tests;
-#[cfg(test)]
-mod doudizhu_tests;
 #[cfg(test)]
 mod doudizhu_wild_tests;
 #[cfg(test)]

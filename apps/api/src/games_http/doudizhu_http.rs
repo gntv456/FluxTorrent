@@ -234,18 +234,14 @@ pub(super) async fn dz_action(
             return Ok(ok(serde_json::json!({ "hint": null })));
         }
         let wilds = &g.wildcards[0];
-        // 癞子座走枚举替身面的 wild_hint——经典 ai_choose 不懂癞子，
+        // 癞子座走枚举替身面的 wild_hint——模型/经典 ai_choose 都不懂癞子，
         // 会给压不过/被拒的牌。
+        // 经典座优先 DouZero 模型建议（dz_choose_safe 内含状态机口径
+        // 预校验 + 失败回落启发式）；模型缺失/编译开关关闭自动降级。
         let suggestion = if !wilds.is_empty() {
             crate::games::doudizhu_wild::wild_hint(&g.hands[0], wilds, prev)
         } else {
-            crate::games::doudizhu_ai::ai_choose(
-                &g.hands[0],
-                prev.map(|c| (c, g.last_seat.unwrap_or(0))),
-                0,
-                false,
-                g.landlord,
-            )
+            crate::games::doudizhu_dz::dz_choose_safe(g, 0, false)
         };
         return Ok(ok(serde_json::json!({ "hint": suggestion })));
     }
@@ -273,6 +269,19 @@ pub(super) async fn dz_action(
     tx.commit().await.map_err(dberr)?;
     state.repo.audit(Some(auth.id), "game.doudizhu", None).await;
     Ok(ok(serde_json::json!({ "game": room_view(&row) })))
+}
+
+/// 观战视角脱敏：清空所有座位手牌/癞子，不标本人、不轮到行动；
+/// 观战者只看桌面进度与各家剩牌张数，不泄露任何手牌。
+pub(super) fn spectator_mask(v: &mut serde_json::Value) {
+    v["my_turn"] = serde_json::json!(false);
+    if let Some(seats) = v["seats"].as_array_mut() {
+        for seat in seats.iter_mut() {
+            seat["is_me"] = serde_json::json!(false);
+            seat["cards"] = serde_json::json!(Vec::<i64>::new());
+            seat["wildcards"] = serde_json::json!(Vec::<i64>::new());
+        }
+    }
 }
 
 /// 角色字符串（留作复盘口后续扩展用）。

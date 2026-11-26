@@ -41,11 +41,22 @@ COPY apps ./apps
 COPY crates ./crates
 COPY --from=planner /build/apps/api/adapters/douban/target/wasm32-unknown-unknown/release/adapter_douban.wasm \
     /build/apps/api/adapters/douban/target/wasm32-unknown-unknown/release/adapter_douban.wasm
-RUN cargo build --release -p flux-api \
+RUN cargo build --release -p flux-api --features douzero \
     && cp target/release/flux-api /usr/local/bin/flux-api
 # GeoLite2 离线库不入仓库（.gitignore）；CI 上下文无此目录时补空目录，
 # 保证下方 COPY 可复现——空目录 = geo.rs 找不到 mmdb，GeoIP 字段静默降级为 null
 RUN mkdir -p apps/api/geoip
+# DouZero 模型权重不入仓库（.gitignore，Apache-2.0）；构建时从 HF 镜像拉取。
+# sha256 与 palemoky/douzero-baselines 的 models_onnx/douzero_WP 一致
+# （下载校验在 RUN 内完成，错一个字节即断构建）。缺模型时运行时静默回落
+# 启发式 ai_choose，不阻塞启动。
+ARG HF_MIRROR=hf-mirror.com
+RUN mkdir -p apps/api/models/doudizhu \
+    && for f in landlord landlord_down landlord_up; do \
+         wget -q "https://${HF_MIRROR}/palemoky/douzero-baselines/resolve/main/models_onnx/douzero_WP/$f.onnx" \
+           -O "apps/api/models/doudizhu/$f.onnx" || rm -f "apps/api/models/doudizhu/$f.onnx"; \
+       done \
+    && ls apps/api/models/doudizhu | grep -c onnx || true
 
 FROM ${BASE_REGISTRY}/library/debian:bookworm-slim
 # apt 走官方源：GitHub runner 在海外，换国内镜像（tuna）反被墙/超时——
@@ -70,6 +81,9 @@ COPY --from=builder /usr/local/bin/flux-api /usr/local/bin/flux-api
 COPY --from=builder /build/apps/api/migrations /app/migrations
 # GeoLite2 离线库（apps/api/geoip，.gitignore 不入库；缺失时 GeoIP 字段为 null 静默降级）
 COPY --from=builder /build/apps/api/geoip /app/geoip
+# DouZero 模型（apps/api/models/doudizhu，构建时下载；缺失目录也容忍——
+# 运行时 dz_nn::available() 探测失败自动回落启发式）
+COPY --from=builder /build/apps/api/models /app/models
 WORKDIR /app
 RUN mkdir -p /app/attachments /backups && chown -R flux:flux /app
 USER flux
