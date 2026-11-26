@@ -409,3 +409,7 @@ variant 仅支持 classic/wild	variant 僅支援 classic/wild	variant only suppo
 物品奖励必须配置 item_key	物品獎勵必須配置 item_key	Item reward requires item_key
 领取资料字段内容过长	領取資料欄位內容過長	Claim form field too long
 领取资料字段数超限	領取資料欄位數超限	Too many claim form fields
+action 仅支持 bid/grab/discard/double/play/hint	action 僅支援 bid/grab/discard/double/play/hint	action must be one of bid/grab/discard/double/play/hint
+账号已被禁言	賬號已被禁言	Account is muted
+赠礼留言过长：最多 100 字	贈禮留言過長：最多 100 字	Gift message too long: max 100 chars
+消息不能为空	訊息不能為空	Message cannot be empty
