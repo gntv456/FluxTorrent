@@ -1,6 +1,6 @@
 // FluxTorrent Service Worker（M26）
 // 策略（§5.7 离线策略）：静态资源缓存优先、页面导航网络优先失败回退、API 永不缓存。
-const VERSION = "flux-v4";
+const VERSION = "flux-v5";
 const STATIC_CACHE = `${VERSION}-static`;
 const PAGE_CACHE = `${VERSION}-pages`;
 const OFFLINE_URL = "/offline";
@@ -66,6 +66,45 @@ self.addEventListener("fetch", (event) => {
           fetch(event.request).then((res) => {
             const copy = res.clone();
             caches.open(STATIC_CACHE).then((c) => c.put(event.request, copy));
+            return res;
+          }),
+      ),
+    );
+    return;
+  }
+
+  // 加速批三期（2026-11-26）：public 静态资产同款 cache-first。
+  // 此前只接管 /_next/static，fonts 分片/牌图/勋章/主题 CSS/背景图这些
+  // public 长缓存资产 SW 完全不管——HTTP 缓存虽有 30 天（next.config
+  // headers），但弱网下每次仍要网络握手，且离线时字体/牌图全丢。
+  // 口径：内容寻址不变（字体/牌图/勋章）+ 按主题名固定路径的 theme-css
+  // （换主题 = 换 href，SW 缓存键按 URL 天然区分）→ cache-first 安全；
+  // 海报代理 /api/ 已被上方短路永不缓存（服务端另有 Redis 86400 层）。
+  // 命中上限防膨胀：cache API 无 LRU，靠 VERSION bump 全量清理兜底。
+  if (
+    url.pathname.startsWith("/fonts/") ||
+    url.pathname.startsWith("/games/") ||
+    url.pathname.startsWith("/medals/") ||
+    url.pathname.startsWith("/avatars/") ||
+    url.pathname.startsWith("/theme-css/") ||
+    url.pathname.startsWith("/arcade/") ||
+    url.pathname.startsWith("/brand/") ||
+    url.pathname.startsWith("/backgrounds/") ||
+    url.pathname.startsWith("/icons/") ||
+    url.pathname.startsWith("/cat-icons/")
+  ) {
+    event.respondWith(
+      caches.match(event.request).then(
+        (hit) =>
+          hit ??
+          fetch(event.request).then((res) => {
+            // 只缓存 200：304/404 不入缓存（conditional 请求的 304 无 body）
+            if (res.status === 200) {
+              const copy = res.clone();
+              caches
+                .open(STATIC_CACHE)
+                .then((c) => c.put(event.request, copy));
+            }
             return res;
           }),
       ),
