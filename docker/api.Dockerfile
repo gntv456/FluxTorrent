@@ -53,6 +53,9 @@ RUN mkdir -p apps/api/geoip
 ARG HF_MIRROR=hf-mirror.com
 # 缓存钉子：改失效该层缓存时 bump（MODEL_CACHE_BUST=2 起）
 ARG MODEL_CACHE_BUST=2
+# rust slim 无 wget（127 not found——上一轮 ||rm 掩错把这也盖住了）
+RUN apt-get update && apt-get install -y --no-install-recommends wget ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 RUN mkdir -p apps/api/models/doudizhu \
     && for f in landlord landlord_down landlord_up; do \
          wget -q "https://${HF_MIRROR}/palemoky/douzero-baselines/resolve/main/models_onnx/douzero_WP/$f.onnx" \
