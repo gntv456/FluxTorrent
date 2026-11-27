@@ -14,19 +14,20 @@ INSERT INTO site_settings (name, value, descr, grp) VALUES
 ('preserve_free_enabled', 'on', '保种区种子免费（在区自动挂 free 促销，出区撤）', 'main')
 ON CONFLICT (name) DO UPDATE SET descr = EXCLUDED.descr;
 
-INSERT INTO settings_meta (name, type, label_zh, label_en, hint, unit, min, max, step, group_key, card_order) VALUES
+INSERT INTO settings_meta (name, type, label_zh, label_en, hint, unit, min, max, step, options, group_key, card_order) VALUES
 ('preserve_seeders_max', 'number', '保种区做种上限', 'Preserve seeders cap',
  '保种区种子当前做种人数超过该值即自动移出，免费保持 3 天后恢复原价；入区条件同步要求做种人数不高于此值（默认 4）',
- '人', 1, 50, 1, '上传限制', 11),
+ '人', 1, 50, 1, NULL, '上传限制', 11),
 ('preserve_free_enabled', 'enum', '保种区免费', 'Preserve zone free',
  '开启后保种区在区种子自动全部免费（free 促销每小时对齐）；移出保种区后再免费 3 天，随后恢复原价',
  NULL, NULL, NULL, NULL,
- '{"options":[{"label":"开启","value":"on"},{"label":"关闭","value":"off"}]}',
+ '[{"label":"开启","value":"on"},{"label":"关闭","value":"off"}]'::jsonb,
  '上传限制', 12)
 ON CONFLICT (name) DO UPDATE SET
     label_zh = EXCLUDED.label_zh, label_en = EXCLUDED.label_en,
     hint = EXCLUDED.hint, unit = EXCLUDED.unit,
     min = EXCLUDED.min, max = EXCLUDED.max, step = EXCLUDED.step,
+    options = EXCLUDED.options,
     group_key = EXCLUDED.group_key, card_order = EXCLUDED.card_order;
 
 -- 入区天数口径更新：不再是「死种等待天数」，而是「发布到入区的最短天数」
