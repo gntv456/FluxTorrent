@@ -9,6 +9,8 @@
 --          reason=new_policy_sweep；0 做种行转拯救区候选，不做数据搬迁——
 --          resurrections 本来就按 torrents 实时谓词取数）。
 
+ALTER TYPE promotion_source ADD VALUE IF NOT EXISTS 'preserve_free';
+
 INSERT INTO site_settings (name, value, descr, grp) VALUES
 ('preserve_seeders_max', '4', '保种区做种人数上限（超过即自动移出保种区）', 'main'),
 ('preserve_free_enabled', 'on', '保种区种子免费（在区自动挂 free 促销，出区撤）', 'main')
