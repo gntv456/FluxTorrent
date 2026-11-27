@@ -52,36 +52,42 @@ export default async function UserProfilePage({
     : "center";
   // 当前 tab 对应的种子列表视图（center/posts/comments 为 null）
   const listView = LIST_VIEWS.find((v) => v.key === active);
+  // 加速批七期：profile/torrentlist/dict 三段并发挂起（原逐段 await）
+  const tlPage = Math.max(1, Number(tlPageQ ?? 1) || 1);
+  const listP = LIST_TABS.includes(active)
+    ? fetchTorrentLists(uid, tlPage).then((r) => ({
+        torrents: r.torrents,
+        tlHasMore: listView ? (r.hasMore[listView.key] ?? false) : false,
+      }))
+    : Promise.resolve({ torrents: null, tlHasMore: false });
   let data: ProfileData;
+  let torrents: TorrentLists | null;
+  let tlHasMore: boolean;
+  let dictR: Awaited<ReturnType<typeof getDict>>;
   try {
-    data = await api.get<ProfileData>(
-      `/api/v1/users/${encodeURIComponent(uid)}`,
-    );
+    // 三路并发；404 在下方统一判，fetchTorrentLists 内部已降级不抛
+    const [d, l, dic] = await Promise.all([
+      api.get<ProfileData>(`/api/v1/users/${encodeURIComponent(uid)}`),
+      listP,
+      getDict(),
+    ]);
+    data = d;
+    torrents = l.torrents;
+    tlHasMore = l.tlHasMore;
+    dictR = dic;
   } catch (e) {
     if (e instanceof ApiError && e.status === 404) notFound();
     else throw e;
   }
-  // 种子列表翻页（2026-11-02）：此前一次 limit=100，窄屏那页要滚很久；
-  // 现在每页 20 条 + 翻页条。多取一条用来判「还有没有下一批」。
-  const tlPage = Math.max(1, Number(tlPageQ ?? 1) || 1);
-  let torrents: TorrentLists | null = null;
-  let tlHasMore = false;
-  if (LIST_TABS.includes(active)) {
-    const r = await fetchTorrentLists(uid, tlPage);
-    torrents = r.torrents;
-    tlHasMore = listView ? (r.hasMore[listView.key] ?? false) : false;
-  }
 
-  const { dict, locale } = await getDict();
+  const { dict, locale } = dictR;
   const t = dict.userProfile2;
   // 词表按键取值（空态文案由 LIST_VIEWS 指定键名）
   const tt = {
     ...t,
-    // 第二轮评审补的 noSeeding 键在 review 段（userProfile2 无此键）
-    noSeeding: dict.review.noSeeding,
+    noSeeding: dict.review.noSeeding, // 键在 review 段（userProfile2 无）
   } as unknown as Record<string, string>;
-  // B3-4：宠物空挂件（「宠物 Lv.1」占位）已移除。ProfileData 无
-  // modules.pet 开关，按任务约定「没有开关就直接隐藏该空块」——不额外请求。
+  // B3-4：宠物空挂件已移除（无 modules.pet 开关直接隐藏，不额外请求）。
   const p = data.profile;
   const ratio = p.downloaded > 0 ? (p.uploaded / p.downloaded).toFixed(2) : "∞";
   const realRatio =

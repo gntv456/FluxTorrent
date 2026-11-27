@@ -58,7 +58,17 @@ export default async function TorrentDetailPage({
   // 后端对只读辅助块失败降级为空、torrent/detail 失败才 404，语义与旧版等价。
   // group（publish 模块）下一批并入；subtitles 仍由客户端组件拉取；snatches 懒加载不变。
   const enc = encodeURIComponent(tid);
-  const { dict, locale } = await getDict();
+  // 加速批七期：group/collections 在 aggregate 前并发挂起（tid 解析后即知，
+  // 不依赖响应）；section-dict 依赖 aggregate 的 category_id 留在第二段。
+  const dictP = getDict();
+  const groupP = api
+    .get<GroupInfo>(`/api/v1/torrents/${enc}/group`).catch(() => null);
+  const collectionsP = api
+    .get<{ id: number; kind: string; name: string }[]>(
+      `/api/v1/torrents/${enc}/collections`,
+    )
+    .catch(() => []);
+  const { dict, locale } = await dictP;
   let agg: Aggregate;
   try {
     agg = await api.get<Aggregate>(`/api/v1/torrents/${enc}/aggregate`);
@@ -80,17 +90,11 @@ export default async function TorrentDetailPage({
   const thanks = agg.thanks;
   const comments = agg.comments;
   // 聚合组（0069）：无组/接口失败时静默降级
-  const group = await api
-    .get<GroupInfo>(`/api/v1/torrents/${enc}/group`)
-    .catch(() => null);
+  const group = await groupP;
   // 所属合集（0157）：一种可入多个合集/系列
-  const inCollections = await api
-    .get<{ id: number; kind: string; name: string }[]>(
-      `/api/v1/torrents/${enc}/collections`,
-    )
-    .catch(() => []);
+  const inCollections = await collectionsP;
 
-  // 当前用户（0184 编辑表单推荐位 staff 判定 + 元数据源口径）
+  // 当前用户（0184 编辑表单推荐位 staff 判定 + 元数据源口径）；第二段并发
   const [me, profile, secDictAll] = await Promise.all([
     api.get<{ class_id?: number }>("/api/v1/me").catch(() => null),
     getSiteProfile().catch(() => null),
@@ -100,9 +104,8 @@ export default async function TorrentDetailPage({
           kinds?: SectionKindMeta[];
         }
       >(
+        // 真匿名口 60s data cache（变体按 URL 分键）
         `/api/v1/section-dict?category_id=${t.category_id}`,
-        // 真匿名口（handler 无 auth）：60s data cache 省内网一跳；
-        // 变体按 URL 分键，详情页间互不串
         60,
       )
       .catch(() => null),
