@@ -13,6 +13,7 @@
   --dz-line: rgba(247, 226, 178, 0.18);
   --dz-line-strong: rgba(247, 226, 178, 0.4);
   --dz-gold: #e8c882;
+  --dz-accent: #7c5cff;
   --dz-red: #e05252;
   --dz-mint: #46d3a4;
   --dz-card-bg: #faf6ec;
@@ -47,10 +48,53 @@
   --dz-line: var(--border-soft);
   --dz-line-strong: var(--border-deep);
   --dz-gold: #8a6428;
+  --dz-accent: #6a4ac2;
   --dz-card-bg: #ffffff;
   --dz-card-ink: #1f1c14;
+  /* 卡面令牌：extras 入口卡等用 fallback 白6% 的面在深毡上读不出浓墨字
+     （2026-11-27 实测「更多服务」整排看不清）——浅色档给实浅底。 */
+  --dz-card: var(--surface-card);
   background:
     radial-gradient(ellipse at 50% -8%, var(--surface-raised, #f3efe6) 0%, var(--surface-page, #ece6d8) 72%);
+  /* 页面底写死的暗色夜景（1989 行 ddz-bg-night+深罩）在浅色档同样把
+     浓墨字吞掉——整页换浅纸渐变，压掉暗色基线背景。 */
+  background: linear-gradient(
+    180deg,
+    var(--surface-raised, #f1ecdd) 0%,
+    var(--surface-page, #f7f3e8) 100%
+  ) !important;
+}
+
+/* 浅色档「更多服务」卡面对比度：实浅卡底 + 浓墨字 + 描边随档；
+   is-blocked 灰显档保留 opacity 语义但底色同换（灰卡也要能读）。 */
+:where(
+  html:not(
+      [data-theme$="-night"],
+      [data-theme="shanhaijing"],
+      [data-theme="brand-night"]
+    )
+) .doudizhu-page .dz-extras-item {
+  background: var(--surface-card, #faf6ec);
+  color: var(--text-strong, #232d27);
+  border-color: var(--border-soft, #d8d2c0);
+}
+:where(
+  html:not(
+      [data-theme$="-night"],
+      [data-theme="shanhaijing"],
+      [data-theme="brand-night"]
+    )
+) .doudizhu-page .dz-extras-item:hover {
+  border-color: var(--border-deep, #b8b09a);
+}
+:where(
+  html:not(
+      [data-theme$="-night"],
+      [data-theme="shanhaijing"],
+      [data-theme="brand-night"]
+    )
+) .doudizhu-page .dz-extras-title {
+  color: var(--text-strong, #232d27);
 }
 
 /* 浅色档按钮对比度修复（2026-11-26 实测反馈：墨字浮在写死的墨绿渐变上
@@ -229,6 +273,47 @@
   color: var(--dz-sub);
 }
 
+/* 公开房间列表（观战入口） */
+.dz-room-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 16px;
+}
+.dz-room-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid rgba(232, 200, 130, 0.2);
+  border-radius: var(--r-lg);
+  background: linear-gradient(
+    180deg,
+    rgba(30, 66, 50, 0.6),
+    rgba(16, 46, 34, 0.6)
+  );
+}
+.dz-room-row-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.dz-room-row-title {
+  font-size: 14px;
+  color: var(--dz-gold);
+}
+.dz-room-row-meta {
+  font-size: 12px;
+  color: var(--dz-sub);
+}
+.dz-top-status.is-watch {
+  color: #9ec8ff;
+  border-color: rgba(158, 200, 255, 0.4);
+  background: rgba(70, 110, 170, 0.18);
+}
+
 /* ── 牌桌（环形三座：AI 左上/右上，玩家手牌在桌外下方） ────── */
 .dz-table {
   position: relative;
@@ -398,11 +483,34 @@
 .dz-seat-avatar.is-ai {
   filter: saturate(0.8);
 }
+/* 座位剩牌数角标：头像右上圆形徽记，地主位金底 */
+.dz-seat-count-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #fff;
+  background: linear-gradient(160deg, #5a4a2a, #3a3020);
+  border: 1px solid var(--dz-gold);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+}
+.dz-seat.is-landlord .dz-seat-count-badge {
+  background: linear-gradient(160deg, #f2b93e, #c8841f);
+  color: #2a1c04;
+}
 /* 台词气泡：座位旁冒出，2.4s 淡出（landlord 的 say() 语义） */
 .dz-bubble {
   position: absolute;
   top: -10px;
-  right: -6px;
+  left: -6px;
+  right: auto;
   padding: 3px 10px;
   border: 1px solid var(--dz-line-strong);
   border-radius: 999px;
@@ -452,6 +560,81 @@
 .dz-seat-bid.is-wait {
   color: var(--dz-sub);
   opacity: 0.8;
+}
+.dz-seat-title {
+  font-size: 11px;
+  color: var(--dz-gold);
+  opacity: 0.9;
+}
+
+/* 房间频道消息 */
+.dz-chat {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+  padding: 12px;
+  border: 1px solid var(--dz-line);
+  border-radius: 12px;
+  background: var(--dz-panel);
+}
+.dz-chat-title {
+  font-size: 13px;
+  color: var(--dz-gold);
+  font-weight: 600;
+}
+.dz-chat-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 148px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.dz-chat-empty {
+  font-size: 12px;
+  color: var(--dz-sub);
+  text-align: center;
+  padding: 12px 0;
+}
+.dz-chat-msg {
+  display: flex;
+  gap: 8px;
+  font-size: 12px;
+  align-items: baseline;
+}
+.dz-chat-name {
+  flex: 0 0 auto;
+  color: var(--dz-gold);
+  max-width: 96px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dz-chat-body {
+  color: var(--dz-ink);
+  word-break: break-word;
+}
+.dz-chat-input {
+  display: flex;
+  gap: 8px;
+}
+.dz-chat-input input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--dz-line);
+  border-radius: 10px;
+  background: var(--dz-felt-2);
+  color: var(--dz-ink);
+  font-size: 13px;
+}
+.dz-chat-input .dz-btn {
+  flex: 0 0 auto;
+}
+.dz-chat-err {
+  font-size: 12px;
+  color: var(--dz-red);
 }
 
 /* ── AI 牌背扇堆：张数驱动密度（3/2/1 张档），商业斗地主座位牌堆语义 ── */
@@ -532,6 +715,7 @@
 .dz-status {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   gap: 8px;
   font-size: 12px;
   color: var(--dz-gold);
@@ -549,6 +733,21 @@
   border-radius: 50%;
   background: radial-gradient(circle at 35% 30%, #ff8a6a, #d63b2f);
   box-shadow: 0 0 6px rgba(214, 59, 47, 0.7);
+}
+/* 成套徽章小图标（透明底 webp，16px；加载失败时文字仍可读） */
+.dz-ico {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  flex: none;
+}
+.dz-status-mult {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.dz-status-bomb:has(img)::before {
+  display: none;
 }
 /* 底分筹码片：金棕渐变胶囊，区别于普通状态文字 */
 .dz-status-stake {
@@ -662,6 +861,7 @@
 .dz-play-badge {
   display: inline-flex;
   align-items: center;
+  gap: 5px;
   padding: 3px 12px;
   border: 1px solid var(--dz-gold);
   border-radius: 999px;
@@ -687,6 +887,37 @@
   background: rgba(224, 82, 82, 0.2);
   color: #ff9a9a;
   box-shadow: 0 0 12px rgba(224, 82, 82, 0.35);
+}
+/* 地主身份落牌标：紧随牌型徽章的红色小签 */
+.dz-play-landlord {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 9px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #ffd6d6;
+  background: rgba(224, 82, 82, 0.22);
+  border: 1px solid rgba(224, 82, 82, 0.5);
+}
+/* 出完手牌中央播报 */
+.dz-center-broadcast {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--dz-sub);
+}
+.dz-center-broadcast span {
+  padding: 3px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+}
+/* 等待席不渲染剩牌角标（static 上下文避免飘位） */
+.dz-wait-seats .dz-seat-count-badge {
+  display: none;
 }
 @keyframes dz-play-glow {
   0% {
@@ -895,6 +1126,20 @@
   width: 22px;
   height: 22px;
 }
+/* 人头牌 J/Q/K 人像位图：叠在花色降级之上，图缺失仍见角标与花色 */
+.dz-card-face-img {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 32px;
+  height: 42px;
+  object-fit: contain;
+  pointer-events: none;
+}
+.dz-card.is-small .dz-card-face-img {
+  width: 24px;
+  height: 32px;
+}
 .dz-card.is-red .dz-card-pip {
   color: var(--dz-red);
 }
@@ -1094,21 +1339,22 @@
   -webkit-backdrop-filter: blur(10px);
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.4);
   z-index: 20;
-  max-width: min(92vw, 460px);
+  max-width: min(94vw, 720px);
 }
 .dz-counter-grid {
-  display: grid;
-  grid-template-columns: repeat(8, minmax(38px, 1fr));
-  gap: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 5px;
 }
 .dz-counter-cell {
-  display: flex;
-  flex-direction: column;
+  display: inline-flex;
+  flex-direction: row;
   align-items: center;
-  gap: 1px;
-  padding: 5px 2px;
+  gap: 5px;
+  padding: 3px 9px;
   border: 1px solid var(--dz-line);
-  border-radius: var(--r-sm);
+  border-radius: 999px;
   background: var(--dz-panel);
 }
 .dz-counter-cell b {
@@ -1290,6 +1536,7 @@
 .dz-settle .dz-spring {
   display: inline-flex;
   align-items: center;
+  gap: 5px;
   padding: 3px 12px;
   border-radius: 999px;
   border: 1px solid var(--dz-gold);
@@ -1315,6 +1562,7 @@
 .dz-detail-chip {
   display: inline-flex;
   align-items: center;
+  gap: 5px;
   padding: 3px 10px;
   border-radius: 999px;
   font-size: 12px;
@@ -1371,6 +1619,23 @@
   object-fit: contain;
   filter: drop-shadow(0 4px 14px rgba(232, 200, 130, 0.35));
   animation: dz-badge-in 0.5s cubic-bezier(0.18, 1.3, 0.3, 1) both;
+}
+/* 结算我方代表全身立绘（透明底 webp，纯 CSS 降级：无图时占位块不撑高） */
+.dz-settle-portrait {
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  min-height: 0;
+}
+.dz-settle-portrait img {
+  height: 120px;
+  width: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.4));
+  animation: dz-settle-pop 0.5s cubic-bezier(0.18, 1.3, 0.3, 1) both;
+}
+.dz-settle.is-lose .dz-settle-portrait img {
+  filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.4)) saturate(0.72) brightness(0.92);
 }
 
 /* ── 王炸全屏演出：闪电劈落 + 白闪（rocket 一手触发，pointer-events 穿透） ── */
@@ -1691,8 +1956,8 @@ body:has(.doudizhu-page):where(
     min-width: 104px;
     padding: 8px 10px;
   }
-  .dz-counter-grid {
-    grid-template-columns: repeat(5, minmax(34px, 1fr));
+  .dz-counter-cell {
+    padding: 3px 7px;
   }
   .dz-lobby-hero img {
     max-height: 150px;
@@ -1736,8 +2001,8 @@ body:has(.doudizhu-page):where(
   .dz-card.is-sel {
     transform: translateY(-7px);
   }
-  .dz-counter-grid {
-    grid-template-columns: repeat(4, minmax(32px, 1fr));
+  .dz-counter-cell {
+    padding: 2px 6px;
   }
   .dz-lobby-hero img {
     max-height: 120px;
@@ -1746,14 +2011,14 @@ body:has(.doudizhu-page):where(
     width: 56px;
     height: 56px;
   }
+  .dz-settle-portrait img {
+    height: 100px;
+  }
   .dz-fulltop {
     gap: 8px;
   }
   .dz-exit {
     padding: 5px 10px;
-    font-size: 12px;
-  }
-  .dz-fullstatus {
     font-size: 12px;
   }
   .dz-fullbalance {
@@ -1809,16 +2074,84 @@ body:has(.doudizhu-page):where(
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.dz-top-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.dz-top-room {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--dz-gold);
+  white-space: nowrap;
+}
+.dz-top-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  white-space: nowrap;
+}
+.dz-top-status.is-live {
+  color: #8ee6a8;
+  border-color: rgba(142, 230, 168, 0.4);
+  background: rgba(76, 160, 104, 0.18);
+}
+.dz-top-status.is-wait {
+  color: var(--dz-sub);
+  background: rgba(255, 255, 255, 0.06);
+}
+.dz-top-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.dz-top-kitty {
+  display: flex;
+  gap: 3px;
+}
+.dz-top-kitty .dz-card {
+  width: 26px;
+  height: 38px;
+  font-size: 11px;
+}
+.dz-top-kitty .dz-card .dz-card-rank {
+  font-size: 10px;
+}
+.dz-top-kitty .dz-card .dz-card-suit {
+  font-size: 8px;
+}
+.dz-top-kitty .dz-card .dz-card-corner {
+  top: 2px;
+  left: 3px;
+}
+.dz-top-kitty .dz-card .dz-card-corner.is-br {
+  right: 3px;
+  bottom: 2px;
+}
+.dz-top-btn {
+  padding: 5px 12px;
+  font-size: 12px;
 }
 .dz-exit {
   padding: 5px 14px;
   font-size: 13px;
 }
-.dz-fullstatus {
-  flex: 1;
-  justify-content: center;
-  font-size: 13px;
+.dz-exit.is-danger {
+  border-color: var(--dz-red);
+  color: var(--dz-red);
+}
+.dz-exit.is-danger:not(:disabled):hover {
+  background: var(--dz-red);
+  color: #fff;
 }
 .dz-fullbalance {
   display: inline-flex;
