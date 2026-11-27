@@ -875,6 +875,12 @@
    "file": "apps/api/src/admin_p3_http/broadcast.rs"
   },
   {
+   "method": "PUT",
+   "path": "/admin/categories/{id}/flags",
+   "handler": "category_flags",
+   "file": "apps/api/src/admin_p3_http/category_flags.rs"
+  },
+  {
    "method": "GET",
    "path": "/admin/classes",
    "handler": "admin_classes_list",
@@ -1328,12 +1334,6 @@
    "method": "GET",
    "path": "/tags-dict",
    "handler": "tags_dict_public",
-   "file": "apps/api/src/admin_p3_http/section_public.rs"
-  },
-  {
-   "method": "PUT",
-   "path": "/admin/categories/{id}/flags",
-   "handler": "category_flags",
    "file": "apps/api/src/admin_p3_http/section_public.rs"
   },
   {
