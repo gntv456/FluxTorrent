@@ -12,6 +12,7 @@ import {
 } from "@/components/arcade/arcade-meta";
 import { ArcadeGlyph } from "@/components/arcade/arcade-glyph";
 import { SCENES } from "@/lib/game-scenes";
+import { GameCard } from "./_parts/game-card";
 
 interface PickView {
   ticket: number;
@@ -210,69 +211,30 @@ export default async function GamesPage() {
               <span className="gc-group-n">{items.length}</span>
             </div>
             <div className="gc-grid">
-              {items.map((e) => {
-                const badge = badgeOf(e);
-                const locked = lockedAt(e);
-                const rawTitle = cards[e.key]?.title ?? e.key;
-                const title = rawTitle.replace("{magic}", currency);
-                const Scene = SCENES[e.key];
-                const inner = (
-                  <>
-                    <div className={`gc-art gc-tone-${e.tone}`}>
-                      {Scene && <Scene className="gc-scene" />}
-                      {!Scene && (
-                        <span className="gc-glyph" aria-hidden>
-                          <ArcadeGlyph k={e.key} />
-                        </span>
-                      )}
-                      {e.hot && e.live && !locked && (
-                        <span className="gc-hot">{dict.games.hall.hot}</span>
-                      )}
-                      {badge && e.live && !locked && (
-                        <span className="gc-badge num">{badge}</span>
-                      )}
-                      {locked > 0 && (
-                        <span className="gc-soon num">
-                          {fmt(dict.games.hall.locked, { n: locked })}
-                        </span>
-                      )}
-                      {!e.live && (
-                        <span className="gc-soon">{dict.games.hall.soon}</span>
-                      )}
-                    </div>
-                    <div className="gc-body">
-                      <h3 className="gc-title">{title}</h3>
-                      <p className="gc-sub">{subOf(e)}</p>
-                      <span className="gc-go">
-                        {dict.games.hall.play}
-                        <i aria-hidden>→</i>
-                      </span>
-                    </div>
-                  </>
-                );
-                return e.live && !locked ? (
-                  <Link
-                    key={e.key}
-                    href={e.href}
-                    className="gc-card"
-                    aria-label={title}
-                  >
-                    {inner}
-                  </Link>
-                ) : (
-                  <div
-                    key={e.key}
-                    className="gc-card is-soon"
-                    aria-disabled="true"
-                  >
-                    {inner}
-                  </div>
-                );
-              })}
+              {items.map((e) => (
+                <GameCard
+                  key={e.key}
+                  e={e}
+                  badge={badgeOf(e)}
+                  locked={lockedAt(e)}
+                  title={(cards[e.key]?.title ?? e.key).replace(
+                    "{magic}",
+                    currency,
+                  )}
+                  sub={subOf(e)}
+                  strings={{
+                    hot: dict.games.hall.hot,
+                    soon: dict.games.hall.soon,
+                    play: dict.games.hall.play,
+                    locked: dict.games.hall.locked,
+                  }}
+                />
+              ))}
             </div>
           </section>
         );
       })}
+
 
       {arcadeMeta && <ArcadeMeta initial={arcadeMeta} />}
 
