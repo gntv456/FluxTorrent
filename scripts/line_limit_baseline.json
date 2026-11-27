@@ -263,7 +263,7 @@
   "apps/web/app/(auth)/register/page.tsx": 320,
   "apps/tracker/src/main.rs::wide": 3,
   "apps/tracker/src/peers/bencode.rs::wide": 3,
-  "apps/tracker/src/peers/bt_probe.rs": 768,
+  "apps/tracker/src/peers/bt_probe.rs": 361,
   "apps/tracker/src/peers/tests.rs::wide": 1,
   "apps/tracker/src/peers/torrent_parse.rs": 361,
   "apps/tracker/src/peers/torrent_parse.rs::wide": 1,
@@ -626,5 +626,6 @@
   "apps/web/components/gacha/gacha-stage.tsx": 2171,
   "apps/web/components/icon-paths.tsx": 676,
   "apps/web/components/icon-paths.tsx::wide": 18,
-  "apps/worker/src/jobs/auto_review_digest.rs::wide": 9
+  "apps/worker/src/jobs/auto_review_digest.rs::wide": 9,
+  "apps/tracker/src/peers/bt_probe_tests.rs": 411
 }
