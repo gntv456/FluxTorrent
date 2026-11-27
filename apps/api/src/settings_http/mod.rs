@@ -26,6 +26,7 @@ mod pack_catalog;
 mod pack_embed;
 mod pack_format;
 mod pack_import;
+mod pack_import_steps;
 pub(crate) mod ruleset; // admin_http 旧端点与降级/套包旁路复用（bump ruleset 代际）
                         // 站型包 apply（staff_http/pack_core.rs）要复用本模块的九列全字段解析，
                         // 否则站型包写 section_kinds 会漏掉 field_type 等
