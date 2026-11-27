@@ -183,8 +183,11 @@ const NAV_ONLY_SEC_KINDS = new Set(["subject"]);
 /** 高级面板是否自动展开：有真实筛选 chip 且 URL 里存在导航白名单之外的
  *  筛选参数才展开。纯导航落地（资源-电影 → category_id+official；
  *  教育-初二数学 → category_id+grade_id+sec_subject）不弹面板；
- *  owner/promo 等真筛选参数在 URL 则照常展开。 */
+ *  owner/promo 等真筛选参数在 URL 则照常展开。
+ *  adv=1（2026-11-27 懒面板）：用户点齿轮/summary 展开时客户端补的
+ *  「取面板内容」信号——必须视为展开态，否则拿到内容又立即收起。 */
 export function advAutoOpen(sp: TorrentsSP, nonSearchChips: number): boolean {
+  if (sp.adv === "1") return true;
   if (nonSearchChips === 0) return false;
   return Object.entries(sp).some(
     ([k, v]) =>

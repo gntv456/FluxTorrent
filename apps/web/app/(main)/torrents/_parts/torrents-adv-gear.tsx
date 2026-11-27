@@ -19,7 +19,17 @@ export function AdvGear({
       aria-controls="tsb-adv"
       onClick={() => {
         const adv = document.getElementById("tsb-adv");
-        if (adv instanceof HTMLDetailsElement) adv.open = !adv.open;
+        if (!(adv instanceof HTMLDetailsElement)) return;
+        // 懒面板（2026-11-27）：占位壳（data-adv-lazy）首次展开 → adv=1
+        // 整页取内容（React onToggle 对 gear 的程序化 open 变更不保证
+        // 触发，实测漏发——齿轮自己承担展开导航，不依赖事件）。
+        if (!adv.open && adv.dataset.advLazy === "1") {
+          const u = new URL(window.location.href);
+          u.searchParams.set("adv", "1");
+          window.location.assign(u.toString());
+          return;
+        }
+        adv.open = !adv.open;
       }}
     >
       <span className="tsb-adv-btn__icon" aria-hidden="true">

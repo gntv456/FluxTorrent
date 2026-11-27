@@ -274,6 +274,7 @@ export default async function TorrentsPage({
           selectedCats={selectedCats}
           chips={chips}
           advancedOpen={advancedOpen}
+          advLazy={!advancedOpen}
           nonSearchChips={nonSearchChips}
           showImdb={showImdb}
           withParam={withParam}

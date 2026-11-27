@@ -37,6 +37,7 @@ describe("torrents 高级筛选表单字段名", () => {
         selectedCats={new Set()}
         chips={[]}
         advancedOpen
+        advLazy={false}
         nonSearchChips={0}
         showImdb={false}
         withParam={() => "/torrents"}
@@ -95,6 +96,7 @@ describe("torrents 高级筛选表单字段名", () => {
         selectedCats={new Set()}
         chips={[{ id: "search", key: "search", text: "x", href: "/torrents" }]}
         advancedOpen
+        advLazy={false}
         nonSearchChips={0}
         showImdb={false}
         withParam={() => "/torrents"}

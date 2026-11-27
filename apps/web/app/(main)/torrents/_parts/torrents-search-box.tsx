@@ -35,6 +35,8 @@ export interface TorrentsSearchBoxProps {
   selectedCats: Set<number>;
   chips: TorrentChip[];
   advancedOpen: boolean;
+  /** true（默认访问）= 服务端未渲染面板 body（首屏瘦身）；展开走 adv=1 取内容 */
+  advLazy: boolean;
   nonSearchChips: number;
   showImdb: boolean;
   withParam: (sp: TorrentsSP, key: string, value: string | undefined) => string;
@@ -54,6 +56,7 @@ export function TorrentsSearchBox(props: TorrentsSearchBoxProps) {
     selectedCats,
     chips,
     advancedOpen,
+    advLazy,
     nonSearchChips,
     showImdb,
     withParam,
@@ -165,7 +168,7 @@ export function TorrentsSearchBox(props: TorrentsSearchBoxProps) {
             展开多组筛选后不用再滚回顶部找齿轮。
             受控壳 AdvDetails：软导航（换 URL）后按服务端判定回收/重开，
             手开的 DOM 状态不再跨导航粘滞（2026-11-09）。 */}
-      <AdvDetails open={advancedOpen}>
+      <AdvDetails open={advancedOpen} lazy={advLazy}>
         <summary className="tsb-adv__summary" title={t2.advanced}>
           <span className="tsb-adv__icon" aria-hidden="true">
             ⚙
@@ -181,6 +184,13 @@ export function TorrentsSearchBox(props: TorrentsSearchBoxProps) {
           )}
         </summary>
         <div className="tsb-adv__body">
+          {advLazy ? (
+            /* 懒面板（2026-11-27 首屏瘦身）：386 个筛选 chip 占 payload
+               ~150KB，默认访问不下发；展开时 AdvDetails 带 adv=1 硬导航，
+               服务端按该信号渲染完整面板（advAutoOpen 对 adv=1 恒开） */
+            <p className="tsb-adv__hint">{t2.advHint}</p>
+          ) : (
+            <>
           <div className="tsb-adv__head">
             <p className="tsb-adv__hint">{t2.advHint}</p>
             {/* onClick 抽到客户端组件 AdvCollapseButton：本文件是 server
@@ -222,6 +232,8 @@ export function TorrentsSearchBox(props: TorrentsSearchBoxProps) {
               {t2.advApply}
             </button>
           </div>
+            </>
+          )}
         </div>
       </AdvDetails>
     </form>
