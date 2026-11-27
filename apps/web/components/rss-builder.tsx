@@ -56,6 +56,8 @@ export function RssBuilder() {
   // 种子列表「订阅当前结果」入口预填：?keyword= 带入当前搜索词；
   // sec_* 维度筛选（B3）原样透传进生成的订阅链接（后端 rss 已接同一谓词）
   const [search, setSearch] = useState(sp.get("keyword") ?? "");
+  // 保种区页「RSS 订阅」入口预填：?preserve=1 → 仅在区种子
+  const [preserve, setPreserve] = useState(sp.get("preserve") === "1");
   const secParams = useMemo(() => {
     const m: Record<string, string> = {};
     for (const [k, v] of sp.entries()) {
@@ -106,6 +108,7 @@ export function RssBuilder() {
     }
     if (official) qs.set("official", "true");
     if (paid === "1") qs.set("paid", "1");
+    if (preserve) qs.set("preserve", "1");
     qs.set("showrows", String(showrows));
     if (linktype === "page") qs.set("linktype", "page");
     if (search.trim()) qs.set("search", search.trim());
@@ -116,6 +119,7 @@ export function RssBuilder() {
     media,
     official,
     paid,
+    preserve,
     showrows,
     linktype,
     search,
@@ -193,6 +197,14 @@ export function RssBuilder() {
               type="checkbox"
               checked={official}
               onChange={(e) => setOfficial(e.target.checked)}
+            />
+          </label>
+          <label className="rss-row">
+            <span>{t.preserveOnly}</span>
+            <input
+              type="checkbox"
+              checked={preserve}
+              onChange={(e) => setPreserve(e.target.checked)}
             />
           </label>
           <label className="rss-row">

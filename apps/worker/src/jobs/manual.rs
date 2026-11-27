@@ -92,6 +92,10 @@ pub(crate) async fn run_named(
         "arcade_week_prize" => n(arcade_week_prize(db).await?),
         "contest_settle" => n(contest_settle(db).await?),
         "preserve_settle" => n(preserve_settle(db).await?),
+        "preserve_free_promo" => {
+            let (add, del) = preserve_free_promo(db).await?;
+            format!("补挂/续期 {add} / 撤销 {del}")
+        }
         "funding_settle" => n(funding_settle(db).await?),
         "refundable_settle" => n(refundable_settle(db).await?),
         "achievement_grant" => n(achievement_grant(db).await?),

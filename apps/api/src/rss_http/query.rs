@@ -29,6 +29,9 @@ pub struct RssQuery {
     /// 增量游标：只回「可见时间晚于它」的条目（RFC3339 或 YYYY-MM-DD）。
     /// 刷流器不必每次拉 200 条再自己比对。
     pub since: Option<String>,
+    /// 1 = 仅保种区在区种子（seed_preserve.exited_at IS NULL，与保种区
+    /// 列表同一把尺；2026-11-27 保种区页 RSS 订阅链接专用）。
+    pub preserve: Option<i32>,
 }
 
 impl RssQuery {

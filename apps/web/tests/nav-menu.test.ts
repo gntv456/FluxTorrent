@@ -97,6 +97,28 @@ describe("defaultNav", () => {
     // 保种区升一级后，「字幕与保种」组里不再重复
     const subs = r.groups[1];
     expect(subs.items.some((i) => i.href === "/preserve")).toBe(false);
+    // 2026-11-27 站长定稿：保种区一级挂下拉两子菜单——保种区/拯救区；
+    // 复活任务随迁拯救区，「成长荣誉」组不再重复
+    const preserveItem = r.primary.find((p) => p.href === "/preserve");
+    expect(preserveItem?.sub?.map((s) => s.href)).toEqual([
+      "/preserve",
+      "/resurrections",
+    ]);
+    expect(r.groups[3].items.some((i) => i.href === "/resurrections")).toBe(
+      false,
+    );
+  });
+
+  it("拯救区子菜单跟随 resurrections 模块开关：关 → 保种区下拉只剩自身", () => {
+    const r = defaultNav({
+      nav,
+      tabbar,
+      currency: "魔力",
+      modules: (k) => k !== "resurrections",
+      customItems: [],
+    });
+    const preserveItem = r.primary.find((p) => p.href === "/preserve");
+    expect(preserveItem?.sub?.map((s) => s.href)).toEqual(["/preserve"]);
   });
 
   it("模块开关过滤：forums 关闭一级消失，games 关闭娱乐组剔除", () => {

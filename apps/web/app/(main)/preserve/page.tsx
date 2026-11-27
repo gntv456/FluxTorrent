@@ -80,6 +80,8 @@ export default async function PreservePage({
           <small>KEEP SHARING · KEEP GROWING</small>
           <strong>{dict.preserve.title}</strong>
           <span>{dict.preserve.subtitle}</span>
+          {/* 2026-11-27 新口径明示：入区/免费/出区规则一行讲清 */}
+          <small className="preserve-hero__rule">{dict.preserve.rule}</small>
         </span>
         <span className="preserve-hero__stats">
           {statCells.map(([label, n]) => (
@@ -257,7 +259,15 @@ export default async function PreservePage({
           </form>
           <p className="preserve-tools__rss">
             <strong>{dict.preserve.rssTitle}</strong>
-            {dict.preserve.rssNote}
+            {dict.preserve.rssNote}{" "}
+            {/* 2026-11-27 保种区订阅直达：preserve=1 → RSS 只回在区种子
+                （getrss 构建器读 searchParams 预填「仅保种区」勾选） */}
+            <Link
+              href="/getrss?preserve=1"
+              className="text-link hover:underline"
+            >
+              📡 {dict.preserve.rssTitle}
+            </Link>
           </p>
           <p className="text-sm text-muted">
             <Link href="/resurrections" className="text-link hover:underline">

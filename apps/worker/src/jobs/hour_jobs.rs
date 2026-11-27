@@ -127,6 +127,14 @@ pub(super) async fn hour_jobs(
     // 绩效月末结算挂 hourly（0106）：daily 首轮被跳过、重启后要等 24h
     run_sharded(&db, &shard, "job:jixiao_settle", jixiao_settle(&db)).await;
     run_sharded(&db, &shard, "job:preserve_settle", preserve_settle(&db)).await;
+    // 保种区免费促销对齐（2026-11-27：在区即 free，出区撤——每小时续期短券）
+    run_sharded(
+        &db,
+        &shard,
+        "job:preserve_free_promo",
+        preserve_free_promo(&db),
+    )
+    .await;
     run_sharded(&db, &shard, "job:funding_settle", funding_settle(&db)).await;
     run_sharded(&db, &shard, "job:refundable_settle", refundable_settle(&db))
         .await;

@@ -3,16 +3,15 @@
 use super::class_demote::demote_with_notice;
 use sqlx::{PgPool, Row};
 
-/// 死种入保种区（审计修复：保种区此前无数据源，页面恒空）。
-/// `seeders=0 AND leechers=0 AND approval_status=1 AND created_at < now() - preserve_dead_days`
-/// 且不在 seed_preserve 表中的种子 INSERT（claimed_by 为 NULL，等待认领）。
-/// preserve_dead_days 默认 7（site_settings，迁移 0084 播种）。
-///
-/// P2-8（2026-10-07）：新增「发布者保种义务」判定（后台可配置，默认开、出种
-/// 阈值 3 人）。发布者名下种子若已过审且存活超过宽限期，但**当前做种人数
-/// 仍低于阈值** → 视为发布者未尽责，进入保种区等待他人认领补种。
-/// 与既有死种条件取并集：死种（0 做种 0 下载）本就低于任何 ≥1 阈值，两条
-/// 规则不冲突；阈值为 0 时本条规则整体关闭（只看死种）。
+/// 保种区入区（2026-11-27 站长定稿新口径）：
+/// `发布 ≥ preserve_dead_days 天 AND 1 ≤ seeders ≤ preserve_seeders_max`
+/// ——保种区救的是「还有人在做种但后继乏力」的温带种，不是死种坟场；
+/// 0 做种的死种由拯救区（/resurrections + 濒危预警）承接，不再入区。
+/// preserve_dead_days 默认改 3（0084 播种 7，0527 迁移 UPDATE）；
+/// preserve_seeders_max 默认 4（0527 播种，clamp 1..=50）。
+/// 区内种子由 preserve_enter_promo（jobs/preserve.rs）挂全周期 free 促销
+/// ——保种区种子免费；seeders > max 时 preserve_exit 移出并撤促销，
+/// 免费随 promotions 行自然到期（出区宽限 3 天，之后恢复原价）。
 pub(crate) async fn preserve_seed(db: &PgPool) -> anyhow::Result<u64> {
     let dead_days: i64 = sqlx::query_scalar::<_, String>(
         "SELECT value FROM site_settings WHERE name = 'preserve_dead_days'",
@@ -22,55 +21,29 @@ pub(crate) async fn preserve_seed(db: &PgPool) -> anyhow::Result<u64> {
     .ok()
     .flatten()
     .and_then(|v| v.parse::<i64>().ok())
-    .unwrap_or(7)
+    .unwrap_or(3)
     .clamp(1, 365);
-    // P2-8：发布者保种义务开关 + 出种人数阈值（默认 on / 3）
-    let uploader_on: bool = sqlx::query_scalar::<_, String>(
-        "SELECT value FROM site_settings WHERE name = 'uploader_seed_enabled'",
-    )
-    .fetch_optional(db)
-    .await
-    .ok()
-    .flatten()
-    .map(|v| v == "on" || v == "yes" || v == "1" || v == "true")
-    .unwrap_or(true);
-    let uploader_min: i64 = sqlx::query_scalar::<_, String>(
-        "SELECT value FROM site_settings WHERE name = 'uploader_seed_min'",
+    // 出区人数上限（2026-11-27 站长定稿：>4 人即移出保种区）
+    let max_seeders: i64 = sqlx::query_scalar::<_, String>(
+        "SELECT value FROM site_settings WHERE name = 'preserve_seeders_max'",
     )
     .fetch_optional(db)
     .await
     .ok()
     .flatten()
     .and_then(|v| v.parse::<i64>().ok())
-    .unwrap_or(3)
-    .clamp(0, 50);
+    .unwrap_or(4)
+    .clamp(1, 50);
     let res = sqlx::query(
         r#"
         INSERT INTO seed_preserve (torrent_id)
         SELECT t.id
         FROM torrents t
         WHERE t.approval_status = 1
-          AND t.owner_id IS NOT NULL
           AND t.created_at < now() - make_interval(days => $1::int)
+          AND t.seeders BETWEEN 1 AND $2::int
           AND NOT EXISTS (SELECT 1 FROM seed_preserve sp
                           WHERE sp.torrent_id = t.id AND sp.exited_at IS NULL)
-          AND (
-            -- 既有死种条件（0 做种 0 下载）
-            (t.seeders = 0 AND t.leechers = 0)
-            OR
-            -- P2-8 发布者保种义务：发布者自己已不在种且做种人数低于阈值
-            -- （六轮审计 P2-F：必须叠加「发布者不在种」——否则所有
-            --   seeders<min 的健康冷种都被灌进保种区，与 preserve_exit 的
-            --   「>min 才移出」构成只进不出的棘轮，保种区从死种坟场
-            --   膨胀成大半个站点、认领结算面被无限放大。发布者义务的
-            --   本意是「发完即跑」的种子才需要他人接盘。）
-            ($2::bool AND $3::int > 0 AND t.seeders < $3::int
-               AND NOT EXISTS (
-                   SELECT 1 FROM snatches s
-                   WHERE s.torrent_id = t.id AND s.user_id = t.owner_id
-                     AND s.seeding
-                     AND s.last_seen_at > now() - interval '2 days'))
-          )
         ON CONFLICT (torrent_id) DO UPDATE
           SET exited_at = NULL, exit_reason = NULL,
               claimed_by = NULL, claimed_at = NULL, last_settle_at = NULL
@@ -78,17 +51,15 @@ pub(crate) async fn preserve_seed(db: &PgPool) -> anyhow::Result<u64> {
         "#,
     )
     .bind(dead_days as i32)
-    .bind(uploader_on)
-    .bind(uploader_min as i32)
+    .bind(max_seeders as i32)
     .execute(db)
     .await?;
     if res.rows_affected() > 0 {
         tracing::info!(
             n = res.rows_affected(),
             dead_days,
-            uploader_on,
-            uploader_min,
-            "死种/未尽责发布者种子入保种区"
+            max_seeders,
+            "低做种温带种入保种区（发种≥dead_days 且 1..=max 做种）"
         );
     }
     Ok(res.rows_affected())

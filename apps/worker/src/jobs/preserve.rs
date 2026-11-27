@@ -3,45 +3,111 @@
 
 use sqlx::PgPool;
 
-/// 保种区移出（M19 旧站口径：做种 > 阈值移出，免费延续 3 天）。
-///
-/// P2-8（2026-10-07）：出种人数阈值从硬编码 7 改为后台可配置
-/// `uploader_seed_min`（默认 3，与「发布者保种出种 3 人」口径一致），
-/// 站长可在设置面板「上传限制」卡调整。clamp 0..=50 防止填出
-/// 永不移出（极大）或全部移出（0）的极端值；0 视为「不移出」。
+/// 保种区移出（2026-11-27 站长定稿：做种 > preserve_seeders_max 移出，
+/// 免费宽限 3 天后恢复原价）。出区同时撤掉在区免费促销——宽限用的
+/// preserve_grace free 促销在 `ends_at = now()+3d` 处自然挡住后面的
+/// 合成（promo.rs 按时间窗取最早到期），到点即恢复原价，无需删除。
+/// preserve_seeders_max 与入区（class_adj::preserve_seed）同键同缺省
+/// ——两处各写一份缺省就是第二把尺。
 pub async fn preserve_exit(db: &PgPool) -> anyhow::Result<u64> {
-    let min_seeders: i64 = sqlx::query_scalar::<_, String>(
-        "SELECT value FROM site_settings WHERE name = 'uploader_seed_min'",
+    let max_seeders: i64 = sqlx::query_scalar::<_, String>(
+        "SELECT value FROM site_settings WHERE name = 'preserve_seeders_max'",
     )
     .fetch_optional(db)
     .await
     .ok()
     .flatten()
     .and_then(|v| v.parse::<i64>().ok())
-    .unwrap_or(3)
-    .clamp(0, 50);
-    // 阈值 0 = 关闭「做种人数达标即移出」，只保留人工移出
-    if min_seeders == 0 {
-        return Ok(0);
-    }
+    .unwrap_or(4)
+    .clamp(1, 50);
     let res = sqlx::query(
         r#"
         WITH exited AS (
-            UPDATE seed_preserve sp SET exited_at = now(), exit_reason = 'seeders_gt_threshold'
+            UPDATE seed_preserve sp
+            SET exited_at = now(), exit_reason = 'seeders_gt_threshold'
             FROM torrents t
-            WHERE t.id = sp.torrent_id AND t.seeders > $1 AND sp.exited_at IS NULL
+            WHERE t.id = sp.torrent_id AND t.seeders > $1
+              AND sp.exited_at IS NULL
             RETURNING sp.torrent_id
         )
         INSERT INTO promotions (scope, torrent_id, kind, starts_at, ends_at, source)
-        SELECT 'torrent', torrent_id, 'free', now(), now() + interval '3 days', 'preserve_grace'
+        SELECT 'torrent', torrent_id, 'free', now(),
+               now() + interval '3 days', 'preserve_grace'
         FROM exited
         ON CONFLICT DO NOTHING
         "#,
     )
-    .bind(min_seeders)
+    .bind(max_seeders)
+    .execute(db)
+    .await?;
+    // 撤促销单独跑：出区行挂宽限 free、在区行挂全周期 preserve free，
+    // 两条 UPDATE 各自按 source + 在区态精确收边，互不越界。
+    sqlx::query(
+        "UPDATE promotions p SET ends_at = now() \
+         FROM seed_preserve sp \
+         WHERE p.torrent_id = sp.torrent_id AND p.source = 'preserve_grace' \
+           AND p.ends_at > now() AND sp.exited_at IS NULL",
+    )
     .execute(db)
     .await?;
     Ok(res.rows_affected())
+}
+
+/// 保种区免费促销（2026-11-27 站长定稿：保种区种子一律免费）。
+/// 每轮对齐「在区种子 ⇔ 存活 preserve_free 促销」：缺的补挂
+/// （ends_at = now()+1h，下一轮续期——比一次性挂到出区更能容忍
+/// 人工移出/改配置这类旁路；到点未续 = 自然恢复原价），
+/// 出区/下架的撤掉。maintains 而非 one-shot：settings 里
+/// preserve_free_enabled=yes 才跑（0527 播种，默认 on）。
+pub async fn preserve_free_promo(db: &PgPool) -> anyhow::Result<(u64, u64)> {
+    let on: bool = sqlx::query_scalar::<_, String>(
+        "SELECT value FROM site_settings WHERE name = 'preserve_free_enabled'",
+    )
+    .fetch_optional(db)
+    .await
+    .ok()
+    .flatten()
+    .map(|v| v == "on" || v == "yes" || v == "1" || v == "true")
+    .unwrap_or(true);
+    if !on {
+        return Ok((0, 0));
+    }
+    // 补挂/续期：在区（未出区）且未过审豁免外的种，若无存活 preserve_free
+    // 促销则挂 1 小时短券（续期口径：短券到期自然失效，下一轮重新补——
+    // 幂等在「存在即不重复挂」，不需要 upsert）。
+    let renewed = sqlx::query(
+        r#"
+        INSERT INTO promotions (scope, torrent_id, kind, starts_at, ends_at, source)
+        SELECT 'torrent', sp.torrent_id, 'free', now(),
+               now() + interval '1 hour', 'preserve_free'
+        FROM seed_preserve sp
+        JOIN torrents t ON t.id = sp.torrent_id AND t.approval_status = 1
+        WHERE sp.exited_at IS NULL
+          AND NOT EXISTS (
+            SELECT 1 FROM promotions p
+            WHERE p.torrent_id = sp.torrent_id AND p.source = 'preserve_free'
+              AND p.ends_at > now())
+        "#,
+    )
+    .execute(db)
+    .await?;
+    // 撤销：出区/驳回的种身上的 preserve_free 立即失效（preserve_grace
+    // 宽限券不在此列——那是移出后 3 天免费的载体）。
+    let revoked = sqlx::query(
+        r#"
+        UPDATE promotions p SET ends_at = now()
+        FROM seed_preserve sp
+        WHERE p.torrent_id = sp.torrent_id AND p.source = 'preserve_free'
+          AND p.ends_at > now()
+          AND (sp.exited_at IS NOT NULL
+               OR NOT EXISTS (SELECT 1 FROM torrents t
+                              WHERE t.id = sp.torrent_id
+                                AND t.approval_status = 1))
+        "#,
+    )
+    .execute(db)
+    .await?;
+    Ok((renewed.rows_affected(), revoked.rows_affected()))
 }
 
 /// 保种认领结算（审计修复 P1 闭环补全）：claim 记了 seed_time_begin/uploaded_begin

@@ -93,6 +93,10 @@ pub const JOBS_SLOW: &[JobDef] = &[
         cadence: "1h",
     },
     JobDef {
+        name: "preserve_free_promo",
+        cadence: "1h",
+    },
+    JobDef {
         name: "funding_settle",
         cadence: "1h",
     },

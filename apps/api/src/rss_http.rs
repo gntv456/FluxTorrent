@@ -116,6 +116,9 @@ pub(crate) async fn rss_feed(
     // 深测 2026-10-03：付费种子无差别推给订阅器——未购用户下载时才被
     // charge_for_download 拦下（402）。默认排除「付费且未购」；paid=0 全量。
     let exclude_paid = q.paid != Some(0);
+    // preserve=1 → 仅保种区在区种子（保种区页 RSS 订阅链接专用；
+    // 与 /preserve 列表同一把尺：seed_preserve 行 + 未出区）
+    let preserve_only = q.preserve == Some(1);
     // P-433：无原始存档的种在下载口必然 400，而 RSS 消费者按 guid 自动
     // 重试 ⇒ 不能广告。与 Torznab 共用同一份谓词，别在这里另写一句。
     let has_archive = crate::torrents::HAS_ARCHIVE_CLAUSE;
@@ -155,6 +158,8 @@ pub(crate) async fn rss_feed(
            AND (NOT $9::bool OR t.seeders > 0) \
            AND ($10::timestamptz IS NULL OR \
                 COALESCE(t.approved_at, t.created_at) > $10) \
+           AND (NOT $11::bool OR EXISTS (SELECT 1 FROM seed_preserve sp \
+                WHERE sp.torrent_id = t.id AND sp.exited_at IS NULL)) \
          ORDER BY COALESCE(t.approved_at, t.created_at) DESC, \
                   t.id DESC LIMIT $5"
     );
@@ -178,6 +183,7 @@ pub(crate) async fn rss_feed(
         exclude_paid,
         user_id,
         q.since_at(),
+        preserve_only,
     )
     .await
     .unwrap_or_default();

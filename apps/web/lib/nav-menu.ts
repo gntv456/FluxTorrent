@@ -1,5 +1,6 @@
 import type { getMenuItems } from "@/lib/data";
 import { eduPrimary, hasEduCat } from "./nav-edu";
+import { preservePrimary } from "./nav-preserve";
 
 /** 导航配置单源（M2）：桌面 MainMenu / 移动抽屉 / 底 Tab 共用同一份构建
  *  逻辑，杜绝命名漂移。自定义菜单（topbar）生效时一级/分组同样以这里为准。 */
@@ -157,10 +158,10 @@ export function defaultNav({
     ...(libraryCats && hasEduCat(libraryCats)
       ? [eduPrimary(nav.eduRes, nav)]
       : []),
-    // 保种区一级直挂（2026-11-16 站长定稿：默认一级 = 首页/论坛/
-    // 资源库/保种区/发布/更多）——原来压在「字幕与保种」组触达弱
+    // 保种区一级直挂（2026-11-16 站长定稿）：一级挂下拉两子菜单——
+    // 保种区（温带种免费区）与拯救区（死种复活随迁，组里不再重复）
     ...(modules("preserve")
-      ? [{ href: "/preserve", label: nav.preserve }]
+      ? [preservePrimary(nav, modules("resurrections"))]
       : []),
     { href: "/upload", label: nav.upload },
   ];
@@ -232,9 +233,7 @@ export function defaultNav({
         { href: "/classes", label: nav.classes },
         ...(modules("exams") ? [{ href: "/me/exams", label: nav.exams }] : []),
         { href: "/me/achievements", label: nav.achievements },
-        ...g(modules("resurrections"), {
-          href: "/resurrections", label: nav.resurrections,
-        }),
+        // 复活任务已随迁保种区下拉「拯救区」（2026-11-27），组里不再重复
         ...g(modules("medals"), { href: "/medal-wall", label: nav.medalWall }),
         ...g(modules("dressup"), { href: "/avatar-frames", label: nav.frames }),
         ...(modules("medals") ? [{ href: "/medals", label: nav.medals }] : []),
