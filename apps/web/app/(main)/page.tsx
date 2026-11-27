@@ -50,7 +50,12 @@ export default async function HomePage() {
           url: string | null;
           badge: string | null;
         }[]
-      >("/api/v1/sticky-promos")
+      >(
+        "/api/v1/sticky-promos",
+        // 真匿名口（handler 无 auth）：置顶促销条管理端配置驱动，
+        // 60s data cache 省内网一跳（与编辑保存的全站可见时差 ≤60s 可接受）
+        60,
+      )
       .catch(() => []),
     // M3 移动问候条数据（/me/overview 摘要；失败回落 null 只渲染问候语）
     api.get<HomeMeRaw>("/api/v1/me/overview").catch(() => null),

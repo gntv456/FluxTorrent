@@ -99,7 +99,12 @@ export default async function TorrentDetailPage({
         Record<string, { id: number; name: string }[]> & {
           kinds?: SectionKindMeta[];
         }
-      >(`/api/v1/section-dict?category_id=${t.category_id}`)
+      >(
+        `/api/v1/section-dict?category_id=${t.category_id}`,
+        // 真匿名口（handler 无 auth）：60s data cache 省内网一跳；
+        // 变体按 URL 分键，详情页间互不串
+        60,
+      )
       .catch(() => null),
   ]);
   // E6 视图布局：段落隐藏门（空集=全显示；模块开关仍优先，无数据仍不渲染）

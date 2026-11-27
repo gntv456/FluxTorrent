@@ -35,10 +35,18 @@ export interface CatIds {
   categories?: { id: number }[];
 }
 
-/** 匿名公开接口统一抓取（api.get 自带 SSR 内网直连 API_SERVER_URL；失败时隐藏对应筛选区） */
-export async function loadPublic<T>(path: string): Promise<T | null> {
+/** 匿名公开接口统一抓取（api.get 自带 SSR 内网直连 API_SERVER_URL；失败时隐藏对应筛选区）。
+ *  revalidate（加速批六期 2026-11-27）：仅限**真匿名口**（handler 无 auth、
+ *  响应与调用者无关）——Next data cache 键不含 Authorization 头，带鉴权
+ *  语义的口传值会串数据（menu-items 按 min_class 过滤即此类，明令禁用）。
+ *  仅服务端 RSC 生效：60s 窗口内同 URL 渲染直接复用缓存，省掉内网一跳。
+ *  API 侧另有 Redis 层（五期）+ 世代失效，双层陈旧窗上限 60s。 */
+export async function loadPublic<T>(
+  path: string,
+  revalidate?: number,
+): Promise<T | null> {
   try {
-    return await api.get<T>(path);
+    return await api.get<T>(path, revalidate);
   } catch {
     return null;
   }

@@ -140,7 +140,9 @@ export async function getForumRecent(
 
 export async function getSiteStats(): Promise<SiteStats | null> {
   try {
-    return await api.get<SiteStats>("/api/v1/stats");
+    // 加速批六期：真匿名聚合（API 侧另有 Redis 60s 快照），页脚全站共用，
+    // 60s data cache 省每页渲染的内网一跳
+    return await api.get<SiteStats>("/api/v1/stats", 60);
   } catch {
     return null;
   }

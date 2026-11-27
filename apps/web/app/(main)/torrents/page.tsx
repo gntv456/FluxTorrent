@@ -102,10 +102,10 @@ export default async function TorrentsPage({
       view_hidden?: {
         columns?: string[]; sections?: string[]; works?: string[];
       };
-    }>("/api/v1/site-profile"),
+    }>("/api/v1/site-profile", 60),
     loadPublic<
       Record<string, SectionDictRow[]> & { kinds?: SectionKindMeta[] }
-    >("/api/v1/section-dict"),
+    >("/api/v1/section-dict", 60),
     loadPublic<
       | {
           tags:
@@ -115,7 +115,7 @@ export default async function TorrentsPage({
         }
       | { id: number; name: string; kind: string }[]
       | [number, string, string][]
-    >("/api/v1/tags-dict"),
+    >("/api/v1/tags-dict", 60),
     ]);
     return { profile, secDict, tagDict };
   })();
