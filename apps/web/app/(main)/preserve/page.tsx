@@ -22,21 +22,36 @@ export default async function PreservePage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  // U1 模块页守卫：关闭时渲染统一空态
-  const gate = await requireModule("preserve");
-  if (gate) return gate;
-
-  const { dict } = await getDict();
-  // 分类筛选项取自站点分类表（torrents.category_id 的外键目标）
-  const cats = (await getTorrentDicts()).categories;
-  // 筛选接线（审计修复 P1）：scope/status 表单参数此前后端声明即弃、前端也不透传——
-  // 筛选 UI 双重失效。现在透传到 /preserve。
+  // 四路并发（2026-11-27 首屏提速：此前 requireModule→getDict→
+  // getTorrentDicts→getPreserve 四连串行，每步一次 API RTT，线上跨
+  // CF 串出 2-4s 白屏；四者互相无依赖，同 layout.tsx 布局并发先例）。
+  // searchParams 先行解包（同步拿筛选参数，getPreserve 的入参立刻就绪）。
   const spRaw = await searchParams;
   const pick = (k: string): string | undefined => {
     const v = spRaw[k];
     const s = Array.isArray(v) ? v[0] : v;
     return s && s !== "all" && s !== "current" ? s : undefined;
   };
+  // P-286：取数失败必须显式报错，不能演成「暂无保种需求」。
+  let data: Awaited<ReturnType<typeof getPreserve>>;
+  const [gate, dictPack, torrentDicts, dataOrErr] = await Promise.all([
+    requireModule("preserve"),
+    getDict(),
+    getTorrentDicts(),
+    getPreserve({
+      scope: pick("scope"),
+      status: pick("status"),
+      category: pick("category"),
+      keyword: pick("keyword"),
+    }).then(
+      (v) => v,
+      (e: unknown) => e,
+    ),
+  ]);
+  if (gate) return gate;
+  const { dict } = dictPack;
+  // 分类筛选项取自站点分类表（torrents.category_id 的外键目标）
+  const cats = torrentDicts.categories;
   // 受控回填：把当前筛选值回显到表单控件（避免刷新后选择丢失）。
   // 有任一筛选生效时自动展开工具抽屉（高级筛选 advAutoOpen 同理：
   // 用户带着条件进来，抽屉不该再藏起来）。
@@ -48,18 +63,18 @@ export default async function PreservePage({
   const filtered = Boolean(
     pick("scope") ?? pick("status") ?? pick("category") ?? pick("keyword"),
   );
-  // P-286：取数失败必须显式报错，不能演成「暂无保种需求」
-  let data: Awaited<ReturnType<typeof getPreserve>>;
-  try {
-    data = await getPreserve({
-      scope: pick("scope"),
-      status: pick("status"),
-      category: pick("category"),
-      keyword: pick("keyword"),
-    });
-  } catch (e) {
-    return <ErrorPanel error={normalizeError(e)} retryHref="/preserve" />;
+  const isErr =
+    dataOrErr instanceof Error ||
+    !(dataOrErr as { items?: unknown } | null)?.items;
+  if (isErr) {
+    return (
+      <ErrorPanel
+        error={normalizeError(dataOrErr)}
+        retryHref="/preserve"
+      />
+    );
   }
+  data = dataOrErr as Awaited<ReturnType<typeof getPreserve>>;
   const { items, stats, total } = data;
   const statCells: [string, number][] = [
     [dict.preserve.stPreserving, stats.preserving],
