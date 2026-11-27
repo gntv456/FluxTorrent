@@ -430,5 +430,7 @@
   "apps/api/src/admin_http/user_revoke.rs": 6,
   "apps/api/src/admin_http/user_status.rs": 7,
   "apps/api/src/admin_http/user_status_notify.rs": 1,
-  "apps/api/src/admin_http/user_vouchers.rs": 3
+  "apps/api/src/admin_http/user_vouchers.rs": 3,
+  "apps/api/src/admin_p3_http/category_flags.rs": 1,
+  "apps/api/src/games_http/doudizhu_pvp_http.rs": 3
 }
