@@ -79,7 +79,8 @@ pub(super) async fn gacha_me(
         Option<i64>,
     )> = sqlx::query_as(
         "SELECT seq, output_type, rarity, shards, was_pity, \
-             to_char(drawn_at, 'YYYY-MM-DD\"T\"HH24:MI:SS'), \
+             to_char(drawn_at AT TIME ZONE 'Asia/Shanghai', \
+                 'YYYY-MM-DD\"T\"HH24:MI:SS'), \
              pity_at, is_new, banner_id, card_id \
              FROM gacha_draws WHERE user_id = $1 \
              ORDER BY id DESC LIMIT 30",

@@ -158,8 +158,10 @@ pub(super) async fn gacha_banners(state: Db) -> DomainResult<HttpResponse> {
         i32,
     )> = sqlx::query_as(
         "SELECT id, key, name, kind, ticket_cost, \
-         to_char(starts_at, 'YYYY-MM-DD\"T\"HH24:MI:SS'), \
-         to_char(ends_at, 'YYYY-MM-DD\"T\"HH24:MI:SS'), \
+         to_char(starts_at AT TIME ZONE 'Asia/Shanghai', \
+             'YYYY-MM-DD\"T\"HH24:MI:SS'), \
+         to_char(ends_at AT TIME ZONE 'Asia/Shanghai', \
+             'YYYY-MM-DD\"T\"HH24:MI:SS'), \
          pity_soft, pity_hard, ten_cost \
          FROM gacha_banners WHERE enabled \
          AND (starts_at IS NULL OR starts_at <= now()) \
