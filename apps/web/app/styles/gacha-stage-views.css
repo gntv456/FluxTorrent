@@ -1480,7 +1480,9 @@ body:has(.gacha-page) #main-content {
     margin: 6px 0;
   }
   .gx .feat-card {
-    width: 104px;
+    width: auto;
+    flex: 1 1 0;
+    min-width: 0;
   }
   .gx .feat-lb,
   .gx .feat-card .card-sub {
