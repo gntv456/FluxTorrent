@@ -122,9 +122,24 @@ pub(crate) async fn expire_stale_tx(
                         .map(|c| vec![c])
                 });
                 let cards = cards.unwrap_or_default();
-                // 领出必须出牌；候选被拒（癞子面外的边角）则降级过牌
-                if cards.is_empty() && row.state.last.is_none() {
-                    break; // 无牌可领的保险出口（手牌空不应到这）
+                // 领出必须出牌：候选被拒（模型建议与实体面错位等）→ 最小单张
+                // 兜底，绝不允许空手领出——否则 state.play 报「领出不能过牌」
+                // 被 ok() 吞掉，while 不动 → guard 500 → 事务回滚 → updated_at
+                // 不刷 → 托管每 120s 重来且永远卡在同一步（dev.49 好学站
+                // gid=6 实测 38 次 kicks in 的确定性死锁）。
+                let cards = if cards.is_empty() && row.state.last.is_none() {
+                    hand.iter()
+                        .copied()
+                        .min_by_key(|c| {
+                            std::cmp::Reverse(super::doudizhu::Rank::of(*c))
+                        })
+                        .map(|c| vec![c])
+                        .unwrap_or_default()
+                } else {
+                    cards
+                };
+                if cards.is_empty() {
+                    break; // 手牌空（不应到这）
                 }
                 if row.state.play(seat, &cards).is_err() && !cards.is_empty() {
                     let _ = row.state.play(seat, &[]);
