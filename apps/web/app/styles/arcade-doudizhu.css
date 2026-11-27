@@ -1776,6 +1776,18 @@ body:has(.doudizhu-page):where(
   overflow: hidden;
   margin-bottom: 4px;
 }
+/* 归属标签：条内左侧固定「轮到你」——只看数字不知道是谁的倒计时。 */
+.dz-countdown-you {
+  position: absolute;
+  inset: 0 auto 0 0;
+  display: flex;
+  align-items: center;
+  padding-left: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--dz-ink);
+  z-index: 1;
+}
 .dz-countdown-fill {
   display: block;
   height: 100%;
