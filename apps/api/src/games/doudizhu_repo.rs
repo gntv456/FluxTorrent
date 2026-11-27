@@ -291,6 +291,13 @@ pub(crate) async fn apply_action_tx(
     // 懒托管入口 1：本局轮到玩家但停摆超阈值 → AI 代打到底。
     super::doudizhu_play_repo::expire_stale_tx(tx, uid, gid, idle_secs).await?;
     let mut row = load_by_id_tx(tx, uid, gid).await?;
+    // 托管把局代打完成时 phase=Done（settle 已在同一事务落好）——此时
+    // my_turn 恒 false，直接透传结果给调用方；否则 my_turn 闸会把已结算
+    // 的局连事务一起回滚，玩家白丢胜负（dev.49 百灵 gid=1 实测单张残局
+    // 触发托管 → 胜利被回滚 → 反复 400「还没轮到你」）。
+    if row.state.phase == Phase::Done {
+        return Ok(row);
+    }
     if !row.my_turn {
         return Err(DomainError::Validation("还没轮到你".into()));
     }

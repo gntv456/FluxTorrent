@@ -615,7 +615,7 @@
   "apps/api/src/games/doudizhu.rs": 310,
   "apps/api/src/games/doudizhu_game.rs": 452,
   "apps/api/src/games/doudizhu_pvp_repo.rs": 451,
-  "apps/api/src/games/doudizhu_repo.rs": 333,
+  "apps/api/src/games/doudizhu_repo.rs": 340,
   "apps/api/src/games/doudizhu_pvp_view.rs::wide": 3,
   "apps/api/src/games/doudizhu_pvp_repo.rs::wide": 3,
   "apps/api/src/games/doudizhu_repo.rs::wide": 2,
