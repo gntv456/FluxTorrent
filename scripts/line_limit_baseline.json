@@ -428,7 +428,7 @@
   "apps/api/src/economy_http/spend.rs::wide": 3,
   "apps/api/src/economy_http/vouchers.rs::wide": 1,
   "apps/api/src/economy_http/voucher_use.rs::wide": 2,
-  "apps/api/src/domain/mediainfo/mod.rs": 621,
+  "apps/api/src/domain/mediainfo/mod.rs": 326,
   "apps/api/src/domain/mediainfo/tests.rs": 368,
   "apps/api/src/domain/mediainfo/tests.rs::wide": 2,
   "apps/api/src/content_http/misc.rs::wide": 4,
@@ -628,5 +628,6 @@
   "apps/web/components/icon-paths.tsx::wide": 18,
   "apps/worker/src/jobs/auto_review_digest.rs::wide": 9,
   "apps/tracker/src/peers/bt_probe_tests.rs": 411,
-  "apps/api/src/settings_http/pack_import_steps.rs": 470
+  "apps/api/src/settings_http/pack_import_steps.rs": 470,
+  "apps/api/src/domain/mediainfo/scan.rs": 310
 }
