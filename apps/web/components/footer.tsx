@@ -83,6 +83,7 @@ export async function Footer() {
                 <li key={l.href}>
                   <Link
                     href={l.href}
+                    prefetch={false}
                     className={FOOTER_LINK}
                   >
                     {l.label}
@@ -109,6 +110,7 @@ export async function Footer() {
                 <li key={l.href}>
                   <Link
                     href={l.href}
+                    prefetch={false}
                     className={FOOTER_LINK}
                   >
                     {l.label}

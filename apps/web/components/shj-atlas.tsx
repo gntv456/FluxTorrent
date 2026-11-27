@@ -165,6 +165,7 @@ export function ShjAtlas({
   const ItemLink = ({ href, label }: NavItem) => (
     <Link
       href={href}
+      prefetch={false}
       title={label}
       className="shj-atlas__item"
       aria-current={isActive(href) ? "page" : undefined}

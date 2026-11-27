@@ -74,6 +74,7 @@ export async function Header() {
               min-w:auto 顶住不缩——实测 390px 溢出 13px（M5.1 复核 2026-10-15）。 */}
           <Link
             href="/"
+            prefetch={false}
             title={brand}
             className="flex min-w-0 max-w-[56%] shrink items-center
               gap-2 md:max-w-none"

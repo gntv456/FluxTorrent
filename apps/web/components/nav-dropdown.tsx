@@ -63,6 +63,7 @@ function DropRow({ node, active, onNavigate }: Props) {
       ) : (
         <Link
           href={node.href}
+          prefetch={false}
           className={cls}
           aria-current={lit ? "page" : undefined}
           data-active={lit ? "true" : undefined}

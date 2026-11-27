@@ -174,6 +174,7 @@ export function MainMenu({
               ) : (
                 <Link
                   href={n.href || "/"}
+                  prefetch={false}
                   {...common}
                   aria-haspopup={hasKids || undefined}
                   aria-expanded={hasKids ? openNow : undefined}

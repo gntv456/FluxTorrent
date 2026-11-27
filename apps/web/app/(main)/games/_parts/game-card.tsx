@@ -68,7 +68,7 @@ export function GameCard({
     </>
   );
   return e.live && !locked ? (
-    <Link href={e.href} className="gc-card" aria-label={title}>
+    <Link href={e.href} prefetch={false} className="gc-card" aria-label={title}>
       {inner}
     </Link>
   ) : (

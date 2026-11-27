@@ -60,6 +60,7 @@ export function MobileQuickGrid({ onChat }: { onChat: () => void }) {
           <Link
             key={it.key}
             href={it.href}
+            prefetch={false}
             className={"mhome-quick__item " + it.tone}
           >
             <span className="mhome-quick__icon">

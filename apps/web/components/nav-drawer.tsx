@@ -56,6 +56,7 @@ function DrawerNode({
       <li>
         <Link
           href={node.href}
+          prefetch={false}
           className="navdrawer__link"
           style={indent}
           aria-current={lit ? "page" : undefined}
@@ -76,6 +77,7 @@ function DrawerNode({
           <>
             <Link
               href={node.href}
+              prefetch={false}
               className="navdrawer__link navdrawer__link--grow"
               aria-current={active(node.href) ? "page" : undefined}
               data-active={lit ? "true" : undefined}
