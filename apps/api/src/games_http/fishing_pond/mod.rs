@@ -25,5 +25,6 @@ mod pond_tests;
 mod rules;
 mod sign;
 mod state;
+mod state_ops;
 
 pub(super) use http::*;

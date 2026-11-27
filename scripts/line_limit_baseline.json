@@ -407,7 +407,7 @@
   "apps/api/src/games_http/fishing_pond/http.rs::wide": 12,
   "apps/api/src/games_http/fishing_pond/rules.rs": 527,
   "apps/api/src/games_http/fishing_pond/rules.rs::wide": 3,
-  "apps/api/src/games_http/fishing_pond/state.rs": 596,
+  "apps/api/src/games_http/fishing_pond/state.rs": 421,
   "apps/api/src/games_http/fishing_pond/state.rs::wide": 1,
   "apps/api/src/gacha_http/draw.rs": 317,
   "apps/api/src/economy_http/bank.rs::wide": 4,
@@ -629,5 +629,6 @@
   "apps/worker/src/jobs/auto_review_digest.rs::wide": 9,
   "apps/tracker/src/peers/bt_probe_tests.rs": 411,
   "apps/api/src/settings_http/pack_import_steps.rs": 470,
-  "apps/api/src/domain/mediainfo/scan.rs": 310
+  "apps/api/src/domain/mediainfo/scan.rs": 310,
+  "apps/api/src/games_http/fishing_pond/state_ops.rs": 191
 }
