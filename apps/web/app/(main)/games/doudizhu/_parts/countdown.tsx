@@ -54,6 +54,7 @@ export function CountdownBar({
       role="timer"
       aria-label={t.countdownLabel}
     >
+      <span className="dz-countdown-you">{t.countdownYou}</span>
       <span className="dz-countdown-fill" style={{ width: `${pct}%` }} />
       <span className="dz-countdown-num">{left}s</span>
     </div>
