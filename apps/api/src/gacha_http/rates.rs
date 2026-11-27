@@ -143,8 +143,24 @@ pub(super) async fn gacha_cards(state: Db) -> DomainResult<HttpResponse> {
 
 #[get("/gacha/banners")]
 pub(super) async fn gacha_banners(state: Db) -> DomainResult<HttpResponse> {
-    let rows: Vec<(i64, String, String, String, i32)> = sqlx::query_as(
-        "SELECT id, key, name, kind, ticket_cost \
+    // 卡池目录（抽卡页左栏 / 舞台倒计时）需要起止时间与保底参数：
+    // 只给票价时前端只能写死「剩余天数」，池一换就错。
+    let rows: Vec<(
+        i64,
+        String,
+        String,
+        String,
+        i32,
+        Option<String>,
+        Option<String>,
+        i32,
+        i32,
+        i32,
+    )> = sqlx::query_as(
+        "SELECT id, key, name, kind, ticket_cost, \
+         to_char(starts_at, 'YYYY-MM-DD\"T\"HH24:MI:SS'), \
+         to_char(ends_at, 'YYYY-MM-DD\"T\"HH24:MI:SS'), \
+         pity_soft, pity_hard, ten_cost \
          FROM gacha_banners WHERE enabled \
          AND (starts_at IS NULL OR starts_at <= now()) \
          AND (ends_at IS NULL OR ends_at > now()) \
@@ -155,12 +171,16 @@ pub(super) async fn gacha_banners(state: Db) -> DomainResult<HttpResponse> {
     .map_err(|e| DomainError::Internal(e.into()))?;
     let body = serde_json::json!(rows
         .iter()
-        .map(|(id, key, name, kind, cost)| {
-            serde_json::json!({
-                "id": id, "key": key, "name": name, "kind": kind,
-                "ticketCost": cost,
-            })
-        })
+        .map(
+            |(id, key, name, kind, cost, starts, ends, soft, hard, ten)| {
+                serde_json::json!({
+                    "id": id, "key": key, "name": name, "kind": kind,
+                    "ticketCost": cost, "tenCost": ten,
+                    "startsAt": starts, "endsAt": ends,
+                    "pitySoft": soft, "pityHard": hard,
+                })
+            },
+        )
         .collect::<Vec<_>>());
     Ok(ok(body))
 }

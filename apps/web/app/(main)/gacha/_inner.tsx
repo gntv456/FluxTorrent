@@ -1,13 +1,12 @@
-import { getDict } from "@/i18n/server";
 import { api } from "@/lib/api-client";
-import { GachaRates } from "@/components/gacha-rates";
-import { GachaAlbum } from "@/components/gacha-album";
-import { GachaDraw } from "@/components/gacha-draw";
-import { GachaTabbed } from "@/components/gacha-tabbed";
-import { ArcadeGlyph } from "@/components/arcade/arcade-glyph";
-import { SceneGacha } from "@/components/game/scene-b";
-import { GachaPoolMeBar } from "@/components/gacha-pool-me-bar";
-import { PageHeader } from "@/components/ui/page-header";
+import { GachaStage } from "@/components/gacha/gacha-stage";
+import type {
+  StageBanner,
+  StageCard,
+  StageMe,
+  StageRarity,
+  StageRates,
+} from "@/components/gacha/stage-types";
 
 export const dynamic = "force-dynamic";
 
@@ -59,156 +58,113 @@ export interface GachaBannerRates {
   ratioWorst: number;
 }
 
+/** /gacha 卡池列表行：2026-11 起 banners 端点补下起止/保底/十连价 */
+interface BannerRow {
+  id: number;
+  key: string;
+  name: string;
+  kind: string;
+  ticketCost: number;
+  tenCost?: number | null;
+  startsAt?: string | null;
+  endsAt?: string | null;
+  pitySoft?: number | null;
+  pityHard?: number | null;
+}
+
+interface CardRow {
+  id: number;
+  key: string;
+  name: string;
+  rarity: string;
+  synthShards: number;
+  dupeShards: number;
+  lvMax: number;
+  lvCostEach?: number;
+}
+
 /**
- * G31-A 公示页（方案 §5）：概率**双列**（表定 base / 含保底综合 comp）——
- * 方案红线「只公示表定会放行实际倒灌经济的池子」。匿名可读；数据一次取齐。
+ * 星轨卡册抽卡页（设计稿 抽卡页-高保真样图.html 的生产落地）。
+ *
+ * 五视图 × 单屏：卡池 / 演出 / 卡册 / 概率 / 记录，全部数据一次取齐后交给
+ * <GachaStage/>，视图切换只换 data-v，不重新请求 RSC；只有换卡池时客户端
+ * 再补拉该池 rates。匿名可读（me 取不到时 HUD 显示占位、抽卡提示登录）。
  */
 export default async function GachaDisclosurePage() {
-  const { dict } = await getDict();
-  const [rarities, banners] = await Promise.all([
+  const [rarities, banners, cards, me] = await Promise.all([
     api
-      .get<GachaRarityRow[]>("/api/v1/gacha/rarities")
-      .catch(() => [] as GachaRarityRow[]),
-    api.get<unknown[]>("/api/v1/gacha/banners").catch(() => [] as unknown[]),
+      .get<StageRarity[]>("/api/v1/gacha/rarities")
+      .catch(() => [] as StageRarity[]),
+    api
+      .get<BannerRow[]>("/api/v1/gacha/banners")
+      .catch(() => [] as BannerRow[]),
+    api.get<CardRow[]>("/api/v1/gacha/cards").catch(() => [] as CardRow[]),
+    api.get<StageMe>("/api/v1/gacha/me").catch(() => null),
   ]);
-  const ids = Array.isArray(banners)
-    ? banners
-        .map((b) =>
-          typeof b === "object" && b !== null && "id" in b
-            ? Number((b as { id: unknown }).id)
-            : NaN,
-        )
-        .filter((n) => Number.isInteger(n))
-    : [];
-  const rates = await Promise.all(
-    ids.map((id) =>
-      api
-        .get<GachaBannerRates>(`/api/v1/gacha/banner/${id}/rates`)
-        .catch(() => null),
-    ),
-  );
-  // 收藏面载荷提前取：卡册合成进度条与 GachaAlbum 共用这份数据
-  const me = await api
-    .get<import("@/components/gacha-album").MePayload>("/api/v1/gacha/me")
-    .catch(() => null);
-  // 星轨卡册卡位（样图⑧）：本期卡池前 3 档卡面（按稀有度星数降序）
-  const first = rates.find((r): r is GachaBannerRates => r !== null);
-  // 卡名公示：rates 行不带卡名，用 /gacha/cards 按「档位 → 池内该档卡」
-  // 对上真名（每档取 sort 最前一张； rates 暴露 cardId 后可直接精确到卡）
-  const cardNames = await api
-    .get<{ id: number; name: string; rarity: string }[]>("/api/v1/gacha/cards")
-    .catch(() => [] as { id: number; name: string; rarity: string }[]);
-  const bannerName =
-    banners.find(
-      (b): b is { id: number; name: string } =>
-        typeof b === "object" &&
-        b !== null &&
-        "id" in b &&
-        Number((b as { id: unknown }).id) === first?.banner.id,
-    )?.name ?? first?.banner.key;
-  // 合成目标（样图⑧「当期 SSR」）：优先 SSR 档的 synth_shards；池里没有
-  // SSR 时退星数最高卡档。不是写死 20 —— 需求由卡定义下发（样例池 = 520）
-  const cardRows = (first?.rows ?? []).filter((row) => row.type === "card");
-  const starsOf = (r: string) => rarities.find((x) => x.key === r)?.stars ?? 0;
-  const ssrSynth =
-    (
-      cardRows.find((row) => row.r === "SSR") ??
-      [...cardRows].sort((a, b) => starsOf(b.r) - starsOf(a.r))[0]
-    )?.synth ?? 0;
-  const topCards = (() => {
-    if (!first) return [];
-    const byR = new Map(rarities.map((r) => [r.key, r]));
-    // 每档代表卡：按星数降序**去重档位**取前 3（高低档并列呈现，
-    // 蓝卡位不会被前 3 全挤成金 —— 样图⑧ 的三卡即三个不同档）
-    const rows = cardRows
-      .sort((a, b) => (byR.get(b.r)?.stars ?? 0) - (byR.get(a.r)?.stars ?? 0))
-      .filter(
-        (row, i, arr) =>
-          arr.findIndex(
-            (x) => byR.get(x.r)?.stars === byR.get(row.r)?.stars,
-          ) === i,
-      )
-      .slice(0, 3);
-    return rows.map((row) => {
-      const meta = byR.get(row.r);
-      const card = cardNames.find((c) => c.rarity === row.r);
-      return {
-        name: card?.name ?? meta?.label ?? row.r,
-        sub: row.r.toUpperCase(),
-        stars: meta?.stars ?? 1,
-        tone: (meta?.stars ?? 1) >= 5 ? "gold" : "sky",
-      };
-    });
-  })();
+
+  const firstId = banners[0]?.id;
+  const rates =
+    firstId != null
+      ? await api
+          .get<GachaBannerRates>(`/api/v1/gacha/banner/${firstId}/rates`)
+          .catch(() => null)
+      : null;
+
+  const stageBanners: StageBanner[] = banners.map((b) => ({
+    id: b.id,
+    key: b.key,
+    name: b.name,
+    kind: b.kind,
+    ticketCost: b.ticketCost,
+    tenCost: b.tenCost ?? b.ticketCost * 10,
+    startsAt: b.startsAt ?? null,
+    endsAt: b.endsAt ?? null,
+    pitySoft: b.pitySoft ?? rates?.banner.pitySoft ?? 50,
+    pityHard: b.pityHard ?? rates?.banner.pityHard ?? 65,
+  }));
+
+  const stageCards: StageCard[] = cards.map((c) => ({
+    id: c.id,
+    key: c.key,
+    name: c.name,
+    rarity: c.rarity,
+    synthShards: c.synthShards,
+    dupeShards: c.dupeShards,
+    lvMax: c.lvMax,
+    lvCostEach: c.lvCostEach,
+  }));
+
+  const stageRates: StageRates | null = rates
+    ? {
+        banner: {
+          id: rates.banner.id,
+          key: rates.banner.key,
+          kind: rates.banner.kind,
+          ticketCost: rates.banner.ticketCost,
+          pitySoft: rates.banner.pitySoft,
+          pityHard: rates.banner.pityHard,
+          pityRamp: rates.banner.pityRamp,
+        },
+        rows: rates.rows,
+        goldBase: rates.goldBase,
+        goldComp: rates.goldComp,
+        cycle: rates.cycle,
+        hardProb: rates.hardProb,
+        ratioNew: rates.ratioNew,
+        ratioEnd: rates.ratioEnd,
+        ratioWorst: rates.ratioWorst,
+      }
+    : null;
 
   return (
-    <div className="flex flex-col gap-4">
-      <PageHeader eyebrow="Gacha" title={dict.nav.gachaDisclosure} />
-      {/* 样图⑧三 Tab：卡池 / 概率 / 我的卡册（RSC 预渲染，客户端只做显隐） */}
-      <GachaTabbed
-        labels={{
-          pool: dict.games.gachaTabPool,
-          rates: dict.games.gachaTabRates,
-          album: dict.games.gachaTabAlbum,
-        }}
-        rates={
-          <GachaRates
-            rarities={rarities}
-            banners={rates.filter((r): r is GachaBannerRates => r !== null)}
-          />
-        }
-        album={<GachaAlbum rarities={rarities} initial={me} />}
-        pool={
-          <>
-            {/* 抽卡主玩法（波1 P0）：后端 /gacha/draw 全链在位，前端此前
-                零调用——整局玩法 Web 上玩不了。锚点 #draw 供卡册 CTA 回跳 */}
-            {first && me && (
-              <section id="draw" className="sw-cardbook">
-                <div className="sw-cardbook-cap">
-                  {dict.games.gachaDrawCap} · {bannerName}
-                </div>
-                <SceneGacha className="gs-artsvg" />
-                <GachaDraw
-                  bannerId={first.banner.id}
-                  ticketCost={first.banner.ticketCost}
-                  ticketBalance={me.ticketBalance}
-                  rarities={rarities}
-                />
-              </section>
-            )}
-            {/* 首抽提示 + 合成进度：抽卡后自我刷新（原为 RSC 静态 JSX） */}
-            {me && (
-              <GachaPoolMeBar
-                initial={{
-                  hasCards: (me.cards?.length ?? 0) > 0,
-                  shardBalance: me.shardBalance,
-                }}
-                ssrSynth={ssrSynth}
-              />
-            )}
-            {first && (
-              <section className="sw-cardbook">
-                <div className="sw-cardbook-cap">
-                  {dict.games.gachaPool} · {bannerName}
-                </div>
-                <div className="sw-cardbook-grid">
-                  {topCards.map((c) => (
-                    <div key={c.name} className={`sw-card sw-tone-${c.tone}`}>
-                      <span className="sw-card-stars num" aria-hidden>
-                        {"★".repeat(c.stars)}
-                      </span>
-                      <span className="sw-card-face" aria-hidden>
-                        <ArcadeGlyph k="gacha" />
-                      </span>
-                      <span className="sw-card-name">{c.name}</span>
-                      <span className="sw-card-rank num">{c.sub}</span>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
-          </>
-        }
+    <div className="gacha-page" data-gacha-page="astral">
+      {/* 抽卡页不再挂 PageHeader：HUD 自带标题与导航，一屏装下不滚动 */}
+      <GachaStage
+        banners={stageBanners}
+        rarities={rarities}
+        cards={stageCards}
+        me={me}
+        rates={stageRates}
       />
     </div>
   );

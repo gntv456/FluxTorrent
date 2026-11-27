@@ -1,0 +1,2042 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="brand-night">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>抽卡页 · 星轨观测台 · 高保真样图</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230b1525'/%3E%3Ccircle cx='16' cy='16' r='9' fill='none' stroke='%23e6c288' stroke-width='1.5'/%3E%3Ccircle cx='16' cy='16' r='4' fill='none' stroke='%238fc0ff' stroke-width='1.5'/%3E%3Cpath d='M16 7v3M16 22v3M7 16h3M22 16h3' stroke='%23e6c288' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="https://miaoda.feishu.cn/fonts/css2?family=Noto+Serif+SC:wght@600;700;900&family=Noto+Sans+SC:wght@400;500;700&display=swap">
+<style>
+/* ==================================================================
+   抽卡页 · 星轨观测台 —— 高保真样图
+   设计定位：深空观测台展厅（深靛底）+ 象牙档案卡 + 星盘保底环
+   纪律：单一冷调（星蓝）+ 单一暖调（金）；金只给「行动」与「SSR」
+   ================================================================== */
+
+/* ---------- 1. 令牌 ---------- */
+:root{
+  --n0:#05080f; --n1:#0a1120; --n2:#0e1a2c; --n3:#13233b; --n4:#1a2f4d;
+  --hair:rgba(150,180,230,.14); --hair-2:rgba(150,180,230,.26); --hair-3:rgba(150,180,230,.40);
+  --t1:#eaf1fd; --t2:#a6bbdc; --t3:#7288a8; --t4:#536683;
+  --star:#8fc0ff; --star-d:#4a7ede; --star-glow:rgba(143,192,255,.42);
+  --gold-l:#f6e3bb; --gold:#e0bd86; --gold-d:#a97c3f; --gold-ink:#39290f;
+  --ivory:#f2e7d3; --ivory-2:#ddcbb0; --ink:#1b2438;
+  --ssr:#f0c98a; --sr:#a89cf0; --r:#7cb7ea; --nrm:#8797ae;
+  --serif:"Noto Serif SC","Songti SC",serif;
+  --sans:"Noto Sans SC",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --r-s:8px; --r-m:12px; --r-l:16px; --r-xl:20px;
+  --sh-deep:0 26px 60px -26px rgba(0,0,0,.85);
+  --sh-panel:0 18px 40px -22px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.04);
+  --ease:cubic-bezier(.22,.61,.36,1);
+  --ease-out:cubic-bezier(.16,1,.3,1);
+}
+
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  font-family:var(--sans); color:var(--t1);
+  background:#e9eff7;
+  -webkit-font-smoothing:antialiased;
+}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+a{text-decoration:none;color:inherit}
+h1,h2,h3,h4,p{margin:0}
+.num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+
+/* ---------- 2. 评审外框（浅色，与深色展厅形成对照） ---------- */
+.review-bar{
+  position:sticky; top:0; z-index:60;
+  display:flex; align-items:center; gap:18px;
+  padding:10px 22px;
+  background:rgba(255,255,255,.92);
+  border-bottom:1px solid #d4dfeb;
+  box-shadow:0 8px 24px -18px rgba(23,52,88,.35);
+  backdrop-filter:blur(8px);
+  flex-wrap:wrap;
+}
+.rb-brand{display:flex;align-items:baseline;gap:9px;min-width:0}
+.rb-brand b{font-family:var(--serif);font-size:15px;font-weight:900;color:#16233a;letter-spacing:.02em}
+.rb-brand em{font-style:normal;font-size:10.5px;font-weight:700;letter-spacing:.16em;color:#8298b0;text-transform:uppercase}
+.rb-div{width:1px;height:22px;background:#d9e2ee}
+.rb-views{display:flex;gap:4px;padding:3px;border-radius:9px;background:#eef3f9;border:1px solid #e0e8f2;flex-wrap:wrap}
+.vbtn{
+  padding:6px 12px;border-radius:6px;font-size:12.5px;font-weight:600;color:#5b7089;
+  transition:background .18s var(--ease),color .18s var(--ease);
+}
+.vbtn:hover{background:#fff;color:#16233a}
+.vbtn.on{background:#0f1b2e;color:#eaf1fd;box-shadow:0 2px 8px -4px rgba(15,27,46,.5)}
+.rb-jump{margin-left:auto;display:flex;gap:14px}
+.jbtn{font-size:12px;font-weight:600;color:#5b7089;display:inline-flex;align-items:center;gap:5px}
+.jbtn:hover{color:#1768ae}
+.legend{
+  display:flex;gap:16px;align-items:center;flex-wrap:wrap;
+  padding:8px 22px 10px;font-size:11.5px;color:#8298b0;background:#eef3f9;
+  border-bottom:1px solid #dfe8f2;
+}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:7px;height:7px;border-radius:2px;display:inline-block}
+
+/* ---------- 3. 设备框 ---------- */
+.frames{padding:26px 12px 60px;display:flex;flex-direction:column;gap:44px;align-items:center}
+.frame{width:100%;display:flex;flex-direction:column;gap:10px}
+.frame-cap{display:flex;align-items:baseline;gap:10px;padding-left:2px}
+.frame-cap b{font-size:13px;font-weight:700;color:#16233a;letter-spacing:.02em}
+.frame-cap span{font-size:11.5px;color:#7c90a8}
+.browser{
+  width:min(1440px,calc(100% - 8px));
+  border-radius:14px; overflow:hidden;
+  background:var(--n0);
+  border:1px solid #25324a;
+  box-shadow:0 40px 80px -50px rgba(10,25,48,.8),0 0 0 1px rgba(15,35,60,.06);
+}
+.browser-bar{
+  display:flex;align-items:center;gap:10px;
+  padding:9px 14px;background:#0c1424;border-bottom:1px solid rgba(150,180,230,.12);
+}
+.dots{display:flex;gap:6px}
+.dots i{width:9px;height:9px;border-radius:50%;display:block;background:#2a3a55}
+.dots i:first-child{background:#d7685a}.dots i:nth-child(2){background:#d8b45c}.dots i:nth-child(3){background:#59b87e}
+.url{
+  flex:1;min-width:0;display:flex;align-items:center;gap:6px;
+  height:24px;padding:0 10px;border-radius:6px;
+  background:rgba(255,255,255,.05);border:1px solid rgba(150,180,230,.10);
+  font-size:11px;color:#7d92b0;letter-spacing:.01em;
+  overflow:hidden;white-space:nowrap;text-overflow:ellipsis;
+}
+.url svg{flex:none;opacity:.6}
+.win{display:flex;gap:8px;color:#3d5273;font-size:11px;letter-spacing:.06em}
+.screen{container-type:inline-size;background:var(--n0)}
+
+/* ---------- 4. 应用外壳 ---------- */
+.app{display:flex;flex-direction:column;min-height:0;background:var(--n0);position:relative;isolation:isolate}
+.app[data-v="pool"] .v-pool,
+.app[data-v="reveal"] .v-reveal,
+.app[data-v="album"] .v-album,
+.app[data-v="rates"] .v-rates,
+.app[data-v="records"] .v-records{display:block}
+.app .view{display:none}
+</style>
+</head>
+<body>
+<style>
+/* ---------- 5. 顶栏 HUD ---------- */
+.hud{
+  position:sticky; top:0; z-index:20;
+  display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:20px;
+  height:66px; padding:0 20px;
+  background:linear-gradient(180deg,rgba(12,21,36,.97),rgba(8,14,25,.92));
+  border-bottom:1px solid var(--hair);
+}
+.hud-l{display:flex;align-items:center;gap:14px;min-width:0}
+.hud-back{
+  width:30px;height:30px;flex:none;display:grid;place-items:center;border-radius:8px;
+  border:1px solid var(--hair);color:var(--t2);transition:all .18s var(--ease);
+}
+.hud-back:hover{border-color:var(--hair-3);color:var(--t1);background:rgba(255,255,255,.04)}
+.brand{display:flex;align-items:center;gap:9px;min-width:0}
+.bmark{width:26px;height:26px;flex:none;color:var(--gold)}
+.btxt{display:flex;flex-direction:column;line-height:1.1;min-width:0}
+.btxt b{font-family:var(--serif);font-size:15px;font-weight:900;letter-spacing:.08em;color:var(--t1);white-space:nowrap}
+.btxt em{font-style:normal;font-size:9px;letter-spacing:.24em;color:var(--t4);text-transform:uppercase;margin-top:3px}
+
+.tabs{display:flex;justify-content:center;gap:2px;min-width:0;overflow:hidden}
+.tab{
+  position:relative;padding:9px 15px;border-radius:9px;font-size:12.5px;font-weight:600;
+  color:var(--t3);white-space:nowrap;transition:color .2s var(--ease),background .2s var(--ease);
+}
+.tab:hover{color:var(--t1);background:rgba(255,255,255,.03)}
+.tab.on{color:var(--gold-l)}
+.tab.on::after{
+  content:"";position:absolute;left:50%;bottom:2px;transform:translateX(-50%);
+  width:16px;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);
+}
+.hud-r{display:flex;align-items:center;gap:8px}
+.res{
+  display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 13px 0 7px;
+  border:1px solid var(--hair-2);border-radius:999px;background:rgba(255,255,255,.04);
+  transition:border-color .18s var(--ease),background .18s var(--ease);
+}
+.res:hover{border-color:var(--hair-3);background:rgba(255,255,255,.07)}
+.res-ic{
+  width:22px;height:22px;border-radius:50%;display:grid;place-items:center;flex:none;
+  color:var(--gold-l);background:radial-gradient(circle at 40% 30%,rgba(224,189,134,.30),rgba(224,189,134,.06));
+}
+.res-ic.sky{color:var(--star);background:radial-gradient(circle at 40% 30%,rgba(143,192,255,.28),rgba(143,192,255,.05))}
+.res b{font-size:13px;font-weight:700;letter-spacing:.01em}
+.res s{text-decoration:none;font-size:10.5px;color:var(--t4);font-weight:500}
+.icon-btn{
+  width:32px;height:32px;display:grid;place-items:center;border-radius:9px;
+  border:1px solid var(--hair);color:var(--t2);transition:all .18s var(--ease);
+}
+.icon-btn:hover{border-color:var(--hair-3);color:var(--t1);background:rgba(255,255,255,.05)}
+
+/* ---------- 6. 卡池视图骨架 ---------- */
+.app[data-v="pool"] .v-pool{display:grid}
+.v-pool{
+  grid-template-columns:236px minmax(0,1fr) 312px;
+  grid-template-rows:minmax(0,1fr) 96px;
+  min-height:860px;
+}
+.rail{
+  padding:18px 14px 20px;min-width:0;
+  background:linear-gradient(180deg,rgba(11,19,32,.7),rgba(6,11,19,.92));
+}
+.rail-l{border-right:1px solid var(--hair);display:flex;flex-direction:column;gap:14px}
+.rail-r{border-left:1px solid var(--hair);display:flex;flex-direction:column;gap:10px;overflow:auto}
+.rail-h{display:flex;align-items:center;justify-content:space-between;padding:0 4px}
+.rail-h b{font-size:11.5px;font-weight:700;letter-spacing:.18em;color:var(--t3);text-transform:uppercase}
+.rail-h i{font-style:normal;font-size:10.5px;color:var(--t4)}
+.pool-list{display:flex;flex-direction:column;gap:6px}
+.pool-item{
+  position:relative;display:grid;grid-template-columns:54px minmax(0,1fr);gap:10px;align-items:center;
+  padding:8px;border-radius:11px;border:1px solid transparent;cursor:pointer;
+  transition:background .18s var(--ease),border-color .18s var(--ease);
+}
+.pool-item:hover{background:rgba(255,255,255,.035);border-color:var(--hair)}
+.pool-item.on{
+  background:linear-gradient(110deg,rgba(224,189,134,.16),rgba(224,189,134,.03) 62%);
+  border-color:rgba(224,189,134,.32);
+}
+.pool-item.on::before{
+  content:"";position:absolute;left:-1px;top:10px;bottom:10px;width:2px;border-radius:2px;
+  background:linear-gradient(180deg,var(--gold-l),var(--gold-d));
+}
+.pi-art{
+  position:relative;width:54px;height:68px;border-radius:8px;overflow:hidden;flex:none;
+  border:1px solid var(--hair-2);
+  background:radial-gradient(120% 90% at 50% 0%,rgba(143,192,255,.22),transparent 62%),#0b1527;
+  display:grid;place-items:center;
+}
+.pi-art.off{filter:saturate(.45) brightness(.75)}
+.pi-body{min-width:0;display:flex;flex-direction:column;gap:4px}
+.pi-name{font-family:var(--serif);font-size:13.5px;font-weight:900;color:var(--t1);line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pi-meta{font-size:10.5px;color:var(--t4);display:flex;align-items:center;gap:5px;white-space:nowrap}
+.pi-tag{
+  font-size:9.5px;font-weight:700;letter-spacing:.06em;padding:2px 6px;border-radius:4px;
+}
+.pi-tag.live{color:#d8b16a;background:rgba(224,189,134,.12);border:1px solid rgba(224,189,134,.28)}
+.pi-tag.past{color:var(--t4);background:rgba(255,255,255,.04);border:1px solid var(--hair)}
+.rail-foot{margin-top:auto;display:flex;flex-direction:column;gap:8px}
+.rail-link{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  padding:9px 10px;border-radius:9px;border:1px solid var(--hair);
+  font-size:11.5px;color:var(--t2);transition:all .18s var(--ease);
+}
+.rail-link:hover{border-color:var(--hair-3);color:var(--t1);background:rgba(255,255,255,.04)}
+.rail-link svg{opacity:.6;flex:none}
+
+/* ---------- 7. 舞台 ---------- */
+.arena{
+  position:relative;overflow:hidden;min-height:0;
+  padding:24px 30px 46px;display:flex;flex-direction:column;justify-content:center;
+  background:
+    radial-gradient(115% 86% at 76% 2%, rgba(74,126,222,.26), transparent 60%),
+    radial-gradient(92% 74% at 4% 100%, rgba(112,88,196,.18), transparent 66%),
+    linear-gradient(180deg,#0a1526 0%,#070e19 58%,#05080f 100%);
+}
+.arena::after{
+  content:"";position:absolute;inset:0;pointer-events:none;z-index:3;
+  background:radial-gradient(120% 90% at 50% 50%,transparent 55%,rgba(2,4,8,.55) 100%);
+}
+.grain{
+  position:absolute;inset:0;pointer-events:none;z-index:2;opacity:.055;
+  mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.86' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.sky{position:absolute;inset:0;width:100%;height:100%;z-index:1}
+.beam{
+  position:absolute;left:50%;top:-18%;width:56%;height:96%;transform:translateX(-50%) rotate(6deg);
+  background:linear-gradient(180deg,rgba(143,192,255,.16),rgba(143,192,255,.02) 64%,transparent);
+  filter:blur(26px);z-index:1;
+}
+.arena-mark{
+  position:absolute;right:14px;bottom:-30px;z-index:2;pointer-events:none;user-select:none;
+  font-family:var(--serif);font-weight:900;font-size:236px;line-height:.82;
+  color:#7fb6ff;opacity:.055;letter-spacing:.02em;
+}
+.arena-foot{
+  position:absolute;left:30px;bottom:15px;z-index:4;
+  display:flex;align-items:center;gap:10px;
+  font-size:9px;letter-spacing:.26em;color:var(--t4);
+}
+.arena-foot::before{content:"";position:absolute;left:0;top:-10px;width:170px;height:1px;background:linear-gradient(90deg,var(--hair-2),transparent)}
+.af-dot{width:3px;height:3px;border-radius:50%;background:var(--gold);opacity:.7}
+
+/* 主秀场：左文案 + 右星盘 */
+.hero{
+  position:relative;z-index:4;flex:0 0 auto;min-height:0;
+  display:grid;grid-template-columns:minmax(0,1fr) clamp(318px,42%,404px);
+  align-items:center;gap:34px;
+}
+.hero-l{display:flex;flex-direction:column;justify-content:center;max-width:520px;min-width:0}
+
+/* 星盘保底环（签名元素） */
+.astro-wrap{position:relative;width:100%;aspect-ratio:1;z-index:2;align-self:center}
+.astro-wrap::before{
+  content:"";position:absolute;inset:2%;border-radius:50%;z-index:-1;
+  background:radial-gradient(circle,rgba(143,192,255,.16),rgba(143,192,255,.03) 52%,transparent 66%);
+}
+.astro{position:absolute;inset:0;width:100%;height:100%;color:var(--star)}
+.astro-core{
+  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:46%;aspect-ratio:3/4;z-index:2;
+  filter:drop-shadow(0 22px 36px rgba(0,0,0,.65));
+}
+.astro-cap{
+  position:absolute;left:50%;bottom:-18px;transform:translateX(-50%);
+  display:flex;align-items:center;gap:12px;white-space:nowrap;
+}
+.astro-cap span{font-size:10.5px;color:var(--t3);letter-spacing:.06em}
+.astro-cap b{font-size:12px;color:var(--gold-l);font-weight:700;letter-spacing:.04em}
+.astro-rot{transform-origin:180px 180px;animation:astroSpin 150s linear infinite}
+@keyframes astroSpin{to{transform:rotate(360deg)}}
+.acard.locked .card{opacity:.9;border-color:#22314a;background:#0b1524}
+.acard.locked .card .card-art{filter:grayscale(1) brightness(.38)}
+.acard.locked .card .card-plate{background:linear-gradient(180deg,#182335,#111a28);border-top:1px solid #22314a}
+.acard.locked .card .card-name{color:#7387a0}
+.acard.locked .card .card-lv{color:#5d6f86}
+.acard.locked .card .card-stars{color:#445468}
+
+/* 文案区 */
+.arena-copy{position:relative;z-index:4;max-width:100%}
+.eyebrow{
+  display:inline-flex;align-items:center;gap:8px;
+  font-size:10px;font-weight:700;letter-spacing:.26em;color:var(--gold);text-transform:uppercase;white-space:nowrap;
+}
+.eyebrow::before{content:"";width:22px;height:1px;background:var(--gold-d)}
+.arena-title{
+  font-family:var(--serif);font-weight:900;font-size:clamp(34px,4.4vw,54px);
+  line-height:1.06;letter-spacing:.04em;margin:10px 0 10px;color:#fff;
+  text-shadow:0 2px 24px rgba(143,192,255,.22);
+}
+.arena-sub{font-size:12.5px;line-height:1.75;color:var(--t2);max-width:400px}
+.arena-meta{display:flex;align-items:center;gap:10px;margin-top:14px;flex-wrap:wrap}
+.meta-cell{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--t3)}
+.meta-cell b{color:var(--t1);font-weight:600}
+.meta-dot{width:3px;height:3px;border-radius:50%;background:var(--t4)}
+.rate-link{
+  display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--star);
+  border-bottom:1px solid rgba(143,192,255,.32);padding-bottom:1px;
+}
+.rate-link:hover{color:#b9d9ff;border-color:var(--star)}
+
+/* 本期 UP 卡 */
+.featured{
+  position:relative;z-index:4;margin-top:12px;
+  display:flex;align-items:flex-end;gap:12px;
+}
+.feat-card{width:96px;display:flex;flex-direction:column;gap:5px;transition:transform .25s var(--ease-out)}
+.feat-cap{display:flex;align-items:baseline;gap:10px;margin-top:30px}
+.feat-cap b{font-size:10px;font-weight:700;letter-spacing:.2em;color:var(--t3)}
+.feat-cap span{font-size:9.5px;letter-spacing:.1em;color:var(--t4)}
+.feat-card:hover{transform:translateY(-6px)}
+.feat-card .card{box-shadow:0 14px 26px -14px rgba(0,0,0,.9)}
+.feat-lb{font-size:9.5px;text-align:center;color:var(--t3);letter-spacing:.08em;white-space:nowrap}
+
+/* 左上角状态徽 */
+.stage-badges{position:relative;z-index:4;display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:24px}
+.badge{
+  display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:6px;
+  font-size:10.5px;font-weight:700;letter-spacing:.1em;
+  border:1px solid rgba(224,189,134,.34);color:var(--gold-l);
+  background:linear-gradient(100deg,rgba(224,189,134,.18),rgba(224,189,134,.04));
+}
+.badge.dim{border-color:var(--hair-2);color:var(--t2);background:rgba(255,255,255,.04)}
+
+/* 抽屉 */
+.dock{
+  grid-column:1 / -1;z-index:6;
+  display:flex;align-items:center;justify-content:space-between;gap:18px;
+  padding:0 24px;
+  background:linear-gradient(180deg,rgba(9,16,28,.96),rgba(5,9,16,.99));
+  border-top:1px solid var(--hair-2);
+  box-shadow:0 -18px 40px -28px rgba(0,0,0,.9);
+}
+.dock-l{display:flex;align-items:center;gap:16px;min-width:0}
+.dock-note{font-size:11px;color:var(--t3);display:flex;align-items:center;gap:7px;white-space:nowrap}
+.dock-note b{color:var(--gold-l);font-weight:700}
+.switch{display:inline-flex;align-items:center;gap:7px;font-size:11px;color:var(--t3);white-space:nowrap;flex:none}
+.switch .tg{
+  width:30px;height:16px;border-radius:99px;border:1px solid var(--hair-2);
+  background:rgba(255,255,255,.06);position:relative;flex:none;transition:all .2s var(--ease);
+}
+.switch .tg::after{
+  content:"";position:absolute;left:2px;top:2px;width:10px;height:10px;border-radius:50%;
+  background:var(--t3);transition:all .2s var(--ease);
+}
+.switch.on .tg{background:rgba(224,189,134,.22);border-color:rgba(224,189,134,.5)}
+.switch.on .tg::after{left:16px;background:var(--gold-l)}
+.dock-r{display:flex;align-items:center;gap:12px}
+.btn{
+  position:relative;display:inline-flex;align-items:center;gap:10px;
+  height:52px;padding:0 22px;border-radius:11px;
+  font-size:13px;font-weight:700;letter-spacing:.02em;white-space:nowrap;
+  transition:transform .16s var(--ease),box-shadow .16s var(--ease),background .16s var(--ease);
+}
+.btn:active{transform:translateY(1px)}
+.btn-ghost{
+  border:1px solid var(--hair-3);color:var(--t1);
+  background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.02));
+}
+.btn-ghost:hover{border-color:rgba(180,205,240,.55);background:rgba(255,255,255,.08)}
+.btn-gold{
+  height:58px;padding:0 26px 0 30px;border-radius:12px;
+  color:var(--gold-ink);border:1px solid #8d6a33;
+  background:linear-gradient(180deg,#f8e6bf 0%,#ebca94 44%,#d3a766 100%);
+  box-shadow:0 10px 24px -12px rgba(214,166,96,.72),inset 0 1px 0 rgba(255,255,255,.7),inset 0 -2px 0 rgba(140,100,45,.28);
+  font-family:var(--serif);font-weight:900;font-size:16px;letter-spacing:.1em;
+}
+.btn-gold:hover{background:linear-gradient(180deg,#fff1d2 0%,#f2d6a4 44%,#dcb377 100%);box-shadow:0 14px 30px -12px rgba(224,180,110,.8),inset 0 1px 0 rgba(255,255,255,.8)}
+.btn-gold .cost{
+  display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 9px;border-radius:99px;
+  background:rgba(80,55,15,.16);border:1px solid rgba(120,85,30,.3);
+  font-family:var(--sans);font-size:11px;font-weight:700;letter-spacing:.02em;
+}
+.btn-ghost .cost{
+  display:inline-flex;align-items:center;gap:4px;height:20px;padding:0 8px;border-radius:99px;
+  background:rgba(143,192,255,.10);border:1px solid rgba(143,192,255,.24);color:var(--star);
+  font-size:10.5px;font-weight:600;
+}
+.btn .ic{color:currentColor;opacity:.85;flex:none}
+
+/* ---------- 8. 卡面系统 ---------- */
+.card{
+  position:relative;aspect-ratio:3/4;width:100%;border-radius:10px;overflow:hidden;
+  background:#0b1527;border:1px solid var(--hair-2);
+  display:flex;flex-direction:column;isolation:isolate;
+}
+.card-art{
+  position:relative;flex:1;display:grid;place-items:center;overflow:hidden;
+  background:
+    radial-gradient(120% 88% at 50% 0%,rgba(143,192,255,.20),transparent 58%),
+    radial-gradient(90% 70% at 50% 100%,rgba(74,126,222,.12),transparent 60%),
+    linear-gradient(180deg,#0d1a30,#091224);
+}
+.card-art::before{
+  content:"";position:absolute;inset:0;opacity:.35;
+  background-image:
+    radial-gradient(1px 1px at 18% 22%,rgba(220,235,255,.9),transparent),
+    radial-gradient(1px 1px at 72% 14%,rgba(220,235,255,.6),transparent),
+    radial-gradient(1px 1px at 84% 58%,rgba(220,235,255,.75),transparent),
+    radial-gradient(1px 1px at 30% 78%,rgba(220,235,255,.5),transparent),
+    radial-gradient(1px 1px at 58% 40%,rgba(220,235,255,.45),transparent);
+}
+.card-art svg{width:66%;height:auto;opacity:.96;position:relative;z-index:1}
+.pull-cell .card-art svg{width:118%}
+.card-plate{
+  flex:none;padding:6px 8px 7px;display:flex;flex-direction:column;gap:2px;
+  background:linear-gradient(180deg,#f4ebd9,#e2d2b6);
+  border-top:1px solid rgba(160,120,60,.4);color:var(--ink);
+}
+.card-name{
+  font-family:var(--serif);font-weight:900;font-size:12.5px;line-height:1.15;letter-spacing:.02em;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.card-sub{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.card[data-r="SR"] .card-plate{background:linear-gradient(180deg,#f2ecf7,#dccfe6);border-top-color:rgba(120,100,170,.42)}
+.card[data-r="R"] .card-plate{background:linear-gradient(180deg,#ecf3fb,#d7e1f0);border-top-color:rgba(70,100,150,.42)}
+.card[data-r="N"] .card-plate{background:linear-gradient(180deg,#eff1f5,#dde0e7);border-top-color:rgba(90,100,120,.42)}
+.card-stars{font-size:9px;letter-spacing:.06em;color:#a97c3f;line-height:1}
+.card-lv{font-size:8.5px;font-weight:700;color:#8a7a5e;letter-spacing:.04em}
+.card-gem{
+  position:absolute;left:6px;top:6px;z-index:2;width:12px;height:12px;
+  transform:rotate(45deg);border-radius:2px;
+  border:1px solid rgba(255,255,255,.35);background:var(--r);
+  box-shadow:0 0 0 1px rgba(0,0,0,.35),0 0 12px rgba(124,183,234,.55);
+}
+.card-tag{
+  position:absolute;right:6px;top:6px;z-index:2;height:15px;padding:0 5px;border-radius:3px;
+  font-size:8.5px;font-weight:700;letter-spacing:.08em;display:inline-flex;align-items:center;
+  background:rgba(224,189,134,.16);border:1px solid rgba(224,189,134,.45);color:var(--gold-l);
+}
+.card[data-r="SSR"]{border-color:rgba(224,189,134,.55)}
+.card[data-r="SSR"] .card-gem{background:var(--ssr);box-shadow:0 0 0 1px rgba(0,0,0,.35),0 0 16px rgba(240,201,138,.75)}
+.card[data-r="SSR"] .card-art{background:
+  radial-gradient(120% 88% at 50% 0%,rgba(240,201,138,.20),transparent 58%),
+  radial-gradient(90% 70% at 50% 100%,rgba(169,124,63,.12),transparent 62%),
+  linear-gradient(180deg,#101c30,#09111f)}
+.card[data-r="SSR"] .card-art svg{color:var(--ssr)}
+.card[data-r="SR"] .card-gem{background:var(--sr);box-shadow:0 0 0 1px rgba(0,0,0,.35),0 0 12px rgba(168,156,240,.6)}
+.card[data-r="SR"] .card-art svg{color:#c3b8ff}
+.card[data-r="R"] .card-art svg{color:#a8d2f8}
+.card[data-r="N"] .card-art svg{color:#9db0c8}
+.card[data-r="N"] .card-gem{background:var(--nrm);box-shadow:0 0 0 1px rgba(0,0,0,.35)}
+
+/* SSR 箔面 */
+.card[data-r="SSR"]::after{
+  content:"";position:absolute;inset:0;z-index:1;pointer-events:none;mix-blend-mode:soft-light;
+  background:linear-gradient(102deg,rgba(255,240,210,0) 30%,rgba(255,244,224,.85) 47%,rgba(255,236,196,.25) 56%,rgba(255,240,210,0) 68%);
+  background-size:220% 100%;background-position:-80% 0;
+}
+.feat-card:hover .card[data-r="SSR"]::after{animation:foil 1.1s var(--ease) forwards}
+@keyframes foil{to{background-position:160% 0}}
+
+/* 卡背 */
+.card-back{background:#0a1120;border-color:rgba(224,189,134,.30)}
+.card-back::before{content:"";position:absolute;inset:7px;border:1px solid rgba(224,189,134,.22);border-radius:4px;pointer-events:none;z-index:1}
+.card-back .card-art{background:
+  radial-gradient(100% 80% at 50% 20%,rgba(143,192,255,.22),transparent 60%),
+  linear-gradient(180deg,#0d1a2e,#070f1c)}
+.card-back .card-art svg{width:64%;color:var(--star);opacity:.85}
+.card-back .card-art::before{opacity:.55}
+
+/* ---------- 9. 侧栏面板 ---------- */
+.panel{
+  border:1px solid var(--hair);border-radius:13px;padding:12px 13px;
+  background:linear-gradient(180deg,rgba(20,34,56,.62),rgba(9,16,28,.86));
+  box-shadow:var(--sh-panel);
+}
+.panel-h{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+.panel-h b{font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--t3);text-transform:uppercase}
+.panel-h a{font-size:10.5px;color:var(--star);opacity:.85}
+.pity-big{display:flex;align-items:baseline;gap:7px;margin-bottom:2px}
+.pity-big b{font-family:var(--serif);font-size:32px;font-weight:900;color:var(--gold-l);line-height:1;letter-spacing:.01em}
+.pity-big span{font-size:11px;color:var(--t3)}
+.pity-hint{font-size:10.5px;color:var(--t3);margin:4px 0 10px}
+.bar{height:5px;border-radius:99px;background:rgba(143,192,255,.13);overflow:hidden;position:relative}
+.bar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#3c6cc4,#8fc0ff)}
+.bar.gold i{background:linear-gradient(90deg,#96702f,#e0bd86)}
+.bar-lb{display:flex;justify-content:space-between;font-size:10px;color:var(--t4);margin-top:5px}
+.mine-rows{display:flex;flex-direction:column;gap:7px;margin-top:11px;padding-top:10px;border-top:1px dashed var(--hair)}
+.mine-row{display:flex;align-items:center;justify-content:space-between;font-size:11px;color:var(--t3)}
+.mine-row b{color:var(--t1);font-weight:600}
+.dotmatrix{display:grid;grid-template-columns:repeat(8,1fr);gap:5px;margin-top:9px}
+.dotmatrix i{aspect-ratio:1;border-radius:2px;background:rgba(143,192,255,.13);border:1px solid rgba(143,192,255,.10)}
+.dotmatrix i.lit{background:linear-gradient(160deg,#9fcaff,#4a7ede);border-color:rgba(160,205,255,.5);box-shadow:0 0 8px rgba(143,192,255,.45)}
+.dotmatrix i.gold{background:linear-gradient(160deg,#f6e3bb,#d0a45f);border-color:rgba(246,227,187,.6);box-shadow:0 0 10px rgba(224,189,134,.5)}
+.promo{
+  display:flex;align-items:center;gap:10px;padding:10px 11px;border-radius:11px;
+  border:1px dashed rgba(224,189,134,.34);background:linear-gradient(100deg,rgba(224,189,134,.12),rgba(224,189,134,.02));
+}
+.promo-ic{width:28px;height:28px;flex:none;border-radius:8px;display:grid;place-items:center;color:var(--gold-l);background:rgba(224,189,134,.12)}
+.promo-tx{min-width:0}
+.promo-tx b{display:block;font-size:11.5px;color:var(--gold-l);font-weight:700;letter-spacing:.02em}
+.promo-tx span{display:block;font-size:10px;color:var(--t3);margin-top:2px;line-height:1.4}
+.drop-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(150,180,230,.08)}
+.drop-row:last-child{border-bottom:0;padding-bottom:2px}
+.drop-dot{width:7px;height:7px;border-radius:2px;transform:rotate(45deg);flex:none}
+.drop-nm{flex:1;min-width:0;font-size:11.5px;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.drop-tm{font-size:10px;color:var(--t4);white-space:nowrap}
+.gain-row{display:flex;align-items:center;gap:8px;padding:7px 0;font-size:11.5px;color:var(--t2);border-bottom:1px solid rgba(150,180,230,.08)}
+.gain-row:last-child{border-bottom:0}
+.gain-row:hover{color:var(--t1)}
+.gain-row svg{color:var(--t3);flex:none}
+.gain-row .arr{margin-left:auto;color:var(--t4)}
+
+/* ---------- 10. 抽卡演出 ---------- */
+.v-reveal{display:flex;flex-direction:column;background:radial-gradient(120% 90% at 50% 0%,rgba(74,126,222,.2),transparent 62%),linear-gradient(180deg,#080f1c,#05080f)}
+.rev-top{
+  position:sticky;top:66px;z-index:5;display:flex;align-items:center;justify-content:space-between;
+  padding:14px 24px;border-bottom:1px solid var(--hair);
+}
+.rev-cap{display:flex;align-items:baseline;gap:10px}
+.rev-cap b{font-family:var(--serif);font-size:18px;font-weight:900;letter-spacing:.06em}
+.rev-cap span{font-size:11px;color:var(--t3)}
+.rev-bal{display:flex;align-items:center;gap:14px;font-size:11px;color:var(--t3)}
+.rev-bal b{color:var(--t1);font-weight:600}
+.skip-btn{padding:7px 14px;border-radius:8px;border:1px solid var(--hair-2);font-size:11.5px;color:var(--t2)}
+.skip-btn:hover{border-color:var(--hair-3);color:var(--t1)}
+.pull-wrap{padding:34px 30px 18px;position:relative;flex:1;display:flex;flex-direction:column;justify-content:center}
+.pull-grid{display:grid;width:100%;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px;max-width:1000px;margin:0 auto}
+.pull-cell{position:relative;perspective:900px}
+.pull-inner{position:relative;width:100%;aspect-ratio:3/4;transform-style:preserve-3d;transition:transform .62s cubic-bezier(.2,.75,.25,1);z-index:1}
+.pull-cell.flipped .pull-inner{transform:rotateY(180deg)}
+.face,.back{position:absolute;inset:0;backface-visibility:hidden;border-radius:10px;overflow:hidden}
+.back{transform:rotateY(0)}
+.face{transform:rotateY(180deg)}
+.pull-cell.rare .face{box-shadow:0 0 0 1px rgba(224,189,134,.6),0 0 34px rgba(224,189,134,.4)}
+.pull-cell.rare-sr .face{box-shadow:0 0 0 1px rgba(168,156,240,.6),0 0 28px rgba(168,156,240,.32)}
+.rays{position:absolute;inset:-14%;z-index:0;opacity:0;transition:opacity .4s var(--ease);pointer-events:none}
+.pull-cell.rare.flipped .rays,.pull-cell.rare-sr.flipped .rays{opacity:1}
+.pull-cell.rare .rays{background:conic-gradient(from 0deg,rgba(240,201,138,.28),transparent 12deg,rgba(240,201,138,.22) 20deg,transparent 32deg,rgba(240,201,138,.28) 48deg,transparent 60deg,rgba(240,201,138,.18) 84deg,transparent 96deg,rgba(240,201,138,.26) 120deg,transparent 132deg,rgba(240,201,138,.2) 160deg,transparent 172deg,rgba(240,201,138,.28) 200deg,transparent 212deg,rgba(240,201,138,.22) 240deg,transparent 252deg,rgba(240,201,138,.26) 280deg,transparent 292deg,rgba(240,201,138,.2) 320deg,transparent 332deg);filter:blur(3px)}
+.pull-cell.rare-sr .rays{background:conic-gradient(from 45deg,rgba(168,156,240,.22),transparent 14deg,rgba(168,156,240,.18) 28deg,transparent 44deg,rgba(168,156,240,.22) 62deg,transparent 80deg,rgba(168,156,240,.16) 110deg,transparent 130deg,rgba(168,156,240,.2) 170deg,transparent 190deg,rgba(168,156,240,.22) 230deg,transparent 250deg,rgba(168,156,240,.16) 290deg,transparent 320deg);filter:blur(3px)}
+.pity-flag{
+  position:absolute;left:50%;top:7px;transform:translateX(-50%);z-index:3;
+  font-size:9px;font-weight:700;letter-spacing:.1em;padding:2px 7px;border-radius:4px;
+  color:var(--gold-ink);background:linear-gradient(180deg,#f6e3bb,#dcb377);white-space:nowrap;
+  box-shadow:0 4px 12px -6px rgba(224,189,134,.8);
+}
+.rev-sum{
+  max-width:1000px;margin:8px auto 0;padding:16px 0 6px;display:flex;align-items:center;justify-content:space-between;gap:18px;
+  border-top:1px solid var(--hair);flex-wrap:wrap;
+}
+.sum-left{display:flex;flex-direction:column;gap:8px}
+.sum-line{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.sum-line b{font-size:11px;letter-spacing:.14em;color:var(--t3);text-transform:uppercase;font-weight:700}
+.rarity-pill{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--t2)}
+.rarity-pill i{width:6px;height:6px;border-radius:2px;transform:rotate(45deg);display:inline-block}
+.sum-right{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+
+/* ---------- 11. 我的卡册 ---------- */
+.v-album{min-height:860px;padding:22px 24px 40px;background:linear-gradient(180deg,#080f1a,#05080f)}
+.alb-head{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;flex-wrap:wrap;margin-bottom:16px}
+.alb-t{min-width:0}
+.alb-t em{font-style:normal;font-size:10px;letter-spacing:.24em;color:var(--gold);text-transform:uppercase}
+.alb-t h2{font-family:var(--serif);font-size:28px;font-weight:900;letter-spacing:.04em;margin-top:6px}
+.alb-t p{font-size:11.5px;color:var(--t3);margin-top:6px}
+.alb-stats{display:flex;gap:22px}
+.alb-stat{text-align:right}
+.alb-stat b{display:block;font-family:var(--serif);font-size:22px;font-weight:900;color:var(--t1);line-height:1.1}
+.alb-stat span{font-size:10px;color:var(--t4);letter-spacing:.08em}
+.alb-bar{display:flex;align-items:center;gap:8px;margin-bottom:18px;flex-wrap:wrap}
+.chip{
+  height:28px;padding:0 12px;border-radius:7px;border:1px solid var(--hair-2);
+  font-size:11.5px;color:var(--t3);display:inline-flex;align-items:center;gap:6px;
+  transition:all .16s var(--ease);
+}
+.chip:hover{border-color:var(--hair-3);color:var(--t1)}
+.chip.on{background:rgba(224,189,134,.14);border-color:rgba(224,189,134,.4);color:var(--gold-l);font-weight:600}
+.chip i{font-style:normal;font-size:10px;opacity:.7}
+.search{
+  margin-left:auto;display:flex;align-items:center;gap:7px;height:28px;padding:0 10px;border-radius:7px;
+  border:1px solid var(--hair-2);color:var(--t3);font-size:11px;min-width:180px;
+}
+.search svg{opacity:.6}
+.alb-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:14px}
+.acard{position:relative;display:flex;flex-direction:column;gap:7px}
+.acard .card{transition:transform .22s var(--ease-out),box-shadow .22s var(--ease)}
+.acard:hover .card{transform:translateY(-5px);box-shadow:0 18px 34px -18px rgba(0,0,0,.9)}
+.acard-meta{display:flex;align-items:center;justify-content:space-between;font-size:10.5px;color:var(--t3)}
+.acard-meta b{color:var(--t1);font-weight:600;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.acard-acts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;opacity:1;transform:none;transition:all .18s var(--ease)}
+.acard:hover .acard-acts{opacity:1}
+.mini-btn{
+  flex:0 0 auto;height:24px;padding:0 9px;border-radius:6px;border:1px solid var(--hair-2);font-size:10px;color:var(--t2);
+  background:rgba(255,255,255,.03);transition:all .16s var(--ease);white-space:nowrap;
+}
+.acard-acts .mini-btn{flex:1}
+.mini-btn:hover{border-color:var(--hair-3);color:var(--t1);background:rgba(255,255,255,.07)}
+.mini-btn.gold{border-color:rgba(224,189,134,.4);color:var(--gold-l);background:rgba(224,189,134,.10)}
+.mini-btn[disabled]{opacity:.35}
+.acard-hint{grid-column:1/-1;font-size:9.5px;letter-spacing:.06em;color:var(--t4);height:26px;display:flex;align-items:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.alb-synth{
+  display:flex;align-items:center;gap:16px;padding:13px 16px;margin-bottom:18px;
+  border:1px solid rgba(224,189,134,.26);border-radius:12px;
+  background:linear-gradient(100deg,rgba(224,189,134,.10),rgba(224,189,134,.02));
+}
+.synth-face{width:34px;height:44px;flex:none;border-radius:6px;border:1px solid rgba(224,189,134,.4);background:rgba(12,22,38,.8);display:grid;place-items:center;color:var(--ssr)}
+.synth-tx{flex:1;min-width:0}
+.synth-tx b{display:block;font-size:11.5px;color:var(--gold-l);letter-spacing:.04em}
+.synth-tx .bar{margin-top:7px}
+
+/* ---------- 12. 概率公示 ---------- */
+.v-rates{min-height:0;padding:24px 26px 34px;background:linear-gradient(180deg,#080f1a,#05080f)}
+.rate-ladder{
+  margin-top:20px;border:1px solid var(--hair);border-radius:14px;padding:16px 18px 14px;
+  background:linear-gradient(180deg,rgba(18,31,52,.6),rgba(8,14,25,.86));
+}
+.rl-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:30px;gap:14px;flex-wrap:wrap}
+.rl-head b{font-size:11px;letter-spacing:.14em;color:var(--t3);text-transform:uppercase;font-weight:700}
+.rl-head span{font-size:11px;color:var(--t2)}
+.rl-head em{font-style:normal;color:var(--gold-l);font-weight:700}
+.rl-track{position:relative;height:8px;border-radius:4px;background:linear-gradient(90deg,#1b3152 0%,#26456e 60%,#4a3f2c 66%,#7d6138 100%)}
+.rl-fill{
+  position:absolute;left:0;top:0;height:8px;width:91.1%;border-radius:4px;
+  background:linear-gradient(90deg,rgba(143,192,255,.5),rgba(143,192,255,.78) 64%,rgba(240,201,138,.92));
+  box-shadow:0 0 16px rgba(224,189,134,.28);
+}
+.rl-now{
+  position:absolute;top:-13px;transform:translateX(-50%);
+  font-size:9.5px;font-weight:700;color:var(--gold-ink);padding:1px 7px;border-radius:3px;
+  background:linear-gradient(180deg,#f6e3bb,#dcb377);
+}
+.rl-axis{position:relative;height:14px;margin-top:12px;font-size:10px;color:var(--t4);letter-spacing:.06em}
+.rl-axis span{position:absolute;top:0;white-space:nowrap}
+.rl-axis span:nth-child(1){left:0}
+.rl-axis span:nth-child(2){left:66.7%;transform:translateX(-50%)}
+.rl-axis span:nth-child(3){right:0}
+.rate-wrap{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:20px;align-items:start}
+.rate-main{border:1px solid var(--hair);border-radius:14px;background:linear-gradient(180deg,rgba(18,31,52,.6),rgba(8,14,25,.86));overflow:hidden}
+.rate-head{padding:16px 18px 12px;border-bottom:1px solid var(--hair);display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.rate-head h3{font-family:var(--serif);font-size:17px;font-weight:900;letter-spacing:.04em}
+.rate-head span{font-size:10.5px;color:var(--t4)}
+table.rate-table{width:100%;border-collapse:collapse;table-layout:fixed}
+table.rate-table col{}
+.rate-table th,.rate-table td{padding:11px 12px;text-align:left;font-size:11.5px;border-bottom:1px solid rgba(150,180,230,.08);vertical-align:middle}
+.rate-table th{font-size:10px;font-weight:700;letter-spacing:.12em;color:var(--t4);text-transform:uppercase;background:rgba(255,255,255,.02)}
+.rate-table tr:last-child td{border-bottom:0}
+.rate-table td b{font-weight:700;color:var(--t1)}
+.rate-table td .num{font-variant-numeric:tabular-nums;color:var(--t2)}
+.rate-bar{height:4px;border-radius:99px;background:rgba(143,192,255,.12);overflow:hidden;margin-top:5px}
+.rate-bar i{display:block;height:100%;border-radius:99px}
+.rate-side{display:flex;flex-direction:column;gap:14px}
+.rule-card{border:1px solid var(--hair);border-radius:14px;padding:15px 16px;background:linear-gradient(180deg,rgba(18,31,52,.6),rgba(8,14,25,.86))}
+.rule-card h4{font-size:11px;letter-spacing:.14em;color:var(--t3);text-transform:uppercase;font-weight:700;margin-bottom:12px}
+.rule-step{display:grid;grid-template-columns:44px 1fr;gap:10px;padding:9px 0;border-bottom:1px dashed rgba(150,180,230,.1)}
+.rule-step:last-child{border-bottom:0}
+.rule-step .no{font-family:var(--serif);font-size:12px;color:var(--gold);letter-spacing:.06em}
+.rule-step b{display:block;font-size:11.5px;color:var(--t1)}
+.rule-step span{display:block;font-size:10.5px;color:var(--t3);line-height:1.6;margin-top:2px}
+.spec-card{margin-top:14px;border:1px solid var(--hair);border-radius:14px;padding:14px 16px 6px;background:rgba(10,18,31,.5)}
+.spec-hd{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:6px}
+.spec-hd h4{font-size:11px;letter-spacing:.14em;color:var(--t3);text-transform:uppercase;font-weight:700}
+.spec-hd span{display:inline-flex;align-items:center;gap:6px;font-size:10px;color:var(--t4)}
+.spec-hd i{width:5px;height:5px;border-radius:50%;background:var(--mint);box-shadow:0 0 6px rgba(47,191,155,.7)}
+.spec-row{display:grid;grid-template-columns:88px 1fr;gap:12px;padding:8px 0;border-bottom:1px dashed rgba(150,180,230,.1);font-size:11px}
+.spec-row:last-child{border-bottom:0}
+.spec-row b{color:var(--t3);font-weight:400;letter-spacing:.04em}
+.spec-row span{color:var(--t2);line-height:1.55}
+.spec-row code{font-family:var(--mono,"SFMono-Regular",Consolas,monospace);font-size:10.5px;color:var(--sky-l,#a8d4ff)}
+.note-line{font-size:10.5px;color:var(--t4);line-height:1.7}
+
+/* ---------- 13. 抽卡记录 ---------- */
+.v-records{min-height:0;padding:24px 26px 34px;background:linear-gradient(180deg,#080f1a,#05080f)}
+.rec-tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:18px}
+.tile{border:1px solid var(--hair);border-radius:12px;padding:13px 15px;background:linear-gradient(180deg,rgba(18,31,52,.55),rgba(8,14,25,.8))}
+.tile span{display:block;font-size:10px;letter-spacing:.12em;color:var(--t4);text-transform:uppercase}
+.tile b{display:block;font-family:var(--serif);font-size:24px;font-weight:900;line-height:1.2;margin-top:5px}
+.tile i{display:block;font-style:normal;font-size:10px;color:var(--t3);margin-top:3px}
+.strip{display:flex;gap:5px;padding:12px;border:1px solid var(--hair);border-radius:12px;background:rgba(10,18,31,.6);margin-bottom:16px}
+.strip-cell{flex:1;height:28px;border-radius:3px;position:relative;border:1px solid transparent}
+.strip-cell[data-r="SSR"]{background:linear-gradient(160deg,#f6e3bb,#cf9f57);border-color:rgba(246,227,187,.6)}
+.strip-cell[data-r="SR"]{background:linear-gradient(160deg,#bdb2ff,#7a6bd6);border-color:rgba(189,178,255,.5)}
+.strip-cell[data-r="R"]{background:linear-gradient(160deg,#9ccbff,#4a7ede);border-color:rgba(156,203,255,.4)}
+.strip-cell[data-r="N"]{background:rgba(150,175,215,.16);border-color:rgba(150,175,215,.2)}
+.strip-cell.pity::after{content:"";position:absolute;right:-2px;top:-2px;width:5px;height:5px;border-radius:50%;background:var(--gold-l);box-shadow:0 0 6px var(--gold)}
+.rec-table{border:1px solid var(--hair);border-radius:12px;overflow:hidden}
+.strip-cap{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;flex-wrap:wrap}
+.strip-cap b{font-size:10px;letter-spacing:.16em;color:var(--t3);text-transform:uppercase}
+.strip-cap span{font-size:10px;color:var(--t4);letter-spacing:.04em}
+.rec-table table{width:100%;border-collapse:collapse;table-layout:fixed}
+.rec-table th,.rec-table td{padding:10px 12px;font-size:11.5px;text-align:left;border-bottom:1px solid rgba(150,180,230,.07)}
+.rec-table th{font-size:10px;letter-spacing:.12em;color:var(--t4);text-transform:uppercase;background:rgba(255,255,255,.02)}
+.rec-table tr:last-child td{border-bottom:0}
+
+/* ---------- 14. 提示条 ---------- */
+.toast{
+  position:fixed;left:50%;bottom:34px;transform:translate(-50%,14px);z-index:90;
+  padding:10px 18px;border-radius:10px;font-size:12px;
+  background:rgba(10,18,31,.96);color:var(--t1);border:1px solid var(--hair-2);
+  box-shadow:0 18px 40px -18px rgba(0,0,0,.8);opacity:0;pointer-events:none;
+  transition:opacity .2s var(--ease),transform .2s var(--ease);
+}
+/* ---------- 15. 断点（容器查询：同一套 DOM 适配四端） ---------- */
+@container (max-width:1180px){
+  .v-pool{grid-template-columns:204px minmax(0,1fr) 284px}
+  .rail-r .panel{padding:13px}
+  .rail-r .gain-row{padding:5px 0}
+  .rail-r .mine-row{padding:6px 0}
+  .rail-r .pity-big b{font-size:28px}
+  .src-h,.src-body{display:none}
+  .app .src-line{display:block}
+  .app .src-line b{display:block;font-size:12px;font-weight:700;color:var(--t1);margin-bottom:5px;letter-spacing:.02em}
+  .app .src-line span{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;color:var(--t3)}
+  .arena-title{font-size:clamp(32px,3.9vw,44px)}
+  .astro-wrap{max-width:300px}
+  .arena-mark{font-size:190px;right:10px}
+  .hero{grid-template-columns:minmax(0,1fr) clamp(244px,32%,300px);gap:22px}
+  .featured{margin-top:8px}
+  .feat-card{width:86px}
+  .hud{padding:0 16px;gap:14px}
+  .tab{padding:9px 11px}
+  .eyebrow{font-size:9px;letter-spacing:.18em}
+  .arena-meta{row-gap:7px}
+  .meta-dot{display:none}
+  .arena-foot{display:none}
+}
+@container (max-width:940px){
+  .v-pool{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto auto auto}
+  .rail-l{order:1;flex-direction:column;border-right:0;border-bottom:1px solid var(--hair);padding:10px 14px}
+  .rail-l .rail-h,.rail-l .rail-foot{display:none}
+  .pool-list{flex-direction:row;overflow-x:auto;gap:8px;scrollbar-width:none;padding-bottom:2px}
+  .pool-list::-webkit-scrollbar{display:none}
+  .pool-item{width:196px;flex:none}
+  .arena{order:2;min-height:0;padding:20px 22px}
+  .astro-wrap{max-width:272px;justify-self:end}
+  .hero{grid-template-columns:minmax(0,1fr) 272px;gap:18px}
+  .featured{margin-top:10px;gap:10px}
+  .feat-card{width:80px}
+  .arena-foot,.arena-mark{display:none}
+  .feat-card{width:80px;flex:none}
+  .rail-r{order:3;border-left:0;border-top:1px solid var(--hair);display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:14px;overflow:visible;align-items:start}
+  .rail-r .panel:first-child,.rail-r .promo{grid-column:1/-1}
+  .dotmatrix{grid-template-columns:repeat(12,minmax(0,1fr));max-width:440px}
+  .dock{order:4;position:sticky;bottom:0}
+  .v-album,.v-rates,.v-records,.v-reveal{min-height:0}
+  .pull-wrap{padding:22px 18px 14px}
+  .pull-grid{max-width:720px;gap:10px}
+}
+@container (max-width:820px){
+  .hud{gap:10px;padding:0 12px}
+  .btxt em{display:none}
+  .res{padding:0 9px;gap:6px}
+  .res s{display:none}
+  .tab{padding:8px 9px;font-size:11px;letter-spacing:.06em}
+  .hud-r .icon-btn.opt{display:none}
+  .dock-note{display:none}
+  .dock-l{gap:10px}
+}
+@container (max-width:620px){
+  .hud{height:56px;padding:0 12px;gap:10px}
+  .hud-back{display:none}
+  .btxt em{display:none}
+  .btxt b{font-size:13.5px;letter-spacing:.06em}
+  .bmark{width:22px;height:22px}
+  .tabs{grid-row:2;grid-column:1/-1;justify-content:space-between;padding:8px 2px 9px;overflow:visible}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{padding:6px 0;font-size:11.5px}
+  .hud{height:auto;grid-template-columns:auto minmax(0,1fr);grid-template-rows:auto auto;gap:0 10px;padding:9px 12px 0}
+  .hud-l{grid-row:1;grid-column:1}
+  .hud-r{grid-row:1;grid-column:2;justify-self:end}
+  .hud-r{gap:5px}
+  .res{height:28px;padding:0 9px 0 5px;gap:5px}
+  .res s{display:none}
+  .res-ic{width:18px;height:18px}
+  .res b{font-size:12px}
+  .icon-btn{width:28px;height:28px}
+  .icon-btn.opt{display:none}
+
+  .v-pool{grid-template-rows:auto auto auto auto}
+  .rail-l{padding:8px 10px}
+  .pool-item{width:168px;grid-template-columns:40px minmax(0,1fr);gap:8px;padding:6px}
+  .pi-art{width:40px;height:52px}
+  .pi-name{font-size:12px}
+  .pi-meta{font-size:9.5px}
+
+  .arena{min-height:330px;padding:14px;justify-content:flex-end;display:flex;flex-direction:column}
+  .hero{grid-template-columns:minmax(0,1fr);gap:0}
+  .hero-l{justify-content:flex-end;max-width:none}
+  .stage-badges{position:static;flex-direction:row;margin-bottom:14px}
+  .badge{height:22px;font-size:9.5px;padding:0 7px}
+  .astro-wrap{display:none}
+  .arena-copy{position:static;max-width:none;margin-top:auto}
+  .eyebrow{font-size:9px;letter-spacing:.2em}
+  .arena-title{font-size:30px;margin:8px 0 8px;letter-spacing:.06em}
+  .arena-sub{font-size:11px;line-height:1.6;max-width:none;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .arena-meta{margin-top:10px;gap:8px}
+  .meta-cell{font-size:10px}
+  .featured{position:static;margin-top:12px;right:auto;bottom:auto;overflow-x:auto;scrollbar-width:none;padding-bottom:2px;align-items:stretch}
+  .feat-cap{margin-top:14px}
+  .featured::-webkit-scrollbar{display:none}
+  .feat-card{width:82px;flex:none}
+  .feat-card .card-name{font-size:10.5px;letter-spacing:0}
+  .feat-card .card-sub{font-size:9px}
+  .feat-lb{font-size:9px}
+
+  .rail-r{grid-template-columns:minmax(0,1fr);gap:8px;padding:12px}
+  .panel{padding:11px}
+  .dotmatrix{grid-template-columns:repeat(8,minmax(0,1fr));max-width:none}
+  .pity-big b{font-size:26px}
+  .promo{padding:9px}
+  .gain-row{padding:6px 0}
+
+  .dock{height:auto;padding:10px 12px;gap:8px}
+  .dock-l{display:none}
+  .dock-r{width:100%;gap:8px}
+  .dock-r .btn-ghost{flex:0 0 auto;padding:0 14px;height:44px}
+  .btn-gold{flex:1;height:48px;font-size:14px;letter-spacing:.06em;padding:0 12px;gap:8px}
+  .btn-gold .cost{height:19px;font-size:10px}
+  .rev-note{display:none}
+
+  .rev-top{top:56px;padding:10px 12px;flex-wrap:wrap;gap:8px}
+  .rev-cap b{font-size:15px}
+  .rev-cap span{display:none}
+  .rev-bal{gap:8px}
+  .rev-bal .hide-sm{display:none}
+  .pull-wrap{padding:16px 12px 10px}
+  .pull-grid{grid-template-columns:repeat(2,minmax(0,1fr));max-width:330px;gap:10px}
+  .rev-sum{flex-direction:column;align-items:stretch;gap:12px;padding-top:14px}
+  .sum-right{justify-content:space-between}
+  .sum-right .btn{height:46px;flex:1}
+
+  .v-album,.v-rates,.v-records{padding:16px 12px 30px}
+  .alb-t h2{font-size:21px}
+  .alb-stats{gap:14px}
+  .alb-stat b{font-size:17px}
+  .alb-bar{gap:6px}
+  .chip{height:26px;padding:0 9px;font-size:10.5px}
+  .search{display:none}
+  .alb-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .acard-acts{opacity:1;transform:none}
+  .mini-btn{height:22px;font-size:9.5px}
+  .alb-synth{padding:11px 12px;gap:10px}
+  .rate-wrap{grid-template-columns:minmax(0,1fr);gap:12px}
+  .rate-head{padding:13px 14px 10px}
+  .rate-table th,.rate-table td{padding:9px 8px;font-size:10.5px}
+  .rec-tiles{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .tile b{font-size:19px}
+  .rec-table th,.rec-table td{padding:8px 8px;font-size:10.5px}
+}
+
+/* ---------- 一屏策略：固定视口 · 内部滚动 · 弹窗分层 ---------- */
+.screen{position:relative}
+.screen[data-w="1440"]{height:900px}
+.screen[data-w="1024"]{height:800px}
+.screen[data-w="680"]{height:1020px}
+.screen[data-w="390"]{height:844px}
+.app{height:100%;max-height:100%;overflow:hidden}
+
+.app[data-v="pool"] .v-pool{height:100%;min-height:0}
+.app[data-v="reveal"] .v-reveal{height:100%;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+.app[data-v="album"] .v-album{height:100%;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+.app[data-v="rates"] .v-rates{height:100%;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+.app[data-v="records"] .v-records{height:100%;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+
+.v-album{position:relative}
+.v-album::after{content:"";position:absolute;left:0;right:0;bottom:0;height:52px;pointer-events:none;background:linear-gradient(180deg,rgba(5,8,15,0),rgba(5,8,15,.92));z-index:2}
+.alb-more{position:absolute;right:22px;bottom:14px;z-index:3;display:flex;align-items:center;gap:5px;font-size:10px;letter-spacing:.08em;color:var(--t4);pointer-events:none}
+.alb-more svg{opacity:.7}
+.v-reveal .pull-wrap{flex:1;min-height:0;overflow:auto}
+.v-album .alb-grid{flex:1;min-height:0;overflow-y:auto;align-content:start;padding-right:4px;scrollbar-width:thin;scrollbar-color:rgba(143,192,255,.34) rgba(255,255,255,.04)}
+.v-rates .rate-wrap{flex:0 0 auto;min-height:0;align-items:stretch}
+.v-rates .rate-main{display:flex;flex-direction:column;min-height:0}
+.v-rates .rate-table{flex:1}
+.v-rates .rate-main .rate-note{margin-top:auto}
+.v-rates .rate-foot{margin-top:auto}
+.v-records .rec-table{flex:0 1 auto;min-height:140px;overflow-y:auto}
+.v-records .rec-table table{width:100%}
+.v-records .rec-foot{margin-top:auto}
+
+.only-narrow{display:none}
+
+/* 弹窗 */
+.modal{position:absolute;inset:0;z-index:60;display:none}
+.modal.on{display:block}
+.modal-scrim{position:absolute;inset:0;background:rgba(3,6,11,.74);backdrop-filter:blur(7px)}
+.modal-card{
+  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:min(580px,calc(100% - 36px));max-height:calc(100% - 44px);
+  display:flex;flex-direction:column;overflow:hidden;
+  border:1px solid var(--hair-2);border-radius:16px;
+  background:linear-gradient(180deg,#101d31,#080e18);
+  box-shadow:0 30px 80px rgba(0,0,0,.65),0 0 0 1px rgba(143,192,255,.06) inset;
+  animation:modalIn .22s var(--ease) both;
+}
+@keyframes modalIn{from{opacity:0;transform:translate(-50%,-46%) scale(.985)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
+.modal-hd{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border-bottom:1px solid var(--hair)}
+.modal-hd .m-k{font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--t4);display:block;margin-bottom:3px}
+.modal-hd b{font-family:var(--serif);font-size:16px;font-weight:900;letter-spacing:.04em;color:var(--t1)}
+.modal-x{width:26px;height:26px;flex:none;display:grid;place-items:center;border-radius:7px;border:1px solid var(--hair);color:var(--t3)}
+.modal-x:hover{color:var(--t1);border-color:var(--hair-3)}
+.modal-bd{padding:14px 16px 16px;overflow-y:auto;display:flex;flex-direction:column;gap:12px}
+.modal-ft{display:flex;justify-content:flex-end;gap:8px;padding:12px 16px;border-top:1px solid var(--hair)}
+.modal-bd .spec-card{margin:0}
+.modal-bd .rule-card{margin:0}
+.modal-note{font-size:10.5px;color:var(--t4);line-height:1.6}
+.modal-x svg{transform:rotate(45deg)}
+.m-prog{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.m-prog b{font-family:var(--serif);font-size:34px;font-weight:900;color:var(--gold-l);line-height:1}
+.m-prog span{font-size:11.5px;color:var(--t2)}
+.m-prog i{font-style:normal;font-size:10.5px;color:var(--t4);width:100%}
+.m-split{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:4px}
+.m-split > b{font-size:11.5px;color:var(--t3);display:flex;align-items:center;gap:8px}
+.m-split > b > b{color:var(--t1);font-weight:700}
+.m-split .dotmatrix{margin:0;flex:1;max-width:260px}
+.m-card{display:flex;justify-content:center}
+.m-card .card{width:150px}
+.m-row{display:flex;gap:8px;margin-top:2px}
+.m-row .btn{flex:1}
+.rate-note{display:flex;align-items:center;gap:14px;padding:11px 14px;border-top:1px solid var(--hair)}
+.rate-note .note-line{flex:1;margin:0}
+.rate-note .mini-btn{flex:0 0 auto;height:26px;padding:0 10px;display:inline-flex;align-items:center}
+.rate-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 2px 0;font-size:10px;letter-spacing:.06em;color:var(--t4);border-top:1px solid var(--hair);margin-top:14px;flex-wrap:wrap}
+.rate-foot code{color:var(--t3)}
+.rec-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 2px 0;font-size:10px;letter-spacing:.06em;color:var(--t4);flex-wrap:wrap}
+
+/* 窄屏：舞台底部信息带（替代被隐藏的右栏） */
+.src-line{display:none}
+.arena-extra{display:none}
+.extra-card{border:1px solid var(--hair);border-radius:12px;padding:12px 13px;background:linear-gradient(180deg,rgba(18,31,52,.62),rgba(8,14,25,.86))}
+.extra-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px}
+.extra-h b{font-size:10.5px;font-weight:700;letter-spacing:.16em;color:var(--t3);text-transform:uppercase}
+.extra-h a{font-size:10px;color:var(--t4);display:inline-flex;align-items:center;gap:3px}
+.extra-prog{display:flex;align-items:baseline;gap:8px;margin-bottom:8px}
+.extra-prog b{font-family:var(--serif);font-size:26px;font-weight:900;color:var(--gold-l);line-height:1}
+.extra-prog span{font-size:10.5px;color:var(--t3)}
+.extra-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:5px 0;font-size:11px;color:var(--t2)}
+.extra-row b{color:var(--t1);font-weight:700;font-variant-numeric:tabular-nums}
+.extra-row em{font-style:normal;font-size:9.5px;color:var(--t4);white-space:nowrap}
+.extra-row .dot{width:5px;height:5px;border-radius:50%;display:inline-block;margin-right:6px;vertical-align:1px}
+.extra-row .dot.ssr{background:var(--ssr)}
+.extra-row .dot.sr{background:var(--sr)}
+.extra-row .dot.r{background:var(--r)}
+.bar.sky i{background:linear-gradient(90deg,#4a7ede,#9fcaff)}
+
+@container (max-width:940px){
+  .rail-r{display:none}
+  .v-pool{grid-template-rows:auto minmax(0,1fr) auto}
+  .arena{overflow-y:auto;justify-content:space-evenly;padding-top:24px}
+  .arena-extra{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:18px;padding-top:0}
+  .only-narrow{display:grid}
+  .v-rates{overflow-y:auto}
+  .v-rates .rate-ladder{margin-top:0}
+}
+@container (max-width:620px){
+  .arena-extra{grid-template-columns:1fr}
+  .extra-gain{display:none}
+}
+@container (max-width:620px){
+  .modal-card{width:calc(100% - 20px);max-height:calc(100% - 24px);border-radius:14px}
+  .modal-bd{padding:12px 12px 14px}
+}
+</style>
+
+<div class="review-bar">
+  <div class="rb-brand"><b>星轨观测台 · 抽卡页</b><em>Gacha UI Review</em></div>
+  <div class="rb-div" aria-hidden="true"></div>
+  <div class="rb-views" role="group" aria-label="视图切换">
+    <button class="vbtn on" data-rv="pool" onclick="return revSwitch(this,event)">卡池舞台</button>
+    <button class="vbtn" data-rv="reveal" onclick="return revSwitch(this,event)">抽卡演出</button>
+    <button class="vbtn" data-rv="album" onclick="return revSwitch(this,event)">我的卡册</button>
+    <button class="vbtn" data-rv="rates" onclick="return revSwitch(this,event)">概率公示</button>
+    <button class="vbtn" data-rv="records" onclick="return revSwitch(this,event)">抽卡记录</button>
+  </div>
+  <div class="rb-jump">
+    <a class="jbtn" href="#f-desk" onclick="return revSwitch(this,event)">电脑 1440</a>
+    <a class="jbtn" href="#f-tab" onclick="return revSwitch(this,event)">平板 1024</a>
+    <a class="jbtn" href="#f-fold" onclick="return revSwitch(this,event)">折叠 680</a>
+    <a class="jbtn" href="#f-mob" onclick="return revSwitch(this,event)">手机 390</a>
+  </div>
+</div>
+<div class="legend">
+  <span><i style="background:#8fc0ff"></i>星蓝 #8FC0FF · 冷调 / 装饰 / 稀有度 R</span>
+  <span><i style="background:#e0bd86"></i>金 #E0BD86 · 仅用于行动与 SSR</span>
+  <span><i style="background:#f2e7d3"></i>象牙 #F2E7D3 · 档案卡面</span>
+  <span>样图数据为演示值 · 真实数据来自 /api/v1/gacha/*</span>
+</div>
+
+<div class="frames" id="frames">
+  <section class="frame" id="f-desk">
+    <div class="frame-cap"><b>电脑端 1440</b><span>三栏展厅：卡池目录 / 舞台 / 进度侧栏，底部抽屉常驻</span></div>
+    <div class="browser">
+      <div class="browser-bar"><div class="dots"><i></i><i></i><i></i></div><div class="url"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>fluxtorrent.app/gacha</div><div class="win">— □ ×</div></div>
+      <div class="screen" data-w="1440"></div>
+    </div>
+  </section>
+
+  <section class="frame" id="f-tab">
+    <div class="frame-cap"><b>平板 / 三折叠 1024</b><span>左侧目录收窄，舞台保留星盘环，侧栏纵向滚动</span></div>
+    <div class="browser" style="width:min(1024px,calc(100% - 8px))">
+      <div class="browser-bar"><div class="dots"><i></i><i></i><i></i></div><div class="url">fluxtorrent.app/gacha</div><div class="win">— □ ×</div></div>
+      <div class="screen" data-w="1024"></div>
+    </div>
+  </section>
+
+  <section class="frame" id="f-fold">
+    <div class="frame-cap"><b>折叠屏 680</b><span>单栏：舞台与星盘环居中、底部「进度 / 收获」双卡贴抽屉、券源收为一行弹窗入口</span></div>
+    <div class="browser" style="width:min(680px,calc(100% - 8px))">
+      <div class="browser-bar"><div class="dots"><i></i><i></i><i></i></div><div class="url">fluxtorrent.app/gacha</div><div class="win">— □ ×</div></div>
+      <div class="screen" data-w="680"></div>
+    </div>
+  </section>
+
+  <section class="frame" id="f-mob">
+    <div class="frame-cap"><b>手机 390</b><span>精简舞台 + 横滑 UP 卡 + 底部进度卡 + 固定双按钮，一屏不滚整页</span></div>
+    <div class="browser" style="width:min(390px,calc(100% - 8px));border-radius:22px">
+      <div class="browser-bar"><div class="dots"><i></i><i></i><i></i></div><div class="url">gacha</div><div class="win">— □ ×</div></div>
+      <div class="screen" data-w="390"></div>
+    </div>
+  </section>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-back" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></symbol>
+  <symbol id="i-ticket" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5V8a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v1.5a2.5 2.5 0 0 0 0 5V16a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1.5a2.5 2.5 0 0 0 0-5Z"/><path d="M14 7v1.6M14 11.2v1.6M14 15.4V17"/></symbol>
+  <symbol id="i-shard" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M12 3l5 8-5 10-5-10z"/><path d="M7 11h10" opacity=".5"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M12 5.5v13M5.5 12h13"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.4"/><path d="M12 11v5.2M12 7.9h.01"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.4"/><path d="M12 7.5V12l3 1.8"/></symbol>
+  <symbol id="i-arrow-r" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></symbol>
+  <symbol id="i-chev-d" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9.5l6 6 6-6"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="11" cy="11" r="6.4"/><path d="M16 16l3.4 3.4"/></symbol>
+  <symbol id="i-gift" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="9.6" width="16" height="10.4" rx="1.4"/><path d="M3.2 9.6h17.6M12 9.6V20M12 9.6S9.6 4 7 5.4s0 4.2 5 4.2M12 9.6s2.4-5.6 5-4.2 0 4.2-5 4.2"/></symbol>
+  <symbol id="i-task" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8.4 12.2l2.6 2.6 4.6-5"/></symbol>
+  <symbol id="i-bag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h14l1 12H4z"/><path d="M8.6 8V6.4a3.4 3.4 0 0 1 6.8 0V8"/></symbol>
+  <symbol id="i-bank" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3.6 9.6L12 4l8.4 5.6"/><path d="M5.4 10.4v7.6M18.6 10.4v7.6M9.6 10.4v7.6M14.4 10.4v7.6M3 20.4h18"/></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.4l1.9 6.2 6.2 1.9-6.2 1.9L12 18.6l-1.9-6.2L3.9 10.5l6.2-1.9z"/></symbol>
+  <symbol id="i-cards" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.4" y="6.4" width="10.4" height="14" rx="1.8"/><path d="M8 6.4V4.4a1.8 1.8 0 0 1 1.8-1.8h9a1.8 1.8 0 0 1 1.8 1.8v10.6a1.8 1.8 0 0 1-1.8 1.8h-2.4"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M20.4 14.6A8.6 8.6 0 1 1 10 3.6a7 7 0 0 0 10.4 11z"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4.6" y="10.4" width="14.8" height="9.6" rx="2"/><path d="M8 10.4V7.6a4 4 0 0 1 8 0v2.8"/></symbol>
+  <symbol id="i-gauge" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4.4 17.4a8.2 8.2 0 1 1 15.2 0"/><path d="M12 17.4l4.2-5.4"/><circle cx="12" cy="17.4" r="1.2" fill="currentColor" stroke="none"/><path d="M5.6 12.4h1.6M16.8 12.4h1.6M12 8.2v1.6" opacity=".5"/></symbol>
+</svg>
+
+<template id="tpl">
+<div class="app" data-v="pool">
+
+  <!-- ===== HUD ===== -->
+  <header class="hud">
+    <div class="hud-l">
+      <a class="hud-back" href="#" onclick="return gachaAct(this,event)" data-act="toast" data-msg="返回娱乐屋" aria-label="返回"><svg width="15" height="15"><use href="#i-back"/></svg></a>
+      <div class="brand">
+        <svg class="bmark" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true">
+          <circle cx="16" cy="16" r="11.4"/><circle cx="16" cy="16" r="5.4" opacity=".55"/>
+          <path d="M16 4.6v3.4M16 24v3.4M4.6 16H8M24 16h3.4" stroke-linecap="round"/>
+          <circle cx="16" cy="16" r="1.5" fill="currentColor" stroke="none"/>
+        </svg>
+        <span class="btxt"><b>星轨卡册</b><em>Astral Archive</em></span>
+      </div>
+    </div>
+    <nav class="tabs" aria-label="抽卡页导航">
+      <button class="tab on" data-go="pool" onclick="return gachaAct(this,event)">卡池</button>
+      <button class="tab" data-go="album" onclick="return gachaAct(this,event)">我的卡册</button>
+      <button class="tab" data-go="rates" onclick="return gachaAct(this,event)">概率公示</button>
+      <button class="tab" data-go="records" onclick="return gachaAct(this,event)">抽卡记录</button>
+    </nav>
+    <div class="hud-r">
+      <a class="res" href="#" onclick="return gachaAct(this,event)" data-act="toast" data-msg="抽卡券：每日任务 / 魔力商店 / 银行利息可获取">
+        <span class="res-ic"><svg width="12" height="12"><use href="#i-ticket"/></svg></span>
+        <b class="js-tickets">320</b><s>抽卡券</s>
+      </a>
+      <a class="res" href="#" onclick="return gachaAct(this,event)" data-act="toast" data-msg="星尘碎片：重复卡自动分解，可兑换指定 SSR">
+        <span class="res-ic sky"><svg width="12" height="12"><use href="#i-shard"/></svg></span>
+        <b class="js-shards">520</b><s>碎片</s>
+      </a>
+      <button class="icon-btn only-narrow" data-modal="progress" onclick="return gachaAct(this,event)" aria-label="我的进度"><svg width="14" height="14"><use href="#i-gauge"/></svg></button>
+      <button class="icon-btn" data-act="toast" data-msg="前往任务中心赚取抽卡券" onclick="return gachaAct(this,event)" aria-label="获取抽卡券"><svg width="14" height="14"><use href="#i-plus"/></svg></button>
+      <button class="icon-btn opt" data-act="toast" data-msg="星轨卡册规则：每季重置卡池，图鉴点亮永久保留" onclick="return gachaAct(this,event)" aria-label="帮助"><svg width="14" height="14"><use href="#i-info"/></svg></button>
+    </div>
+  </header>
+
+  <!-- ===== 视图：卡池 ===== -->
+  <div class="view v-pool">
+    <aside class="rail rail-l">
+      <div class="rail-h"><b>卡池</b><i>3 期</i></div>
+      <div class="pool-list">
+        <div class="pool-item on" role="button" tabindex="0" data-act="toast" data-msg="当前正在展示：星轨回响" onclick="return gachaAct(this,event)">
+          <div class="pi-art">
+            <svg viewBox="0 0 60 76" fill="none" stroke="#f0c98a" stroke-width="1.3" stroke-linecap="round" aria-hidden="true">
+              <circle cx="30" cy="22" r="7.6"/><circle cx="30" cy="22" r="2.2" fill="#f0c98a" stroke="none"/>
+              <path d="M30 30.4V56M25 34h10M26 40h8M27 46h6M28 52h4"/>
+              <path d="M30 8v3M30 33.5v2M14 22h4M42 22h4" opacity=".55"/>
+            </svg>
+          </div>
+          <div class="pi-body">
+            <div class="pi-name">星轨回响</div>
+            <div class="pi-meta"><span class="pi-tag live">进行中</span>剩 12 天</div>
+          </div>
+        </div>
+        <div class="pool-item" role="button" tabindex="0" data-act="toast" data-msg="往期卡池「长夜灯塔」已结束，卡面可在卡册查看" onclick="return gachaAct(this,event)">
+          <div class="pi-art off">
+            <svg viewBox="0 0 60 76" fill="none" stroke="#a6bbdc" stroke-width="1.3" stroke-linecap="round" aria-hidden="true">
+              <path d="M24 56V26h12v30M20 56h20M26 26l4-8 4 8"/>
+              <path d="M30 18v-5M14 30l10 3M46 30l-10 3" opacity=".6"/>
+            </svg>
+          </div>
+          <div class="pi-body">
+            <div class="pi-name">长夜灯塔</div>
+            <div class="pi-meta"><span class="pi-tag past">已结束</span>09-30</div>
+          </div>
+        </div>
+        <div class="pool-item" role="button" tabindex="0" data-act="toast" data-msg="往期卡池「潮汐之痕」已结束，卡面可在卡册查看" onclick="return gachaAct(this,event)">
+          <div class="pi-art off">
+            <svg viewBox="0 0 60 76" fill="none" stroke="#a6bbdc" stroke-width="1.3" stroke-linecap="round" aria-hidden="true">
+              <circle cx="30" cy="36" r="15"/><circle cx="30" cy="36" r="8" opacity=".5"/>
+              <path d="M30 21v30M15 36h30" opacity=".7"/><path d="M30 36l7-9" stroke="#e0bd86"/>
+            </svg>
+          </div>
+          <div class="pi-body">
+            <div class="pi-name">潮汐之痕</div>
+            <div class="pi-meta"><span class="pi-tag past">已结束</span>08-31</div>
+          </div>
+        </div>
+      </div>
+      <div class="rail-foot">
+        <a class="rail-link" href="#" onclick="return gachaAct(this,event)" data-modal="rules">卡池与保底规则<svg width="12" height="12"><use href="#i-arrow-r"/></svg></a>
+        <a class="rail-link" href="#" onclick="return gachaAct(this,event)" data-modal="wallet">抽卡券来源<svg width="12" height="12"><use href="#i-arrow-r"/></svg></a>
+      </div>
+    </aside>
+
+    <main class="arena">
+      <svg class="sky" viewBox="0 0 1200 760" preserveAspectRatio="xMidYMid slice" aria-hidden="true"></svg>
+      <div class="beam" aria-hidden="true"></div>
+      <div class="grain" aria-hidden="true"></div>
+      <span class="arena-mark" aria-hidden="true">03</span>
+
+      <div class="hero">
+      <div class="hero-l">
+      <div class="stage-badges">
+        <span class="badge"><svg width="10" height="10"><use href="#i-spark"/></svg>限定卡池</span>
+        <span class="badge dim">UP · 破晓之钥 双倍</span>
+      </div>
+
+      <div class="arena-copy">
+        <span class="eyebrow">Limited · 2026 Autumn</span>
+        <h1 class="arena-title">星轨回响</h1>
+        <p class="arena-sub">观测台第九夜，星轨折返。本季收录 24 张星卡，重复卡自动分解为碎片，集齐 520 碎片可直接兑换限定 SSR「破晓之钥」。</p>
+        <div class="arena-meta">
+          <span class="meta-cell"><svg width="12" height="12"><use href="#i-clock"/></svg>剩余 <b>12 天 06:31</b></span>
+          <span class="meta-dot" aria-hidden="true"></span>
+          <span class="meta-cell">截止 <b>11-30 04:00</b></span>
+          <span class="meta-dot" aria-hidden="true"></span>
+          <a class="rate-link" href="#" onclick="return gachaAct(this,event)" data-go="rates">概率详情<svg width="11" height="11"><use href="#i-arrow-r"/></svg></a>
+        </div>
+      </div>
+
+      <div class="feat-cap"><b>本期收录</b><span>本季 24 张 · 已点亮 12</span></div>
+      <div class="featured">
+        <div class="feat-card">
+          <div class="card" data-r="SR">
+            <span class="card-gem" aria-hidden="true"></span>
+            <div class="card-art">
+              <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M32 62l-5-26 13 9 10-16 10 16 13-9-5 26z"/><path d="M30 68h40"/><circle cx="50" cy="55" r="3"/>
+              </svg>
+            </div>
+            <div class="card-plate"><span class="card-name">灰烬冠冕</span><div class="card-sub"><span class="card-stars">★★★★</span><span class="card-lv">SR</span></div></div>
+          </div>
+          <span class="feat-lb">本期 SR</span>
+        </div>
+        <div class="feat-card">
+          <div class="card" data-r="SR">
+            <span class="card-gem" aria-hidden="true"></span>
+            <div class="card-art">
+              <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="50" cy="50" r="24"/><circle cx="50" cy="50" r="13" opacity=".45"/>
+                <path d="M50 28v44M28 50h44" opacity=".55"/><path d="M50 50l13-13 5 5z" fill="currentColor" fill-opacity=".22"/>
+                <circle cx="50" cy="50" r="2.4" fill="currentColor" stroke="none"/>
+              </svg>
+            </div>
+            <div class="card-plate"><span class="card-name">潮汐罗盘</span><div class="card-sub"><span class="card-stars">★★★★</span><span class="card-lv">SR</span></div></div>
+          </div>
+          <span class="feat-lb">本期 SR</span>
+        </div>
+        <div class="feat-card">
+          <div class="card" data-r="R">
+            <span class="card-gem" aria-hidden="true"></span>
+            <div class="card-art">
+              <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M50 24l-9 12h18z"/><path d="M34 38v26M66 38v26M42 38v26M58 38v26M28 66h44"/>
+                <path d="M50 44v22" opacity=".5"/><circle cx="50" cy="58" r="4.6" opacity=".7"/>
+              </svg>
+            </div>
+            <div class="card-plate"><span class="card-name">静默星图</span><div class="card-sub"><span class="card-stars">★★</span><span class="card-lv">R</span></div></div>
+          </div>
+          <span class="feat-lb">本期 R</span>
+        </div>
+      </div>
+      </div>
+      <div class="astro-wrap">
+        <svg class="astro js-astro" viewBox="0 0 360 360" aria-hidden="true"></svg>
+        <div class="astro-core">
+          <div class="card" data-r="SSR">
+            <span class="card-gem" aria-hidden="true"></span><span class="card-tag">UP</span>
+            <div class="card-art">
+              <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="50" cy="30" r="9"/><circle cx="50" cy="30" r="2.6" fill="currentColor" stroke="none"/>
+                <path d="M50 40V78M44 46h12M45 54h10M46 62h8M47 70h6"/>
+                <path d="M50 12v4M50 47v3M30 30h6M64 30h6" opacity=".55"/>
+              </svg>
+            </div>
+            <div class="card-plate"><span class="card-name">破晓之钥</span><div class="card-sub"><span class="card-stars">★★★★★</span><span class="card-lv">SSR</span></div></div>
+          </div>
+        </div>
+        <div class="astro-cap"><span>累计 <b>82/90</b></span><span>距硬保底 <b>8</b></span></div>
+      </div>
+    </div>
+    <div class="arena-extra">
+      <div class="extra-card">
+        <div class="extra-h"><b>我的进度</b><a href="#" onclick="return gachaAct(this,event)" data-modal="progress">详情<svg width="10" height="10"><use href="#i-arrow-r"/></svg></a></div>
+        <div class="extra-prog"><b>8</b><span>抽后必得 SSR</span></div>
+        <div class="bar" aria-hidden="true"><i style="width:91%"></i></div>
+        <div class="bar-lb"><span>累计 82 / 90</span><span>距硬保底 8</span></div>
+        <div class="extra-row"><span>图鉴点亮</span><b>12 / 24</b></div>
+        <div class="bar sky" aria-hidden="true"><i style="width:50%"></i></div>
+      </div>
+      <div class="extra-card extra-gain">
+        <div class="extra-h"><b>本期收获</b><a href="#" onclick="return gachaAct(this,event)" data-go="album">卡册<svg width="10" height="10"><use href="#i-arrow-r"/></svg></a></div>
+        <div class="extra-row"><span><i class="dot ssr"></i>破晓之钥</span><em>NEW · 3 分钟前</em></div>
+        <div class="extra-row"><span><i class="dot sr"></i>潮汐罗盘</span><em>12 分钟前</em></div>
+        <div class="extra-row"><span><i class="dot r"></i>静默星图</span><em>12 分钟前</em></div>
+      </div>
+    </div>
+    <div class="arena-foot"><span>ASTRAL ARCHIVE</span><span class="af-dot"></span><span>SEASON 03 · 2026 AUTUMN</span></div>
+    </main>
+
+    <aside class="rail rail-r">
+      <div class="panel">
+        <div class="panel-h"><b>我的进度</b><a href="#" onclick="return gachaAct(this,event)" data-go="records">记录</a></div>
+        <div class="pity-big"><b class="js-pity">8</b><span>抽后必得 SSR</span></div>
+        <p class="pity-hint">本期累计 82 抽 · 软保底已激活</p>
+        <div class="bar" aria-hidden="true"><i style="width:91%"></i></div>
+        <div class="bar-lb"><span>硬保底进度 82 / 90</span><span>再 8 抽必得 SSR</span></div>
+        <div class="mine-rows">
+          <div class="mine-row">图鉴点亮<b>12 / 24</b></div>
+          <div class="dotmatrix js-dots" aria-hidden="true"></div>
+        </div>
+      </div>
+
+      <div class="promo">
+        <span class="promo-ic"><svg width="14" height="14"><use href="#i-gift"/></svg></span>
+        <div class="promo-tx"><b>新手首抽 · 1 券</b><span>首次单抽体验价，票面 25 券</span></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-h"><b>本期收获</b><a href="#" onclick="return gachaAct(this,event)" data-go="album">卡册</a></div>
+        <div class="drop-row"><i class="drop-dot" style="background:var(--ssr)"></i><span class="drop-nm">破晓之钥</span><span class="drop-tm">NEW · 3 分钟前</span></div>
+        <div class="drop-row"><i class="drop-dot" style="background:var(--sr)"></i><span class="drop-nm">潮汐罗盘</span><span class="drop-tm">12 分钟前</span></div>
+        <div class="drop-row"><i class="drop-dot" style="background:var(--r)"></i><span class="drop-nm">静默星图</span><span class="drop-tm">12 分钟前</span></div>
+      </div>
+
+      <div class="panel src-panel">
+        <a class="src-line" href="#" onclick="return gachaAct(this,event)" data-modal="wallet"><b>获取抽卡券</b><span>每日任务 / 魔力商店 / 银行结算<svg width="10" height="10"><use href="#i-arrow-r"/></svg></span></a>
+        <div class="panel-h src-h"><b>获取抽卡券</b></div>
+        <div class="src-body">
+        <a class="gain-row" href="#" onclick="return gachaAct(this,event)" data-act="toast" data-msg="每日任务：完成 3 项可得 1 张抽卡券"><svg width="13" height="13"><use href="#i-task"/></svg>每日任务<span class="arr">+1 券</span></a>
+        <a class="gain-row" href="#" onclick="return gachaAct(this,event)" data-act="toast" data-msg="魔力商店：1200 魔力兑换 1 张抽卡券"><svg width="13" height="13"><use href="#i-bag"/></svg>魔力商店<span class="arr">+1 券</span></a>
+        <a class="gain-row" href="#" onclick="return gachaAct(this,event)" data-act="toast" data-msg="银行利息：每 5000 魔力结算 1 券，上限 10 券/月"><svg width="13" height="13"><use href="#i-bank"/></svg>银行结算<span class="arr">+1 券</span></a>
+        </div>
+      </div>
+    </aside>
+
+    <div class="dock">
+      <div class="dock-l">
+        <div class="dock-note"><svg width="12" height="12"><use href="#i-info"/></svg>十连必得 <b>SR</b> 以上 · 累计 90 抽必得 <b>SSR</b></div>
+        <button class="switch on" data-act="toggle-skip" onclick="return gachaAct(this,event)"><span class="tg" aria-hidden="true"></span><span class="js-skip-lb">跳过演出</span></button>
+      </div>
+      <div class="dock-r">
+        <a class="btn btn-ghost" href="#" onclick="return gachaAct(this,event)" data-act="draw" data-count="1">
+          <span>单抽</span><span class="cost"><svg width="11" height="11"><use href="#i-ticket"/></svg>25</span>
+        </a>
+        <button class="btn btn-gold" data-act="draw" data-count="10" onclick="return gachaAct(this,event)">
+          <svg class="ic" width="17" height="17"><use href="#i-cards"/></svg>
+          <span>十连</span><span class="cost"><svg width="11" height="11"><use href="#i-ticket"/></svg>220</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 视图：抽卡演出 ===== -->
+  <div class="view v-reveal">
+    <div class="rev-top">
+      <div class="rev-cap"><b class="js-rev-title">十连 · 星轨回响</b><span class="js-rev-cost">本次消耗 220 券</span></div>
+      <div class="rev-bal">
+        <span class="hide-sm">剩余券 <b class="js-tickets">225</b></span>
+        <span class="hide-sm">碎片 <b class="js-shards">520</b></span>
+        <button class="skip-btn" data-act="skip" onclick="return gachaAct(this,event)">跳过演出</button>
+      </div>
+    </div>
+    <div class="pull-wrap">
+      <div class="pull-grid js-pullgrid" aria-live="polite"></div>
+      <div class="rev-sum">
+        <div class="sum-left">
+          <div class="sum-line"><b>本次获得</b><span class="rarity-pill"><i style="background:var(--ssr)"></i>SSR ×<span class="js-c-ssr">1</span></span><span class="rarity-pill"><i style="background:var(--sr)"></i>SR ×<span class="js-c-sr">2</span></span><span class="rarity-pill"><i style="background:var(--r)"></i>R ×<span class="js-c-r">4</span></span><span class="rarity-pill"><i style="background:var(--nrm)"></i>N ×<span class="js-c-n">3</span></span></div>
+          <div class="sum-line js-sum-note" style="color:var(--t3);font-size:11px"></div>
+        </div>
+        <div class="sum-right">
+          <button class="btn btn-ghost" data-go="album" onclick="return gachaAct(this,event)">查看卡册</button>
+          <button class="btn btn-gold" data-act="draw" data-count="10" onclick="return gachaAct(this,event)">
+            <span>再抽十连</span><span class="cost"><svg width="11" height="11"><use href="#i-ticket"/></svg>220</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 视图：我的卡册 ===== -->
+  <div class="view v-album">
+    <div class="alb-head">
+      <div class="alb-t">
+        <em>Collection · Season 03</em>
+        <h2>我的卡册</h2>
+        <p>本季 24 张 · 图鉴点亮永久保留，分解重复卡不会熄灭</p>
+      </div>
+      <div class="alb-stats">
+        <div class="alb-stat"><b class="js-lit">12</b><span>已点亮</span></div>
+        <div class="alb-stat"><b>24</b><span>总卡位</span></div>
+        <div class="alb-stat"><b class="js-shards">520</b><span>碎片</span></div>
+      </div>
+    </div>
+
+    <div class="alb-synth">
+      <div class="synth-face"><svg width="16" height="16"><use href="#i-cards"/></svg></div>
+      <div class="synth-tx">
+        <b>合成目标 · SSR 破晓之钥</b>
+        <div class="bar gold" aria-hidden="true"><i style="width:60%"></i></div>
+        <div class="bar-lb"><span>312 / 520 碎片</span><span>再集 208</span></div>
+      </div>
+      <button class="mini-btn gold" style="flex:0 0 auto;height:32px;padding:0 14px" data-act="toast" data-msg="碎片不足：还需 208 枚" onclick="return gachaAct(this,event)">兑换</button>
+    </div>
+
+    <div class="alb-bar">
+      <button class="chip on" data-filter="all" onclick="return gachaAct(this,event)">全部 <i>24</i></button>
+      <button class="chip" data-filter="SSR" onclick="return gachaAct(this,event)">SSR <i>4</i></button>
+      <button class="chip" data-filter="SR" onclick="return gachaAct(this,event)">SR <i>8</i></button>
+      <button class="chip" data-filter="R" onclick="return gachaAct(this,event)">R <i>8</i></button>
+      <button class="chip" data-filter="locked" onclick="return gachaAct(this,event)">未点亮 <i>12</i></button>
+      <div class="search"><svg width="12" height="12"><use href="#i-search"/></svg>搜索卡名</div>
+    </div>
+
+    <div class="alb-grid js-album"></div>
+    <div class="alb-more"><svg width="11" height="11"><use href="#i-chev-d"/></svg>滚动查看其余 8 张 · 共 24 张</div>
+  </div>
+
+  <!-- ===== 视图：概率公示 ===== -->
+  <div class="view v-rates">
+    <div class="alb-head" style="margin-bottom:18px">
+      <div class="alb-t">
+        <em>Disclosure</em>
+        <h2>概率公示</h2>
+        <p>表定概率与实际综合概率双列公开 · 数据由 /api/v1/gacha/banner/{id}/rates 实时下发</p>
+      </div>
+      <div class="alb-stats">
+        <div class="alb-stat"><b>90</b><span>硬保底抽数</span></div>
+        <div class="alb-stat"><b>60</b><span>软保底起点</span></div>
+      </div>
+    </div>
+
+    <div class="rate-wrap">
+      <div class="rate-main">
+        <div class="rate-head"><h3>星轨回响 · 掉落构成</h3><span>本季 24 张 · 单抽 25 券</span></div>
+        <table class="rate-table">
+          <colgroup><col style="width:16%"><col style="width:14%"><col style="width:34%"><col style="width:18%"><col style="width:18%"></colgroup>
+          <thead><tr><th>档位</th><th>星数</th><th>综合概率</th><th>表定</th><th>碎片</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><b style="color:var(--ssr)">SSR</b></td><td class="num">5 ★</td>
+              <td><div class="num">1.20%</div><div class="rate-bar"><i style="width:6%;background:var(--ssr)"></i></div></td>
+              <td class="num">0.60%</td><td class="num">80</td>
+            </tr>
+            <tr>
+              <td><b style="color:var(--sr)">SR</b></td><td class="num">4 ★</td>
+              <td><div class="num">9.80%</div><div class="rate-bar"><i style="width:26%;background:var(--sr)"></i></div></td>
+              <td class="num">5.10%</td><td class="num">30</td>
+            </tr>
+            <tr>
+              <td><b style="color:var(--r)">R</b></td><td class="num">3 ★</td>
+              <td><div class="num">38.00%</div><div class="rate-bar"><i style="width:64%;background:var(--r)"></i></div></td>
+              <td class="num">34.50%</td><td class="num">10</td>
+            </tr>
+            <tr>
+              <td><b style="color:var(--nrm)">N</b></td><td class="num">2 ★</td>
+              <td><div class="num">51.00%</div><div class="rate-bar"><i style="width:86%;background:var(--nrm)"></i></div></td>
+              <td class="num">59.80%</td><td class="num">4</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="rate-note">
+          <p class="note-line">综合概率含软保底爬升与硬保底补足；十连保底至少 1 张 SR 以上。碎片在重复卡时额外结算，可直接兑换指定 SSR。</p>
+          <button class="mini-btn" data-modal="rateSpec" onclick="return gachaAct(this,event)">口径与复核<svg width="11" height="11" style="margin-left:4px"><use href="#i-arrow-r"/></svg></button>
+        </div>
+      </div>
+      <div class="rate-side">
+        <div class="rule-card">
+          <h4>保底规则</h4>
+          <div class="rule-step"><span class="no">01</span><div><b>软保底 60 抽起</b><span>第 61 抽起 SSR 概率按 6% / 抽阶梯递增，直至命中。</span></div></div>
+          <div class="rule-step"><span class="no">02</span><div><b>硬保底 90 抽</b><span>累计 90 抽未出 SSR，第 90 抽必得，计数归零。</span></div></div>
+          <div class="rule-step"><span class="no">03</span><div><b>十连保底</b><span>每次十连至少 1 张 SR 以上，不与硬保底叠加。</span></div></div>
+          <div class="rule-step"><span class="no">04</span><div><b>跨池不继承</b><span>保底计数按卡池独立，卡池结束后清零，请留意剩余时间。</span></div></div>
+        </div>
+        <div class="rule-card">
+          <h4>兑换与分解</h4>
+          <div class="rule-step"><span class="no">01</span><div><b>重复卡自动分解</b><span>按档位结算碎片：SSR 80 / SR 30 / R 10 / N 4。</span></div></div>
+          <div class="rule-step"><span class="no">02</span><div><b>520 碎片兑换当期 SSR</b><span>每季每张限兑 1 次，兑换后卡面标记「本季已兑换」。</span></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="rate-ladder">
+      <div class="rl-head"><b>保底进度阶梯</b><span>当前累计 <em>82</em> 抽 · 距硬保底 <em>8</em> 抽</span></div>
+      <div class="rl-track" aria-hidden="true">
+        <span class="rl-fill"></span>
+        <span class="rl-now" style="left:91.1%">82</span>
+      </div>
+      <div class="rl-axis"><span>0 · 起抽</span><span>60 · 软保底起点</span><span>90 · 硬保底必得</span></div>
+    </div>
+    <div class="rate-foot"><span>数据来自 <code>GET /api/v1/gacha/banner/{id}/rates</code> · 只读公开 · 每日 04:00 复核</span><span>最近同步 11-27 21:12</span></div>
+  </div>
+
+  <!-- ===== 视图：抽卡记录 ===== -->
+  <div class="view v-records">
+    <div class="alb-head" style="margin-bottom:16px">
+      <div class="alb-t">
+        <em>Ledger</em>
+        <h2>抽卡记录</h2>
+        <p>近 30 抽逐条可查 · 含保底标记，只读不可改</p>
+      </div>
+      <button class="mini-btn" style="height:30px;padding:0 12px" data-modal="export" onclick="return gachaAct(this,event)">导出记录</button>
+    </div>
+    <div class="rec-tiles">
+      <div class="tile"><span>累计抽数</span><b>128</b><i>本期 82 抽</i></div>
+      <div class="tile"><span>SSR 出货</span><b style="color:var(--ssr)">3</b><i>实测 2.34% · 综合 1.20%</i></div>
+      <div class="tile"><span>平均出货</span><b>42.6</b><i>抽 / 张</i></div>
+      <div class="tile"><span>碎片累计</span><b>520</b><i>已兑 1 张</i></div>
+    </div>
+    <div class="strip-cap"><b>近 30 抽</b><span>色块按稀有度着色 · 金点为硬保底触发 · 只读留痕</span></div>
+    <div class="strip" aria-hidden="true">
+      <span class="strip-cell" data-r="N"></span><span class="strip-cell" data-r="N"></span><span class="strip-cell" data-r="R"></span><span class="strip-cell" data-r="N"></span><span class="strip-cell" data-r="R"></span>
+      <span class="strip-cell" data-r="N"></span><span class="strip-cell" data-r="SR"></span><span class="strip-cell" data-r="N"></span><span class="strip-cell" data-r="R"></span><span class="strip-cell" data-r="N"></span>
+      <span class="strip-cell" data-r="R"></span><span class="strip-cell" data-r="N"></span><span class="strip-cell" data-r="N"></span><span class="strip-cell" data-r="SR"></span><span class="strip-cell" data-r="N"></span>
+      <span class="strip-cell" data-r="R"></span><span class="strip-cell" data-r="N"></span><span class="strip-cell" data-r="N"></span><span class="strip-cell" data-r="R"></span><span class="strip-cell" data-r="N"></span>
+      <span class="strip-cell" data-r="N"></span><span class="strip-cell" data-r="SR"></span><span class="strip-cell" data-r="N"></span><span class="strip-cell" data-r="R"></span><span class="strip-cell" data-r="N"></span>
+      <span class="strip-cell" data-r="N"></span><span class="strip-cell" data-r="R"></span><span class="strip-cell" data-r="N"></span><span class="strip-cell" data-r="SSR"></span><span class="strip-cell pity" data-r="SSR"></span>
+    </div>
+    <div class="rec-table">
+      <table>
+        <colgroup><col style="width:22%"><col style="width:14%"><col style="width:30%"><col style="width:18%"><col style="width:16%"></colgroup>
+        <thead><tr><th>时间</th><th>类型</th><th>结果</th><th>保底</th><th>余额</th></tr></thead>
+        <tbody>
+          <tr><td class="num">11-27 21:04</td><td>十连</td><td><b style="color:var(--ssr)">破晓之钥</b> · 长夜灯塔 ×2</td><td><b style="color:var(--gold-l)">硬保底</b></td><td class="num">320</td></tr>
+          <tr><td class="num">11-27 20:52</td><td>十连</td><td>潮汐罗盘 · 静默星图 ×3</td><td>—</td><td class="num">540</td></tr>
+          <tr><td class="num">11-26 22:31</td><td>单抽</td><td>静默星图</td><td>—</td><td class="num">760</td></tr>
+          <tr><td class="num">11-26 22:30</td><td>单抽</td><td><b style="color:var(--sr)">灰烬冠冕</b></td><td>软保底</td><td class="num">785</td></tr>
+          <tr><td class="num">11-25 21:12</td><td>十连</td><td>静默星图 ×2 · 苔痕齿轮 ×3</td><td>—</td><td class="num">1030</td></tr>
+          <tr><td class="num">11-24 20:08</td><td>单抽</td><td>铜锈纹章</td><td>—</td><td class="num">1055</td></tr>
+          <tr><td class="num">11-23 22:14</td><td>十连</td><td>静默星图 ×2 · 铜锈纹章 ×2</td><td>—</td><td class="num">1275</td></tr>
+          <tr><td class="num">11-23 22:04</td><td>单抽</td><td>苔痕齿轮</td><td>—</td><td class="num">1495</td></tr>
+          <tr><td class="num">11-22 20:36</td><td>十连</td><td>流萤信标 ×3 · 静默星图</td><td>—</td><td class="num">1520</td></tr>
+          <tr><td class="num">11-21 21:02</td><td>单抽</td><td>铜锈纹章</td><td>—</td><td class="num">1740</td></tr>
+          <tr><td class="num">11-20 22:18</td><td>十连</td><td>银沙星盘 · 夜航刻度 ×2</td><td>—</td><td class="num">1765</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="rec-foot"><span>只读留痕 · 服务端保留最近 30 抽，更早记录请导出归档</span><span>累计 128 抽 · 本页 30 抽</span></div>
+  </div>
+
+  <!-- ===== 弹窗层（每个设备框内独立） ===== -->
+  <div class="modal" aria-hidden="true">
+    <div class="modal-scrim" data-close="1"></div>
+    <div class="modal-card" role="dialog" aria-modal="true">
+      <div class="modal-hd">
+        <div><span class="m-k">Astral Archive</span><b class="m-title">详情</b></div>
+        <button class="modal-x" data-close="1" aria-label="关闭"><svg width="12" height="12"><use href="#i-plus"/></svg></button>
+      </div>
+      <div class="modal-bd"></div>
+      <div class="modal-ft"><button class="btn btn-ghost" style="height:38px;padding:0 18px" data-close="1">知道了</button></div>
+    </div>
+  </div>
+
+</div>
+</template>
+
+
+<script>
+(function () {
+  "use strict";
+
+  /* ---------- 数据（演示值；真实字段见 gacha-draw.tsx / gacha-album.tsx） ---------- */
+  var STARS = { SSR: 5, SR: 4, R: 3, N: 2 };
+  var DECK = [
+    { n: "破晓之钥", r: "SSR", sig: "key",      held: 2, lv: 5, lvMax: 10 },
+    { n: "长夜灯塔", r: "SSR", sig: "beacon",   held: 1, lv: 3, lvMax: 10 },
+    { n: "潮汐罗盘", r: "SR",  sig: "compass",  held: 3, lv: 4, lvMax: 8 },
+    { n: "灰烬冠冕", r: "SR",  sig: "crown",    held: 2, lv: 2, lvMax: 8 },
+    { n: "极光棱镜", r: "SR",  sig: "prism",    held: 1, lv: 1, lvMax: 8 },
+    { n: "流萤信标", r: "R",   sig: "firefly",  held: 5, lv: 3, lvMax: 6 },
+    { n: "静默星图", r: "R",   sig: "chart",    held: 4, lv: 2, lvMax: 6 },
+    { n: "苔痕齿轮", r: "R",   sig: "gear",     held: 2, lv: 1, lvMax: 6 },
+    { n: "夜航刻度", r: "R",   sig: "ruler",    held: 3, lv: 2, lvMax: 6 },
+    { n: "银沙星盘", r: "R",   sig: "astrolabe",held: 1, lv: 1, lvMax: 6 },
+    { n: "铜锈纹章", r: "N",   sig: "crest",    held: 7, lv: 1, lvMax: 4 },
+    { n: "灰烬徽记", r: "N",   sig: "crest",    held: 2, lv: 1, lvMax: 4 },
+    { n: "未点亮",   r: "SSR", sig: "seal", locked: 1 },
+    { n: "未点亮",   r: "SSR", sig: "seal", locked: 1 },
+    { n: "未点亮",   r: "SR",  sig: "seal", locked: 1 },
+    { n: "未点亮",   r: "SR",  sig: "seal", locked: 1 },
+    { n: "未点亮",   r: "SR",  sig: "seal", locked: 1 },
+    { n: "未点亮",   r: "SR",  sig: "seal", locked: 1 },
+    { n: "未点亮",   r: "SR",  sig: "seal", locked: 1 },
+    { n: "未点亮",   r: "R",   sig: "seal", locked: 1 },
+    { n: "未点亮",   r: "R",   sig: "seal", locked: 1 },
+    { n: "未点亮",   r: "R",   sig: "seal", locked: 1 },
+    { n: "未点亮",   r: "N",   sig: "seal", locked: 1 },
+    { n: "未点亮",   r: "N",   sig: "seal", locked: 1 }
+  ];
+
+  var SIG = {
+    key: '<circle cx="50" cy="30" r="9"/><circle cx="50" cy="30" r="2.6" fill="currentColor" stroke="none"/><path d="M50 40V78M44 46h12M45 54h10M46 62h8M47 70h6"/><path d="M50 12v4M50 47v3M30 30h6M64 30h6" opacity=".55"/>',
+    beacon: '<path d="M38 78V38h24v40M31 78h38M40 38l10-14 10 14"/><path d="M50 24v-9M22 44l16 4M78 44l-16 4" opacity=".6"/><path d="M44 52h12M44 62h12" opacity=".35"/>',
+    compass: '<circle cx="50" cy="50" r="24"/><circle cx="50" cy="50" r="13" opacity=".42"/><path d="M50 28v44M28 50h44" opacity=".5"/><path d="M50 50l13-13 5 5z" fill="currentColor" fill-opacity=".22"/><circle cx="50" cy="50" r="2.4" fill="currentColor" stroke="none"/>',
+    crown: '<path d="M32 62l-5-26 13 9 10-16 10 16 13-9-5 26z"/><path d="M30 68h40"/><circle cx="50" cy="55" r="3"/>',
+    firefly: '<path d="M50 30l10 11-10 25-10-25z"/><path d="M50 22v6M50 66v6M34 44l7 3M66 44l-7 3" opacity=".6"/><circle cx="50" cy="47" r="3.2" fill="currentColor" stroke="none"/>',
+    chart: '<circle cx="30" cy="34" r="2.4"/><circle cx="46" cy="26" r="2.4"/><circle cx="64" cy="38" r="2.4"/><circle cx="72" cy="60" r="2.4"/><circle cx="52" cy="68" r="2.4"/><circle cx="36" cy="58" r="2.4"/><path d="M30 34l16-8 18 12 8 22-20 8-16-10z" opacity=".45"/>',
+    gear: '<circle cx="50" cy="50" r="19"/><circle cx="50" cy="50" r="7"/><path d="M50 26v-8M50 74v8M26 50h-8M74 50h8M32 32l-6-6M68 68l6 6M68 32l6-6M32 68l-6 6" opacity=".75"/>',
+    crest: '<path d="M50 22l22 8v22c0 16-12 26-22 30-10-4-22-14-22-30V30z"/><path d="M50 34v22M40 42h20" opacity=".6"/>',
+    prism: '<path d="M50 26l19 44H31z"/><path d="M50 26v44" opacity=".45"/><path d="M50 44l-9 26M50 44l9 26" opacity=".7"/>',
+    ruler: '<rect x="35" y="30" width="30" height="44" rx="3"/><path d="M35 40h9M35 50h13M35 60h9M35 70h13" opacity=".85"/>',
+    astrolabe: '<circle cx="50" cy="50" r="30"/><circle cx="50" cy="50" r="18" opacity=".55"/><circle cx="50" cy="50" r="7"/><path d="M50 20v8M50 72v8M20 50h8M72 50h8" opacity=".8"/><path d="M71 29l-5 5M34 66l-5 5M71 71l-5-5M34 34l-5-5" opacity=".5"/><circle cx="50" cy="50" r="2.4" fill="currentColor" stroke="none"/>',
+    seal: '<path d="M50 22l28 28-28 28-28-28z"/><path d="M50 34l16 16-16 16-16-16z" opacity=".45"/><circle cx="50" cy="50" r="3" fill="currentColor" stroke="none"/><path d="M18 18l10 10M82 82l-10-10M82 18l-10 10M18 82l10-10" opacity=".3"/>'
+  };
+
+  var tpl = document.getElementById("tpl");
+  var STATES = new Map();
+  var NS = "http://www.w3.org/2000/svg";
+
+  function $(sel, root) { return (root || document).querySelector(sel); }
+  function $$(sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); }
+
+  function toast(msg) {
+    var t = document.getElementById("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(t._timer);
+    t._timer = setTimeout(function () { t.classList.remove("show"); }, 1800);
+  }
+
+  function cardHTML(c, tagHTML) {
+    var stars = "";
+    for (var i = 0; i < (STARS[c.r] || 1); i++) stars += "★";
+    return '<div class="card" data-r="' + c.r + '">' +
+      '<span class="card-gem" aria-hidden="true"></span>' +
+      (tagHTML || "") +
+      '<div class="card-art"><svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (SIG[c.sig] || SIG.astrolabe) + '</svg></div>' +
+      '<div class="card-plate"><span class="card-name">' + c.n + '</span>' +
+      '<div class="card-sub"><span class="card-stars">' + stars + '</span><span class="card-lv">' + c.r + '</span></div></div>' +
+      '</div>';
+  }
+
+  function backHTML() {
+    return '<div class="card card-back" data-r="SSR"><div class="card-art">' +
+      '<svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" aria-hidden="true">' + SIG.astrolabe + '</svg></div></div>';
+  }
+
+  /* ---------- 星空 ---------- */
+  function paintSky(svg) {
+    var seed = 20261015;
+    function rnd() { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; }
+    var frag = document.createDocumentFragment();
+    for (var i = 0; i < 130; i++) {
+      var c = document.createElementNS(NS, "circle");
+      c.setAttribute("cx", (rnd() * 1200).toFixed(1));
+      c.setAttribute("cy", (rnd() * 760).toFixed(1));
+      c.setAttribute("r", (rnd() < 0.1 ? 1.5 : 0.7).toFixed(2));
+      c.setAttribute("fill", "#d8e8ff");
+      c.setAttribute("opacity", (0.18 + rnd() * 0.55).toFixed(2));
+      frag.appendChild(c);
+    }
+    // 三组星座连线（细、低对比，不抢主体）
+    var groups = [
+      [[120, 140], [196, 96], [268, 148], [246, 226], [158, 214]],
+      [[820, 120], [900, 178], [982, 132], [1030, 226], [936, 268]],
+      [[420, 640], [500, 596], [566, 650], [520, 720]]
+    ];
+    groups.forEach(function (pts) {
+      var d = pts.map(function (p) { return p[0] + " " + p[1]; }).join("L");
+      var pl = document.createElementNS(NS, "path");
+      pl.setAttribute("d", "M" + d);
+      pl.setAttribute("fill", "none");
+      pl.setAttribute("stroke", "#8fc0ff");
+      pl.setAttribute("stroke-width", "0.9");
+      pl.setAttribute("opacity", "0.16");
+      frag.appendChild(pl);
+      pts.forEach(function (p) {
+        var dot = document.createElementNS(NS, "circle");
+        dot.setAttribute("cx", p[0]); dot.setAttribute("cy", p[1]);
+        dot.setAttribute("r", "1.8"); dot.setAttribute("fill", "#bcdcff");
+        dot.setAttribute("opacity", "0.45");
+        frag.appendChild(dot);
+      });
+    });
+    svg.appendChild(frag);
+  }
+
+  /* ---------- 星盘保底环 ---------- */
+  function paintAstro(svg, hardLeft, softDone) {
+    var c = 180, frag = document.createDocumentFragment();
+    function ring(r, op, dash) {
+      var el = document.createElementNS(NS, "circle");
+      el.setAttribute("cx", c); el.setAttribute("cy", c); el.setAttribute("r", r);
+      el.setAttribute("fill", "none");
+      el.setAttribute("stroke", "#96b4e6");
+      el.setAttribute("stroke-width", "1");
+      el.setAttribute("opacity", op);
+      if (dash) { el.setAttribute("stroke-dasharray", "1 7"); }
+      frag.appendChild(el);
+    }
+    ring(170, "0.18");
+    ring(148, "0.10", true);
+    ring(112, "0.14");
+
+    // 硬保底进度弧（金色，贴外环内侧）
+    var circ = 2 * Math.PI * 141;
+    var doneArc = document.createElementNS(NS, "circle");
+    doneArc.setAttribute("cx", c); doneArc.setAttribute("cy", c); doneArc.setAttribute("r", "141");
+    doneArc.setAttribute("fill", "none");
+    doneArc.setAttribute("stroke", "#e0bd86");
+    doneArc.setAttribute("stroke-width", "3.4");
+    doneArc.setAttribute("stroke-linecap", "round");
+    doneArc.setAttribute("opacity", "0.55");
+    doneArc.setAttribute("stroke-dasharray", (circ * (90 - hardLeft) / 90).toFixed(1) + " " + circ.toFixed(1));
+    doneArc.setAttribute("transform", "rotate(-90 " + c + " " + c + ")");
+    frag.appendChild(doneArc);
+
+    // 外圈 90 格（硬保底），内圈 60 格（软保底）
+    var hardDone = 90 - hardLeft;
+    for (var i = 0; i < 90; i++) {
+      var a = (i / 90) * Math.PI * 2 - Math.PI / 2;
+      var l = document.createElementNS(NS, "line");
+      var r1 = 158, r2 = i < hardDone ? 170 : 164;
+      l.setAttribute("x1", (c + Math.cos(a) * r1).toFixed(1));
+      l.setAttribute("y1", (c + Math.sin(a) * r1).toFixed(1));
+      l.setAttribute("x2", (c + Math.cos(a) * r2).toFixed(1));
+      l.setAttribute("y2", (c + Math.sin(a) * r2).toFixed(1));
+      l.setAttribute("stroke", i < hardDone ? "#e0bd86" : "#6f87a8");
+      l.setAttribute("stroke-width", i % 10 === 0 ? "2" : "1");
+      l.setAttribute("opacity", i < hardDone ? "0.92" : "0.28");
+      frag.appendChild(l);
+    }
+    for (var j = 0; j < 60; j++) {
+      var b = (j / 60) * Math.PI * 2 - Math.PI / 2;
+      var t = document.createElementNS(NS, "line");
+      t.setAttribute("x1", (c + Math.cos(b) * 120).toFixed(1));
+      t.setAttribute("y1", (c + Math.sin(b) * 120).toFixed(1));
+      t.setAttribute("x2", (c + Math.cos(b) * (j < softDone ? 130 : 126)).toFixed(1));
+      t.setAttribute("y2", (c + Math.sin(b) * (j < softDone ? 130 : 126)).toFixed(1));
+      t.setAttribute("stroke", j < softDone ? "#8fc0ff" : "#5f7796");
+      t.setAttribute("stroke-width", j % 5 === 0 ? "1.8" : "0.9");
+      t.setAttribute("opacity", j < softDone ? "0.8" : "0.2");
+      frag.appendChild(t);
+    }
+    // 当前位置标记
+    var ang = ((90 - hardLeft) / 90) * Math.PI * 2 - Math.PI / 2;
+    var dot = document.createElementNS(NS, "circle");
+    dot.setAttribute("cx", (c + Math.cos(ang) * 170).toFixed(1));
+    dot.setAttribute("cy", (c + Math.sin(ang) * 170).toFixed(1));
+    dot.setAttribute("r", "3.2");
+    dot.setAttribute("fill", "#f6e3bb");
+    frag.appendChild(dot);
+    var halo = document.createElementNS(NS, "circle");
+    halo.setAttribute("cx", (c + Math.cos(ang) * 170).toFixed(1));
+    halo.setAttribute("cy", (c + Math.sin(ang) * 170).toFixed(1));
+    halo.setAttribute("r", "7");
+    halo.setAttribute("fill", "none");
+    halo.setAttribute("stroke", "#f6e3bb");
+    halo.setAttribute("stroke-width", "1");
+    halo.setAttribute("opacity", "0.45");
+    frag.appendChild(halo);
+    svg.appendChild(frag);
+  }
+
+  /* ---------- 卡册 ---------- */
+  function renderAlbum(app) {
+    var st = STATES.get(app);
+    var grid = $(".js-album", app);
+    if (!grid) return;
+    var list = DECK.filter(function (c) {
+      if (st.filter === "locked") return !!c.locked;
+      if (st.filter !== "all") return !c.locked && c.r === st.filter;
+      return true;
+    });
+    grid.innerHTML = list.map(function (c) {
+      if (c.locked) {
+        return '<div class="acard locked">' + cardHTML({ n: "？？？", r: c.r, sig: c.sig, locked: 1 }) +
+          '<div class="acard-meta"><b>未点亮</b><span>' + c.r + "</span></div>" +
+          '<div class="acard-acts"><span class="acard-hint">本季抽卡可解锁</span></div></div>';
+      }
+      return '<div class="acard">' + cardHTML(c) +
+        '<div class="acard-meta"><b>' + c.n + "</b><span>持有 ×" + c.held + " · Lv." + c.lv + "/" + c.lvMax + "</span></div>" +
+        '<div class="acard-acts">' +
+        '<button class="mini-btn" data-act="toast" data-msg="已分解重复卡，获得 ' + ({SSR:80,SR:30,R:10,N:4}[c.r]) + ' 碎片" onclick="return gachaAct(this,event)">分解</button>' +
+        '<button class="mini-btn gold" data-modal="confirm" onclick="return gachaAct(this,event)">兑换</button>' +
+        '<button class="mini-btn" data-act="toast" data-msg="升级消耗重复卡，Lv.' + c.lv + ' → ' + (c.lv + 1) + '" onclick="return gachaAct(this,event)">升级</button>' +
+        '</div></div>';
+    }).join("");
+  }
+
+  function paintDots(app, lit, total) {
+    var d = $(".js-dots", app);
+    if (!d) return;
+    var html = "";
+    for (var i = 0; i < total; i++) {
+      html += '<i class="' + (i < lit - 1 ? "lit" : (i === lit - 1 ? "gold" : "")) + '"></i>';
+    }
+    d.innerHTML = html;
+  }
+
+  function updateHud(app) {
+    var st = STATES.get(app);
+    $$(".js-tickets", app).forEach(function (el) { el.textContent = st.tickets; });
+    $$(".js-shards", app).forEach(function (el) { el.textContent = st.shards; });
+    $$(".js-pity", app).forEach(function (el) { el.textContent = st.pity; });
+  }
+
+  function setView(app, v) {
+    app.setAttribute("data-v", v);
+    var key = v === "reveal" ? "pool" : v;
+    $$(".tab", app).forEach(function (t) {
+      t.classList.toggle("on", t.getAttribute("data-go") === key);
+    });
+  }
+
+  /* ---------- 抽卡 ---------- */
+  function rollRarity() {
+    var x = Math.random();
+    if (x < 0.012) return "SSR";
+    if (x < 0.082) return "SR";
+    if (x < 0.44) return "R";
+    return "N";
+  }
+
+  function makePulls(count, st, demo) {
+    var rows = [], gotHigh = false;
+    if (demo && count === 10) {
+      st.pity = 0;
+      var seq = ["firefly", "crest", "compass", "crest", "gear", "crest", "chart", "crown", "chart", "key"];
+      return seq.map(function (sig, i) {
+        var card = DECK.filter(function (c) { return c.sig === sig; })[0];
+        return { n: card.n, r: card.r, sig: card.sig, wasPity: i === seq.length - 1 };
+      });
+    }
+    for (var i = 0; i < count; i++) {
+      st.pity += 1;
+      var r = st.pity >= 90 ? "SSR" : rollRarity();
+      var wasPity = r === "SSR" && st.pity >= 90;
+      if (r === "SSR") st.pity = 0;
+      if (r === "SR" || r === "SSR") gotHigh = true;
+      var pool = DECK.filter(function (c) { return !c.locked && c.r === r; });
+      var card = pool[Math.floor(Math.random() * pool.length)];
+      rows.push({ n: card.n, r: r, sig: card.sig, wasPity: wasPity });
+    }
+    if (count === 10 && !gotHigh) {
+      var alt = DECK.filter(function (c) { return !c.locked && c.r === "SR"; })[0];
+      rows[rows.length - 1] = { n: alt.n, r: "SR", sig: alt.sig, wasPity: false };
+    }
+    return rows;
+  }
+
+  function flipAll(app) {
+    $$(".pull-cell", $(".js-pullgrid", app)).forEach(function (c) { c.classList.add("flipped"); });
+  }
+
+  function renderPull(app, rows, instant) {
+    var grid = $(".js-pullgrid", app);
+    grid.innerHTML = rows.map(function (r, i) {
+      var extra = r.r === "SSR" ? " rare" : r.r === "SR" ? " rare-sr" : "";
+      return '<div class="pull-cell' + extra + '" data-r="' + r.r + '">' +
+        (r.wasPity ? '<span class="pity-flag">硬保底</span>' : "") +
+        '<div class="rays" aria-hidden="true"></div>' +
+        '<div class="pull-inner"><div class="back">' + backHTML() + "</div>" +
+        '<div class="face">' + cardHTML(r, r.r === "SSR" ? '<span class="card-tag">NEW</span>' : "") + "</div></div></div>";
+    }).join("");
+
+    var cells = $$(".pull-cell", grid);
+    if (instant) {
+      cells.forEach(function (c) { c.classList.add("flipped"); });
+    } else {
+      cells.forEach(function (c, i) {
+        setTimeout(function () { c.classList.add("flipped"); }, 70 + i * 85);
+      });
+    }
+    var cnt = { SSR: 0, SR: 0, R: 0, N: 0 };
+    rows.forEach(function (r) { cnt[r.r] += 1; });
+    $$(".js-c-ssr", app).forEach(function (el) { el.textContent = cnt.SSR; });
+    $$(".js-c-sr", app).forEach(function (el) { el.textContent = cnt.SR; });
+    $$(".js-c-r", app).forEach(function (el) { el.textContent = cnt.R; });
+    $$(".js-c-n", app).forEach(function (el) { el.textContent = cnt.N; });
+    var note = $(".js-sum-note", app);
+    if (note) {
+      var picked = rows.filter(function (r) { return r.r === "SSR"; }).length;
+      note.innerHTML = picked
+        ? '保底计数已重置 · 图鉴新增 <b style="color:var(--gold-l)">' + picked + "</b> 张"
+        : "保底计数 +" + rows.length + " · 距硬保底 <b style=\"color:var(--gold-l)\">" + STATES.get(app).pity + "</b> 抽";
+    }
+  }
+
+  function startDraw(app, count, demo) {
+    var st = STATES.get(app);
+    var cost = count === 10 ? 220 : 25;
+    if (!demo && st.tickets < cost) {
+      toast("抽卡券不足 · 还差 " + (cost - st.tickets) + " 张，可从任务 / 商店 / 银行获取");
+      return;
+    }
+    if (!demo) {
+      st.tickets -= cost;
+      st.pulls += count;
+    }
+    var rows = makePulls(count, st, demo);
+    st.rows = rows;
+    setView(app, "reveal");
+    $$(".js-rev-title", app).forEach(function (el) { el.textContent = (count === 1 ? "单抽" : "十连") + " · 星轨回响"; });
+    $$(".js-rev-cost", app).forEach(function (el) { el.textContent = demo ? "示例结果 · 不扣券" : "本次消耗 " + cost + " 券"; });
+    renderPull(app, rows, demo || st.skip || count === 1);
+    updateHud(app);
+    if (!demo) toast(count === 1 ? "单抽结算完成" : "十连结算完成 · 保底计数已更新");
+  }
+
+  /* ---------- 交互总线 ---------- */
+  /* ---------- 弹窗：规则 / 口径 / 进度 / 卡牌 / 兑换 / 导出 ---------- */
+  var MTITLE = {
+    rules: "卡池与保底规则", wallet: "碎片与抽卡券来源", progress: "我的进度",
+    rateSpec: "口径与复核", export: "导出抽卡记录", confirm: "兑换确认", card: "星卡详情"
+  };
+
+  var DOTS_HTML = (function () {
+    var s = "";
+    for (var i = 0; i < 24; i++) s += '<i class="' + (i < 11 ? "lit" : (i === 11 ? "gold" : "")) + '"></i>';
+    return s;
+  })();
+
+  var MODALS = {
+    rules: function () {
+      return '<div class="rule-card"><h4>保底规则</h4>' +
+        '<div class="rule-step"><span class="no">01</span><div><b>软保底 60 抽起</b><span>第 61 抽起 SSR 概率按 6% / 抽阶梯递增，直至命中。</span></div></div>' +
+        '<div class="rule-step"><span class="no">02</span><div><b>硬保底 90 抽</b><span>累计 90 抽未出 SSR，第 90 抽必得，计数归零。</span></div></div>' +
+        '<div class="rule-step"><span class="no">03</span><div><b>十连保底</b><span>每次十连至少 1 张 SR 以上，不与硬保底叠加。</span></div></div>' +
+        '<div class="rule-step"><span class="no">04</span><div><b>跨池不继承</b><span>保底计数按卡池独立，卡池结束后清零。</span></div></div></div>' +
+        '<div class="rule-card"><h4>兑换与分解</h4>' +
+        '<div class="rule-step"><span class="no">01</span><div><b>重复卡自动分解</b><span>按档位结算碎片：SSR 80 / SR 30 / R 10 / N 4。</span></div></div>' +
+        '<div class="rule-step"><span class="no">02</span><div><b>520 碎片兑换当期 SSR</b><span>每季每张限兑 1 次，兑换后卡面标记「本季已兑换」。</span></div></div></div>' +
+        '<p class="modal-note">规则随卡池切换生效；已抽结果与保底计数不回改。</p>';
+    },
+    wallet: function () {
+      return '<div class="rule-card"><h4>抽卡券</h4>' +
+        '<div class="rule-step"><span class="no">01</span><div><b>每日任务</b><span>完成 3 项当日任务 +1 券，每日 04:00 刷新。</span></div></div>' +
+        '<div class="rule-step"><span class="no">02</span><div><b>魔力商店</b><span>1200 魔力兑换 1 券，每周限 5 次。</span></div></div>' +
+        '<div class="rule-step"><span class="no">03</span><div><b>银行结算</b><span>每 5000 魔力利息结算 1 券，上限 10 券 / 月。</span></div></div></div>' +
+        '<div class="rule-card"><h4>星尘碎片</h4>' +
+        '<div class="rule-step"><span class="no">01</span><div><b>重复卡分解</b><span>抽出已持有卡自动折算碎片，无需手动操作。</span></div></div>' +
+        '<div class="rule-step"><span class="no">02</span><div><b>兑换当期 SSR</b><span>520 碎片直兑指定 SSR，每季每张限 1 次。</span></div></div></div>';
+    },
+    progress: function (app) {
+      var st = STATES.get(app);
+      return '<div class="m-prog"><b>' + st.pity + '</b><span>抽后必得 SSR</span><i>本期累计 82 抽 · 软保底已激活</i></div>' +
+        '<div class="bar" aria-hidden="true"><i style="width:91%"></i></div>' +
+        '<div class="bar-lb" style="margin-top:8px"><span>硬保底进度 82 / 90</span><span>再 8 抽必得 SSR</span></div>' +
+        '<div class="m-split"><b>图鉴点亮<b>12 / 24</b></b><div class="dotmatrix">' + DOTS_HTML + '</div></div>' +
+        '<div class="rule-card"><h4>本期收获</h4>' +
+        '<div class="rule-step"><span class="no">01</span><div><b>破晓之钥 · NEW</b><span>SSR · 3 分钟前 · 硬保底触发</span></div></div>' +
+        '<div class="rule-step"><span class="no">02</span><div><b>潮汐罗盘</b><span>SR · 12 分钟前</span></div></div>' +
+        '<div class="rule-step"><span class="no">03</span><div><b>静默星图</b><span>R · 12 分钟前</span></div></div></div>';
+    },
+    rateSpec: function () {
+      return '<div class="spec-card"><div class="spec-hd"><h4>数据口径</h4><span><i></i>最近同步 11-27 21:12</span></div>' +
+        '<div class="spec-row"><b>表定概率</b><span>单抽独立概率，未含任何保底补正</span></div>' +
+        '<div class="spec-row"><b>综合概率</b><span>含软保底爬升与硬保底的长期期望值</span></div>' +
+        '<div class="spec-row"><b>刷新节奏</b><span>卡池变更后 5 分钟内同步，抽卡结果不回溯改写</span></div>' +
+        '<div class="spec-row"><b>复核接口</b><span><code>GET /api/v1/gacha/banner/{id}/rates</code> · 只读公开</span></div></div>' +
+        '<div class="spec-card"><div class="spec-hd"><h4>实测对照</h4><span>近 128 抽样本</span></div>' +
+        '<div class="spec-row"><b>SSR 出货</b><span>3 张 · 实测 2.34%（综合 1.20%）</span></div>' +
+        '<div class="spec-row"><b>SR 出货</b><span>11 张 · 实测 8.59%（综合 9.80%）</span></div>' +
+        '<div class="spec-row"><b>保底触发</b><span>软保底 1 次 · 硬保底 1 次 · 平均出货 42.6 抽</span></div></div>' +
+        '<div class="spec-card"><div class="spec-hd"><h4>公示承诺</h4><span>只读留痕</span></div>' +
+        '<div class="spec-row"><b>同源</b><span>前端口径与 GET /rates 逐项一致，不额外推算</span></div>' +
+        '<div class="spec-row"><b>共账</b><span>软硬保底共用 pityAt 计数，任一命中即归零</span></div>' +
+        '<div class="spec-row"><b>复核</b><span>综合概率按 10 万次蒙特卡洛复核，偏差 ≤ 0.05%</span></div>' +
+        '<div class="spec-row"><b>不改写</b><span>概率调整仅在卡池切换时生效，记录不可回溯</span></div></div>';
+    },
+    export: function () {
+      return '<p class="modal-note">导出近 30 抽原始行，字段与 <code>POST /gacha/draw</code> 的 <code>rows[]</code> 一致，不做二次加工。</p>' +
+        '<div class="spec-card"><div class="spec-row"><b>seq</b><span>本池内抽序号，自 1 递增</span></div>' +
+        '<div class="spec-row"><b>type / r</b><span>档位与稀有度，取自 rarities 表</span></div>' +
+        '<div class="spec-row"><b>wasPity / isNew</b><span>是否保底触发 / 是否首次点亮</span></div>' +
+        '<div class="spec-row"><b>shards</b><span>本次结算碎片，重复卡才有值</span></div></div>' +
+        '<button class="btn btn-gold" style="height:42px" data-act="toast" data-msg="已复制 30 行 CSV 到剪贴板">复制 CSV</button>';
+    },
+    confirm: function () {
+      return '<p class="modal-note">兑换后本季该卡不可再兑，碎片立即扣除且不可退回。</p>' +
+        '<div class="spec-card"><div class="spec-row"><b>目标</b><span>SSR · 破晓之钥</span></div>' +
+        '<div class="spec-row"><b>消耗</b><span>520 碎片（当前 520）</span></div>' +
+        '<div class="spec-row"><b>结果</b><span>图鉴点亮 +1 · 卡面标记「本季已兑换」</span></div></div>' +
+        '<div class="m-row"><button class="btn btn-ghost" style="height:40px" data-close="1">取消</button>' +
+        '<button class="btn btn-gold" style="height:40px" data-act="toast" data-msg="已兑换「破晓之钥」，碎片余额 0">确认兑换</button></div>';
+    },
+    card: function (app, ctx) {
+      var c = ctx.card || DECK[0];
+      var sh = { SSR: 80, SR: 30, R: 10, N: 4 }[c.r] || 4;
+      return '<div class="m-card">' + cardHTML(c) + '</div>' +
+        '<div class="spec-card"><div class="spec-row"><b>档位</b><span>' + c.r + " · " + (STARS[c.r] || 1) + ' 星</span></div>' +
+        '<div class="spec-row"><b>持有</b><span>×' + (c.held || 1) + ' · Lv.' + (c.lv || 1) + "/" + (c.lvMax || 10) + '</span></div>' +
+        '<div class="spec-row"><b>分解</b><span>重复卡可拆 +' + sh + ' 碎片</span></div>' +
+        '<div class="spec-row"><b>来源</b><span>本期卡池「星轨回响」· 剩余 12 天</span></div></div>' +
+        '<div class="m-row"><button class="btn btn-ghost" style="height:40px" data-act="toast" data-msg="已分解重复卡，获得 ' + sh + ' 碎片">分解</button>' +
+        '<button class="btn btn-ghost" style="height:40px" data-act="toast" data-msg="升级消耗重复卡，Lv.' + (c.lv || 1) + ' → ' + ((c.lv || 1) + 1) + '">升级</button>' +
+        '<button class="btn btn-gold" style="height:40px" data-modal="confirm">兑换</button></div>';
+    }
+  };
+
+  function openModal(app, kind, ctx) {
+    var m = $(".modal", app);
+    if (!m) return;
+    var t = $(".m-title", m);
+    if (t) t.textContent = MTITLE[kind] || "详情";
+    var bd = $(".modal-bd", m);
+    if (bd) bd.innerHTML = (MODALS[kind] || function () { return ""; })(app, ctx || {});
+    m.classList.add("on");
+    var ft = $(".modal-ft", m);
+    if (ft) ft.style.display = (kind === "confirm") ? "none" : "";
+  }
+  function closeModal(app) {
+    var m = $(".modal", app);
+    if (m) m.classList.remove("on");
+  }
+
+  window.gachaAct = function (el, ev) {
+    if (ev && ev.preventDefault) ev.preventDefault();
+    var app = el.closest(".app");
+    if (!app) return false;
+    var st = STATES.get(app);
+
+    if (el.getAttribute("data-filter")) {
+      st.filter = el.getAttribute("data-filter");
+      $$(".chip", app).forEach(function (c) {
+        c.classList.toggle("on", c.getAttribute("data-filter") === st.filter);
+      });
+      renderAlbum(app);
+      return false;
+    }
+    var act = el.getAttribute("data-act");
+    var go = el.getAttribute("data-go");
+    var md = el.getAttribute("data-modal");
+
+    if (md) { openModal(app, md, { card: null }); return false; }
+    if (go) { setView(app, go); return false; }
+    if (act === "draw") { startDraw(app, Number(el.getAttribute("data-count")) || 1, false); return false; }
+    if (act === "skip") { flipAll(app); toast("已跳过演出 · 结果已全部揭晓"); return false; }
+    if (act === "toggle-skip") {
+      st.skip = !st.skip;
+      el.classList.toggle("on", st.skip);
+      var lb = $(".js-skip-lb", el);
+      if (lb) lb.textContent = st.skip ? "跳过演出" : "逐张演出";
+      toast(st.skip ? "已开启：抽卡结果直接揭晓" : "已关闭：抽卡将逐张翻转演出");
+      return false;
+    }
+    if (act === "toast") { toast(el.getAttribute("data-msg") || "演示中"); return false; }
+    return false;
+  };
+
+  /* 顶部评审栏：一次切换四个断点的同一视图 */
+  window.revSwitch = function (el, ev) {
+    var rv = el.getAttribute("data-rv");
+    if (!rv) return true; // 断点跳转链接放行默认锚点
+    $$(".vbtn").forEach(function (b) { b.classList.toggle("on", b === el); });
+    $$(".screen .app").forEach(function (app) {
+      var st = STATES.get(app);
+      if (rv === "reveal" && !st.drawn) {
+        st.drawn = true;
+        startDraw(app, 10, true);
+      } else {
+        setView(app, rv);
+      }
+    });
+    return false;
+  };
+
+  /* ---------- 初始化 ---------- */
+  $$(".screen").forEach(function (scr, idx) {
+    scr.appendChild(tpl.content.cloneNode(true));
+    var app = $(".app", scr);
+    STATES.set(app, {
+      tickets: 320, shards: 520, pity: 8, pulls: 42,
+      skip: false, filter: "all", drawn: false, rows: null
+    });
+    paintSky($(".sky", app));
+    paintAstro($(".astro", app), 8, 82);
+    paintDots(app, 12, 24);
+    renderAlbum(app);
+    updateHud(app);
+
+    /* 弹窗：关闭 / 卡牌详情 */
+    app.addEventListener("click", function (e) {
+      if (e.target.closest("[data-close]")) { closeModal(app); return; }
+      var cd = e.target.closest(".acard .card");
+      if (cd) {
+        var nm = $(".card-name", cd);
+        var name = nm ? nm.textContent.trim() : "";
+        var card = null;
+        for (var i = 0; i < DECK.length; i++) if (DECK[i].n === name) card = DECK[i];
+        openModal(app, "card", { card: card });
+      }
+    });
+  });
+})();
+</script>
+</body>
+</html>
+
+
+
+
+
+
+

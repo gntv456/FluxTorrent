@@ -1,0 +1,1573 @@
+/* ---------- 15. 断点（容器查询：同一套 DOM 适配四端） ---------- */
+@container (min-width:1280px) {
+  /* 1440 桌面：压缩右栏纵向节奏，让「获取抽卡券」三行完整落在单屏内 */
+  .gx .rail-r {
+    padding: 14px 12px 12px;
+    gap: 8px;
+  }
+  .gx .rail-r .panel {
+    padding: 10px 12px;
+  }
+  .gx .rail-r .promo {
+    padding: 8px 10px;
+  }
+  .gx .rail-r .gain-row {
+    padding: 5px 0;
+  }
+  .gx .rail-r .mine-row {
+    padding: 6px 0;
+  }
+  .gx .rail-r .panel-h {
+    margin-bottom: 8px;
+  }
+}
+@container (max-width:1280px) {
+  .gx .v-pool {
+    grid-template-columns: 204px minmax(0, 1fr) 284px;
+  }
+  .gx .rail-r .panel {
+    padding: 13px;
+  }
+  .gx .rail-r .gain-row {
+    padding: 5px 0;
+  }
+  .gx .rail-r .mine-row {
+    padding: 6px 0;
+  }
+  .gx .rail-r .pity-big b {
+    font-size: 28px;
+  }
+  .gx .src-h,
+  .gx .src-body {
+    display: none;
+  }
+  .gx .app .src-line {
+    display: block;
+  }
+  .gx .app .src-line b {
+    display: block;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--t1);
+    margin-bottom: 5px;
+    letter-spacing: 0.02em;
+  }
+  .gx .app .src-line span {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10.5px;
+    color: var(--t3);
+  }
+  .gx .arena-title {
+    font-size: clamp(32px, 3.9vw, 44px);
+  }
+  .gx .astro-wrap {
+    max-width: 300px;
+  }
+  .gx .arena-mark {
+    font-size: 190px;
+    right: 10px;
+  }
+  .gx .hero {
+    grid-template-columns: minmax(0, 1fr) clamp(244px, 32%, 300px);
+    gap: 22px;
+  }
+  .gx .featured {
+    margin-top: 8px;
+  }
+  .gx .feat-card {
+    width: 86px;
+  }
+  .gx .hud {
+    padding: 0 16px;
+    gap: 14px;
+  }
+  .gx .tab {
+    padding: 9px 11px;
+  }
+  .gx .eyebrow {
+    font-size: 9px;
+    letter-spacing: 0.18em;
+  }
+  .gx .arena-meta {
+    row-gap: 7px;
+  }
+  .gx .meta-dot {
+    display: none;
+  }
+  .gx .arena-foot {
+    display: none;
+  }
+}
+@container (max-width:768px) {
+  .gx .v-pool {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto auto auto;
+  }
+  .gx .rail-l {
+    order: 1;
+    flex-direction: column;
+    border-right: 0;
+    border-bottom: 1px solid var(--hair);
+    padding: 10px 14px;
+  }
+  .gx .rail-l .rail-h,
+  .gx .rail-l .rail-foot {
+    display: none;
+  }
+  .gx .pool-list {
+    flex-direction: row;
+    overflow-x: auto;
+    gap: 8px;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+  .gx .pool-list::-webkit-scrollbar {
+    display: none;
+  }
+  .gx .pool-item {
+    width: 196px;
+    flex: none;
+  }
+  .gx .arena {
+    order: 2;
+    min-height: 0;
+    padding: 20px 22px;
+  }
+  .gx .astro-wrap {
+    max-width: 272px;
+    justify-self: end;
+  }
+  .gx .hero {
+    grid-template-columns: minmax(0, 1fr) 272px;
+    gap: 18px;
+  }
+  .gx .featured {
+    margin-top: 10px;
+    gap: 10px;
+  }
+  .gx .feat-card {
+    width: 80px;
+  }
+  .gx .arena-foot,
+  .gx .arena-mark {
+    display: none;
+  }
+  .gx .feat-card {
+    width: 80px;
+    flex: none;
+  }
+  .gx .rail-r {
+    order: 3;
+    border-left: 0;
+    border-top: 1px solid var(--hair);
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    padding: 14px;
+    overflow: visible;
+    align-items: start;
+  }
+  .gx .rail-r .panel:first-child,
+  .gx .rail-r .promo {
+    grid-column: 1/-1;
+  }
+  .gx .dotmatrix {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    max-width: 440px;
+  }
+  .gx .dock {
+    order: 4;
+    position: sticky;
+    bottom: 0;
+  }
+  .gx .v-album,
+  .gx .v-rates,
+  .gx .v-records,
+  .gx .v-reveal {
+    min-height: 0;
+  }
+  .gx .pull-wrap {
+    padding: 22px 18px 14px;
+  }
+  .gx .pull-grid {
+    max-width: 720px;
+    gap: 10px;
+  }
+}
+@container (max-width:768px) {
+  .gx .hud {
+    gap: 10px;
+    padding: 0 12px;
+  }
+  .gx .btxt em {
+    display: none;
+  }
+  .gx .res {
+    padding: 0 9px;
+    gap: 6px;
+  }
+  .gx .res s {
+    display: none;
+  }
+  .gx .tab {
+    padding: 8px 9px;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+  }
+  .gx .hud-r .icon-btn.opt {
+    display: none;
+  }
+  .gx .dock-note {
+    display: none;
+  }
+  .gx .dock-l {
+    gap: 10px;
+  }
+}
+@container (max-width:640px) {
+  .gx .hud {
+    height: 56px;
+    padding: 0 12px;
+    gap: 10px;
+  }
+  .gx .hud-back {
+    display: none;
+  }
+  .gx .btxt em {
+    display: none;
+  }
+  .gx .btxt b {
+    font-size: 13.5px;
+    letter-spacing: 0.06em;
+  }
+  .gx .bmark {
+    width: 22px;
+    height: 22px;
+  }
+  .gx .tabs {
+    grid-row: 2;
+    grid-column: 1/-1;
+    justify-content: space-between;
+    padding: 8px 2px 9px;
+    overflow: visible;
+  }
+  .gx .tabs::-webkit-scrollbar {
+    display: none;
+  }
+  .gx .tab {
+    padding: 6px 0;
+    font-size: 11.5px;
+  }
+  .gx .hud {
+    height: auto;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    gap: 0 10px;
+    padding: 9px 12px 0;
+  }
+  .gx .hud-l {
+    grid-row: 1;
+    grid-column: 1;
+  }
+  .gx .hud-r {
+    grid-row: 1;
+    grid-column: 2;
+    justify-self: end;
+  }
+  .gx .hud-r {
+    gap: 5px;
+  }
+  .gx .res {
+    height: 28px;
+    padding: 0 9px 0 5px;
+    gap: 5px;
+  }
+  .gx .res s {
+    display: none;
+  }
+  .gx .res-ic {
+    width: 18px;
+    height: 18px;
+  }
+  .gx .res b {
+    font-size: 12px;
+  }
+  .gx .icon-btn {
+    width: 28px;
+    height: 28px;
+  }
+  .gx .icon-btn.opt {
+    display: none;
+  }
+
+  .gx .v-pool {
+    grid-template-rows: auto auto auto auto;
+  }
+  .gx .rail-l {
+    padding: 8px 10px;
+  }
+  .gx .pool-item {
+    width: 168px;
+    grid-template-columns: 40px minmax(0, 1fr);
+    gap: 8px;
+    padding: 6px;
+  }
+  .gx .pi-art {
+    width: 40px;
+    height: 52px;
+  }
+  .gx .pi-name {
+    font-size: 12px;
+  }
+  .gx .pi-meta {
+    font-size: 9.5px;
+  }
+
+  .gx .arena {
+    min-height: 330px;
+    padding: 14px;
+    justify-content: flex-end;
+    display: flex;
+    flex-direction: column;
+  }
+  .gx .hero {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+  .gx .hero-l {
+    justify-content: flex-end;
+    max-width: none;
+  }
+  .gx .stage-badges {
+    position: static;
+    flex-direction: row;
+    margin-bottom: 14px;
+  }
+  .gx .badge {
+    height: 22px;
+    font-size: 9.5px;
+    padding: 0 7px;
+  }
+  .gx .astro-wrap {
+    display: none;
+  }
+  .gx .arena-copy {
+    position: static;
+    max-width: none;
+    margin-top: auto;
+  }
+  .gx .eyebrow {
+    font-size: 9px;
+    letter-spacing: 0.2em;
+  }
+  .gx .arena-title {
+    font-size: 30px;
+    margin: 8px 0 8px;
+    letter-spacing: 0.06em;
+  }
+  .gx .arena-sub {
+    font-size: 11px;
+    line-height: 1.6;
+    max-width: none;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .gx .arena-meta {
+    margin-top: 10px;
+    gap: 8px;
+  }
+  .gx .meta-cell {
+    font-size: 10px;
+  }
+  .gx .featured {
+    position: static;
+    margin-top: 12px;
+    right: auto;
+    bottom: auto;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+    align-items: stretch;
+  }
+  .gx .feat-cap {
+    margin-top: 14px;
+  }
+  .gx .featured::-webkit-scrollbar {
+    display: none;
+  }
+  .gx .feat-card {
+    width: 82px;
+    flex: none;
+  }
+  .gx .feat-card .card-name {
+    font-size: 10.5px;
+    letter-spacing: 0;
+  }
+  .gx .feat-card .card-sub {
+    font-size: 9px;
+  }
+  .gx .feat-lb {
+    font-size: 9px;
+  }
+
+  .gx .rail-r {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+    padding: 12px;
+  }
+  .gx .panel {
+    padding: 11px;
+  }
+  .gx .dotmatrix {
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+    max-width: none;
+  }
+  .gx .pity-big b {
+    font-size: 26px;
+  }
+  .gx .promo {
+    padding: 9px;
+  }
+  .gx .gain-row {
+    padding: 6px 0;
+  }
+
+  .gx .dock {
+    height: auto;
+    padding: 10px 12px;
+    gap: 8px;
+  }
+  .gx .dock-l {
+    display: none;
+  }
+  .gx .dock-r {
+    width: 100%;
+    gap: 8px;
+  }
+  .gx .dock-r .btn-ghost {
+    flex: 0 0 auto;
+    padding: 0 14px;
+    height: 44px;
+  }
+  .gx .btn-gold {
+    flex: 1;
+    height: 48px;
+    font-size: 14px;
+    letter-spacing: 0.06em;
+    padding: 0 12px;
+    gap: 8px;
+  }
+  .gx .btn-gold .cost {
+    height: 19px;
+    font-size: 10px;
+  }
+  .gx .rev-note {
+    display: none;
+  }
+
+  .gx .rev-top {
+    top: 56px;
+    padding: 10px 12px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .gx .rev-cap b {
+    font-size: 15px;
+  }
+  .gx .rev-cap span {
+    display: none;
+  }
+  .gx .rev-bal {
+    gap: 8px;
+  }
+  .gx .rev-bal .hide-sm {
+    display: none;
+  }
+  .gx .pull-wrap {
+    padding: 16px 12px 10px;
+  }
+  .gx .pull-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    max-width: 330px;
+    gap: 10px;
+  }
+  .gx .rev-sum {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding-top: 14px;
+  }
+  .gx .sum-right {
+    justify-content: space-between;
+  }
+  .gx .sum-right .btn {
+    height: 46px;
+    flex: 1;
+  }
+
+  .gx .v-album,
+  .gx .v-rates,
+  .gx .v-records {
+    padding: 16px 12px 30px;
+  }
+  .gx .alb-t h2 {
+    font-size: 21px;
+  }
+  .gx .alb-stats {
+    gap: 14px;
+  }
+  .gx .alb-stat b {
+    font-size: 17px;
+  }
+  .gx .alb-bar {
+    gap: 6px;
+  }
+  .gx .chip {
+    height: 26px;
+    padding: 0 9px;
+    font-size: 10.5px;
+  }
+  .gx .search {
+    display: none;
+  }
+  .gx .alb-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .gx .acard-acts {
+    opacity: 1;
+    transform: none;
+  }
+  .gx .mini-btn {
+    height: 22px;
+    font-size: 9.5px;
+  }
+  .gx .alb-synth {
+    padding: 11px 12px;
+    gap: 10px;
+  }
+  .gx .rate-wrap {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+  .gx .rate-head {
+    padding: 13px 14px 10px;
+  }
+  .gx .rate-table th,
+  .gx .rate-table td {
+    padding: 9px 8px;
+    font-size: 10.5px;
+  }
+  .gx .rec-tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .gx .tile b {
+    font-size: 19px;
+  }
+  .gx .rec-table th,
+  .gx .rec-table td {
+    padding: 8px 8px;
+    font-size: 10.5px;
+  }
+}
+
+/* ---------- 一屏策略：固定视口 · 内部滚动 · 弹窗分层 ---------- */
+.gx .app {
+  height: 100%;
+  max-height: 100%;
+  overflow: hidden;
+}
+
+.gx .app[data-v="pool"] .v-pool {
+  height: 100%;
+  min-height: 0;
+}
+.gx .app[data-v="reveal"] .v-reveal {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.gx .app[data-v="album"] .v-album {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.gx .app[data-v="rates"] .v-rates {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.gx .app[data-v="records"] .v-records {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.gx .v-album {
+  position: relative;
+}
+.gx .v-album::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 52px;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(5, 8, 15, 0), rgba(5, 8, 15, 0.92));
+  z-index: var(--z-raised);
+}
+.gx .alb-more {
+  position: absolute;
+  right: 22px;
+  bottom: 14px;
+  z-index: var(--z-raised);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--t4);
+  pointer-events: none;
+}
+.gx .alb-more svg {
+  opacity: 0.7;
+}
+.gx .v-reveal .pull-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+.gx .v-album .alb-grid {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  align-content: start;
+  padding-right: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(143, 192, 255, 0.34) rgba(255, 255, 255, 0.04);
+}
+.gx .v-rates .rate-wrap {
+  flex: 0 0 auto;
+  min-height: 0;
+  align-items: stretch;
+}
+.gx .v-rates .rate-main {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.gx .v-rates .rate-table {
+  flex: 1;
+}
+.gx .v-rates .rate-main .rate-note {
+  margin-top: auto;
+}
+.gx .v-rates .rate-foot {
+  margin-top: auto;
+}
+.gx .v-records .rec-table {
+  flex: 0 1 auto;
+  min-height: 140px;
+  overflow-y: auto;
+}
+.gx .v-records .rec-table table {
+  width: 100%;
+}
+.gx .v-records .rec-foot {
+  margin-top: auto;
+}
+
+.gx .only-narrow {
+  display: none;
+}
+
+/* 弹窗 */
+.gx .modal {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-overlay);
+  display: none;
+}
+.gx .modal.on {
+  display: block;
+}
+.gx .modal-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(3, 6, 11, 0.74);
+  backdrop-filter: blur(7px);
+}
+.gx .modal-card {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(580px, calc(100% - 36px));
+  max-height: calc(100% - 44px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--hair-2);
+  border-radius: 16px;
+  background: linear-gradient(180deg, #101d31, #080e18);
+  box-shadow:
+    0 30px 80px rgba(0, 0, 0, 0.65),
+    0 0 0 1px rgba(143, 192, 255, 0.06) inset;
+  animation: modalIn 0.22s var(--ease) both;
+}
+@keyframes modalIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -46%) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+.gx .modal-hd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--hair);
+}
+.gx .modal-hd .m-k {
+  font-size: 9.5px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--t4);
+  display: block;
+  margin-bottom: 3px;
+}
+.gx .modal-hd b {
+  font-family: var(--serif);
+  font-size: 16px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  color: var(--t1);
+}
+.gx .modal-x {
+  width: 26px;
+  height: 26px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  border: 1px solid var(--hair);
+  color: var(--t3);
+}
+.gx .modal-x:hover {
+  color: var(--t1);
+  border-color: var(--hair-3);
+}
+.gx .modal-bd {
+  padding: 14px 16px 16px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.gx .modal-ft {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--hair);
+}
+.gx .modal-bd .spec-card {
+  margin: 0;
+}
+.gx .modal-bd .rule-card {
+  margin: 0;
+}
+.gx .modal-note {
+  font-size: 10.5px;
+  color: var(--t4);
+  line-height: 1.6;
+}
+.gx .modal-x svg {
+  transform: none;
+}
+.gx .m-prog {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.gx .m-prog b {
+  font-family: var(--serif);
+  font-size: 34px;
+  font-weight: 900;
+  color: var(--gold-l);
+  line-height: 1;
+}
+.gx .m-prog span {
+  font-size: 11.5px;
+  color: var(--t2);
+}
+.gx .m-prog i {
+  font-style: normal;
+  font-size: 10.5px;
+  color: var(--t4);
+  width: 100%;
+}
+.gx .m-split {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 4px;
+}
+.gx .m-split > b {
+  font-size: 11.5px;
+  color: var(--t3);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.gx .m-split > b > b {
+  color: var(--t1);
+  font-weight: 700;
+}
+.gx .m-split .dotmatrix {
+  margin: 0;
+  flex: 1;
+  max-width: 260px;
+}
+.gx .m-card {
+  display: flex;
+  justify-content: center;
+}
+.gx .m-card .card {
+  width: 150px;
+}
+.gx .m-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 2px;
+}
+.gx .m-row .btn {
+  flex: 1;
+}
+.gx .rate-note {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 11px 14px;
+  border-top: 1px solid var(--hair);
+}
+.gx .rate-note .note-line {
+  flex: 1;
+  margin: 0;
+}
+.gx .rate-note .mini-btn {
+  flex: 0 0 auto;
+  height: 26px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+}
+.gx .rate-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 2px 0;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--t4);
+  border-top: 1px solid var(--hair);
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+.gx .rate-foot code {
+  color: var(--t3);
+}
+.gx .rec-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 2px 0;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--t4);
+  flex-wrap: wrap;
+}
+
+/* 窄屏：舞台底部信息带（替代被隐藏的右栏） */
+.gx .src-line {
+  display: none;
+}
+.gx .arena-extra {
+  display: none;
+}
+.gx .extra-card {
+  border: 1px solid var(--hair);
+  border-radius: 12px;
+  padding: 12px 13px;
+  background: linear-gradient(
+    180deg,
+    rgba(18, 31, 52, 0.62),
+    rgba(8, 14, 25, 0.86)
+  );
+}
+.gx .extra-h {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 9px;
+}
+.gx .extra-h b {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: var(--t3);
+  text-transform: uppercase;
+}
+.gx .extra-h a {
+  font-size: 10px;
+  color: var(--t4);
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.gx .extra-prog {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.gx .extra-prog b {
+  font-family: var(--serif);
+  font-size: 26px;
+  font-weight: 900;
+  color: var(--gold-l);
+  line-height: 1;
+}
+.gx .extra-prog span {
+  font-size: 10.5px;
+  color: var(--t3);
+}
+.gx .extra-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 5px 0;
+  font-size: 11px;
+  color: var(--t2);
+}
+.gx .extra-row b {
+  color: var(--t1);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.gx .extra-row em {
+  font-style: normal;
+  font-size: 9.5px;
+  color: var(--t4);
+  white-space: nowrap;
+}
+.gx .extra-row .dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 6px;
+  vertical-align: 1px;
+}
+.gx .extra-row .dot.ssr {
+  background: var(--ssr);
+}
+.gx .extra-row .dot.sr {
+  background: var(--sr);
+}
+.gx .extra-row .dot.r {
+  background: var(--r);
+}
+.gx .bar.sky i {
+  background: linear-gradient(90deg, #4a7ede, #9fcaff);
+}
+
+@container (max-width:768px) {
+  .gx .rail-r {
+    display: none;
+  }
+  .gx .v-pool {
+    grid-template-rows: auto minmax(0, 1fr) auto;
+  }
+  .gx .arena {
+    overflow-y: auto;
+    justify-content: space-evenly;
+    padding-top: 24px;
+  }
+  .gx .arena-extra {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 18px;
+    padding-top: 0;
+  }
+  .gx .only-narrow {
+    display: grid;
+  }
+  .gx .v-rates {
+    overflow-y: auto;
+  }
+  .gx .v-rates .rate-ladder {
+    margin-top: 0;
+  }
+}
+@container (max-width:640px) {
+  .gx .arena-extra {
+    grid-template-columns: 1fr;
+  }
+  .gx .extra-gain {
+    display: none;
+  }
+}
+@container (max-width:640px) {
+  .gx .modal-card {
+    width: calc(100% - 20px);
+    max-height: calc(100% - 24px);
+    border-radius: 14px;
+  }
+  .gx .modal-bd {
+    padding: 12px 12px 14px;
+  }
+}
+.gx {
+  container-type: inline-size;
+  position: relative;
+}
+.gx .app {
+  height: 100%;
+  max-height: 100%;
+  overflow: hidden;
+}
+.gx .review-bar,
+.gx .screen,
+.gx .frame {
+  display: none;
+}
+
+/* ===== 生产落地补丁（设计稿之外：页面高度、按钮复位、区内提示） ===== */
+.gx {
+  height: clamp(620px, calc(100dvh - 178px), 900px);
+  border-radius: 18px;
+  overflow: hidden;
+  border: 1px solid rgba(120, 160, 220, 0.16);
+  background: #050b16;
+  box-shadow: 0 24px 60px rgba(3, 8, 18, 0.5);
+}
+.gx .app {
+  border-radius: inherit;
+}
+@media (max-width: 768px) {
+  .gx {
+    height: calc(100dvh - 132px);
+    min-height: 560px;
+  }
+}
+@media (max-width: 640px) {
+  .gx {
+    height: calc(100dvh - 108px);
+    min-height: 520px;
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
+  }
+}
+
+/* 卡池条目 / 卡册卡面改成整块按钮，保持原视觉 */
+.gx .pool-item,
+.gx .acard-hit {
+  appearance: none;
+  -webkit-appearance: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  width: 100%;
+  cursor: pointer;
+}
+.gx .pool-item {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.gx .acard-hit {
+  display: block;
+}
+.gx .pool-item.on .pi-name {
+  color: var(--gold-l);
+}
+.gx .acard-hit:focus-visible,
+.gx .pool-item:focus-visible {
+  outline: 1px solid rgba(143, 192, 255, 0.6);
+  outline-offset: 2px;
+  border-radius: 12px;
+}
+
+/* 星盘中心的卡面按钮 */
+.gx .astro-card-btn {
+  appearance: none;
+  border: 0;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  width: 100%;
+  display: block;
+}
+.gx .astro-card-btn:focus-visible {
+  outline: 1px solid rgba(246, 227, 187, 0.7);
+  outline-offset: 6px;
+  border-radius: 12px;
+}
+
+/* 演出里的碎片/空抽面 */
+.gx .pull-miss .card-plate {
+  opacity: 0.9;
+}
+.gx .pull-miss .card-name {
+  font-size: 12px;
+  letter-spacing: 0.02em;
+}
+
+/* 卡册 / 卡池搜索框（设计稿是静态占位，这里换成真输入） */
+.gx .search {
+  cursor: text;
+}
+.gx .search input {
+  appearance: none;
+  border: 0;
+  background: none;
+  color: var(--t1);
+  font: inherit;
+  width: 100%;
+  min-width: 0;
+  outline: none;
+  padding: 0;
+}
+.gx .search input::placeholder {
+  color: var(--t4);
+}
+
+/* 禁用态：不做僵尸按钮，只降对比 + 禁点 */
+.gx .mini-btn:disabled,
+.gx .btn:disabled,
+.gx .switch:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+  filter: saturate(0.5);
+}
+.gx .mini-btn.gold:disabled {
+  background: rgba(224, 189, 134, 0.18);
+  color: rgba(246, 227, 187, 0.62);
+  box-shadow: none;
+}
+
+/* 弹窗底部按钮（设计稿只有一枚「知道了」，这里按需挂 2–3 枚） */
+.gx .modal-ft {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.gx .modal-ft .ft-know,
+.gx .modal-ft .ft-go {
+  height: 38px;
+  padding: 0 18px;
+}
+
+/* 区内提示条：贴 dock 上沿，不遮抽卡按钮 */
+.gx .gx-note {
+  position: absolute;
+  left: 50%;
+  bottom: 92px;
+  transform: translateX(-50%);
+  z-index: var(--z-nav);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: min(620px, calc(100% - 32px));
+  padding: 9px 12px 9px 14px;
+  border-radius: 10px;
+  background: rgba(9, 18, 32, 0.94);
+  border: 1px solid rgba(143, 192, 255, 0.28);
+  box-shadow: 0 14px 34px rgba(2, 6, 14, 0.6);
+  color: #dbe7f7;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.gx .gx-note-retry {
+  appearance: none;
+  border: 1px solid rgba(143, 192, 255, 0.45);
+  background: rgba(143, 192, 255, 0.12);
+  color: #dbe7f7;
+  border-radius: 7px;
+  height: 24px;
+  padding: 0 10px;
+  font-size: 11px;
+  cursor: pointer;
+}
+.gx .gx-note-x {
+  appearance: none;
+  border: 0;
+  background: none;
+  color: var(--t3);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+}
+@media (max-width: 640px) {
+  .gx .gx-note {
+    bottom: 104px;
+    font-size: 11px;
+  }
+}
+
+/* 稀有度色族兜底：UR / LR 归金色族，但更亮一档 */
+.gx .card[data-r="UR"],
+.gx .card[data-r="LR"] {
+  border-color: rgba(246, 227, 187, 0.62);
+}
+.gx .card[data-r="UR"] .card-gem,
+.gx .card[data-r="LR"] .card-gem {
+  background: linear-gradient(180deg, #fff0cf, #d9a95f);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.35),
+    0 0 18px rgba(246, 227, 187, 0.7);
+}
+.gx .card[data-r="UR"] .card-art,
+.gx .card[data-r="LR"] .card-art {
+  background:
+    radial-gradient(
+      120% 90% at 50% 12%,
+      rgba(246, 227, 187, 0.22),
+      rgba(10, 18, 32, 0.96) 62%
+    ),
+    linear-gradient(160deg, #16233c, #080f1c);
+}
+.gx .card[data-r="UR"] .card-art svg,
+.gx .card[data-r="LR"] .card-art svg {
+  color: #f6e3bb;
+}
+
+/* 一屏策略（生产外壳）：页脚与 main 底部留白在抽卡页收起，
+   高度只按 100dvh 扣顶栏/公告条；移动端再扣底部 Tab。 */
+body:has(.gacha-page) .site-shell > footer {
+  display: none;
+}
+body:has(.gacha-page) #main-content {
+  padding-bottom: 0;
+}
+body:has(.gacha-page) #main-content {
+  padding-top: 12px;
+}
+.gx {
+  height: calc(100dvh - 152px);
+  min-height: 600px;
+}
+@media (max-width: 768px) {
+  .gx {
+    height: calc(100dvh - 144px);
+    min-height: 560px;
+  }
+}
+@media (max-width: 640px) {
+  .gx {
+    height: calc(100dvh - 146px);
+    min-height: 520px;
+  }
+}
+
+/* 生产补丁：概率页把保底阶梯收进左栏，避免整页溢出 */
+.gx .v-rates .rate-main .rate-note {
+  margin-top: 12px;
+}
+.gx .v-rates .rate-main .rate-ladder {
+  margin-top: 10px;
+  padding: 10px 13px 8px;
+  flex: 0 0 auto;
+}
+.gx .v-rates .rate-main .rl-axis {
+  font-size: 9px;
+  margin-top: 5px;
+}
+.gx .v-rates .rate-main .rl-head b {
+  font-size: 10.5px;
+}
+.gx .v-rates .rate-main .rl-head span {
+  font-size: 9.5px;
+}
+.gx .rate-foot {
+  display: none;
+}
+
+/* 生产补丁 v2：概率页保底阶梯改为表头上方通栏进度条 */
+.gx .v-rates .rate-main .rate-note {
+  margin-top: 12px;
+}
+.gx .v-rates .rate-ladder {
+  margin: 0 0 12px;
+  padding: 0;
+  background: none;
+  border: 0;
+}
+.gx .v-rates .rate-ladder .rl-head {
+  padding: 0;
+}
+.gx .v-rates .rate-ladder .rl-track {
+  height: 5px;
+  margin-top: 6px;
+}
+.gx .v-rates .rate-ladder .rl-axis {
+  margin-top: 4px;
+  font-size: 9px;
+}
+.gx .v-rates .rate-main .rate-ladder,
+.gx .v-rates .rate-main .rl-axis {
+  font-size: 9px;
+}
+
+/* 生产补丁 v3：概率页纵向压缩，保证 1440x900 一屏 */
+.gx .v-rates {
+  padding-bottom: 18px;
+}
+.gx .v-rates .alb-head {
+  margin-bottom: 12px !important;
+}
+.gx .v-rates .rate-table th,
+.gx .v-rates .rate-table td {
+  padding: 8px 12px;
+}
+.gx .v-rates .rate-head {
+  padding: 13px 18px 10px;
+}
+.gx .v-rates .rule-card {
+  padding: 13px 16px;
+}
+.gx .v-rates .rate-note {
+  padding: 10px 18px;
+}
+
+.gx .v-rates .rate-side {
+  gap: 12px;
+}
+.gx .v-rates .rule-card {
+  padding: 11px 15px;
+}
+
+/* 生产补丁 v4：宽屏卡册固定卡宽，避免纵向被裁；搜索框占位不再压图标 */
+@media (min-width: 1024px) {
+  .gx .alb-grid {
+    grid-template-columns: repeat(auto-fill, 176px);
+    gap: 16px 18px;
+    justify-content: start;
+  }
+}
+.gx .search input {
+  width: auto;
+  flex: 1;
+  min-width: 0;
+}
+
+/* 生产补丁 v5：窄屏卡池内部滚动、主推卡三等分，避免内容被底部操作条裁切 */
+@media (max-width: 640px) {
+  .gx .app {
+    overflow-y: auto;
+    scrollbar-width: none;
+  }
+  .gx .app::-webkit-scrollbar {
+    display: none;
+  }
+  .gx .feat-card {
+    width: calc((100% - 20px) / 3);
+  }
+  .gx .feat-card .card-name {
+    font-size: 9.5px;
+  }
+}
+
+@media (max-width: 640px) {
+  .gx .v-pool {
+    grid-template-rows: auto auto auto auto;
+  }
+  .gx .arena {
+    min-height: 0;
+    overflow: visible;
+  }
+  .gx .arena-extra {
+    padding-bottom: 88px;
+  }
+}
+
+/* 生产补丁 v6：窄屏让出站点底栏高度；碎片图标提高对比 */
+@media (max-width: 640px) {
+  .gx {
+    height: calc(100dvh - 212px);
+    min-height: 520px;
+  }
+  .gx .res-ic.sky {
+    color: #a9cfff;
+    background: rgba(143, 192, 255, 0.16);
+  }
+}
+
+@media (max-width: 640px) {
+  .gx .app {
+    padding-bottom: 76px;
+  }
+  .gx .arena-extra {
+    padding-bottom: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .gx .app {
+    overflow: hidden;
+    padding-bottom: 0;
+  }
+  .gx .arena {
+    overflow-y: auto;
+    padding-bottom: 96px;
+  }
+  .gx .arena-extra {
+    padding-bottom: 0;
+  }
+}
+
+/* 生产补丁 v7：1024 端压缩舞台标题与主推卡，避免换行与底部裁切 */
+@media (min-width: 768px) and (max-width: 1280px) {
+  .gx .hero {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+  .gx .astro-wrap {
+    display: none;
+  }
+  .gx .arena {
+    padding: 20px 26px 16px;
+    justify-content: center;
+    overflow-y: auto;
+  }
+  .gx .arena-title {
+    font-size: 34px;
+    line-height: 1.22;
+    white-space: normal;
+    margin: 6px 0;
+  }
+  .gx .feat-card {
+    width: 104px;
+  }
+  .gx .feat-lb,
+  .gx .feat-card .card-sub {
+    font-size: 9px;
+  }
+  .gx .featured {
+    margin-top: 12px;
+    gap: 10px;
+  }
+  .gx .feat-cap {
+    margin-top: 10px;
+  }
+  .gx .arena-sub {
+    display: block;
+    font-size: 11px;
+    line-height: 1.55;
+    max-width: 560px;
+  }
+}
+@media (min-width: 640px) and (max-width: 768px) {
+  .gx .feat-card {
+    width: calc((100% - 20px) / 3);
+    max-width: 118px;
+  }
+}
+@media (min-width: 768px) and (max-width: 1280px) {
+  .gx .rail-r {
+    padding: 12px 12px 10px;
+    gap: 6px;
+  }
+  .gx .rail-r .panel {
+    padding: 9px 11px;
+  }
+  .gx .rail-r .promo {
+    padding: 7px 9px;
+  }
+  .gx .rail-r .panel-h {
+    margin-bottom: 6px;
+  }
+  .gx .rail-r .gain-row {
+    padding: 4px 0;
+  }
+  .gx .rail-r .mine-row {
+    padding: 5px 0;
+  }
+  .gx .rail-r .src-panel {
+    display: none;
+  }
+}
+/* 680 折叠屏：舞台底部抬到站点悬浮发布键之上，避免遮挡抽卡主按钮 */
+@media (max-width: 768px) and (min-width: 640px) {
+  .gx {
+    height: calc(100dvh - 250px);
+    min-height: 500px;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1280px) {
+  .gx .stage-badges {
+    margin-bottom: 10px;
+  }
+  .gx .featured {
+    margin-top: 12px;
+  }
+}
+
+/* 生产补丁 v8：单抽演出居中；HUD 资源图标描边 */
+.gx .pull-grid.one {
+  grid-template-columns: minmax(0, 232px);
+  justify-content: center;
+  max-width: 232px;
+  margin: 0 auto;
+}
+.gx .res-ic {
+  box-shadow: inset 0 0 0 1px rgba(224, 189, 134, 0.35);
+}
+.gx .res-ic.sky {
+  box-shadow: inset 0 0 0 1px rgba(143, 192, 255, 0.42);
+}
+
+/* 动效降级：抽卡页所有位移/翻转在系统减弱动效时收敛 */
+@media (prefers-reduced-motion: reduce) {
+  .gx *,
+  .gx *::before,
+  .gx *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: var(--motion-fast) !important;
+  }
+}

@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>抽卡页 UI 设计方案 · 星轨卡册</title>
+<link href="https://miaoda.feishu.cn/fonts/css2?family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@600;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#05080f;--panel:#0b1322;--hair:rgba(150,180,230,.14);--hair2:rgba(150,180,230,.24);--t1:#e8eef8;--t2:#a8b8cc;--t3:#77879f;--t4:#54647c;--sky:#8fc0ff;--gold:#e0bd86;--goldl:#f0d3a5;--goldd:#a97c3f;--ivory:#f2e7d3;--ssr:#e0bd86;--sr:#a89cf0;--r:#8fc0ff;--nrm:#9fb0c6;--serif:"Noto Serif SC",serif;--sans:"Noto Sans SC",-apple-system,sans-serif}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--t1);font-family:var(--sans);line-height:1.7;font-size:14px;-webkit-font-smoothing:antialiased}
+.wrap{display:grid;grid-template-columns:230px minmax(0,1fr);max-width:1440px;margin:0 auto}
+.side{position:sticky;top:0;height:100vh;padding:26px 18px;border-right:1px solid var(--hair);background:linear-gradient(180deg,#080f1b,#05080f);display:flex;flex-direction:column;gap:20px}
+.mk{display:flex;align-items:center;gap:9px}
+.mk svg{width:26px;height:26px;color:var(--gold)}
+.mk b{font-family:var(--serif);font-size:15px;letter-spacing:.08em;display:block}
+.mk em{font-style:normal;font-size:9px;letter-spacing:.2em;color:var(--t4);text-transform:uppercase}
+.nav{display:flex;flex-direction:column;gap:1px}
+.nav a{display:flex;gap:9px;padding:7px 9px;border-radius:6px;font-size:12px;color:var(--t3)}
+.nav a:hover{color:var(--t1);background:rgba(255,255,255,.04)}
+.nav a i{font-style:normal;font-family:var(--serif);font-size:10px;color:var(--goldd)}
+.ft{margin-top:auto;font-size:10px;color:var(--t4);line-height:1.9}
+.ft b{color:var(--t3);font-weight:500;display:block}
+.main{padding:0 clamp(22px,4vw,54px) 70px;max-width:1120px}
+.hero{padding:52px 0 30px;border-bottom:1px solid var(--hair)}
+.eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:10px;font-weight:700;letter-spacing:.24em;text-transform:uppercase;color:var(--gold)}
+.eyebrow::before{content:"";width:22px;height:1px;background:var(--goldd)}
+.hero h1{font-family:var(--serif);font-weight:900;font-size:clamp(32px,4vw,50px);line-height:1.12;letter-spacing:.03em;margin:14px 0 12px}
+.hero p{max-width:620px;color:var(--t2);font-size:13px;margin:0}
+.badges{display:flex;flex-wrap:wrap;gap:7px;margin-top:20px}
+.badge{height:25px;display:inline-flex;align-items:center;gap:6px;padding:0 10px;border:1px solid var(--hair2);border-radius:6px;font-size:11px;color:var(--t2)}
+.badge i{width:5px;height:5px;border-radius:50%;background:var(--sky)}
+.badge.g{border-color:rgba(224,189,134,.32);color:var(--goldl)}
+.badge.g i{background:var(--gold)}
+.meta{display:flex;flex-wrap:wrap;gap:24px;margin-top:24px;font-size:10.5px;color:var(--t4);letter-spacing:.05em}
+.meta b{display:block;font-size:12px;color:var(--t2);letter-spacing:0;margin-top:2px}
+section{padding:40px 0 6px;border-bottom:1px solid var(--hair)}
+.sec-h{display:flex;gap:14px;margin-bottom:18px}
+.sec-h .no{font-family:var(--serif);font-weight:900;font-size:12px;color:var(--gold);padding-top:7px;letter-spacing:.1em}
+.sec-h h2{font-family:var(--serif);font-size:25px;font-weight:900;margin:0;letter-spacing:.03em}
+.sec-h p{margin:4px 0 0;font-size:12px;color:var(--t3)}
+h3{font-size:12px;letter-spacing:.12em;color:var(--t3);text-transform:uppercase;margin:24px 0 8px;font-weight:700}
+.lead{color:var(--t2);font-size:13px;max-width:750px}
+.note{font-size:11.5px;color:var(--t4);line-height:1.85;margin-top:10px}
+.g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.card{border:1px solid var(--hair);border-radius:12px;padding:15px;background:linear-gradient(180deg,rgba(18,31,52,.55),rgba(8,14,25,.82))}
+.card .k{font-family:var(--serif);font-size:10px;color:var(--gold)}
+.card h4{margin:4px 0 6px;font-size:12.5px;letter-spacing:.04em}
+.card p{margin:0;font-size:11.5px;color:var(--t3);line-height:1.8}
+table{width:100%;border-collapse:collapse;font-size:12px;margin-top:6px;font-variant-numeric:tabular-nums}
+th{text-align:left;font-weight:500;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--t4);padding:9px;border-bottom:1px solid var(--hair2)}
+td{padding:9px;border-bottom:1px solid var(--hair);color:var(--t2);vertical-align:top}
+td b{color:var(--t1);font-weight:600}
+tr:last-child td{border-bottom:0}
+.mono{font-family:ui-monospace,Consolas,monospace;font-size:10.5px;color:var(--sky)}
+.sw{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:7px;vertical-align:-1px;border:1px solid rgba(255,255,255,.1)}
+.wire{border:1px solid var(--hair);border-radius:12px;overflow:hidden;background:#070d18}
+.wt{display:flex;justify-content:space-between;padding:8px 12px;border-bottom:1px solid var(--hair);font-size:10px;color:var(--t4);letter-spacing:.1em}
+.wb{display:grid;grid-template-columns:236px minmax(0,1fr) 312px;height:310px}
+.wb>div{padding:11px;border-right:1px solid var(--hair);position:relative;font-size:10px;color:var(--t4)}
+.wb>div:nth-child(2){background:radial-gradient(90% 80% at 70% 0%,rgba(74,126,222,.18),transparent 60%)}
+.wb>div:last-child{border-right:0}
+.wb b{display:block;font-size:10px;color:var(--t2);letter-spacing:.1em;margin-bottom:7px}
+.blk{display:flex;flex-direction:column;gap:6px}
+.bk{height:24px;border:1px dashed var(--hair2);border-radius:5px;display:grid;place-items:center;font-size:9px;color:var(--t4)}
+.bk.t{height:50px}
+.wb>div:nth-child(2) .bk{width:62%}
+.bk.g{border-color:rgba(224,189,134,.3);color:var(--goldl)}
+.ringmini{position:absolute;right:16px;top:52px;width:140px;height:140px;border:1px dashed rgba(224,189,134,.35);border-radius:50%;display:grid;place-items:center;font-size:9px;color:var(--goldl)}
+.wd{height:28px;border-top:1px solid var(--hair);display:flex;align-items:center;justify-content:space-between;padding:0 12px;font-size:9px;color:var(--t4);background:#0a1220}
+.bp{border:1px solid var(--hair);border-radius:10px;overflow:hidden;margin-top:6px}
+.bp .row{display:grid;grid-template-columns:76px 1fr 1.4fr;border-bottom:1px solid var(--hair);font-size:11.5px}
+.bp .row:last-child{border-bottom:0}
+.bp .row>div{padding:8px 11px;border-right:1px solid var(--hair);color:var(--t3)}
+.bp .row>div:last-child{border-right:0}
+.bp .row b{color:var(--t1)}
+.bp .hd>div{color:var(--t4);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase}
+.sws{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin-top:6px}
+.swc{border:1px solid var(--hair);border-radius:9px;overflow:hidden}
+.swc .bar{height:44px}
+.swc .lb{padding:6px 8px;font-size:9px;color:var(--t4);line-height:1.5}
+.swc .lb b{display:block;color:var(--t2);font-size:10px}
+.astro{display:grid;grid-template-columns:280px minmax(0,1fr);gap:24px;align-items:center;border:1px solid var(--hair);border-radius:12px;padding:20px;background:radial-gradient(80% 80% at 26% 18%,rgba(74,126,222,.16),transparent 60%),#070e19}
+.astro .ring{width:240px;height:240px;margin:0 auto}
+.alist{display:flex;flex-direction:column;gap:8px;font-size:11.5px}
+.alist div{display:grid;grid-template-columns:66px 1fr;gap:10px;padding-bottom:7px;border-bottom:1px dashed var(--hair)}
+.alist div:last-child{border-bottom:0}
+.alist b{font-size:10px;color:var(--t3);font-weight:400;letter-spacing:.06em}
+.alist span{color:var(--t2)}
+.tl{padding-left:12px;position:relative;margin-top:8px}
+.tl::before{content:"";position:absolute;left:0;top:6px;bottom:6px;width:1px;background:linear-gradient(180deg,var(--gold),rgba(224,189,134,.1))}
+.tlr{display:grid;grid-template-columns:100px 1fr;gap:12px;padding:8px 0 8px 12px;border-bottom:1px solid var(--hair);font-size:11.5px}
+.tlr:last-child{border-bottom:0}
+.tlr .t{font-family:ui-monospace,Consolas,monospace;font-size:10px;color:var(--goldl)}
+.tlr em{font-style:normal;color:var(--t3)}
+.cds{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px}
+.cd{width:116px;border:1px solid var(--hair2);border-radius:8px;overflow:hidden;background:#0b1524}
+.cd .art{height:118px;display:grid;place-items:center;background:radial-gradient(90% 80% at 50% 0%,rgba(143,192,255,.2),transparent 60%),linear-gradient(180deg,#0d1a30,#091224);color:var(--sky)}
+.cd .art svg{width:62%}
+.cd .pl{height:46px;background:var(--ivory);color:#3a2f22;padding:6px 7px;display:flex;flex-direction:column;justify-content:center;gap:1px}
+.cd .pl b{font-size:9px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cd .pl span{font-size:7px;color:#8a7451;letter-spacing:.08em;line-height:1.3}
+.cd .cap{font-size:8.5px;color:var(--t4);padding:4px 7px;background:#080f1c}
+.cd.sr .art{color:var(--sr);background:radial-gradient(90% 80% at 50% 0%,rgba(168,156,240,.2),transparent 60%),linear-gradient(180deg,#111a30,#0a1120)}
+.cd.sr .pl{background:#efe8f6;color:#3d3350}
+.cd.r .art{color:var(--r)}
+.cd.r .pl{background:#e6eef8;color:#2f3f55}
+.cd.n .art{color:var(--nrm)}
+.cd.n .pl{background:#dfe6ee;color:#3a4553}
+.ck{border:1px solid var(--hair);border-radius:10px;overflow:hidden}
+.ck div{display:grid;grid-template-columns:20px 1fr;gap:9px;padding:8px 12px;border-bottom:1px solid var(--hair);font-size:11.5px;color:var(--t2)}
+.ck div:last-child{border-bottom:0}
+.ck i{width:11px;height:11px;margin-top:4px;border:1px solid rgba(224,189,134,.45);border-radius:3px;position:relative}
+.ck i::after{content:"";position:absolute;left:1.5px;top:3px;width:6px;height:2px;border-left:1.5px solid var(--gold);border-bottom:1.5px solid var(--gold);transform:rotate(-45deg)}
+.foot{padding:30px 0 4px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;font-size:10px;color:var(--t4);letter-spacing:.06em}
+@media (max-width:900px){
+.wrap{grid-template-columns:minmax(0,1fr)}
+.side{position:static;height:auto;border-right:0;border-bottom:1px solid var(--hair);padding:16px 18px}
+.nav{flex-direction:row;flex-wrap:wrap}
+.ft{display:none}
+.g2,.g3{grid-template-columns:minmax(0,1fr)}
+.wb{grid-template-columns:minmax(0,1fr);height:auto}
+.wb>div{border-right:0;border-bottom:1px solid var(--hair)}
+.astro{grid-template-columns:minmax(0,1fr)}
+.sws{grid-template-columns:repeat(2,minmax(0,1fr))}
+.bp .row{grid-template-columns:66px 1fr}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+<aside class="side">
+  <div class="mk">
+    <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="16" cy="16" r="11.4"/><circle cx="16" cy="16" r="5.4" opacity=".55"/><path d="M16 4.6v3.4M16 24v3.4M4.6 16H8M24 16h3.4"/><circle cx="16" cy="16" r="1.5" fill="currentColor" stroke="none"/></svg>
+    <span><b>星轨卡册</b><em>Astral Archive</em></span>
+  </div>
+  <nav class="nav">
+    <a href="#s1"><i>01</i>定位与坐标</a>
+    <a href="#s2"><i>02</i>原则与令牌</a>
+    <a href="#s3"><i>03</i>信息架构</a>
+    <a href="#s4"><i>04</i>版式与断点</a>
+    <a href="#s5"><i>05</i>星盘保底环</a>
+    <a href="#s6"><i>06</i>抽卡演出</a>
+    <a href="#s7"><i>07</i>卡面规范</a>
+    <a href="#s8"><i>08</i>卡册·概率·记录</a>
+    <a href="#s9"><i>09</i>状态与容错</a>
+    <a href="#s10"><i>10</i>代码映射</a>
+    <a href="#s11"><i>11</i>验收清单</a>
+  </nav>
+  <div class="ft"><b>FluxTorrent · 娱乐屋</b>抽卡页 UI 设计方案<br>SEASON 03 · 2026 AUTUMN<br>2026-11-27</div>
+</aside>
+
+<main class="main">
+<header class="hero">
+  <span class="eyebrow">Gacha UI Spec · v1.0</span>
+  <h1>抽卡页<br>星轨观测台</h1>
+  <p>把「抽卡」从一次性赌运气，改成一场可核对、可回看、可收藏的观测仪式。本册定义 FluxTorrent PT 站 <span class="mono">/gacha</span> 的全端 UI：一条主视觉线、四档断点、五个视图，全部对齐现有接口字段与 i18n 词条。</p>
+  <div class="badges">
+    <span class="badge">Aurora 蓝系 · 不用粉色</span>
+    <span class="badge">四端 · 1440 / 1024 / 680 / 390</span>
+    <span class="badge">五视图 · 卡池 / 演出 / 卡册 / 概率 / 记录</span>
+    <span class="badge g">金只用于行动与 SSR</span>
+  </div>
+  <div class="meta">
+    <div>交付形态<b>设计方案册 + 高保真样图</b></div>
+    <div>数据来源<b>/api/v1/gacha/*</b></div>
+    <div>实现基线<b>Next.js 15 · RSC + Client</b></div>
+    <div>样图数据<b>演示值 · 不扣券</b></div>
+  </div>
+</header>
+
+<section id="s1">
+  <div class="sec-h"><span class="no">01</span><div><h2>定位与坐标</h2><p>为什么不是又一套「甜梦换皮」</p></div></div>
+  <p class="lead">娱乐屋已有九款游戏共用糖果色换皮。抽卡页若继续沿用，会和「概率公示」这种法务属性很强的页面气质冲突：玩家在这里需要的是可信、可核对，而不是可爱。因此抽卡页升格为<strong>模块级深色展厅</strong>——同品牌，不同展区。</p>
+  <div class="g3" style="margin-top:14px">
+    <div class="card"><span class="k">Reference A</span><h4>卡牌图鉴型</h4><p>以卡面墙为主体，抽卡入口退到角落。收藏感强，但首屏没有「现在该做什么」。</p></div>
+    <div class="card"><span class="k">Reference B</span><h4>扭蛋机台型</h4><p>大机器 + 大按钮，转化直接。代价是概率与保底被藏进二级页，玩家不信任。</p></div>
+    <div class="card"><span class="k">本方案</span><h4>观测台型</h4><p>舞台讲「这一期是什么」，星盘讲「我还差多少」，抽屉讲「现在就能抽」。三层各司其职。</p></div>
+  </div>
+  <p class="note">取舍：不做全屏弹窗抽卡，不做中奖跑马灯（PT 站无实时全服频道），不做隐藏概率的盲盒叙事。</p>
+</section>
+
+<section id="s2">
+  <div class="sec-h"><span class="no">02</span><div><h2>设计原则与令牌</h2><p>一条纪律：金色是动词，蓝色是名词</p></div></div>
+  <div class="g2">
+    <div class="card"><h4>金只出现在行动与 SSR</h4><p>抽卡、兑换、硬保底旗标、SSR 边框与箔光。其余装饰一律冷调星蓝，避免「满屏发光等于没有重点」。</p></div>
+    <div class="card"><h4>每个数字都有出处</h4><p>累计 82/90（距硬保底 8）、券 320、碎片 520 全部来自接口字段，不写死；样图用演示值并在页脚标注。</p></div>
+  </div>
+  <h3>色板</h3>
+  <div class="sws">
+    <div class="swc"><div class="bar" style="background:#05080f"></div><div class="lb"><b>#05080F</b>夜空底</div></div>
+    <div class="swc"><div class="bar" style="background:#0b1322"></div><div class="lb"><b>#0B1322</b>面板</div></div>
+    <div class="swc"><div class="bar" style="background:#8fc0ff"></div><div class="lb"><b>#8FC0FF</b>星蓝 · 装饰 / R</div></div>
+    <div class="swc"><div class="bar" style="background:#e0bd86"></div><div class="lb"><b>#E0BD86</b>金 · 行动 / SSR</div></div>
+    <div class="swc"><div class="bar" style="background:#f2e7d3"></div><div class="lb"><b>#F2E7D3</b>象牙 · 铭牌</div></div>
+  </div>
+  <p class="note">稀有度四色不写死：读取后端 <span class="mono">/gacha/rarities</span> 的 bg1 / bg2 / frame / ink / foil。稿中 SSR #E0BD86、SR #A89CF0、R #8FC0FF、N #9FB0C6 仅为本期演示值。</p>
+  <h3>字体与数字</h3>
+  <table>
+    <thead><tr><th style="width:110px">层级</th><th style="width:170px">字体</th><th>用法</th></tr></thead>
+    <tbody>
+      <tr><td><b>展示层</b></td><td>Noto Serif SC 900</td><td>卡池名、章节标题、卡面卡名、进度数字；字距 .03–.06em</td></tr>
+      <tr><td><b>UI 层</b></td><td>Noto Sans SC</td><td>导航、按钮、说明、表格；正文 11.5–13px</td></tr>
+      <tr><td><b>数字层</b></td><td>同上 · tabular-nums</td><td>券 / 碎片 / 保底计数 / 概率，等宽对齐防跳动</td></tr>
+    </tbody>
+  </table>
+  <div class="g3" style="margin-top:14px">
+    <div class="card"><h4>圆角</h4><p>面板 14px · 卡片 10px · 按钮 10px · 标签 4–6px。大面板更圆，小控件更方。</p></div>
+    <div class="card"><h4>描边</h4><p>统一 1px 半透明发丝线 rgba(150,180,230,.14)，不用纯黑分割，避免深色下出现裂缝感。</p></div>
+    <div class="card"><h4>动效</h4><p>交互 160–200ms；翻牌 620ms；错峰 85ms；箔光 1.1s 循环；金弧生长 1.1s。</p></div>
+  </div>
+</section>
+
+<section id="s3">
+  <div class="sec-h"><span class="no">03</span><div><h2>信息架构</h2><p>L0 一句话 · L1 三个问题 · L2 全部明细</p></div></div>
+  <div class="g3">
+    <div class="card"><span class="k">L0</span><h4>这一期是什么</h4><p>卡池名、UP 卡、剩余时间。3 秒内决定「要不要抽」。</p></div>
+    <div class="card"><span class="k">L1</span><h4>我还差多少</h4><p>软 / 硬保底、图鉴进度、券与碎片。决定「现在抽还是再攒」。</p></div>
+    <div class="card"><span class="k">L2</span><h4>钱花在哪</h4><p>概率表、保底规则、碎片兑换、逐抽留痕。决定「信不信这个池」。</p></div>
+  </div>
+  <h3>四个 Tab 与真实三 Tab 的差异</h3>
+  <table>
+    <thead><tr><th style="width:140px">Tab</th><th>承接内容</th><th>实现状态</th></tr></thead>
+    <tbody>
+      <tr><td><b>卡池</b></td><td>L0 + L1：舞台、UP 卡、进度侧栏、底部抽屉</td><td>已有（gacha-tabbed 第一页）</td></tr>
+      <tr><td><b>我的卡册</b></td><td>L1 收藏与养成：点亮、分解、兑换、升级</td><td>已有（gacha-album）</td></tr>
+      <tr><td><b>概率公示</b></td><td>L2 表定 / 综合双列、保底阶梯、数据口径</td><td>已有（gacha-rates）</td></tr>
+      <tr><td><b>抽卡记录</b></td><td>L2 逐抽留痕、30 抽色带、导出</td><td><b style="color:#f0d3a5">新增</b>；后端已有 <span class="mono">recent</span> 字段，前端补一页即可</td></tr>
+    </tbody>
+  </table>
+  <p class="note">新增理由：现有「近 30 抽」只在卡池页底部露一条摘要，玩家无法核对「第 82 抽出了什么」。记录页把 <span class="mono">rows[].seq / r / wasPity / isNew</span> 原样摊开，是概率公示的可验证下游，不新增接口。</p>
+</section>
+
+<section id="s4">
+  <div class="sec-h"><span class="no">04</span><div><h2>版式与断点</h2><p>桌面是三栏展厅，手机是单栏仪式</p></div></div>
+  <div class="wire">
+    <div class="wt"><span>1440 · 三栏展厅</span><span>236 | 1fr | 312 · 抽屉 96</span></div>
+    <div class="wb">
+      <div><b>卡池目录 236</b><div class="blk"><div class="bk t">在售卡池</div><div class="bk t">往期卡池</div><div class="bk">保底规则</div><div class="bk">往期归档</div></div></div>
+      <div><b>舞台 1fr</b><div class="blk"><div class="bk" style="height:18px">限定 · UP 双倍</div><div class="bk t">标题 / 描述 / 剩余时间</div><div class="bk t">本期收录 3 张</div></div><div class="ringmini">星盘保底环</div></div>
+      <div><b>进度侧栏 312</b><div class="blk"><div class="bk t">我的进度 · 8 抽后必得</div><div class="bk">新手首抽</div><div class="bk t">本期收获</div><div class="bk t">获取抽卡券</div></div></div>
+    </div>
+    <div class="wd"><span>十连必得 SR 以上 · 累计 90 抽必得 SSR · 跳过演出</span><span>单抽 25 ｜ 十连 220 券</span></div>
+  </div>
+  <h3>断点行为</h3>
+  <div class="bp">
+    <div class="row hd"><div>宽度</div><div>骨架</div><div>关键变化</div></div>
+    <div class="row"><div><b>1920</b></div><div>三栏加宽</div><div>内容最大宽 1440 居中；星盘环上限 404</div></div>
+    <div class="row"><div><b>1440</b></div><div>236 / 1fr / 312</div><div>基准稿：三栏 + 96px 抽屉</div></div>
+    <div class="row"><div><b>1024</b></div><div>204 / 1fr / 284</div><div>星盘 236–300；页脚铭文与「03」水印隐藏</div></div>
+    <div class="row"><div><b>768</b></div><div>单栏 · 舞台在上</div><div>卡池目录转横滑；右栏隐藏，改由舞台底部「我的进度 / 本期收获」双卡承载</div></div>
+    <div class="row"><div><b>680</b></div><div>单栏 · 折叠展开</div><div>进度与收获并排两卡贴底；星盘环 272；券源压缩为一行入口（点开弹窗）</div></div>
+    <div class="row"><div><b>390</b></div><div>单栏 · 移动</div><div>星盘隐藏；UP 卡横滑；HUD 两行（品牌 + 四 Tab）；底部只留进度卡，抽屉双按钮</div></div>
+  </div>
+  <p class="note">断点用容器查询 <span class="mono">container-type:inline-size</span> 挂在 <span class="mono">.screen</span> 上，保证样图四端并排时各自正确；落地到 apps/web 时等价于视口断点。</p>
+
+  <h3>一屏策略：不滚动整页，只滚动抽屉</h3>
+  <div class="bp">
+    <div class="row hd"><div>层</div><div>承载内容</div><div>规则</div></div>
+    <div class="row"><div><b>主视口</b></div><div>HUD + 当前视图 + 抽屉</div><div>固定高 900 / 800 / 1020 / 844，整页 <span class="mono">overflow:hidden</span>，横向纵向都不出现页面滚动条</div></div>
+    <div class="row"><div><b>Tab 切页</b></div><div>卡池 / 卡册 / 概率 / 记录</div><div>同一容器换 <span class="mono">data-v</span>，标题、动作、数据全部留在原位，不跳路由、不重载</div></div>
+    <div class="row"><div><b>视图内滚动</b></div><div>卡册网格、记录表</div><div>只在内容区滚动：卡册 24 张、记录 30 条超出时内部滚动，底部渐变 + 「滚动查看其余 N 张」提示</div></div>
+    <div class="row"><div><b>弹窗</b></div><div>规则 / 券源 / 进度 / 口径 / 导出 / 兑换确认 / 卡牌详情</div><div>七类长文本一律进弹窗（宽 520–720，卡内超长再滚），主视口只留摘要与入口</div></div>
+  </div>
+  <p class="note">判断标准：任何一帧内，页面级 <span class="mono">scrollHeight == clientHeight</span>；用户想看的「下一步动作」必须在不滚动的情况下可见。</p>
+</section>
+
+<section id="s5">
+  <div class="sec-h"><span class="no">05</span><div><h2>星盘保底环</h2><p>把一根进度条，做成这台机器唯一的仪表</p></div></div>
+  <p class="lead">保底是本页唯一「有方向」的数据。环形刻度天然表达「越接近越密」，比线性进度条更有压迫感，也避免与页面里其他进度条同质。</p>
+  <div class="astro" style="margin-top:14px">
+    <div class="ring">
+      <svg viewBox="0 0 260 260" fill="none" style="width:100%;height:100%">
+        <circle cx="130" cy="130" r="74" fill="rgba(143,192,255,.07)"/>
+        <circle cx="130" cy="130" r="120" stroke="rgba(150,180,230,.3)"/>
+        <circle cx="130" cy="130" r="112" stroke="rgba(224,189,134,.5)"/>
+        <circle cx="130" cy="130" r="116" stroke="rgba(224,189,134,.4)" stroke-width="6" stroke-dasharray="1 23"/>
+        <circle cx="130" cy="130" r="96" stroke="rgba(150,180,230,.28)"/>
+        <circle cx="130" cy="130" r="92" stroke="rgba(143,192,255,.4)" stroke-width="3" stroke-dasharray="1 8.6"/>
+        <path d="M130 18a112 112 0 0 1 0 224" stroke="#e0bd86" stroke-width="2.5" opacity=".95"/>
+        <circle cx="130" cy="26" r="2.6" fill="#8fc0ff"/>
+        <rect x="93" y="88" width="74" height="98" rx="5" fill="#101c30" stroke="rgba(224,189,134,.45)"/>
+        <path d="M130 104v34M121 112h18M124 122h12M126 132h8" stroke="#e0bd86" stroke-width="1.2" stroke-linecap="round"/>
+        <rect x="93" y="160" width="74" height="26" rx="0" fill="#f2e7d3" opacity=".92"/>
+        <text x="130" y="171" text-anchor="middle" fill="#3a2f22" font-family="serif" font-size="7.5">破晓之钥</text>
+        <text x="130" y="180" text-anchor="middle" fill="#8a7451" font-size="5.5">SSR</text>
+        <text x="130" y="212" text-anchor="middle" fill="#77879f" font-size="6.5">累计 82/90 · 距硬保底 8 抽</text>
+        <text x="130" y="246" text-anchor="middle" fill="#54647c" font-size="6">ASTRAL PITY RING · r=112 / 96</text>
+      </svg>
+    </div>
+    <div class="alist">
+      <div><b>外环 90</b><span>硬保底刻度，每 3 抽一格共 30 格，已过刻度点亮</span></div>
+      <div><b>内环 60</b><span>软保底起点，60 格细划，起保后转冷蓝</span></div>
+      <div><b>进度弧</b><span>r=96 处 2.5px 金弧，弧度 = 已抽 / 90</span></div>
+      <div><b>环心</b><span>当期 UP SSR 卡，3:4 缩至 118×157，可点进卡册</span></div>
+      <div><b>环底</b><span>累计 x/90 · 距硬保底 (90−x)，与侧栏同源</span></div>
+    </div>
+  </div>
+  <p class="note">字段映射：外环 = <span class="mono">pityAt / pityHard</span>，内环 = <span class="mono">pitySoft</span>，进度弧 = <span class="mono">pityAt</span>，环心 = 当期 UP。抽卡成功后环重绘并播一次 1.1s 金弧生长，不做数字滚动。</p>
+</section>
+
+<section id="s6">
+  <div class="sec-h"><span class="no">06</span><div><h2>抽卡演出</h2><p>先给结果，再给仪式；随时可跳过</p></div></div>
+  <p class="lead">结算先于演出：点击十连的瞬间即发出 <span class="mono">POST /gacha/draw</span>，拿回 rows 后才切到演出视图。演出只是播放器，永不影响余额与保底——跳过、刷新、断网都不会吞掉结果。</p>
+  <div class="tl">
+    <div class="tlr"><span class="t">0 ms</span><div>点击十连 → 按钮转「抽取中…」并禁用 <em>（防重复扣券）</em></div></div>
+    <div class="tlr"><span class="t">返回</span><div>写入余额与保底，进入演出视图；10 张卡背，5×2（移动 2×5）</div></div>
+    <div class="tlr"><span class="t">70 + n×85</span><div>逐张 rotateY 180°，perspective 900px；SSR/SR 翻面同时亮 conic 光芒</div></div>
+    <div class="tlr"><span class="t">翻面</span><div>SSR 顶部居中「硬保底」旗标（仅 wasPity）；NEW 仅 isNew</div></div>
+    <div class="tlr"><span class="t">翻完</span><div>汇总条淡入：各档计数 + 保底是否重置 + 图鉴新增 + 「再抽十连 / 查看卡册」</div></div>
+    <div class="tlr"><span class="t">任意时刻</span><div>「跳过演出」= 全部立即翻面，不播动画但保留汇总条</div></div>
+  </div>
+  <div class="g2" style="margin-top:14px">
+    <div class="card"><h4>为什么不做逐张点击翻牌</h4><p>十连点十次对移动端是负担，且延长「结果未知」的时间。自动翻转 + 可跳过，兼顾仪式与效率。</p></div>
+    <div class="card"><h4>价格呈现</h4><p>单抽 25、十连 220（较单抽省 30）。抽屉常显「本次消耗」，不做倒计时折扣，避免焦虑营销。</p></div>
+  </div>
+</section>
+
+<section id="s7">
+  <div class="sec-h"><span class="no">07</span><div><h2>卡面规范</h2><p>3:4 档案卡：上星空、下铭牌</p></div></div>
+  <div class="cds">
+    <div class="cd"><div class="art"><svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="50" cy="30" r="9"/><path d="M50 40V78M44 46h12M45 54h10M46 62h8"/></svg></div><div class="pl"><b>破晓之钥</b><span>★★★★★ · SSR</span></div><div class="cap">SSR · 象牙铭牌 + 箔光</div></div>
+    <div class="cd sr"><div class="art"><svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M32 62l-5-26 13 9 10-16 10 16 13-9-5 26z"/><path d="M30 68h40"/></svg></div><div class="pl"><b>灰烬冠冕</b><span>★★★★ · SR</span></div><div class="cap">SR · 淡紫象牙</div></div>
+    <div class="cd r"><div class="art"><svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M50 30l10 11-10 25-10-25z"/><path d="M50 22v6M50 66v6"/></svg></div><div class="pl"><b>流萤信标</b><span>★★★ · R</span></div><div class="cap">R · 淡蓝象牙</div></div>
+    <div class="cd n"><div class="art"><svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M50 22l22 8v22c0 16-12 26-22 30-10-4-22-14-22-30V30z"/></svg></div><div class="pl"><b>铜锈纹章</b><span>★★ · N</span></div><div class="cap">N · 灰象牙</div></div>
+  </div>
+  <table style="margin-top:16px">
+    <thead><tr><th style="width:100px">构件</th><th style="width:80px">比例</th><th>规则</th></tr></thead>
+    <tbody>
+      <tr><td><b>卡体</b></td><td>3 : 4</td><td>圆角 10px，1px 描边 = rarity frame；未点亮降饱和至 .38 亮度</td></tr>
+      <tr><td><b>星图区</b></td><td>上 78%</td><td>深空底 + 纯 SVG 线条纹章（11 种 sigil），不用位图、不叠文字</td></tr>
+      <tr><td><b>铭牌</b></td><td>下 22%</td><td>象牙底 + 卡名（Serif）+ 星数 + 档位，按档位做极淡色偏</td></tr>
+      <tr><td><b>宝石</b></td><td>左上 9px</td><td>菱形随档位着色，是「扫一眼分辨档位」的主锚点</td></tr>
+      <tr><td><b>箔光</b></td><td>SSR only</td><td>soft-light 斜向渐变，hover 触发 1.1s 循环；静态不闪</td></tr>
+      <tr><td><b>背卡</b></td><td>同尺寸</td><td>星盘纹章 + 冷蓝，出场即背面，翻面才见真容</td></tr>
+    </tbody>
+  </table>
+  <p class="note">11 种纹章：key / beacon / compass / crown / prism / firefly / chart / gear / ruler / crest / astrolabe；未点亮统一用第 12 种 seal（封印菱形），避免「同一张图重复 12 次」被误读为加载失败。</p>
+</section>
+
+<section id="s8">
+  <div class="sec-h"><span class="no">08</span><div><h2>卡册 · 概率 · 记录</h2><p>三个子页，各有唯一主角</p></div></div>
+  <div class="g3">
+    <div class="card"><h4>我的卡册</h4><p>主角是合成进度：312/520 横条 + 兑换置顶；24 张按 8 列（1440）铺开，已点亮常显三动作，未点亮只留一句「本季抽卡可解锁」。网格一屏铺 16 张，其余 8 张在网格内滚动，右下角常驻「滚动查看其余 8 张 · 共 24 张」。</p></div>
+    <div class="card"><h4>概率公示</h4><p>主角是双列概率：综合 vs 表定并排，每行一条比例条；下方补「保底阶梯」与「兑换分解」。数据口径 / 实测对照 / 公示承诺三块内容移入「口径与复核」弹窗，主视图只留一行摘要与入口。</p></div>
+    <div class="card"><h4>抽卡记录</h4><p>主角是 30 抽色带：一格一抽，按稀有度着色，硬保底带金点；下表逐条时间 / 类型 / 结果 / 保底 / 余额，一屏 11 行、超出内部滚动，底部固定「累计 128 抽 · 本页 30 抽」。</p></div>
+  </div>
+  <table style="margin-top:14px">
+    <thead><tr><th style="width:110px">组件</th><th style="width:210px">现有代码</th><th>本方案要求</th></tr></thead>
+    <tbody>
+      <tr><td><b>卡册动作</b></td><td class="mono">gacha-album.tsx</td><td>dismantle / exchange / levelup 保持幂等键；兑换前保留 ConfirmDialog</td></tr>
+      <tr><td><b>合成条</b></td><td class="mono">sw-cardbook</td><td>由「三张展示卡」改为「合成目标 + 进度 + 兑换」，展示卡下移到卡池页</td></tr>
+      <tr><td><b>概率表</b></td><td class="mono">gacha-rates.tsx</td><td>增列「表定」，阶梯图由文字改为可视化轨道</td></tr>
+      <tr><td><b>记录</b></td><td class="mono">gacha-recent.tsx</td><td>由摘要条升级为独立视图；数据取 me.recent，不新增接口</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="s9">
+  <div class="sec-h"><span class="no">09</span><div><h2>状态与容错</h2><p>抽卡页最贵的错误是「扣了券却没结果」</p></div></div>
+  <table>
+    <thead><tr><th style="width:120px">状态</th><th style="width:180px">触发</th><th>界面表现</th></tr></thead>
+    <tbody>
+      <tr><td><b>券不足</b></td><td>tickets &lt; 25 / 220</td><td>不切视图；toast「抽卡券不足 · 还差 N 张」并给三条获取路径</td></tr>
+      <tr><td><b>结果未知</b></td><td>网络中断 / 超时</td><td>toast「结果未知，请以同一请求重试」；保留同一幂等键</td></tr>
+      <tr><td><b>幂等重放</b></td><td>replayed = true</td><td>正常展示，标注「已重放 · 不重复扣券」，不弹二次确认</td></tr>
+      <tr><td><b>未登录</b></td><td>401</td><td>卡池与概率只读可见；按钮变「登录后抽取」并回跳本页</td></tr>
+      <tr><td><b>空图鉴</b></td><td>litCount = 0</td><td>24 张封印卡 + 一句「首抽即点亮」，不做空白页</td></tr>
+      <tr><td><b>卡池结束</b></td><td>remaining ≤ 0</td><td>舞台转灰调；抽屉仅留「查看卡册 / 往期归档」</td></tr>
+    </tbody>
+  </table>
+  <p class="note">幂等键沿用现有格式 <span class="mono">ui-gacha-&lt;timestamp&gt;-&lt;rand&gt;</span>；重试必须复用同一个 key，这是「不重复扣券」的唯一保证。</p>
+</section>
+
+<section id="s10">
+  <div class="sec-h"><span class="no">10</span><div><h2>代码映射</h2><p>设计不是另一套东西，是现有组件的重排</p></div></div>
+  <table>
+    <thead><tr><th style="width:150px">设计区块</th><th style="width:230px">落点</th><th>改造量</th></tr></thead>
+    <tbody>
+      <tr><td>HUD / 四 Tab</td><td class="mono">gacha-tabbed.tsx</td><td>加第 4 个 Tab 与路由参数；移动端 Tab 折两行</td></tr>
+      <tr><td>舞台 + 星盘</td><td class="mono">_inner.tsx · SceneGacha</td><td>重写舞台布局；星盘为新增纯 SVG 组件</td></tr>
+      <tr><td>抽卡抽屉</td><td class="mono">gacha-draw.tsx</td><td>保留请求逻辑，换皮与按钮态；演出拆为独立播放器</td></tr>
+      <tr><td>进度侧栏</td><td class="mono">gacha-pool-me-bar.tsx</td><td>横条改为「大数字 + 双保底 + 点阵图鉴」</td></tr>
+      <tr><td>卡册</td><td class="mono">gacha-album.tsx</td><td>动作行常显、未点亮封印态、合成条置顶</td></tr>
+      <tr><td>样式令牌</td><td class="mono">app/styles/arcade-gacha.css</td><td>新增 --astral-* 一组令牌，与 --sweet-* 并存，仅本页启用</td></tr>
+    </tbody>
+  </table>
+  <p class="note">不建议并入全局 <span class="mono">[data-theme="brand-night"]</span> 覆盖：抽卡页是独立展区，令牌隔离后娱乐屋其余八款游戏不受影响。</p>
+</section>
+
+<section id="s11">
+  <div class="sec-h"><span class="no">11</span><div><h2>验收清单</h2><p>逐条可检查，不靠「感觉对了」</p></div></div>
+  <div class="g2">
+    <div><h3 style="color:var(--t1);text-transform:none;letter-spacing:.06em;font-size:13px">视觉</h3>
+      <div class="ck">
+        <div><i></i>全页无粉色；金色只在主行动、SSR 边框箔光、硬保底旗标</div>
+        <div><i></i>四档稀有度色全部来自 /gacha/rarities，前端无硬编码色表</div>
+        <div><i></i>卡面统一 3:4，铭牌 22%，未点亮有独立封印纹章</div>
+        <div><i></i>无 emoji；图标全部为 1.5px 线性 SVG</div>
+      </div>
+    </div>
+    <div><h3 style="color:var(--t1);text-transform:none;letter-spacing:.06em;font-size:13px">结构与交互</h3>
+      <div class="ck">
+        <div><i></i>1440 / 1024 / 680 / 390 四端无横向溢出、无内容被裁</div>
+        <div><i></i>每个按钮都有真实动作；不可用态有原因，无僵尸按钮</div>
+        <div><i></i>券不足不切视图；结果未知保留同一幂等键</div>
+        <div><i></i>跳过演出后汇总条仍在；刷新后余额与保底不回退</div>
+      </div>
+    </div>
+  </div>
+  <h3 style="color:var(--t1);text-transform:none;letter-spacing:.06em;font-size:13px;margin-top:18px">数据一致</h3>
+  <div class="ck">
+    <div><i></i>页面内所有券 / 碎片 / 保底数字同源，跨 Tab 不出现两个版本</div>
+    <div><i></i>概率页「综合 + 表定」两列同时存在，并注明口径与刷新节奏</div>
+    <div><i></i>记录页条数与 me.recent 一致，序号可追溯</div>
+    <div><i></i>样图演示数据在页脚标注「演示值 · 不扣券」</div>
+  </div>
+  <p class="note" style="margin-top:12px">配套文件 <span class="mono">抽卡页-高保真样图.html</span>：五视图 × 四端，可切换、可交互。本册定义「为什么这样做」，样图负责「做出来是什么样」。</p>
+</section>
+
+<footer class="foot">
+  <span>FluxTorrent · 娱乐屋 · 抽卡页设计方案</span>
+  <span>SEASON 03 · 2026 AUTUMN · 2026-11-27</span>
+</footer>
+</main>
+</div>
+</body>
+</html>

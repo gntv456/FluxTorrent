@@ -62,8 +62,25 @@ pub(super) async fn gacha_me(
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    let recent: Vec<(i32, String, Option<String>, i32, bool)> = sqlx::query_as(
-        "SELECT seq, output_type, rarity, shards, was_pity \
+    // 抽卡记录页要「时间 / 保底 / 距硬保底」，此前只下发 seq 与档位，
+    // 前端把 30 抽渲染成一条色带就没了下文。drawn_at 与 pity_at 本就在
+    // gacha_draws 行上，随 me 一并下发，前端不再二次请求。
+    #[allow(clippy::type_complexity)]
+    let recent: Vec<(
+        i32,
+        String,
+        Option<String>,
+        i32,
+        bool,
+        String,
+        i32,
+        bool,
+        i64,
+        Option<i64>,
+    )> = sqlx::query_as(
+        "SELECT seq, output_type, rarity, shards, was_pity, \
+             to_char(drawn_at, 'YYYY-MM-DD\"T\"HH24:MI:SS'), \
+             pity_at, is_new, banner_id, card_id \
              FROM gacha_draws WHERE user_id = $1 \
              ORDER BY id DESC LIMIT 30",
     )
@@ -96,12 +113,16 @@ pub(super) async fn gacha_me(
         "litTotal": lit_total,
         "recent": recent
             .iter()
-            .map(|(seq, ty, rar, shards, wp)| {
-                serde_json::json!({
-                    "seq": seq, "type": ty, "r": rar,
-                    "shards": shards, "wasPity": wp,
-                })
-            })
+            .map(
+                |(seq, ty, rar, shards, wp, at, pity, is_new, banner, card)| {
+                    serde_json::json!({
+                        "seq": seq, "type": ty, "r": rar,
+                        "shards": shards, "wasPity": wp,
+                        "drawnAt": at, "pityAt": pity,
+                        "isNew": is_new, "bannerId": banner, "cardId": card,
+                    })
+                },
+            )
             .collect::<Vec<_>>(),
     })))
 }

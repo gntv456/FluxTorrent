@@ -8,6 +8,11 @@ import type { ReactNode } from "react";
 import "@/app/styles/arcade-gacha.css";
 /* 夜场皮肤（波·成熟化）：/gacha 与 /games 同一套深色赌场令牌 */
 import "@/app/styles/arcade-night.css";
+/* 星轨卡册抽卡页（2026-11 设计稿落地）：全部规则以 .gx 为作用域，
+   从 抽卡页-高保真样图.html 的两段 <style> 合并生成，避免与旧 sw-* 皮肤互撞 */
+import "@/app/styles/gacha-stage.css";
+/* 断点与弹窗分层：从 gacha-stage.css 拆出，保持原声明顺序 */
+import "@/app/styles/gacha-stage-views.css";
 
 /** /gacha 路由布局：挂 data-arcade="sweet"（夜场令牌作用域）+ 路由级 CSS。 */
 export default function GachaLayout({ children }: { children: ReactNode }) {
