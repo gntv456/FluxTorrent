@@ -36,8 +36,14 @@ pub(crate) async fn expire_stale_tx(
     let Some((gid,)) = stale else {
         return Ok(()); // 没停摆：正常返回
     };
-    tracing::warn!(gid, uid, idle_secs, "doudizhu idle auto-play kicks in");
     let mut row = load_row_by(tx, uid, gid).await?;
+    tracing::warn!(
+        gid, uid, idle_secs,
+        turn = row.state.turn,
+        phase = ?row.state.phase,
+        ev = row.state.events.len(),
+        "doudizhu idle auto-play kicks in"
+    );
     // 玩家座整段交给 AI：临时按 AI 视角跑 run_ai_segments——它只推
     // turn != 0 的段，所以先把玩家座「托管标记」下的所有轮次逐个代打：
     // 循环跑 run_ai_segments + 手动为 seat0 出一手，直至终局。
@@ -84,9 +90,9 @@ pub(crate) async fn expire_stale_tx(
             }
             Phase::Playing => {
                 let seat = 0u8;
-                let hand = row.state.hands[0].clone();
+                let hand = row.state.hands[seat as usize].clone();
                 // 经典座优先 DouZero 模型建议（dz_choose_safe 内含状态机
-                // 口径预校验 + 失败回落启发式）；癞子座维持启发式。
+                // 口径预校验 + 失败回落启发式）；癞子座走启发式。
                 let wilds = &row.state.wildcards[0];
                 let pick = if wilds.is_empty() {
                     super::doudizhu_dz::dz_choose_safe(&row.state, seat, false)
