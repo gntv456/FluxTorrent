@@ -52,10 +52,12 @@ pub(super) async fn sync_stubs(
     .fetch_all(db)
     .await?;
     let m: (i64, i64, i64, i64, i64, i64, i64, i64, i64, i64) = sqlx::query_as(
+        // 九宫格已由打地鼠接替：旧票根的 jgg_plays 记两代玩法，
+        // 否则 arc_jgg_30/100 在 jgg 下架后永远拿不到（注释挪出 SQL——
+        // Rust \ 续行会把行内 -- 注释与后续列拼进同一行，注释之后
+        // 的列全部被吞成 syntax error，resurrections.rs 实测踩坑）
         "SELECT count(*)::bigint, \
                 count(*) FILTER (WHERE ref_type = 'scratch')::bigint, \
-                -- 九宫格已由打地鼠接替：旧票根的 jgg_plays 记两代玩法，
-                -- 否则 arc_jgg_30/100 在 jgg 下架后永远拿不到
                 count(*) FILTER (WHERE ref_type IN ('jgg','mole'))::bigint, \
                 count(*) FILTER (WHERE ref_type = 'bigsmall')::bigint, \
                 count(*) FILTER (WHERE ref_type = 'farm_water')::bigint, \

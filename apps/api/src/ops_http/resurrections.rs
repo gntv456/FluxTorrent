@@ -35,7 +35,6 @@ pub(super) async fn resurrection_list(
         "SELECT t.id AS torrent_id, t.name, t.size, \
                 COALESCE((SELECT value::int FROM site_settings WHERE \
                  name = 'resurrection_hours'), 240) AS required_hours, \
-                -- 0503 key: reward now admin-tunable (default 5000 = current) \
                 COALESCE((SELECT value::bigint FROM site_settings WHERE \
                  name = 'resurrection_reward'), 5000) AS reward_sparks \
          FROM torrents t \
