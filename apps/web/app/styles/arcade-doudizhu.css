@@ -1635,7 +1635,8 @@
   animation: dz-settle-pop 0.5s cubic-bezier(0.18, 1.3, 0.3, 1) both;
 }
 .dz-settle.is-lose .dz-settle-portrait img {
-  filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.4)) saturate(0.72) brightness(0.92);
+  filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.4))
+    saturate(0.72) brightness(0.92);
 }
 
 /* ── 王炸全屏演出：闪电劈落 + 白闪（rocket 一手触发，pointer-events 穿透） ── */
