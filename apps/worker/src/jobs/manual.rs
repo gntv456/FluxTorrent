@@ -129,7 +129,9 @@ pub(crate) async fn run_named(
         // 0400/0404：自动审种与邮件 outbox 此前只在 run.rs 的定时 tick 里，
         // 目录/手触两边都缺——面板看不见积压、站长也无法手动补跑。
         "auto_review" => n(auto_review::auto_review_tick(db).await?),
-        "auto_review_digest" => d(auto_review::auto_review_digest(db).await?),
+        "auto_review_digest" => {
+            d(auto_review_digest::auto_review_digest(db).await?)
+        }
         "spark_merkle" => n(spark_merkle_daily(db).await?),
         "mail_outbox" => n(mail_outbox::mail_outbox_drain(db).await?),
         // 0487：IYUU 辅种查重此前只在 hour_jobs 定时里，手触缺臂——站长

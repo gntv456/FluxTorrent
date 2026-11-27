@@ -279,7 +279,7 @@ pub async fn run_all(
                 usage_stats_report(&db), &shard);
             // 自动审种每日摘要（0400 §4.3）
             shard_lock!(&db, "job:auto_review_digest",
-                auto_review::auto_review_digest(&db), &shard);
+                auto_review_digest::auto_review_digest(&db), &shard);
             // 月度契约结算（0424 同类站对标 A2）：月初跑，结算上月契约。
             // 日频安全：只动 status='open' 且 month=上月的行，幂等。
             shard_lock!(&db, "job:contract_settle",

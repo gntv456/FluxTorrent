@@ -13,6 +13,7 @@ pub(crate) mod audit;
 mod audit_retain;
 mod audit_webhook;
 mod auto_review;
+mod auto_review_digest;
 mod backfill;
 mod billing;
 mod billing_mults;
