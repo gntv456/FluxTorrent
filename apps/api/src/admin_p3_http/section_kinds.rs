@@ -162,6 +162,7 @@ async fn section_kinds_add(
             Some(serde_json::json!({"kind": kind})),
         )
         .await;
+    super::section_dict_cache::invalidate_section_dict_cache(&state).await;
     Ok(ok(serde_json::json!({ "kind": kind })))
 }
 
@@ -249,5 +250,6 @@ async fn section_kinds_update(
             Some(serde_json::json!({"kind": kind})),
         )
         .await;
+    super::section_dict_cache::invalidate_section_dict_cache(&state).await;
     Ok(ok(serde_json::json!({ "ok": true })))
 }

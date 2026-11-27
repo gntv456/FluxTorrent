@@ -5,13 +5,11 @@ use actix_web::{delete, get, post, put, web, HttpRequest, HttpResponse};
 use serde::Deserialize;
 
 use super::staff;
-
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
 use crate::state::AppState;
 
 // ============ P3-12 Section 多维体系 ============
-
 #[derive(sqlx::FromRow, serde::Serialize)]
 pub(super) struct SectionModeRow {
     id: i32,
@@ -125,6 +123,7 @@ async fn section_mode_add(
         .repo
         .audit(Some(auth.id), "section_mode.add", Some(id as i64))
         .await;
+    super::section_dict_cache::invalidate_section_dict_cache(&state).await;
     Ok(ok(serde_json::json!({ "id": id })))
 }
 
@@ -215,6 +214,7 @@ async fn section_mode_update(
         .repo
         .audit(Some(auth.id), "section_mode.update", Some(id as i64))
         .await;
+    super::section_dict_cache::invalidate_section_dict_cache(&state).await;
     Ok(ok(serde_json::json!({ "ok": true })))
 }
 /// 把 `mode_kinds` 的可见集合回写进 `category_modes` 的旧 7 个 show_* 列。
@@ -295,23 +295,23 @@ async fn section_mode_delete(
         .repo
         .audit(Some(auth.id), "section_mode.del", Some(id as i64))
         .await;
+    super::section_dict_cache::invalidate_section_dict_cache(&state).await;
     Ok(ok(serde_json::json!({ "deleted": id })))
 }
 
 /// 维度存在性判定（0085/0087）：kind 在 section_kinds 中即可用。0087 起
-/// media/grades/editions 字典行已迁入 section_dict，九维全走统一通道，legacy
-/// 实体表仅作历史口径存档（介质列保留兼容老数据）。
+/// 字典行迁入 section_dict 九维统一通道，legacy 实体表仅历史存档。
 pub(crate) async fn is_custom_kind(db: &sqlx::PgPool, kind: &str) -> bool {
-    let q = "SELECT EXISTS(SELECT 1 FROM section_kinds WHERE kind = $1)";
-    sqlx::query_scalar(q)
-        .bind(kind)
-        .fetch_one(db)
-        .await
-        .unwrap_or(false)
+    sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM section_kinds WHERE kind = $1)",
+    )
+    .bind(kind)
+    .fetch_one(db)
+    .await
+    .unwrap_or(false)
 }
 
-/// 维度字段类型查询（B3 列表筛选）：`None` = 维度不存在。筛选谓词必须按类型
-/// 分派，解析参数时要先拿到类型。
+/// 维度字段类型查询（B3）：`None` = 维度不存在；谓词按类型分派前必查。
 pub(crate) async fn kind_field_type(
     db: &sqlx::PgPool,
     kind: &str,

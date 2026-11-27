@@ -120,6 +120,7 @@ async fn section_dict_add(
         .repo
         .audit(Some(auth.id), "section_dict.add", Some(id))
         .await;
+    super::section_dict_cache::invalidate_section_dict_cache(&state).await;
     Ok(ok(serde_json::json!({ "id": id })))
 }
 
@@ -161,6 +162,7 @@ async fn section_dict_update(
         .repo
         .audit(Some(auth.id), "section_dict.update", Some(id))
         .await;
+    super::section_dict_cache::invalidate_section_dict_cache(&state).await;
     Ok(ok(serde_json::json!({ "ok": true })))
 }
 
@@ -223,5 +225,6 @@ async fn section_dict_delete(
         .repo
         .audit(Some(auth.id), "section_dict.del", Some(id))
         .await;
+    super::section_dict_cache::invalidate_section_dict_cache(&state).await;
     Ok(ok(serde_json::json!({ "deleted": id })))
 }

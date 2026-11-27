@@ -1,7 +1,9 @@
 //! Section/标签字典公开读 + 分类归属模式与自动过审开关
-//! 从 admin_p3_http.rs 按域拆出。
+//! 从 admin_p3_http.rs 按域拆出。公开字典缓存原语在 section_dict_cache.rs
+//! （加速批五期 2026-11-26：60s TTL + 世代号失效，fail-open）。
 
-use actix_web::{get, put, web, HttpRequest, HttpResponse};
+use actix_web::{get, web, HttpRequest, HttpResponse};
+use redis::AsyncCommands;
 use serde::Deserialize;
 use std::collections::HashMap;
 
@@ -9,9 +11,12 @@ use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
 use crate::state::AppState;
 
+use super::section_dict_cache::{
+    section_dict_generation, SECTION_DICT_CACHE_PREFIX, SECTION_DICT_TTL,
+    TAGS_DICT_CACHE_PREFIX,
+};
 use super::section_kinds::SectionKindRow;
 use super::sections::SectionModeRow;
-use super::staff;
 
 /// 维度标识格式：小写字母开头，[a-z0-9_]，≤32 字符
 pub(super) fn regex_check_kind(kind: &str) -> bool {
@@ -47,6 +52,25 @@ async fn section_dict_public(
     state: web::Data<std::sync::Arc<AppState>>,
     q: crate::http::Q<SectionDictQ>,
 ) -> DomainResult<HttpResponse> {
+    // 共享缓存读（fail-open，加速批五期）：键含 category_id 变体 +
+    // 世代号。命中即回——browse/上传/筛选高频打这里，一页一次。
+    let mut c = state.redis.clone();
+    let gen: i64 = section_dict_generation(&mut c).await;
+    let cache_key = format!(
+        "{}g{}:cat:{}",
+        SECTION_DICT_CACHE_PREFIX,
+        gen,
+        q.category_id
+            .map(|v| v.to_string())
+            .unwrap_or_else(|| "-".into())
+    );
+    let hit: Option<String> =
+        AsyncCommands::get(&mut c, &cache_key).await.unwrap_or(None);
+    if let Some(cached) = hit {
+        return Ok(HttpResponse::Ok()
+            .content_type("application/json")
+            .body(cached));
+    }
     let mode_id: Option<i32> = match q.category_id {
         Some(cid) => sqlx::query_scalar(
             "SELECT c.mode_id FROM categories c WHERE c.id = $1",
@@ -155,7 +179,22 @@ async fn section_dict_public(
         "modes".into(),
         serde_json::to_value(modes).unwrap_or_default(),
     );
-    Ok(ok(serde_json::Value::Object(out)))
+    // 回填缓存（fail-open）：信封按 dto::ok 同构落串，60s TTL。
+    // 命中返回的 request_id 为缓存时点值（与 site-profile 同口径）。
+    let data = serde_json::Value::Object(out);
+    let envelope =
+        serde_json::json!({"code": 0, "message": "ok", "data": data.clone()});
+    if let Ok(s) = serde_json::to_string(&envelope) {
+        let _: Result<(), _> = AsyncCommands::set_ex(
+            &mut c,
+            &cache_key,
+            s.clone(),
+            SECTION_DICT_TTL,
+        )
+        .await;
+        return Ok(HttpResponse::Ok().content_type("application/json").body(s));
+    }
+    Ok(ok(data))
 }
 
 /// 发布表单标签公开读（匿名可读：启用中的种子域标签，0138 scope=torrent；论坛域走 /forums/tags）。
@@ -171,6 +210,22 @@ async fn tags_dict_public(
         web::Query::<HashMap<String, String>>::from_query(req.query_string())
             .ok()
             .and_then(|m| m.get("mode").and_then(|v| v.parse().ok()));
+    // 共享缓存读（fail-open，加速批五期）：键含 mode 变体 + 世代号
+    let mut c = state.redis.clone();
+    let gen: i64 = section_dict_generation(&mut c).await;
+    let cache_key = format!(
+        "{}g{}:mode:{}",
+        TAGS_DICT_CACHE_PREFIX,
+        gen,
+        mode.map(|v| v.to_string()).unwrap_or_else(|| "-".into())
+    );
+    let hit: Option<String> =
+        AsyncCommands::get(&mut c, &cache_key).await.unwrap_or(None);
+    if let Some(cached) = hit {
+        return Ok(HttpResponse::Ok()
+            .content_type("application/json")
+            .body(cached));
+    }
     let rows: Vec<(i32, String, String, String)> = sqlx::query_as(
         "SELECT id, name, kind, tag_group FROM tag_dict \
          WHERE COALESCE(enabled, TRUE) AND scope = 'torrent' \
@@ -187,57 +242,19 @@ async fn tags_dict_public(
         .map(|r| (r.0, r.1.clone(), r.2.clone()))
         .collect();
     let groups: Vec<&str> = rows.iter().map(|r| r.3.as_str()).collect();
-    Ok(ok(serde_json::json!({ "tags": tuples, "groups": groups })))
-}
-
-/// 分类归属模式 + 自动过审开关
-#[derive(Deserialize)]
-struct CategoryFlagsReq {
-    /// 缺省 = 不改归属；`0` = 显式清除归属（回到「全模式可用」）；其余 = 改归属。
-    /// 早先实现是裸 `SET mode_id = $2`，前端只勾「自动过审」不带 mode_id 时会把
-    /// 归属写成 NULL（等于静默改分类归属）。
-    #[serde(default)]
-    mode_id: Option<i32>,
-    #[serde(default)]
-    auto_approve: Option<bool>,
-}
-
-#[put("/admin/categories/{id}/flags")]
-async fn category_flags(
-    req: HttpRequest,
-    state: web::Data<std::sync::Arc<AppState>>,
-    path: web::Path<i32>,
-    body: web::Json<CategoryFlagsReq>,
-) -> DomainResult<HttpResponse> {
-    let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(
-        &state,
-        &auth,
-        crate::authz::perm::CATEGORIES_MANAGE,
-    )
-    .await?;
-    let id = path.into_inner();
-    let n = sqlx::query(
-        "UPDATE categories SET \
-           mode_id = CASE WHEN $2::int IS NULL THEN mode_id \
-                          WHEN $2::int = 0 THEN NULL \
-                          ELSE $2::int END, \
-           auto_approve = COALESCE($3, auto_approve) \
-         WHERE id = $1",
-    )
-    .bind(id)
-    .bind(body.mode_id)
-    .bind(body.auto_approve)
-    .execute(&state.repo.db)
-    .await
-    .map_err(|e| crate::errors::db_to_domain(e, "分类归属模式"))?
-    .rows_affected();
-    if n == 0 {
-        return Err(DomainError::NotFound(id as i64));
-    }
-    state
-        .repo
-        .audit(Some(auth.id), "category.flags", Some(id as i64))
+    let envelope = serde_json::json!({
+        "code": 0, "message": "ok",
+        "data": { "tags": tuples, "groups": groups }
+    });
+    if let Ok(s) = serde_json::to_string(&envelope) {
+        let _: Result<(), _> = AsyncCommands::set_ex(
+            &mut c,
+            &cache_key,
+            s.clone(),
+            SECTION_DICT_TTL,
+        )
         .await;
-    Ok(ok(serde_json::json!({ "ok": true })))
+        return Ok(HttpResponse::Ok().content_type("application/json").body(s));
+    }
+    Ok(ok(serde_json::json!({ "tags": tuples, "groups": groups })))
 }

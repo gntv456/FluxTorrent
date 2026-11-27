@@ -1,12 +1,11 @@
 //! P1-2 标签字典（参考站 tags 口径：名称 + 样式属性 + 作用域）+ 公开读
 //! 从 admin_p3_http.rs 按域拆出。
 
-use actix_web::{delete, get, post, put, web, HttpRequest, HttpResponse};
-use serde::Deserialize;
-
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
 use crate::state::AppState;
+use actix_web::{delete, get, post, put, web, HttpRequest, HttpResponse};
+use serde::Deserialize;
 
 use super::staff;
 
@@ -175,6 +174,7 @@ async fn tags_dict_add(
         .repo
         .audit(Some(auth), "tagdict.add", Some(id as i64))
         .await;
+    super::section_dict_cache::invalidate_section_dict_cache(&state).await;
     Ok(ok(serde_json::json!({ "id": id })))
 }
 
@@ -235,6 +235,7 @@ async fn tags_dict_update(
         .repo
         .audit(Some(auth), "tagdict.update", Some(id as i64))
         .await;
+    super::section_dict_cache::invalidate_section_dict_cache(&state).await;
     Ok(ok(serde_json::json!({ "ok": true })))
 }
 
@@ -294,5 +295,6 @@ async fn tags_dict_delete(
         .repo
         .audit(Some(auth), "tagdict.del", Some(id as i64))
         .await;
+    super::section_dict_cache::invalidate_section_dict_cache(&state).await;
     Ok(ok(serde_json::json!({ "deleted": id })))
 }

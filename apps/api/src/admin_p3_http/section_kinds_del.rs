@@ -76,5 +76,6 @@ async fn section_kinds_delete(
             Some(serde_json::json!({"kind": kind, "label": gone})),
         )
         .await;
+    super::section_dict_cache::invalidate_section_dict_cache(&state).await;
     Ok(ok(serde_json::json!({ "deleted": kind })))
 }
