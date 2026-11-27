@@ -623,5 +623,5 @@
   "apps/api/src/games_http/doudizhu_pvp_http.rs": 468,
   "apps/api/src/games/doudizhu_pvp_db_tests.rs": 454,
   "apps/web/components/nav-drawer.tsx": 302,
-  "apps/web/components/gacha/gacha-stage.tsx": 2523
+  "apps/web/components/gacha/gacha-stage.tsx": 2171
 }
