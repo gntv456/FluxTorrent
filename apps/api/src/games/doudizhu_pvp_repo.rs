@@ -21,21 +21,26 @@ fn snapshot_of(state: &GameState) -> DomainResult<serde_json::Value> {
         .map_err(|e| DomainError::Internal(anyhow::anyhow!(e)))
 }
 
-/// 建房（房主坐 0 号位）。
+/// 房间频道消息体上限（字符）；超长由 repo 截断，空消息拒绝。
+pub(crate) const MSG_BODY_MAX: usize = 120;
+
+/// 建房（房主坐 0 号位）。visibility = 'public' | 'private'。
 pub(crate) async fn create_room_tx(
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     uid: i64,
     stake: i64,
     variant: &str,
+    visibility: &str,
 ) -> DomainResult<i64> {
     let rid: i64 = sqlx::query_scalar(
         "INSERT INTO arcade_doudizhu_rooms \
-            (variant, stake, status, owner_id) \
-         VALUES ($1, $2, 'waiting', $3) RETURNING id",
+            (variant, stake, status, owner_id, visibility) \
+         VALUES ($1, $2, 'waiting', $3, $4) RETURNING id",
     )
     .bind(variant)
     .bind(stake)
     .bind(uid)
+    .bind(visibility)
     .fetch_one(&mut **tx)
     .await
     .map_err(dberr)?;
@@ -65,13 +70,14 @@ pub(crate) async fn insert_seat_tx(
     Ok(())
 }
 
-/// 匹配：找同底分同变体的 waiting 房间并占座；没有则建房。
-/// 返回 (room_id, seat, joined_now)。
+/// 匹配：找同底分同变体的 public waiting 房间并占座；没有则建房。
+/// 返回 (room_id, seat, joined_now)。private 房不进随机匹配，只能凭房号进（口径定稿后补端点）。
 pub(crate) async fn join_or_create_tx(
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     uid: i64,
     stake: i64,
     variant: &str,
+    visibility: &str,
 ) -> DomainResult<(i64, i16, bool)> {
     // 已在活跃房：直接回房间（幂等刷新）
     let mine: Option<(i64, i16)> = sqlx::query_as(
@@ -89,10 +95,11 @@ pub(crate) async fn join_or_create_tx(
     if let Some((rid, seat)) = mine {
         return Ok((rid, seat, false));
     }
-    // 找一个有空座的 waiting 房（FOR UPDATE 锁房行防并发超卖）
+    // 找一个有空座的 waiting 房（FOR UPDATE 锁房行防并发超卖）；只挑 public。
     let candidates: Vec<i64> = sqlx::query_scalar(
         "SELECT r.id FROM arcade_doudizhu_rooms r \
           WHERE r.variant = $1 AND r.stake = $2 AND r.status = 'waiting' \
+                AND r.visibility = 'public' \
           ORDER BY r.created_at LIMIT 5 FOR UPDATE",
     )
     .bind(variant)
@@ -121,7 +128,7 @@ pub(crate) async fn join_or_create_tx(
         }
     }
     // 没有可用房间 → 建房
-    let rid = create_room_tx(tx, uid, stake, variant).await?;
+    let rid = create_room_tx(tx, uid, stake, variant, visibility).await?;
     Ok((rid, 0, true))
 }
 
@@ -319,4 +326,126 @@ pub(crate) async fn touch_seen_db(
     .await
     .map_err(dberr)?;
     Ok(())
+}
+
+/// 本人是否已是某房座位（观战/发言前判定：入座玩家走座位身份，不另挂观战）。
+pub(crate) async fn is_seat_db(
+    db: &sqlx::PgPool,
+    rid: i64,
+    uid: i64,
+) -> DomainResult<bool> {
+    let (n,): (Option<i64>,) = sqlx::query_as(
+        "SELECT count(*)::bigint FROM arcade_doudizhu_room_seats \
+          WHERE room_id = $1 AND user_id = $2 AND active",
+    )
+    .bind(rid)
+    .bind(uid)
+    .fetch_one(db)
+    .await
+    .map_err(dberr)?;
+    Ok(n.unwrap_or(0) > 0)
+}
+
+/// 加入观战（幂等：重复进入刷新 joined_at）。观战不占座、不扣底分。
+pub(crate) async fn spectate_tx(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    rid: i64,
+    uid: i64,
+) -> DomainResult<()> {
+    sqlx::query(
+        "INSERT INTO arcade_doudizhu_spectators (room_id, user_id) \
+         VALUES ($1, $2) \
+         ON CONFLICT (room_id, user_id) DO UPDATE SET joined_at = now()",
+    )
+    .bind(rid)
+    .bind(uid)
+    .execute(&mut **tx)
+    .await
+    .map_err(dberr)?;
+    Ok(())
+}
+
+/// 退出本人所有观战席（退房/散桌时调用；级联之外的主动退出路径）。
+pub(crate) async fn leave_spectate_db(
+    db: &sqlx::PgPool,
+    uid: i64,
+) -> DomainResult<()> {
+    sqlx::query("DELETE FROM arcade_doudizhu_spectators WHERE user_id = $1")
+        .bind(uid)
+        .execute(db)
+        .await
+        .map_err(dberr)?;
+    Ok(())
+}
+
+/// 本人当前观战的房间 id（无则 None）。
+pub(crate) async fn spectate_room_db(
+    db: &sqlx::PgPool,
+    uid: i64,
+) -> DomainResult<Option<i64>> {
+    let rid: Option<i64> = sqlx::query_scalar(
+        "SELECT room_id FROM arcade_doudizhu_spectators \
+          WHERE user_id = $1 ORDER BY joined_at DESC LIMIT 1",
+    )
+    .bind(uid)
+    .fetch_optional(db)
+    .await
+    .map_err(dberr)?;
+    Ok(rid)
+}
+
+/// 发一条房间频道消息（body 已由调用方清洗/截断）。
+pub(crate) async fn post_message_tx(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    rid: i64,
+    sender: i64,
+    body: &str,
+) -> DomainResult<()> {
+    sqlx::query(
+        "INSERT INTO arcade_doudizhu_room_messages (room_id, sender_id, body) \
+         VALUES ($1, $2, $3)",
+    )
+    .bind(rid)
+    .bind(sender)
+    .bind(body)
+    .execute(&mut **tx)
+    .await
+    .map_err(dberr)?;
+    Ok(())
+}
+
+/// 拉最近消息：(id, sender_id, username, body, created_at)，时间升序便于前端追加。
+pub(crate) async fn list_messages_db(
+    db: &sqlx::PgPool,
+    rid: i64,
+    limit: i64,
+) -> DomainResult<Vec<(i64, i64, String, String, chrono::DateTime<chrono::Utc>)>>
+{
+    let rows: Vec<(i64, i64, Option<String>, String, chrono::DateTime<chrono::Utc>)> =
+        sqlx::query_as(
+            "SELECT m.id, m.sender_id, COALESCE(u.username::text, ''), m.body, m.created_at \
+               FROM arcade_doudizhu_room_messages m \
+               LEFT JOIN users u ON u.id = m.sender_id \
+              WHERE m.room_id = $1 \
+              ORDER BY m.created_at DESC, m.id DESC LIMIT $2",
+        )
+        .bind(rid)
+        .bind(limit)
+        .fetch_all(db)
+        .await
+        .map_err(dberr)?;
+    let mut out: Vec<(
+        i64,
+        i64,
+        String,
+        String,
+        chrono::DateTime<chrono::Utc>,
+    )> = rows
+        .into_iter()
+        .map(|(id, sid, uname, body, at)| {
+            (id, sid, uname.unwrap_or_default(), body, at)
+        })
+        .collect();
+    out.reverse();
+    Ok(out)
 }

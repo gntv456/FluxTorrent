@@ -1,6 +1,23 @@
 "use client";
 import { useI18n } from "@/i18n/client";
 import { api } from "@/lib/api-client";
+import { RoomChat } from "./room-chat";
+
+export interface PvpRoomSeat {
+  seat: number;
+  filled: boolean;
+  is_me: boolean;
+  ready: boolean;
+  online: boolean;
+  /** 昵称（users.username）；空座/注销兜底为空串。 */
+  nickname?: string;
+  avatar_url?: string | null;
+  /** 称号（users.title）。 */
+  title?: string | null;
+  /** 余额：仅本人座下发，他人座为 null，不亮筹码。 */
+  balance?: number | null;
+  user_id?: number;
+}
 
 export interface PvpRoom {
   id: number;
@@ -9,13 +26,11 @@ export interface PvpRoom {
   status: string;
   is_owner: boolean;
   my_seat: number | null;
-  seats: {
-    seat: number;
-    filled: boolean;
-    is_me: boolean;
-    ready: boolean;
-    online: boolean;
-  }[];
+  /** public=进公开列表；private=仅凭房号进入。 */
+  visibility?: "public" | "private";
+  /** 观战人数（有效观战行数）。 */
+  spectators?: number;
+  seats: PvpRoomSeat[];
   empty_seats: number[];
 }
 
@@ -51,28 +66,44 @@ export interface PvpRoomsResp {
     id: number;
     variant: string;
     stake: number;
+    status: "waiting" | "playing";
     players: number;
+    spectators: number;
+    visibility: "public" | "private";
     owner: boolean;
   }[];
   mine: PvpRoom | null;
   stake_tiers: number[];
 }
 
-/** PvP 房间等待面板：模式选择 + 快速匹配 + 座位图 + 房主开局。 */
+/** 房间频道消息（GET /pvp/messages，时间升序）。 */
+export interface PvpMessage {
+  id: number;
+  sender_id: number;
+  nickname: string;
+  body: string;
+  created_at: string;
+}
+
+/** PvP 房间等待面板：模式选择 + 快速匹配 + 公开房间列表（可观战）。 */
 export function PvpLobby({
   mode,
   stakeTiers,
+  rooms,
   busy,
   onQuickMatch,
   onLeave,
   onDeal,
+  onSpectate,
 }: {
   mode: "classic" | "wild" | "nolook";
   stakeTiers: number[];
+  rooms: PvpRoomsResp["rooms"];
   busy: boolean;
   onQuickMatch: (stake: number) => void;
   onLeave: () => void;
   onDeal: () => void;
+  onSpectate: (rid: number) => void;
 }) {
   const { dict } = useI18n();
   const t = dict.games.doudizhu;
@@ -117,6 +148,38 @@ export function PvpLobby({
       <p className="dz-rule-line" style={{ marginTop: 8 }}>
         {t.needThree}
       </p>
+      <div className="dz-room-list">
+        {rooms.length === 0 && (
+          <p className="dz-rule-line">{t.roomListEmpty}</p>
+        )}
+        {rooms.map((r) => (
+          <div key={r.id} className="dz-room-row">
+            <div className="dz-room-row-info">
+              <span className="dz-room-row-title">
+                {t.roomId.replace("{n}", String(r.id))}
+                {r.visibility === "private" ? ` · ${t.privateTag}` : ""}
+              </span>
+              <span className="dz-room-row-meta">
+                {t.stakeTier.replace("{n}", String(r.stake))}
+                {" · "}
+                {t.waitingPlayers.replace("{n}", String(r.players))}
+                {typeof r.spectators === "number" &&
+                  ` · ${t.spectators.replace("{n}", String(r.spectators))}`}
+                {" · "}
+                {r.status === "playing" ? t.roomPlaying : t.roomWaiting}
+              </span>
+            </div>
+            <button
+              type="button"
+              className="dz-btn"
+              disabled={busy}
+              onClick={() => onSpectate(r.id)}
+            >
+              {t.watchBtn}
+            </button>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -151,9 +214,12 @@ export function RoomWait({
       <p className="dz-rule-line">
         {t.roomId.replace("{n}", String(room.id))}
         {room.is_owner ? ` · ${t.ownerTag}` : ""}
+        {room.visibility === "private" ? ` · ${t.privateTag}` : ""}
       </p>
       <p className="dz-rule-line">
         {t.waitingPlayers.replace("{n}", String(filled))}
+        {typeof room.spectators === "number" &&
+          ` · ${t.spectators.replace("{n}", String(room.spectators))}`}
       </p>
       <div className="dz-seats dz-wait-seats">
         {[0, 1, 2].map((seat) => {
@@ -164,9 +230,10 @@ export function RoomWait({
                 {s ? (
                   <img
                     src={
-                      s.is_me
+                      s.avatar_url ||
+                      (s.is_me
                         ? "/games/ddz/ddz-farmer.webp"
-                        : "/games/ddz/ddz-ai.webp"
+                        : "/games/ddz/ddz-ai.webp")
                     }
                     alt=""
                     draggable="false"
@@ -174,8 +241,11 @@ export function RoomWait({
                 ) : null}
               </div>
               <div className="dz-seat-name">
-                {s ? (s.is_me ? t.you : "P" + (seat + 1)) : "…"}
+                {s ? (s.is_me ? t.you : s.nickname || "P" + (seat + 1)) : "…"}
               </div>
+              {s?.title && (
+                <div className="dz-seat-status-text">{s.title}</div>
+              )}
               {s && (
                 <div className="dz-seat-status">
                   <span
@@ -187,10 +257,16 @@ export function RoomWait({
                   </span>
                 </div>
               )}
+              {s && s.is_me && typeof s.balance === "number" && (
+                <div className="dz-seat-status-text">
+                  {t.myBalance.replace("{n}", String(s.balance))}
+                </div>
+              )}
             </div>
           );
         })}
       </div>
+      <RoomChat roomId={room.id} />
       <div className="dz-controls">
         <button
           type="button"

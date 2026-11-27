@@ -71,6 +71,24 @@ pub(crate) async fn load_active(
     row.map(decode_row).transpose()
 }
 
+/// 观战回显：按房间取一行活跃镜像局作权威进度（只读，不持行锁）。
+/// 三行是同一局的不同视角，取最早一行即可；手牌在 HTTP 层按旁观脱敏。
+pub(crate) async fn load_room_game_db(
+    db: &sqlx::PgPool,
+    rid: i64,
+) -> DomainResult<Option<GameRow>> {
+    let row: Option<DbRow> = sqlx::query_as(&format!(
+        "SELECT {ROW_COLS} FROM arcade_doudizhu_games \
+         WHERE room_id = $1 AND status IN ('bidding', 'playing') \
+         ORDER BY id LIMIT 1"
+    ))
+    .bind(rid)
+    .fetch_optional(db)
+    .await
+    .map_err(dberr)?;
+    row.map(decode_row).transpose()
+}
+
 /// 读最近一局（含已结算）——战绩/复盘口用。
 pub(crate) async fn load_last(
     pool: &sqlx::PgPool,

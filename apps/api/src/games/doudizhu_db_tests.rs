@@ -84,10 +84,15 @@ async fn full_game_settles_with_ledger() {
             break; // 终局或异常
         }
         let mut tx = db.begin().await.unwrap();
-        let action = if active.state.phase == Phase::Bidding {
-            ("bid", Some(0), vec![])
-        } else {
-            ("play", None, vec![])
+        // 按新状态机全阶段分发：叫分 / 抢地主(不抢) / 弃三张(空弃) /
+        // 加倍(不倍) / 出牌(过牌或最小)。此前只分 Bidding/play，
+        // 轮到玩家处于 Grab/Discard/Double 时误发 play 被状态机拒、提前退出。
+        let action = match active.state.phase {
+            Phase::Bidding => ("bid", Some(0), vec![]),
+            Phase::Grab => ("grab", Some(0), vec![]),
+            Phase::Discard => ("discard", None, vec![]),
+            Phase::Double => ("double", Some(0), vec![]),
+            _ => ("play", None, vec![]),
         };
         let res = apply_action_tx(
             &mut tx, uid, active.id, action.0, action.1, &action.2, 0,
@@ -191,10 +196,12 @@ async fn full_wild_game_settles() {
             break;
         }
         let mut tx = db.begin().await.unwrap();
-        let (action, score, cards) = if active.state.phase == Phase::Bidding {
-            ("bid", Some(0), vec![])
-        } else {
-            ("play", None, vec![])
+        let (action, score, cards) = match active.state.phase {
+            Phase::Bidding => ("bid", Some(0), vec![]),
+            Phase::Grab => ("grab", Some(0), vec![]),
+            Phase::Discard => ("discard", None, vec![]),
+            Phase::Double => ("double", Some(0), vec![]),
+            _ => ("play", None, vec![]),
         };
         let res =
             apply_action_tx(&mut tx, uid, active.id, action, score, &cards, 0)

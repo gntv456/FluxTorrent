@@ -19,6 +19,14 @@ export interface Seat {
   is_ai: boolean;
 }
 
+/** PvP 房间座位资料（与牌桌座位号对齐；AI 房不传，回退立绘与 AI 名）。 */
+export interface SeatMeta {
+  seat: number;
+  nickname?: string;
+  avatar_url?: string | null;
+  title?: string | null;
+}
+
 /** 桌面最后一手。kind 是后端 ComboKind 序列化字符串。 */
 export interface TableLast {
   seat: number;
@@ -66,6 +74,8 @@ export interface DzGame {
   seats: Seat[];
   events_tail: DzEvent[];
     events?: DzEvent[];
+  /** 观战回显视角：true 表示本局面为旁观，无本人手牌与行动权。 */
+  spectating?: boolean;
 }
 
 /** hint 端点响应：出牌候选或叫分建议。 */
@@ -80,6 +90,8 @@ export interface StateResp {
   stake_tiers: number[];
   turn_seconds: number;
   rake_permille: number;
+  /** 当前是否处于观战身份（无本人座位行，game 为旁观脱敏回显）。 */
+  spectating?: boolean;
 }
 
 /** 牌编码 0..54 → 显示信息（rank 0..12 = 3..2；13 小王 14 大王）。 */

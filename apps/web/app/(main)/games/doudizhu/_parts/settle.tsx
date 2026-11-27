@@ -30,14 +30,29 @@ export function SettlePanel({
   const t = dict.games.doudizhu;
   const magic = currency || t.magicUnit;
   const meSeat = game.seats.find((s) => s.seat === 0);
-  const detail: string[] = [
-    t.detailStake.replace("{n}", String(game.stake)),
-    t.detailMult.replace("{n}", String(game.multiplier)),
+  // 我方代表全身立绘：身份口径与座位头像一致（地主 / AI / 农民）。
+  const portraitSrc = meSeat?.role === "landlord"
+    ? "/games/ddz/ddz-full-landlord.webp"
+    : meSeat?.is_ai
+      ? "/games/ddz/ddz-full-ai.webp"
+      : "/games/ddz/ddz-full-farmer.webp";
+  const detail: { text: string; icon?: string }[] = [
+    {
+      text: t.detailStake.replace("{n}", String(game.stake)),
+      icon: "/games/ddz/ddz-icon-stake.webp",
+    },
+    {
+      text: t.detailMult.replace("{n}", String(game.multiplier)),
+      icon: "/games/ddz/ddz-icon-mult.webp",
+    },
   ];
   if (game.bomb_count > 0)
-    detail.push(t.detailBomb.replace("{n}", String(game.bomb_count)));
-  if (meSeat?.role === "landlord") detail.push(t.detailShareLandlord);
-  else if (meSeat?.role === "farmer") detail.push(t.detailShareFarmer);
+    detail.push({
+      text: t.detailBomb.replace("{n}", String(game.bomb_count)),
+      icon: "/games/ddz/ddz-icon-bomb.webp",
+    });
+  if (meSeat?.role === "landlord") detail.push({ text: t.detailShareLandlord });
+  else if (meSeat?.role === "farmer") detail.push({ text: t.detailShareFarmer });
   const tone =
     game.result === "win"
       ? "is-win"
@@ -56,6 +71,11 @@ export function SettlePanel({
           />
         </div>
       )}
+      {game.result !== null && meSeat && (
+        <div className="dz-settle-portrait" aria-hidden>
+          <img src={portraitSrc} alt="" draggable="false" />
+        </div>
+      )}
       <h2 className="dz-h2">{t.gameDone}</h2>
       {game.result === "win" && (
         <p className="is-win">
@@ -70,13 +90,21 @@ export function SettlePanel({
         </p>
       )}
       {game.result === null && <p>{t.settleDraw}</p>}
-      {game.spring && <p className="dz-spring">{t.spring}</p>}
+      {game.spring && (
+        <p className="dz-spring">
+          <img className="dz-ico" src="/games/ddz/ddz-icon-spring.webp" alt="" draggable="false" />
+          {t.spring}
+        </p>
+      )}
       {game.result !== null && detail.length > 0 && (
         <div className="dz-settle-detail" aria-label={t.detailTitle}>
           <span className="dz-settle-detail-title">{t.detailTitle}</span>
-          {detail.map((label, i) => (
+          {detail.map((d, i) => (
             <span key={i} className="dz-detail-chip">
-              {label}
+              {d.icon && (
+                <img className="dz-ico" src={d.icon} alt="" draggable="false" />
+              )}
+              {d.text}
             </span>
           ))}
         </div>

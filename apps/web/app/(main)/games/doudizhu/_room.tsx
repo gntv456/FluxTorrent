@@ -25,12 +25,14 @@ import {
   fetchRank,
   RankBadge,
   type DzRank,
+  type PvpRoom,
 } from "./_parts/pvp-lobby";
 import {
   sortHand,
   type DzGame,
   type HintResp,
   type Overview,
+  type SeatMeta,
   type StateResp,
 } from "./_parts/room-types";
 
@@ -60,6 +62,8 @@ export default function DoudizhuRoom({
   const [pvpRooms, setPvpRooms] = useState<Awaited<
     ReturnType<typeof fetchRooms>
   >>(null);
+  /** 观战房座位资料（旁观视角对齐牌桌昵称/头像/称号；无本人余额）。 */
+  const [specRoom, setSpecRoom] = useState<PvpRoom | null>(null);
   const [rank, setRank] = useState<DzRank | null>(null);
   const { reload: reloadRounds } = useRounds("doudizhu", 20);
   const sfx = useSfx();
@@ -96,14 +100,29 @@ export default function DoudizhuRoom({
   }, [loadMeta, loadState, loadRooms]);
 
   const hasActiveGame = st?.game != null; // PvP 等待轮询闸
+  const game = st?.game ?? null;
+  const me = game?.seats[0]; const turnSeconds = st?.turn_seconds ?? 20;
+  const spectating = st?.spectating === true || game?.spectating === true;
+  /** PvP 房间座位资料（昵称/头像/称号）按座位号对齐牌桌；AI 房无 mine 回退立绘。 */
+  const metaSeats = pvpRooms?.mine?.seats ?? specRoom?.seats;
+  const seatMeta: SeatMeta[] | undefined = metaSeats?.map((s) => ({
+    seat: s.seat,
+    nickname: s.nickname,
+    avatar_url: s.avatar_url,
+    title: s.title,
+  }));
 
   useEffect(() => {
     if (hasActiveGame || mode !== "pvp") return;
     const tick = window.setInterval(() => void loadRooms(), 4000);
     return () => window.clearInterval(tick);
   }, [hasActiveGame, mode, loadRooms]);
-  const game = st?.game ?? null;
-  const me = game?.seats[0]; const turnSeconds = st?.turn_seconds ?? 20;
+  // 旁观无本人动作，需定时拉取回显桌面进度。
+  useEffect(() => {
+    if (!spectating) return;
+    const tick = window.setInterval(() => void loadState(), 4000);
+    return () => window.clearInterval(tick);
+  }, [spectating, loadState]);
   const selCombo = sel.size > 0 ? identifyCombo([...sel]) : null;
   const toggle = (c: number) => {
     sfx.play("select");
@@ -200,6 +219,31 @@ export default function DoudizhuRoom({
       await loadRooms();
     });
   }
+  /** 加入观战：旁观指定公开房；拉回看显局面与房间座位资料。 */
+  function spectate(rid: number) {
+    void run(async () => {
+      await api.post("/api/v1/games/doudizhu/pvp/spectate", {
+        room_id: rid,
+      });
+      const ps = await api
+        .get<{ room: PvpRoom | null; game: DzGame | null; spectating: boolean }>(
+          "/api/v1/games/doudizhu/pvp/state",
+        )
+        .catch(() => null);
+      setSpecRoom(ps?.room ?? null);
+      await loadState();
+      await loadRooms();
+    });
+  }
+  /** 退出观战：清旁观局面与座位资料。 */
+  function leaveWatch() {
+    void run(async () => {
+      await api.post("/api/v1/games/doudizhu/pvp/spectate/leave", {});
+      setSpecRoom(null);
+      setSt((cur) => (cur ? { ...cur, game: null, spectating: false } : cur));
+      await loadRooms();
+    });
+  }
   /** 准备/取消准备（waiting 房）。 */
   function toggleReady() {
     const mine = pvpRooms?.mine;
@@ -238,7 +282,10 @@ export default function DoudizhuRoom({
         hintBid={hintBid}
         hintNote={hintNote}
         busy={busy}
+        seatMeta={seatMeta}
+        spectating={spectating}
         onExit={() => {
+          if (spectating) return leaveWatch();
           setSt((cur) => (cur ? { ...cur, game: null } : cur));
           setSel(new Set());
         }}
@@ -258,8 +305,7 @@ export default function DoudizhuRoom({
             const cards = min !== undefined ? [min] : [];
             return void act("play", undefined, cards);
           }
-          // hint 走独立管线：失败/候选为空都落到过牌，绝不空转——
-          // 倒计时归零后 idle 恒真，出错不落牌会每渲染重触发成请求风暴。
+          // hint 走独立管线：失败/候选为空都落到过牌，绝不空转。
           void (async () => {
             try {
               const r = await api.post<HintResp>(
@@ -297,6 +343,9 @@ export default function DoudizhuRoom({
       headerLayout="center"
       // 牌桌要整页视口高度，不套 gs-stage-box 小盒（默认盒高随内容塌缩）。
       stageBox={false}
+      // side 只在战绩 tab 有内容——play/结算 tab 不挂两列栅格，否则
+      // 右侧空占 280px 白条（2026-11-27 实测截图）。
+      singleColumn={tab !== "records"}
       stage={
         tab === "play" && (
           <div className="doudizhu-page">
@@ -354,10 +403,12 @@ export default function DoudizhuRoom({
                   <PvpLobby
                     mode={variant}
                     stakeTiers={pvpRooms?.stake_tiers ?? [100, 500, 2000]}
+                    rooms={pvpRooms?.rooms ?? []}
                     busy={busy}
                     onQuickMatch={(s) => void pvp("join", s)}
                     onLeave={() => void pvp("leave")}
                     onDeal={() => void pvp("deal")}
+                    onSpectate={(rid) => void spectate(rid)}
                   />
                 )}
                 <DzExtras />

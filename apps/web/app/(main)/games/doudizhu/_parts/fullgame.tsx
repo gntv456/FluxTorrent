@@ -1,14 +1,15 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useI18n } from "@/i18n/client";
 import type { ComboResult } from "./combo";
-import type { DzGame, Seat } from "./room-types";
+import type { DzGame, Seat, SeatMeta } from "./room-types";
 import { sortHand } from "./room-types";
 import { CountdownBar } from "./countdown";
 import { DzTable } from "./table";
-import { Hand } from "./cards";
+import { Hand, PlayingCard } from "./cards";
 import { DzControls } from "./controls";
 import { DdCounter } from "./counter";
+import { useSfxToggle } from "@/components/game/use-sfx";
 
 /** 全屏沉浸壳：对局中整页=牌桌。退出=回大厅（game 置空由父层处理）。 */
 export function FullGame({
@@ -22,6 +23,8 @@ export function FullGame({
   hintBid,
   hintNote,
   busy,
+  seatMeta,
+  spectating,
   onExit,
   onExpire,
   onToggle,
@@ -45,6 +48,9 @@ export function FullGame({
   /** 提示不可用的行内说明（非错误色）。 */
   hintNote: string | null;
   busy: boolean;
+  seatMeta?: SeatMeta[];
+  /** 旁观视角：无本人手牌与行动权，隐藏手牌/控件/记牌器。 */
+  spectating?: boolean;
   onExit: () => void;
   onExpire: () => void;
   onToggle: (c: number) => void;
@@ -59,6 +65,21 @@ export function FullGame({
 }) {
   const { dict } = useI18n();
   const t = dict.games.doudizhu;
+  const spect = spectating === true;
+  const sfxToggle = useSfxToggle();
+  const [isFs, setIsFs] = useState(false);
+
+  useEffect(() => {
+    const onFs = () => setIsFs(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", onFs);
+    return () => document.removeEventListener("fullscreenchange", onFs);
+  }, []);
+  const toggleFs = () => {
+    if (document.fullscreenElement) void document.exitFullscreen();
+    else void document.documentElement.requestFullscreen().catch(() => {});
+  };
+  const statusText =
+    game.phase === "playing" ? t.roomPlaying : t.roomWaiting;
 
   // 键盘快捷键：叫分 0/1/2/3；出牌 Enter · 不出 Space · 提示 H（我方轮、非忙碌）
   useEffect(() => {
@@ -117,37 +138,72 @@ export function FullGame({
         </p>
       )}
       <div className="dz-fulltop">
-        <button type="button" className="dz-btn dz-exit" onClick={onExit}>
-          ← {t.backHall}
-        </button>
-        <div className="dz-status dz-fullstatus">
+        <div className="dz-top-left">
+          <span className="dz-top-room">
+            {t.title} · {t.roomId.replace("{n}", String(game.id))}
+          </span>
+          <span
+            className={`dz-top-status${game.phase === "playing" ? " is-live" : " is-wait"}`}
+          >
+            {statusText}
+          </span>
+          {spect && (
+            <span className="dz-top-status is-watch">{t.watchingTag}</span>
+          )}
+        </div>
+        <div className="dz-top-right">
+          {game.kitty.length > 0 && (
+            <div className="dz-top-kitty" aria-label={t.kitty}>
+              {game.kitty.map((k) => (
+                <PlayingCard key={k} card={k} small />
+              ))}
+            </div>
+          )}
+          <span className="dz-status-mult">
+            <img className="dz-ico" src="/games/ddz/ddz-icon-mult.webp" alt="" draggable="false" />
+            {t.mult.replace("{n}", String(game.multiplier))}
+          </span>
           <span className="dz-status-stake">
+            <img className="dz-ico" src="/games/ddz/ddz-icon-stake.webp" alt="" draggable="false" />
             {t.stakeTier.replace("{n}", String(game.stake))}
           </span>
-          <span>{t.mult.replace("{n}", String(game.multiplier))}</span>
           {game.bomb_count > 0 && (
             <span className="dz-status-bomb">
+              <img className="dz-ico" src="/games/ddz/ddz-icon-bomb.webp" alt="" draggable="false" />
               {t.bombs.replace("{n}", String(game.bomb_count))}
             </span>
           )}
-          {game.landlord !== null && (
-            <span>
-              {(game.landlord === 0 ? t.seatYou : t.seatLandlord) +
-                (game.landlord === 0
-                  ? ""
-                  : " · " + t.aiName.replace("{n}", String(game.landlord)))}
-            </span>
+          <button
+            type="button"
+            className="dz-btn dz-top-btn"
+            aria-pressed={sfxToggle.on}
+            onClick={sfxToggle.toggle}
+          >
+            {sfxToggle.on ? t.soundOn : t.soundOff}
+          </button>
+          <button
+            type="button"
+            className="dz-btn dz-top-btn"
+            aria-pressed={isFs}
+            onClick={toggleFs}
+          >
+            {t.fullscreen}
+          </button>
+          {!spect && (
+            <span className="dz-fullbalance">{balance ?? "—"}</span>
           )}
+          <button type="button" className="dz-btn dz-exit is-danger" onClick={onExit}>
+            {spect ? t.leaveWatch : t.exitRoom}
+          </button>
         </div>
-        <span className="dz-fullbalance">{balance ?? "—"}</span>
       </div>
       <CountdownBar
         game={game}
         seconds={turnSeconds}
         onExpire={onExpire}
       />
-      <DzTable game={game} full />
-      {me && (game.phase === "playing" || game.phase === "discard") && (
+      <DzTable game={game} full seatMeta={seatMeta} spectating={spect} />
+      {!spect && me && (game.phase === "playing" || game.phase === "discard") && (
         <>
           <div
             className={`dz-me-count dz-fullcount${me.count <= 3 ? " is-low" : ""}`}
@@ -163,7 +219,10 @@ export function FullGame({
           />
         </>
       )}
-      {game.phase === "playing" && <DdCounter game={game} me={me} />}
+      {!spect && game.phase === "playing" && (
+        <DdCounter game={game} me={me} />
+      )}
+      {!spect && (
       <DzControls
         game={game}
         hintBid={hintBid}
@@ -180,6 +239,7 @@ export function FullGame({
         onKeep={onKeep}
         onDouble={onDouble}
       />
+      )}
     </div>
   );
 }

@@ -55,6 +55,13 @@ export function PlayingCard({
       ? "/games/ddz/ddz-joker-big.webp"
       : "/games/ddz/ddz-joker-small.webp"
     : null;
+  // 人头牌 J/Q/K（rank 9/10/11）成套中式人物位图；A 与数字牌仍走花色降级。
+  const FACE_RANK: Record<number, string> = { 9: "j", 10: "q", 11: "k" };
+  const FACE_SUIT = ["spade", "heart", "diamond", "club"];
+  const faceImg =
+    !isJoker && FACE_RANK[rank]
+      ? `/games/ddz/ddz-face-${FACE_RANK[rank]}-${FACE_SUIT[card % 4]}.webp`
+      : null;
   return (
     <button
       type="button"
@@ -83,6 +90,9 @@ export function PlayingCard({
           <span className="dz-card-pip" aria-hidden>
             {jokerImg && (
               <img className="dz-card-joker-img" src={jokerImg} alt="" />
+            )}
+            {faceImg && (
+              <img className="dz-card-face-img" src={faceImg} alt="" />
             )}
             {isJoker ? (card === 53 ? "★" : "☆") : suit}
           </span>

@@ -53,6 +53,21 @@ fn millis() -> u128 {
         .as_millis()
 }
 
+/// 应用全部待跑迁移（与 main.rs 启动时同一条 Migrator；SQL 幂等可重复执行）。
+/// DB 级测试进程不经过 main，需先把 schema 拉到最新，否则新表/列查不到。
+pub(crate) async fn apply_migrations(db: &PgPool) {
+    let dir = ["./migrations", "apps/api/migrations"]
+        .into_iter()
+        .find(|p| std::path::Path::new(p).exists())
+        .unwrap_or("./migrations");
+    sqlx::migrate::Migrator::new(std::path::Path::new(dir))
+        .await
+        .expect("构造迁移器")
+        .run(db)
+        .await
+        .expect("应用迁移");
+}
+
 /// 清理：users 级联带走 arcade_doudizhu_games；spark_ledger 按 idem 前缀清。
 /// cleanup 按共享 TAG 全前缀扫删，跨测试有数据耦合——只许 `--test-threads=1`
 /// 串行跑，并行会互删对方用户（`pvp_room_full_flow` 全红即为误用信号）。

@@ -1,7 +1,7 @@
 "use client";
 import { useI18n } from "@/i18n/client";
 import { Badge } from "@/components/ui/badge";
-import { cardColor, cardLabel, cardSuit, type DzGame } from "./room-types";
+import { cardColor, cardLabel, cardSuit, type DzGame, type SeatMeta } from "./room-types";
 import { PlayingCard } from "./cards";
 import { comboFromBackend, type ComboKind } from "./combo";
 import { COMBO_KEY } from "./controls";
@@ -9,8 +9,9 @@ import { COMBO_KEY } from "./controls";
 function seatName(
   t: ReturnType<typeof useI18n>["dict"]["games"]["doudizhu"],
   seat: number,
+  spectating?: boolean,
 ) {
-  if (seat === 0) return t.you;
+  if (seat === 0 && !spectating) return t.you;
   return t.aiName.replace("{n}", String(seat));
 }
 
@@ -63,14 +64,26 @@ function badgeTier(kind: ComboKind): "rocket" | "bomb" | "flash" | "base" {
 
 /** 牌桌舞台：环形三座（左上/右上 AI + 下方玩家位）+ 中央落牌 + 底牌。
  *  full=全屏壳模式：状态行由外壳渲染，桌内不再重复。 */
-export function DzTable({ game, full }: { game: DzGame; full?: boolean }) {
+export function DzTable({
+  game,
+  full,
+  seatMeta,
+  spectating,
+}: {
+  game: DzGame;
+  full?: boolean;
+  seatMeta?: SeatMeta[];
+  spectating?: boolean;
+}) {
   const { dict } = useI18n();
   const t = dict.games.doudizhu;
   const seatOf = (s: number) => game.seats.find((x) => x.seat === s);
+  const metaOf = (s: number) => seatMeta?.find((m) => m.seat === s);
   const me = seatOf(0);
   const revealed = game.landlord !== null;
   const rocket = game.last?.kind?.toLowerCase() === "rocket";
   const lastCombo = comboFromBackend(game.last?.kind);
+  const doneSeats = game.seats.filter((s) => s.count === 0);
   const fromCls =
     game.last?.seat === 1
       ? "from-left"
@@ -85,12 +98,15 @@ export function DzTable({ game, full }: { game: DzGame; full?: boolean }) {
       game.phase === "bidding"
         ? game.bids.find((b) => b[0] === s)
         : undefined;
-    const avatarSrc =
+    const meta = metaOf(s);
+    const fallbackAvatar =
       seat.role === "landlord"
         ? "/games/ddz/ddz-landlord.webp"
         : seat.is_ai
           ? "/games/ddz/ddz-ai.webp"
           : "/games/ddz/ddz-farmer.webp";
+    const avatarSrc = meta?.avatar_url || fallbackAvatar;
+    const label = meta?.nickname || seatName(t, s, spectating);
     return (
       <div
         className={`dz-seat is-pos-${s}${game.turn === s ? " is-turn" : ""}`}
@@ -107,8 +123,11 @@ export function DzTable({ game, full }: { game: DzGame; full?: boolean }) {
         >
           <img src={avatarSrc} alt="" draggable="false" />
         </div>
+        <span className="dz-seat-count-badge" aria-hidden>
+          {seat.count}
+        </span>
         <div className="dz-seat-name">
-          {seatName(t, s)}
+          {label}
           {seat.role && (
             <Badge
               tone={seat.role === "landlord" ? "danger" : "neutral"}
@@ -119,6 +138,7 @@ export function DzTable({ game, full }: { game: DzGame; full?: boolean }) {
             </Badge>
           )}
         </div>
+        {meta?.title && <div className="dz-seat-title">{meta.title}</div>}
         <CardBackFan count={seat.count} />
         {bubble && <div className="dz-bubble">{bubble}</div>}
         {bid !== undefined && (
@@ -150,11 +170,16 @@ export function DzTable({ game, full }: { game: DzGame; full?: boolean }) {
         {!full && (
           <div className="dz-status">
             <span className="dz-status-stake">
+              <img className="dz-ico" src="/games/ddz/ddz-icon-stake.webp" alt="" draggable="false" />
               {t.stakeTier.replace("{n}", String(game.stake))}
             </span>
-            <span>{t.mult.replace("{n}", String(game.multiplier))}</span>
+            <span className="dz-status-mult">
+              <img className="dz-ico" src="/games/ddz/ddz-icon-mult.webp" alt="" draggable="false" />
+              {t.mult.replace("{n}", String(game.multiplier))}
+            </span>
             {game.bomb_count > 0 && (
               <span className="dz-status-bomb">
+                <img className="dz-ico" src="/games/ddz/ddz-icon-bomb.webp" alt="" draggable="false" />
                 {t.bombs.replace("{n}", String(game.bomb_count))}
               </span>
             )}
@@ -162,7 +187,7 @@ export function DzTable({ game, full }: { game: DzGame; full?: boolean }) {
               <span>
                 {(game.landlord === 0 ? t.seatYou : t.seatLandlord) +
                   " · " +
-                  seatName(t, game.landlord)}
+                  seatName(t, game.landlord, spectating)}
               </span>
             )}
           </div>
@@ -189,7 +214,18 @@ export function DzTable({ game, full }: { game: DzGame; full?: boolean }) {
               </div>
               {lastCombo && (
                 <span className={`dz-play-badge is-${badgeTier(lastCombo)}`}>
+                  {lastCombo === "bomb" && (
+                    <img className="dz-ico" src="/games/ddz/ddz-icon-bomb.webp" alt="" draggable="false" />
+                  )}
+                  {lastCombo === "rocket" && (
+                    <img className="dz-ico" src="/games/ddz/ddz-icon-rocket.webp" alt="" draggable="false" />
+                  )}
                   {t[COMBO_KEY[lastCombo]]}
+                </span>
+              )}
+              {game.landlord === game.last?.seat && (
+                <span className="dz-play-landlord" aria-hidden>
+                  {t.seatLandlord}
                 </span>
               )}
             </div>
@@ -207,6 +243,15 @@ export function DzTable({ game, full }: { game: DzGame; full?: boolean }) {
             </span>
           )}
         </div>
+        {doneSeats.length > 0 && (
+          <div className="dz-center-broadcast" aria-live="polite">
+            {doneSeats.map((s) => (
+              <span key={s.seat}>
+                {t.outDone.replace("{name}", seatName(t, s.seat, spectating))}
+              </span>
+            ))}
+          </div>
+        )}
         {revealed && game.kitty.length > 0 && (
           <div className="dz-kitty">
             <span className="dz-kitty-label">{t.kitty}</span>

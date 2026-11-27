@@ -177,8 +177,34 @@
 | P1-3 | ✅ 对局历史复用通用 `GameRecordsPanel`（`/games/rounds` ref_type=`doudizhu`）；❌ 回放分享链接、对手胜率数据待后端 |
 | P1-4 | ✅ 段位从已结算局实时派生（七档 tier 0/1/5/15/30/60/100 胜场，只读端点 `GET /games/doudizhu/rank`，不建表不发货币）；❌ 赛季奖励发放、排行榜榜单待后端 |
 | P1-2 | ❌ 匹配分层、场次准入门槛、在线人数：无后端模型，前端未造假置灰 |
-| P1-5 | 🟡 已落地：夜景场景背景 `ddz-bg-night.webp`（1920×1080，38KB，深墨绿暗金中式飞檐/灯笼/烟花，中央下部压暗留桌，挂页面底层、渐变兜底、浅色档不挂）；大小王徽章 `ddz-joker-big.webp`（金橙双龙山冠日轮）/ `ddz-joker-small.webp`（紫银月轮星芒祥云），256 透明 webp，王牌中央图位叠在星号降级之上，图缺失仍见角标符号；❌ 角色全身立绘、J/Q/K/A 花牌人物位图、成套 ICON 与特效边框：素材待补 |
+| P1-5 | 🟡 已落地：① 夜景场景背景 `ddz-bg-night.webp`（1920×1080，38KB，深墨绿暗金中式飞檐/灯笼/烟花，中央下部压暗留桌，挂页面底层、渐变兜底、浅色档不挂）；② 大小王徽章 `ddz-joker-big.webp`（金橙双龙山冠日轮）/ `ddz-joker-small.webp`（紫银月轮星芒祥云），256 透明 webp；③ J/Q/K 花牌人物成套 12 张 `ddz-face-<j|q|k>-<spade|heart|diamond|club>.webp`（中式武将/仕女半写实 2.5D，256×340 透明 webp，19.8–30.6KB，按花色配色），牌面中央叠人像、花色降级，A 与数字牌仍走花色阵列；④ 角色全身立绘成套 3 张 `ddz-full-<landlord|farmer|ai>.webp`（256×340 透明 webp，沿用胸像身份母版，农民/AI 经专用去底工具抠除黑底），按我方座位身份挂结算面板代表站位，失败态降饱和提亮；⑤ 成套金边图标 5 张 `ddz-icon-<stake|mult|bomb|rocket|spring>.webp`（64×64 透明 webp，Q 版 2.5D），接入桌内底分/倍数/炸弹状态、落牌炸弹/王炸徽章、春天胶囊与结算明细胶囊；特效边框沿用既有 CSS 分层光晕与金边胶囊，未另造位图边框。⚠️ 浅色主题档下人像/图标的融合观感尚未专门复验 |
 | P1-6 | 🟡 合成短音已补：P2-1 新阶段专属 cue（抢地主 `grab` / 弃三张 `discard` / 加倍 `double`），PvP 准备与明牌勾选复用既有 `tick`/`select`；仍 ❌ 真人台词播报与 BGM：零音频口径阻塞，须先取得可商用、可再分发的授权素材或自营录制方案，禁止抓取第三方音效板的商业游戏原声 |
+
+**本轮 HUD / 控件补齐（对照第二张在运营参考图，2026-11-26 第二批）**
+
+| 项 | 落地情况 | 阻塞 / 未造假 |
+|---|---|---|
+| 顶部 HUD 左右分区 | ✅ 全屏壳顶栏：左区房间名 + 局号 + 状态胶囊（`playing` 绿「对局进行中」/ 等待灰）；右区底牌迷你三张 + 底分 + 倍数 + 炸弹 + 音效开关 + 全屏 + 余额金点 + 退出房间红钮；非全屏桌中央状态行保留参数，全屏壳内不重复 | — |
+| 座位标识 | ✅ 头像右上剩牌数角标（地主位金底）；落牌方为地主时牌型徽章旁挂红色「地主」签；任一座位手牌出完（`count===0`）中央出播报条 | — |
+| 记牌器形态 | ✅ 由 8 列数字网格改为底部横向胶囊点数条（点数 + 剩余张数并排），宽屏一行、窄屏两行自然换行 | — |
+| 系统控件 | ✅ 音效开关复用 `useSfxToggle`（localStorage 持久化、开通即 tick）；全屏 `requestFullscreen/exitFullscreen` + `fullscreenchange` 监听回写；退出房间红边危险态 hover 反白 | — |
+| 三语 | ✅ 新增 `soundOn / soundOff / fullscreen / exitRoom / outDone` 五键，zh-CN / zh-TW / en 同步 | — |
+| 观战人数 `0/20` | ✅ 后端底座：`arcade_doudizhu_spectators`（一人一房一行，不占座不扣底分，退房级联）；端点 `POST /pvp/spectate`（已是座位玩家拒绝、房须 waiting/playing）、`POST /pvp/spectate/leave`；房间视图带 `spectators` 计数；前端 RoomWait 只读渲染观战数。✅ **本轮打通观战身份读局回显**：无本人活跃局时回退 `spectate_room_db` 定位观战房 → `load_room_game_db` 取权威活跃镜像行，`spectator_mask` 清三座 cards/wildcards、`is_me=false`、`my_turn=false`，响应带 `spectating:true`；`/state` 与 `/pvp/state` 两端点同口径回退；公开列表放宽到 `waiting/playing` 并回带 `status`；前端大厅房间行「观战」入口 + 全屏只读旁观牌桌（隐手牌/记牌器/操作区/本人余额，旁观标签，4s 轮询，退出走 `spectate/leave`） | 观战上限 20 人的风控口径待定稿；waiting 未开局房的大厅态「旁观中」标记与退出入口未专门分支；观战回显依赖 `/pvp/state` room.seats 对齐昵称，缺失时回退立绘与 AI 名 |
+| 私房 / 公开标签 | ✅ 房间加 `visibility`（`public`/`private`，CHECK 约束）；公开匹配列表 `list_waiting` 与随机撮合只扫 public；join body `private` 建私房；前端等待视图渲染「私密」标签 | `join_code` 口令字段预留未启用、HTTP 不校验；凭房号入座端点与口令验真待产品口径定稿后再开 |
+| 座位昵称 / 座位各自余额 | ✅ 座位视图 LEFT JOIN users 取 `username`/`avatar_url`/`title`/`spark_balance`；余额仅本人座下发、他人座为 null（不亮筹码）；等待房渲染昵称、头像（avatar_url 优先、立绘兜底）、称号、己方余额；对局中牌桌座位卡经 `seatMeta` 按座位号对齐 PvP 昵称/头像/称号，AI 房回退既有立绘与 AI 名 | 对局中座位余额仍不亮他人筹码；观战者资料卡待旁观视图落地后再挂 |
+| 聊天消息频道 | ✅ 后端底座：`arcade_doudizhu_room_messages`（按 `(room_id, created_at DESC)` 索引）；`GET /pvp/messages`（最近 50 条、时间升序、昵称回填）、`POST /pvp/messages`（仅座位或当前观战者可发；`users.status=1` 禁言拦截；正文 trim 后截断 120 字、空拒）；前端 `PvpMessage` 类型 + `RoomChat` 组件已接等待房：消息列表（自动滚底）、输入框、回车/按钮发送、5s 轮询刷新、前端先截 120 字 | 表情贴纸、快捷消息条、敏感词词库、对局中牌桌内嵌频道待产品定稿；禁言本人状态前端未预取（发送失败静默保留草稿） |
+| 对局中「查看结算」回看 | ✅ 复用既有 `state.last` 终局快照（`StateResp.last: DzGame | null`），本轮未新增独立回放端点 | ❌ 对局中「查看结算」入口按钮待前端挂接；回放分享链接、牌局录像落库仍待后端 |
+
+**后端社交底座落地（2026-11-26 第三批，Rust actix + Next15/React19）**
+
+- 迁移 `0526_doudizhu_social.sql`：`arcade_doudizhu_rooms` 加 `visibility`（public/private，CHECK）与预留 `join_code`；新建 `arcade_doudizhu_spectators`（PK room+user，双索引，CASCADE）、`arcade_doudizhu_room_messages`（identity 主键，`(room_id, created_at DESC)` 索引，CASCADE）。
+- 读侧 `doudizhu_pvp_view.rs`：座位 LEFT JOIN users 取昵称/头像/称号/余额；房间带 `visibility`/`spectators`；`list_waiting` 只扫 public。写侧 `doudizhu_pvp_repo.rs`：`create_room_tx`/`join_or_create_tx` 签名加 `visibility`；新增 `is_seat_db`、`spectate_tx`（upsert）、`leave_spectate_db`、`spectate_room_db`、`post_message_tx`、`list_messages_db`（库内倒序取 N 条后反转为升序）；`MSG_BODY_MAX=120`。
+- HTTP 端点（均过 `require_auth` + `check_minclass("doudizhu")`）：`POST /pvp/spectate`、`POST /pvp/spectate/leave`、`GET /pvp/messages`、`POST /pvp/messages`；join body `private` 映射 visibility；发言前自查 `users.status`（禁言 1 拦截，封禁 2 已由鉴权层拦）。
+- 复验：后端 `cargo check` 0 error；非 ignored 单元 `cargo test doudizhu` **71 passed / 0 failed**；新增两个 DB 级测试 `pvp_social_spectate_messages_and_profile`、`pvp_visibility_list_filter` 本地连库通过；前端 `tsc --noEmit` 0 错误、combo 全 PASS、fixture 十视图无溢出。
+- 前端第四批挂接：`RoomChat`（`_parts/room-chat.tsx`）接入等待房，消息列表 + 输入框 + 5s 轮询 + 回车发送 + 前端截 120 字；牌桌 `DzTable` 新增可选 `seatMeta`，由 `_room` 从 `pvpRooms.mine.seats` 映射昵称/头像/称号经 `FullGame` 透传，AI 房无 meta 回退立绘与 AI 名；三语补 `chatTitle / chatPlaceholder / chatSend / chatEmpty / spectators / privateTag / myBalance`。复验 tsc 0 错误、combo 29 项全 PASS、桌面/移动等待房 fixture 无横向纵向溢出。
+- ✅ 本轮（观战读局 + 旁观视图）：repo 新增 `load_room_game_db(db, rid)`（按 room_id 取最早一条 `bidding/playing` 活跃镜像行，只读不持行锁，复用 `decode_row`）；抽取共享 `spectator_mask(v)` 清三座手牌/癞子并置 `is_me=false`、`my_turn=false`，`doudizhu_http.rs` 与 `doudizhu_pvp_http.rs` 复用同一函数；两个 state 端点在 `load_active(uid)` 为 None 时回退观战房取局回显，game 套 mask 并带 `spectating:true`；`list_waiting` SQL 放宽到 `status IN ('waiting','playing')`，rooms 项补 `status`。新增 DB 测试 `pvp_spectator_reads_room_game`（第四人观战：断言无本人活跃行、按观战房能取到权威活跃局、非座位）本地连库通过。前端：`DzGame`/`StateResp`/`PvpRoom` 类型补 `spectating`/`status`；`PvpLobby` 新增房间列表与 `onSpectate`；主件 `spectate(rid)`/`leaveWatch()` 走统一管线（`/pvp/spectate` → `/pvp/state` 存 specRoom → `loadState` → `loadRooms`），旁观 4s 轮询；`FullGame`/`DzTable` 传 `spectating`，旁观态隐手牌、记牌器、控件、本人余额，顶栏旁观标签、退出文案切 `leaveWatch`；三语补 `watchBtn/watchingTag/leaveWatch/roomListEmpty`；CSS 补 `.dz-room-list/.dz-room-row(+info/title/meta)` 与 `.is-watch` 标签。复验：tsc 0 错误、combo 0 FAIL、fixture 既有视图无溢出；后端非 ignored 71 passed、ignored 11 passed（唯一 FAILED 为 #102 mirror 坐标系缺口）。
+- ⚠️ 遗留 DB 测试（本轮复查后）：原 3 个 ignored 未达标项中，`full_game_settles_with_ledger`、`full_wild_game_settles` 已修复转绿——根因是测试驱动只分 `Bidding/play`，未适配 P2-1 新增的 Grab/Discard/Double 阶段，轮到玩家处于这三段时误发 `play` 被状态机拒、提前退出；已按全阶段分发动作（grab 不抢 / discard 空弃 / double 不倍 / play 过牌），本地连库 10 passed。仅剩 `pvp_mirror_events_fan_out` 未达标，根因已定位：`discard()` 末把 Double 起始 `turn` 写死行内 0，而镜像三行行内 0 指向不同物理玩家；轮转事件 seat 经轮换变换后与 peer 行内 turn 指针脱节，加倍三票无法在镜像行凑齐，peer 停在 Double。bid/grab/discard/play 链路已同步，仅剩加倍（及抢地主多票轮转）需在状态机/重放层统一物理座位坐标后补齐，单独排期。
+- 口径默认（澄清超时未答，按推荐落地，若改口需回滚）：余额仅己方座位可见；私密房本轮只做标签与公开列表过滤、不启用口令；六项本轮全做（表 + repo + HTTP + 单测，前端类型与只读视图同步）。
 
 **P2-1 玩法规则：✅ 五项一次性落地**
 
