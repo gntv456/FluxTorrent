@@ -112,8 +112,8 @@
   "apps/web/components/home-attendance.tsx::wide": 1,
   "apps/web/components/home-layout-editor.tsx::wide": 5,
   "apps/web/components/home-resource-stats.tsx::wide": 1,
-  "apps/web/components/icons.tsx": 740,
-  "apps/web/components/icons.tsx::wide": 19,
+  "apps/web/components/icons.tsx": 71,
+  "apps/web/components/icons.tsx::wide": 1,
   "apps/web/components/increment-bulk.tsx": 439,
   "apps/web/components/invite-manager-parts.tsx::wide": 4,
   "apps/web/components/layout.tsx::wide": 5,
@@ -623,5 +623,7 @@
   "apps/api/src/games_http/doudizhu_pvp_http.rs": 468,
   "apps/api/src/games/doudizhu_pvp_db_tests.rs": 454,
   "apps/web/components/nav-drawer.tsx": 302,
-  "apps/web/components/gacha/gacha-stage.tsx": 2171
+  "apps/web/components/gacha/gacha-stage.tsx": 2171,
+  "apps/web/components/icon-paths.tsx": 676,
+  "apps/web/components/icon-paths.tsx::wide": 18
 }
