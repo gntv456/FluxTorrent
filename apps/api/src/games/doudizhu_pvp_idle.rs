@@ -11,14 +11,15 @@ fn dberr(e: sqlx::Error) -> DomainError {
     DomainError::Internal(anyhow::Error::from(e))
 }
 
+/// 返回是否实际发生了托管代打（调用方据此作废用户的迟到动作）。
 pub(crate) async fn expire_stale_tx(
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     uid: i64,
     gid: i64,
     idle_secs: i64,
-) -> DomainResult<()> {
+) -> DomainResult<bool> {
     if idle_secs <= 0 {
-        return Ok(());
+        return Ok(false);
     }
     let stale: Option<(i64,)> = sqlx::query_as(
         "SELECT id FROM arcade_doudizhu_games \
@@ -34,7 +35,7 @@ pub(crate) async fn expire_stale_tx(
     .await
     .map_err(dberr)?;
     let Some((gid,)) = stale else {
-        return Ok(()); // 没停摆：正常返回
+        return Ok(false); // 没停摆：正常返回
     };
     let mut row = load_row_by(tx, uid, gid).await?;
     tracing::warn!(
@@ -162,5 +163,5 @@ pub(crate) async fn expire_stale_tx(
     } else {
         super::doudizhu_play_store::persist_state_tx(tx, &mut row).await?;
     }
-    Ok(())
+    Ok(true)
 }

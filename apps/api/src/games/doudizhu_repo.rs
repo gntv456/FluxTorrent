@@ -289,13 +289,19 @@ pub(crate) async fn apply_action_tx(
     idle_secs: i64,
 ) -> DomainResult<GameRow> {
     // 懒托管入口 1：本局轮到玩家但停摆超阈值 → AI 代打到底。
-    super::doudizhu_play_repo::expire_stale_tx(tx, uid, gid, idle_secs).await?;
+    // kicked = 本次确实代打了（含把局推过用户动作所在阶段甚至终局结算）。
+    let kicked =
+        super::doudizhu_play_repo::expire_stale_tx(tx, uid, gid, idle_secs)
+            .await?;
     let mut row = load_by_id_tx(tx, uid, gid).await?;
-    // 托管把局代打完成时 phase=Done（settle 已在同一事务落好）——此时
-    // my_turn 恒 false，直接透传结果给调用方；否则 my_turn 闸会把已结算
-    // 的局连事务一起回滚，玩家白丢胜负（dev.49 百灵 gid=1 实测单张残局
-    // 触发托管 → 胜利被回滚 → 反复 400「还没轮到你」）。
+    // 托管完成后：Done 直接透传结果；未到 Done 但阶段已离开用户动作
+    // （如 bid 到达时已 playing）——迟到动作作废，透传托管后局面。
+    // 否则 my_turn/阶段闸会把代打成果连同事务一起回滚，玩家白丢胜负
+    // （dev.49 百灵 gid=1 单张残局胜利被回滚、gid=2 叫分被回滚，双实测）。
     if row.state.phase == Phase::Done {
+        return Ok(row);
+    }
+    if kicked {
         return Ok(row);
     }
     if !row.my_turn {
