@@ -58,7 +58,7 @@ WHERE t.id = sp.torrent_id
 -- 本批移出行若有在区的 preserve_free 短券，立即失效（不等 hourly 对齐）
 UPDATE promotions p SET ends_at = now()
 FROM seed_preserve sp
-WHERE p.torrent_id = sp.torrent_id AND p.source = 'preserve_free'
+WHERE p.torrent_id = sp.torrent_id AND p.source::text = 'preserve_free'
   AND p.ends_at > now()
   AND sp.exit_reason = 'new_policy_sweep' AND sp.exited_at IS NOT NULL;
 
