@@ -31,6 +31,8 @@ export function PlayingCard({
   small?: boolean;
   wild?: boolean;
 }) {
+  const { dict } = useI18n();
+  const jt = dict.games.doudizhu;
   const color = cardColor(card);
   const label = cardLabel(card);
   const suit = cardSuit(card);
@@ -49,7 +51,7 @@ export function PlayingCard({
   ]
     .filter(Boolean)
     .join(" ");
-  const jokerCorner = card === 53 ? "大" : "小";
+  const jokerCorner = card === 53 ? jt.jokerBig : jt.jokerSmall;
   const jokerImg = isJoker
     ? card === 53
       ? "/games/ddz/ddz-joker-big.webp"

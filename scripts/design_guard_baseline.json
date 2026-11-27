@@ -1085,9 +1085,9 @@
  },
  "app/(main)/games/page.tsx": {
   "h1": [],
-  "h1First": 151,
+  "h1First": 160,
   "palette": [
-   271
+   241
   ],
   "color": []
  },

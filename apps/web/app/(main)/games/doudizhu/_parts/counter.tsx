@@ -34,7 +34,7 @@ export function DdCounter({ game, me }: { game: DzGame; me?: Seat }) {
   const total = remaining.reduce((s, n) => s + n, 0);
 
   const label = (r: number) =>
-    r === 13 ? "小王" : r === 14 ? "大王" : cardLabel(r * 4);
+    r === 13 ? t.jokerSmallName : r === 14 ? t.jokerBigName : cardLabel(r * 4);
 
   return (
     <div className="dz-counter">
