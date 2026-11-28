@@ -770,6 +770,9 @@ export interface SeedRequest {
 
 export interface PreserveItem {
   torrent_id: number;
+  /** 资源库行同构 id（TorrentTr/TorrentListViews adaptId 兼容两种来源） */
+  id: number;
+  info_hash: string;
   name: string;
   size: number;
   seeders: number;
@@ -788,10 +791,13 @@ export interface PreserveItem {
   sticky: boolean;
   promotion: string | null;
   promotion_ends_at: string | null;
+  rating: string | null;
   poster: string | null;
+  imdb_id: string | null;
+  approval_status: number;
   owner_name: string | null;
   created_at: string;
-  /** 行内标签徽标（0159 P1）：保种区行同构复用；该接口暂不返回 → 恒空 */
+  /** 行内标签徽标（0159 P1）：保种区行同构复用 */
   tags?: TagBadge[];
   /** 维度名列表（R3-三步）：保种区接口暂不返回 → 恒空数组 */
   sec_names?: string[];

@@ -94,16 +94,23 @@ pub(super) async fn preserve_list(
     let eends = crate::torrents::promo::effective_ends();
     let rows = sqlx::query_as::<_, PreserveRow>(
         &format!(
-            "SELECT sp.torrent_id, t.name, t.size, t.seeders, u.username AS claimed_by, \
+            "SELECT sp.torrent_id, t.id AS id, t.info_hash, t.name, t.size, \
+         t.seeders, t.leechers, t.times_completed, \
          t.small_descr, t.category_id, t.medium_id, t.grade_id, t.edition_id, \
-         t.leechers, t.times_completed, \
          (SELECT count(*) FROM comments c WHERE c.torrent_id = t.id) AS comments, \
-         t.official_tag, t.sticky, t.anonymous, \
+         t.official_tag, t.sticky, t.anonymous, t.approval_status, \
          {ekind} AS promotion, \
          {eends} AS promotion_ends_at, \
+         t.media_info->>'rating' AS rating, \
          t.media_info->>'poster' AS poster, \
+         t.media_info->>'imdb_id' AS imdb_id, \
          CASE WHEN t.anonymous THEN NULL ELSE o.username END AS owner_name, \
-         t.created_at \
+         t.created_at, \
+         (SELECT COALESCE(json_agg(json_build_object('id', d.id, 'name', d.name, \
+              'kind', d.kind, 'bg_color', d.bg_color, 'color', d.color) \
+              ORDER BY d.sort DESC, d.id), '[]'::json) \
+          FROM tags tg JOIN tag_dict d ON d.id = tg.tag_id \
+          WHERE tg.torrent_id = t.id) AS tags \
              FROM seed_preserve sp \
              JOIN torrents t ON t.id = sp.torrent_id \
              LEFT JOIN users u ON u.id = sp.claimed_by \
@@ -248,11 +255,14 @@ pub(super) async fn plugins_overview(
 #[derive(sqlx::FromRow, serde::Serialize)]
 struct PreserveRow {
     torrent_id: i64,
+    #[serde(rename = "id")]
+    id: i64,
+    info_hash: String,
     name: String,
     size: i64,
     seeders: i32,
     claimed_by: Option<String>,
-    // 资源库行同构字段（保种区列表复用 TorrentTr 渲染，参考站口径）
+    // 资源库行同构字段（保种区列表复用 TorrentTr / TorrentListViews 渲染）
     small_descr: Option<String>,
     category_id: i32,
     medium_id: Option<i32>,
@@ -265,11 +275,15 @@ struct PreserveRow {
     official_tag: bool,
     sticky: bool,
     anonymous: bool,
+    approval_status: i32,
     promotion: Option<String>,
     promotion_ends_at: Option<chrono::DateTime<chrono::Utc>>,
+    rating: Option<String>,
     poster: Option<String>,
+    imdb_id: Option<String>,
     owner_name: Option<String>,
     created_at: chrono::DateTime<chrono::Utc>,
+    tags: Option<serde_json::Value>,
 }
 
 #[derive(Deserialize)]
