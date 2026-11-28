@@ -291,7 +291,7 @@
   "apps/api/src/v4_http.rs::wide": 1,
   "apps/api/src/v4_http/metrics.rs::wide": 4,
   "apps/api/src/twofa_http/admin_misc.rs::wide": 1,
-  "apps/api/src/torrent_http/interact.rs": 476,
+  "apps/api/src/torrent_http/interact.rs": 266,
   "apps/api/src/torrent_http/list.rs": 314,
   "apps/api/src/torrent_http/manage.rs": 441,
   "apps/api/src/torrent_http/manage.rs::wide": 1,
@@ -633,5 +633,6 @@
   "apps/api/src/games_http/fishing_pond/state_ops.rs": 191,
   "apps/api/src/torrent_http/manage_price.rs": 87,
   "apps/api/src/games_http/fishing_pond/rules_shop.rs": 188,
-  "apps/api/src/games_http/fishing_pond/rules_shop.rs::wide": 2
+  "apps/api/src/games_http/fishing_pond/rules_shop.rs::wide": 2,
+  "apps/api/src/torrent_http/interact_social.rs": 223
 }

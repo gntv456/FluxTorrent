@@ -57,6 +57,7 @@ pub use file_conflict::*;
 // 查询参数归一器（0267）：对外兼容层要用同一套「体积/优惠/日期/标签」解析口径，
 // 复制一份必然漂移（历史上 RSS/Torznab 的促销标签就是这么各写一份的）
 mod interact_bookmark;
+mod interact_social;
 pub use interact::*;
 pub use interact_bookmark::*;
 pub use list::*;
@@ -97,11 +98,17 @@ pub(crate) use detail::torrent_thanks;
 pub(crate) use file_conflict::file_conflicts;
 pub(crate) use interact::create_comment;
 pub(crate) use interact::delete_comment;
-pub(crate) use interact::do_bookmark;
-pub(crate) use interact::do_thank;
-pub(crate) use interact::request_reseed;
 pub(crate) use interact::toggle_comment_like;
 pub(crate) use interact_bookmark::delete_bookmark;
+#[doc(hidden)]
+pub(crate) use interact_social::__path_do_bookmark;
+#[doc(hidden)]
+pub(crate) use interact_social::__path_do_thank;
+#[doc(hidden)]
+pub(crate) use interact_social::__path_request_reseed;
+pub(crate) use interact_social::do_bookmark;
+pub(crate) use interact_social::do_thank;
+pub(crate) use interact_social::request_reseed;
 pub(crate) use interact_tags::torrent_tag_put;
 pub(crate) use interact_tags::torrent_tags;
 // utoipa 的 paths! 在「handler 可见的模块」里找 __path_* 类型，
