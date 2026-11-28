@@ -40,6 +40,20 @@ pub async fn preserve_exit(db: &PgPool) -> anyhow::Result<u64> {
     .bind(max_seeders)
     .execute(db)
     .await?;
+    // 零做种守卫（2026-11-28 生产残留实证）：0 做种的死种不属保种区
+    // （拯救区管辖）。新口径入区条件排除 0 做种，但旧残留行/异常路径
+    // 可能留下 exited_at IS NULL 且 seeders=0 的行——每轮自动移出。
+    sqlx::query(
+        r#"
+        UPDATE seed_preserve sp
+        SET exited_at = now(), exit_reason = 'zero_seeder_rescue_zone'
+        FROM torrents t
+        WHERE t.id = sp.torrent_id AND t.seeders = 0
+          AND sp.exited_at IS NULL
+        "#,
+    )
+    .execute(db)
+    .await?;
     // 撤促销单独跑：出区行挂宽限 free、在区行挂全周期 preserve free，
     // 两条 UPDATE 各自按 source + 在区态精确收边，互不越界。
     sqlx::query(
