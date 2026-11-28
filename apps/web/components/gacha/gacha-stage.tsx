@@ -500,7 +500,7 @@ export function GachaStage({
         {/* HUD */}
         <header className="hud">
           <div className="hud-l">
-            <a className="hud-back" href="/arcade" aria-label={t.backArcade}>
+            <a className="hud-back" href="/games" aria-label={t.backArcade}>
               <Icon name="back" size={15} />
             </a>
             <div className="brand">
