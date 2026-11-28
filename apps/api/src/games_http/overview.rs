@@ -115,6 +115,7 @@ pub(super) async fn games_overview(
             "pet": super::helpers::minclass_of(&state, "pet").await,
             "fishing": super::helpers::minclass_of(&state, "fishing").await,
             "doudizhu": super::helpers::minclass_of(&state, "doudizhu").await,
+            "lottery": super::helpers::minclass_of(&state, "lottery").await,
         },
         "scratch": { "name": "刮刮乐", "max_bet": max_bet,
             "min_bet": spool.ticket,

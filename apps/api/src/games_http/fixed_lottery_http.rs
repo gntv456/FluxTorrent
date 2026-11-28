@@ -1,6 +1,8 @@
 //! 固定抽签用户口：列表 / 详情 / 报名 / 领取提交。
 //! 只做参数适配与 service 调用（零 SQL，layer guard 纪律）；读侧投影
-//! （列表/详情/中奖名单）走 repo 读函数。权限：登录即可，资格闸在 service。
+//! （列表/详情/中奖名单）走 repo 读函数。权限：登录即可，资格闸在 service；
+//! 写口（报名/领取）另挂 0531 逐游戏等级闸 games_minclass_lottery
+//! （缺省 0 = 不限；读口不锁——入口可见，报名时才被硬闸拦）。
 
 use actix_web::{get, post, web, HttpRequest, HttpResponse};
 use serde::Deserialize;
@@ -12,6 +14,8 @@ use crate::repo::fixed_lottery as rp;
 use crate::repo::fixed_lottery_read as rr;
 use crate::services::fixed_lottery as svc;
 use crate::state::AppState;
+
+use super::helpers::check_minclass;
 
 /// 活动列表（open + 近期 drawn）。返回精简投影供双 tab 渲染。
 #[get("/games/lottery")]
@@ -121,6 +125,7 @@ pub(super) async fn lottery_join(
 ) -> DomainResult<HttpResponse> {
     let _ = &body.client_uuid;
     let auth = require_auth(&req, &state).await?;
+    check_minclass(&state, "lottery", auth.class_id).await?;
     let ip = req.peer_addr().map(|a| a.ip().to_string()).or_else(|| {
         req.headers()
             .get("x-forwarded-for")
@@ -155,6 +160,7 @@ pub(super) async fn lottery_claim(
     body: web::Json<ClaimBody>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
+    check_minclass(&state, "lottery", auth.class_id).await?;
     svc::claim::submit(&state, auth.id, path.into_inner(), body.fields.clone())
         .await?;
     Ok(ok(serde_json::json!({"submitted": true})))
