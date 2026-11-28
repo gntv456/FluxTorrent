@@ -8443,6 +8443,7 @@ export const zhCN = {
     mineEmpty: "还没有领取过复活任务",
     colTorrent: "种子",
     colSize: "大小",
+    colRescue: "救活契约",
     contract: "契约：需做种 {h} 小时 → {sparks} {magic} + 免费券 + 7 天免费",
     colRequired: "要求做种",
     colSeeded: "已做种",

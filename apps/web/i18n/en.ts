@@ -8612,6 +8612,7 @@ const fundingEn: Dict["funding"] = {
 };
 
 const resurrectEn: Dict["resurrect"] = {
+  colRescue: "Rescue terms",
   contract:
     "Contract: seed {h} h → {sparks} {magic} + free coupon + 7-day freeleech",
   title: "Resurrections",

@@ -31,19 +31,47 @@ pub(super) async fn resurrection_list(
                                                    // “最近一次有人活跃的时间”倒序：新鲜死种（刚断种、还有救的价值）优先露出。
                                                    // 0284 P1-5：契约前置可见——行内直接带 required_hours/reward_sparks，
                                                    // 认领前用户就能看到「要做多久、给多少」（此前只在 claim 响应里才揭晓）
+                                                   // promo 合成子查询（与保种区列表/promo.rs 同一份聚合口径），主查询与
+                                                   // ends_at 各引一次；提成常量同时守行宽门禁与防两份漂移。
+                                                   // promo 合成子查询（与保种区列表/promo.rs 同一份聚合口径），主查询与
+                                                   // ends_at 各引一次；提成常量同时守行宽门禁与防两份漂移。
+    const PROMO_AGG: &str = "(SELECT max(CASE p.kind::text WHEN 'x2' THEN 2 \
+         WHEN 'x2free' THEN 2 WHEN 'x2half' THEN 2 ELSE 1 END) AS mu, \
+         min(CASE p.kind::text WHEN 'free' THEN 0 WHEN 'x2free' THEN 0 \
+         WHEN 'half' THEN 5 WHEN 'x2half' THEN 5 WHEN 'p30' THEN 3 \
+         ELSE 10 END) AS du, min(p.ends_at) AS ends_at FROM promotions p \
+         WHERE p.starts_at <= now() AND p.ends_at > now() \
+         AND (p.torrent_id = t.id OR (p.torrent_id IS NULL AND ( \
+         p.scope = 'global' OR (p.scope = 'official' AND t.official_tag) \
+         OR (p.scope = 'non_official' AND NOT t.official_tag) \
+         OR (p.scope = 'category' AND t.category_id = p.category_id))))) x";
     let rows: Vec<ResRow> = sqlx::query_as(&format!(
-        "SELECT t.id AS torrent_id, t.name, t.size, \
-                COALESCE((SELECT value::int FROM site_settings WHERE \
-                 name = 'resurrection_hours'), 240) AS required_hours, \
-                COALESCE((SELECT value::bigint FROM site_settings WHERE \
-                 name = 'resurrection_reward'), 5000) AS reward_sparks \
+        "SELECT t.id AS torrent_id, t.name, t.small_descr, t.size, t.seeders, \
+         t.leechers, t.times_completed, t.category_id, t.medium_id, \
+         t.grade_id, t.edition_id, t.official_tag, t.anonymous, t.sticky, \
+         (SELECT count(*) FROM comments c WHERE c.torrent_id = t.id) \
+           AS comments, \
+         t.media_info->>'poster' AS poster, \
+         CASE WHEN t.anonymous THEN NULL ELSE u.username END AS owner_name, \
+         COALESCE(t.approved_at, t.created_at) AS created_at, \
+         (SELECT x.ends_at FROM {promo_agg} WHERE x.mu > 1 OR x.du < 10) \
+           AS promotion, \
+         (SELECT x.ends_at FROM {promo_agg} WHERE x.mu > 1 OR x.du < 10) \
+           AS promotion_ends_at, \
+         COALESCE((SELECT value::int FROM site_settings WHERE \
+           name = 'resurrection_hours'), 240) AS required_hours, \
+         COALESCE((SELECT value::bigint FROM site_settings WHERE \
+           name = 'resurrection_reward'), 5000) AS reward_sparks \
          FROM torrents t \
+         LEFT JOIN users u ON u.id = t.owner_id \
          WHERE t.approval_status = 1 AND {dead} \
-           AND NOT EXISTS (SELECT 1 FROM resurrections r WHERE r.torrent_id = t.id) \
-         ORDER BY COALESCE((SELECT max(s.last_seen_at) FROM snatches s WHERE s.torrent_id = t.id), \
-                           t.created_at) DESC, t.id DESC \
+           AND NOT EXISTS (SELECT 1 FROM resurrections r \
+                WHERE r.torrent_id = t.id) \
+         ORDER BY COALESCE((SELECT max(s.last_seen_at) FROM snatches s \
+              WHERE s.torrent_id = t.id), t.created_at) DESC, t.id DESC \
          LIMIT 50",
-        dead = DEAD_TORRENT_CLAUSE
+        dead = DEAD_TORRENT_CLAUSE,
+        promo_agg = PROMO_AGG
     ))
     .fetch_all(&state.repo.db)
     .await
@@ -57,7 +85,25 @@ pub(super) async fn resurrection_list(
 pub(super) struct ResRow {
     torrent_id: i64,
     name: String,
+    small_descr: Option<String>,
     size: i64,
+    seeders: i32,
+    leechers: i32,
+    times_completed: i32,
+    comments: i64,
+    category_id: i32,
+    medium_id: Option<i32>,
+    grade_id: Option<i32>,
+    edition_id: Option<i32>,
+    #[serde(rename = "official")]
+    official_tag: bool,
+    anonymous: bool,
+    sticky: bool,
+    promotion: Option<String>,
+    promotion_ends_at: Option<chrono::DateTime<chrono::Utc>>,
+    poster: Option<String>,
+    owner_name: Option<String>,
+    created_at: chrono::DateTime<chrono::Utc>,
     required_hours: i32,
     reward_sparks: i64,
 }

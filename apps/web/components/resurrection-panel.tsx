@@ -7,19 +7,38 @@ import Link from "next/link";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { dateLocale, fmt, fmtCur } from "@/i18n/config";
-import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 import { formatBytes } from "@/lib/format";
+import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 
 /** 复活任务区（0073，U3D Graveyard 口径）：
- *  GET /resurrections 可领取死种（元组 [id, name, size]）
+ *  GET /resurrections 可领取死种（对象含资源库行同构字段）
  *  POST /resurrections/claim {torrent_id} 认领
  *  GET /resurrections/mine 我的任务（元组 [torrent_id, reward_sparks, required_hours, claimed_at, status, seeded_seconds]） */
 
-/** 0284 P1-5：对象形态（旧元组 [id,name,size]），契约字段前置可见 */
+/** 对象形态：PreserveItem 同构字段 + 复活契约两字段（required_hours/reward_sparks）。
+ *  表头与资源库统一后行渲染复用 TorrentTr（t 传本类型，字段名全对齐）。 */
 type DeadRow = {
   torrent_id: number;
   name: string;
+  small_descr: string | null;
   size: number;
+  seeders: number;
+  leechers: number;
+  times_completed: number;
+  comments: number;
+  category_id: number;
+  medium_id: number | null;
+  grade_id: number | null;
+  edition_id: number | null;
+  official: boolean;
+  anonymous: boolean;
+  sticky: boolean;
+  promotion: string | null;
+  promotion_ends_at: string | null;
+  poster: string | null;
+  owner_name: string | null;
+  created_at: string;
+  claimed_by: string | null;
   required_hours: number;
   reward_sparks: number;
 };
@@ -116,21 +135,53 @@ export function ResurrectionPanel() {
         <table className="nexus-table torrents-table">
           <thead>
             <tr>
-              <th>{t.colTorrent}</th>
-              <th className="w-24">{t.colSize}</th>
-              <th scope="col" className="colhead w-24">
-                {dict.torrents.colActions}
+              <th className="w-12">{dict.torrents.colType}</th>
+              <th>{dict.torrents.colTitle}</th>
+              <th className="w-16" title={dict.torrents.colComments}>
+                {dict.torrents.colComments}
               </th>
+              <th className="w-20" title={dict.torrents.alive}>
+                {dict.torrents.alive}
+              </th>
+              <th className="w-20">{dict.torrents.colSize}</th>
+              <th className="w-16">{dict.torrents.colSeeders}</th>
+              <th className="w-16">{dict.torrents.colLeechers}</th>
+              <th className="w-16">{dict.torrents.colCompleted}</th>
+              <th className="w-24" title={t.contract}>
+                {t.colRescue}
+              </th>
+              <th className="w-24">{dict.torrents.colActions}</th>
             </tr>
           </thead>
           <tbody>
-            {(dead ?? []).map((r) => (
-              <tr key={r.torrent_id}>
-                <td>
-                  <Link href={`/torrent/${r.torrent_id}`} className="text-link">
-                    {r.name}
-                  </Link>
-                  <div className="text-xs text-sub">
+            {(dead ?? []).map((r) => {
+              const claimedText = claimed[r.torrent_id];
+              const ageDays = Math.floor(
+                (Date.now() - new Date(r.created_at).getTime()) / 86400000,
+              );
+              return (
+                <tr key={r.torrent_id}>
+                  <td className="w-12 text-sub">#{r.category_id}</td>
+                  <td>
+                    <Link
+                      href={`/torrent/${r.torrent_id}`}
+                      className="text-link"
+                    >
+                      {r.name}
+                    </Link>
+                    {r.small_descr && (
+                      <div className="text-xs text-sub">{r.small_descr}</div>
+                    )}
+                  </td>
+                  <td className="num text-sub">{r.comments || ""}</td>
+                  <td className="num text-sub">
+                    {ageDays > 0 ? `${ageDays}d` : ""}
+                  </td>
+                  <td className="num text-sub">{formatBytes(r.size)}</td>
+                  <td className="num">{r.seeders}</td>
+                  <td className="num">{r.leechers}</td>
+                  <td className="num">{r.times_completed}</td>
+                  <td className="text-xs text-sub">
                     {fmtCur(
                       t.contract,
                       {
@@ -139,37 +190,36 @@ export function ResurrectionPanel() {
                       },
                       currency,
                     )}
-                  </div>
-                </td>
-                <td className="num text-sub">{formatBytes(r.size)}</td>
-                <td className="text-right">
-                  {claimed[r.torrent_id] ? (
-                    <span className="text-xs font-bold text-mint">
-                      {claimed[r.torrent_id]}
-                    </span>
-                  ) : (
-                    <button
-                      type="button"
-                      disabled={busy !== null}
-                      onClick={() =>
-                        ask.open({
-                          title: t.claimBtn,
-                          message: t.note.replaceAll("{magic}", currency),
-                          tone: "danger",
-                          run: () => claim(r.torrent_id),
-                        })
-                      }
-                      className="min-h-11 rounded-full border border-[var(--compat-orange-dark)] px-3 text-xs font-bold text-[var(--compat-orange-dark)] disabled:opacity-50"
-                    >
-                      {t.claimBtn}
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
+                  </td>
+                  <td className="text-right">
+                    {claimedText ? (
+                      <span className="text-xs font-bold text-mint">
+                        {claimedText}
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={busy !== null}
+                        onClick={() =>
+                          ask.open({
+                            title: t.claimBtn,
+                            message: t.note.replaceAll("{magic}", currency),
+                            tone: "danger",
+                            run: () => claim(r.torrent_id),
+                          })
+                        }
+                        className="min-h-11 rounded-full border border-[var(--compat-orange-dark)] px-3 text-xs font-bold text-[var(--compat-orange-dark)] disabled:opacity-50"
+                      >
+                        {t.claimBtn}
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
             {dead !== null && dead.length === 0 && (
               <tr>
-                <td colSpan={3} className="py-6 text-center text-sub">
+                <td colSpan={10} className="py-6 text-center text-sub">
                   {t.empty}
                 </td>
               </tr>

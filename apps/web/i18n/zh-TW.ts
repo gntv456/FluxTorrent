@@ -8334,6 +8334,7 @@ const fundingTw: Dict["funding"] = {
 };
 
 const resurrectTw: Dict["resurrect"] = {
+  colRescue: "救活契約",
   contract: "契約：需做種 {h} 小時 → {sparks} {magic} + 免費券 + 7 天免費",
   title: "復活任務",
   note: "領取無種死種的復活任務，持續做種達標可獲得 5000 {magic} + 1 枚免費券 + 該種 7 天免費。",

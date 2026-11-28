@@ -369,7 +369,7 @@
   "apps/api/src/ops_http/jixiao_claim.rs::wide": 6,
   "apps/api/src/ops_http/jixiao_compute.rs::wide": 8,
   "apps/api/src/ops_http/preserve.rs::wide": 2,
-  "apps/api/src/ops_http/resurrections.rs::wide": 12,
+  "apps/api/src/ops_http/resurrections.rs::wide": 10,
   "apps/api/src/ops_http/tasks.rs::wide": 3,
   "apps/api/src/openapi_http/detail_open.rs::wide": 1,
   "apps/api/src/openapi_http/me.rs::wide": 4,
