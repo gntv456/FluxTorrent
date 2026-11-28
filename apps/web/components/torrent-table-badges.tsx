@@ -110,3 +110,27 @@ export function remaining(
   if (ms <= 0) return null;
   return fmt(Math.floor(ms / 86400000), Math.floor((ms % 86400000) / 3600000));
 }
+
+/** NP 口径行级语义类（与 promoSemanticClass 同款；独立导出供 client 件
+ *  复用而不牵入 torrent-table.tsx 的 i18n/server 依赖链）。
+ *  2026-11-28：resurrection-alt-views 拆件时暴露的 server/client 边界问题。 */
+export const promoSemanticClassStandalone = (
+  promo: string | null | undefined,
+): string | undefined => {
+  switch (promo) {
+    case "x2free":
+      return "pro_free pro_2up";
+    case "free":
+      return "pro_free";
+    case "x2half":
+      return "pro_50pct pro_2up";
+    case "x2":
+      return "pro_2up";
+    case "half":
+      return "pro_50pct";
+    case "p30":
+      return "pro_30pct";
+    default:
+      return undefined;
+  }
+};
