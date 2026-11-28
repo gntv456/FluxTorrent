@@ -23,6 +23,7 @@ mod pond_sink_tests;
 #[cfg(test)]
 mod pond_tests;
 mod rules;
+mod rules_shop;
 mod sign;
 mod state;
 mod state_ops;
