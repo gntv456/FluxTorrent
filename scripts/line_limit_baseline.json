@@ -138,7 +138,7 @@
   "apps/web/components/request-board.tsx": 359,
   "apps/web/components/request-board.tsx::wide": 1,
   "apps/web/components/resurrect-button.tsx::wide": 1,
-  "apps/web/components/resurrection-panel.tsx::wide": 3,
+  "apps/web/components/resurrection-panel.tsx::wide": 1,
   "apps/web/components/scroll-buttons.tsx::wide": 5,
   "apps/web/components/setting-field-controls.tsx::wide": 5,
   "apps/web/components/setting-field.tsx::wide": 8,
@@ -220,7 +220,7 @@
   "apps/web/app/(main)/users/[id]/_parts/profile-stats-card.tsx::wide": 1,
   "apps/web/app/(main)/torrents/page.tsx": 485,
   "apps/web/app/(main)/torrents/_parts/torrents-adv-groups.tsx": 325,
-  "apps/web/app/(main)/torrents/_parts/torrents-cards.tsx": 309,
+  "apps/web/app/(main)/torrents/_parts/torrents-cards.tsx": 311,
   "apps/web/app/(main)/torrents/_parts/torrents-view-switch.tsx::wide": 1,
   "apps/web/app/(main)/top/page.tsx::wide": 8,
   "apps/web/app/(main)/textbooks/page.tsx::wide": 1,
@@ -620,5 +620,8 @@
   "scripts/mobile/_mdiag2.js::wide": 4,
   "scripts/mobile/_mdiag3.js::wide": 4,
   "scripts/mobile/_mdiag4.js::wide": 4,
-  "scripts/mobile/_mdiag5.js::wide": 1
+  "scripts/mobile/_mdiag5.js::wide": 1,
+  "apps/web/components/resurrection-panel.tsx": 330,
+  "apps/web/app/(main)/preserve/page.tsx": 351,
+  "apps/api/src/ops_http/preserve.rs": 303
 }

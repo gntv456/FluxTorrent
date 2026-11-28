@@ -105,7 +105,8 @@ pub(super) async fn preserve_list(
          t.media_info->>'poster' AS poster, \
          t.media_info->>'imdb_id' AS imdb_id, \
          CASE WHEN t.anonymous THEN NULL ELSE o.username END AS owner_name, \
-         t.created_at, \
+         COALESCE(t.approved_at, t.created_at) AS created_at, \
+         u.username AS claimed_by, \
          (SELECT COALESCE(json_agg(json_build_object('id', d.id, 'name', d.name, \
               'kind', d.kind, 'bg_color', d.bg_color, 'color', d.color) \
               ORDER BY d.sort DESC, d.id), '[]'::json) \

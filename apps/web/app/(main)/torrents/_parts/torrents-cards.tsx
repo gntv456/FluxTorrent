@@ -10,7 +10,9 @@
 import Link from "next/link";
 import type { TorrentListItem } from "@fluxtorrent/domain-types";
 import { formatBytes, promoLeftCompact, promotionBadge } from "@/lib/format";
-import { promoSemanticClassStandalone as promoSemanticClass } from "@/components/torrent-table-badges";
+import {
+  promoSemanticClassStandalone as promoSemanticClass,
+} from "@/components/torrent-table-badges";
 import { shjCatHue } from "@/components/torrent-table-badges";
 import { catColor } from "@/lib/site-profile";
 import { Icon } from "@/components/icons";

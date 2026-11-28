@@ -10,7 +10,6 @@ import {
   colorMap,
 } from "@/lib/site-profile";
 import { fmt } from "@/i18n/config";
-import { ClaimButton } from "@/components/claim-button";
 import { TorrentTr } from "@/components/torrent-table";
 import {
   TorrentCards,
@@ -246,10 +245,6 @@ export default async function PreservePage({
                       className="inline align-[-3px]"
                     />
                   </th>
-                  {/* 保种区专属列：认领人 + 认领操作（对应 extra 两列）+
-                      行为列（TorrentTr 自带，此前表头少 1 列整行错位） */}
-                  <th className="w-24">{dict.preserve.claimedByCol}</th>
-                  <th className="w-24" aria-label={dict.preserve.claimAction} />
                   <th className="w-24">{dict.torrents.colActions}</th>
                 </tr>
               </thead>
@@ -260,18 +255,6 @@ export default async function PreservePage({
                     t={p}
                     extra={
                       <>
-                        <td className="text-sub">
-                          {p.claimed_by ?? dict.preserve.unclaimed}
-                        </td>
-                        <td className="text-right">
-                          <ClaimButton
-                            torrentId={p.torrent_id}
-                            claimed={Boolean(p.claimed_by)}
-                            label={dict.preserve.claimAction}
-                            claimedLabel={dict.preserve.claimedTag}
-                            bonus={data.bonus_per_day}
-                          />
-                        </td>
                       </>
                     }
                   />

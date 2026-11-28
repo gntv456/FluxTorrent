@@ -119,7 +119,10 @@ export function ResurrectionAltViews({
                       type="button"
                       disabled={busy !== null}
                       onClick={() => onClaim(r.torrent_id)}
-                      className="min-h-11 rounded-full border border-[var(--compat-orange-dark)] px-3 text-xs font-bold text-[var(--compat-orange-dark)] disabled:opacity-50"
+                      className="min-h-11 rounded-full
+                  border border-[var(--compat-orange-dark)] px-3
+                  text-xs font-bold text-[var(--compat-orange-dark)]
+                  disabled:opacity-50"
                     >
                       {dict.resurrect.claimBtn}
                     </button>
