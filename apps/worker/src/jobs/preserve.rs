@@ -72,6 +72,13 @@ pub async fn preserve_free_promo(db: &PgPool) -> anyhow::Result<(u64, u64)> {
     if !on {
         return Ok((0, 0));
     }
+    // 防暴涨（2026-11-28 生产实证）：每小时续期=每小时插新行，过期短券
+    // 若不清，promotions 表按小时暴涨（好学站一天 19.6 万行占 73%，
+    // promo 合成子查询 Bitmap Scan 被拖慢 → 全站列表页 30s+）。
+    // 过期短券即刻无引用价值，直接清。
+    sqlx::query("DELETE FROM promotions WHERE source = 'preserve_free' AND ends_at < now()")
+        .execute(db)
+        .await?;
     // 补挂/续期：在区（未出区）且未过审豁免外的种，若无存活 preserve_free
     // 促销则挂 1 小时短券（续期口径：短券到期自然失效，下一轮重新补——
     // 幂等在「存在即不重复挂」，不需要 upsert）。
