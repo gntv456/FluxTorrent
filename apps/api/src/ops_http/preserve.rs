@@ -276,7 +276,7 @@ struct PreserveRow {
     official_tag: bool,
     sticky: bool,
     anonymous: bool,
-    approval_status: i32,
+    approval_status: i16,
     promotion: Option<String>,
     promotion_ends_at: Option<chrono::DateTime<chrono::Utc>>,
     rating: Option<String>,
