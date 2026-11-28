@@ -3,10 +3,20 @@ import { ErrorPanel } from "@/components/ui/error-panel";
 import { normalizeError } from "@/lib/render-error";
 import Link from "next/link";
 import { getDict } from "@/i18n/server";
-import { getTorrentDicts, catPath } from "@/lib/site-profile";
+import {
+  getSiteProfile,
+  getTorrentDicts,
+  catPath,
+  colorMap,
+} from "@/lib/site-profile";
 import { fmt } from "@/i18n/config";
 import { ClaimButton } from "@/components/claim-button";
 import { TorrentTr } from "@/components/torrent-table";
+import {
+  TorrentCards,
+  TorrentPosters,
+} from "@/app/(main)/torrents/_parts/torrents-cards";
+import { parseView } from "@/app/(main)/torrents/_parts/torrents-utils";
 import { SeedStatsCard } from "@/components/seed-stats-card";
 import { requireModule } from "@/components/module-gate";
 import { Icon } from "@/components/icons";
@@ -32,12 +42,24 @@ export default async function PreservePage({
     const s = Array.isArray(v) ? v[0] : v;
     return s && s !== "all" && s !== "current" ? s : undefined;
   };
+  /** 视图切换链接（RSC 链接式）：保留现有筛选参数，替换 view 参数 */
+  const withView = (v: string): string => {
+    const qs = new URLSearchParams();
+    for (const [k, val] of Object.entries(spRaw)) {
+      const s = Array.isArray(val) ? val[0] : val;
+      if (s && k !== "view") qs.set(k, s);
+    }
+    qs.set("view", v);
+    const s = qs.toString();
+    return s ? `/preserve?${s}` : "/preserve";
+  };
   // P-286：取数失败必须显式报错，不能演成「暂无保种需求」。
   let data: Awaited<ReturnType<typeof getPreserve>>;
-  const [gate, dictPack, torrentDicts, dataOrErr] = await Promise.all([
+  const [gate, dictPack, torrentDicts, profile, dataOrErr] = await Promise.all([
     requireModule("preserve"),
     getDict(),
     getTorrentDicts(),
+    getSiteProfile().catch(() => null),
     getPreserve({
       scope: pick("scope"),
       status: pick("status"),
@@ -52,6 +74,18 @@ export default async function PreservePage({
   const { dict } = dictPack;
   // 分类筛选项取自站点分类表（torrents.category_id 的外键目标）
   const cats = torrentDicts.categories;
+  // 种子粒度视图（2026-11-28 站长口径：保种区与资源库完全同款——
+  // table/card/poster 三视图切换，view 走 URL 参数与资源库共享口径）
+  const view = parseView(
+    Array.isArray(spRaw.view) ? spRaw.view[0] : spRaw.view,
+  );
+  // 分类图标键/分类色（card/poster 视图的封面色块）
+  const catIcons = Object.fromEntries(
+    (profile?.categories ?? [])
+      .filter((c) => c.icon_key)
+      .map((c) => [c.id, c.icon_key]),
+  ) as Record<number, string>;
+  const catColors = colorMap(profile?.categories ?? []);
   // 受控回填：把当前筛选值回显到表单控件（避免刷新后选择丢失）。
   // 有任一筛选生效时自动展开工具抽屉（高级筛选 advAutoOpen 同理：
   // 用户带着条件进来，抽屉不该再藏起来）。
@@ -121,9 +155,44 @@ export default async function PreservePage({
               : ""}
             {fmt(dict.preserve.totalResults, { n: total.toLocaleString() })}
           </span>
+          {/* 视图切换（2026-11-28 站长口径：与资源库完全同款）：URL 链接式
+              三态（table/card/poster），RSC 直出无 client 开销 */}
+          <span className="ml-auto flex gap-1">
+            {(
+              [
+                ["table", dict.torrents.viewTable],
+                ["card", dict.torrents.viewCard],
+                ["poster", dict.torrents.viewPoster],
+              ] as const
+            ).map(([v, label]) => (
+              <Link
+                key={v}
+                href={withView(v)}
+                className={`rounded px-2 py-1 text-xs ${
+                  view === v
+                    ? "bg-brand-soft font-bold text-brand"
+                    : "text-sub hover:text-brand"
+                }`}
+              >
+                {label}
+              </Link>
+            ))}
+          </span>
         </div>
         {items.length === 0 ? (
           <p className="py-10 text-center text-sub">{dict.preserve.empty}</p>
+        ) : view === "card" ? (
+          <TorrentCards
+            items={items as never}
+            dict={dict}
+            colors={catColors}
+          />
+        ) : view === "poster" ? (
+          <TorrentPosters
+            items={items as never}
+            dict={dict}
+            colors={catColors}
+          />
         ) : (
           <div className="brand-wide-table-scroll">
             <table className="nexus-table torrents-table preserve-list-table">
