@@ -7,7 +7,13 @@ import Link from "next/link";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { dateLocale, fmt, fmtCur } from "@/i18n/config";
-import { formatBytes } from "@/lib/format";
+import { formatBytes, promotionBadge } from "@/lib/format";
+import { promoCls, tagStyle } from "@/components/torrent-table-badges";
+import { Badge } from "@/components/ui/badge";
+import type {
+  TagBadge,
+  TorrentListItem,
+} from "@fluxtorrent/domain-types";
 import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 
 /** 复活任务区（0073，U3D Graveyard 口径）：
@@ -35,6 +41,7 @@ type DeadRow = {
   sticky: boolean;
   promotion: string | null;
   promotion_ends_at: string | null;
+  tags?: TagBadge[] | null;
   poster: string | null;
   owner_name: string | null;
   created_at: string;
@@ -169,8 +176,52 @@ export function ResurrectionPanel() {
                     >
                       {r.name}
                     </Link>
+                    {(() => {
+                      const promo = promotionBadge(
+                        r.promotion as TorrentListItem["promotion"] | null,
+                      );
+                      if (!promo) return null;
+                      const hLeft = r.promotion_ends_at
+                        ? Math.ceil(
+                            (new Date(r.promotion_ends_at).getTime() -
+                              Date.now()) /
+                              3600000,
+                          )
+                        : null;
+                      const leftCompact =
+                        hLeft && hLeft > 0
+                          ? hLeft >= 48
+                            ? Math.floor(hLeft / 24) + "D"
+                            : hLeft + "H"
+                          : null;
+                      return (
+                        <span
+                          className={`${promoCls(promo.key)} torrents-promo--text`}
+                        >
+                          {promo.key.toUpperCase()}
+                          {leftCompact && (
+                            <b className="torrents-promo-left">
+                              {leftCompact}
+                            </b>
+                          )}
+                        </span>
+                      );
+                    })()}
                     {r.small_descr && (
                       <div className="text-xs text-sub">{r.small_descr}</div>
+                    )}
+                    {(r.tags?.length ?? 0) > 0 && (
+                      <div className="flex flex-wrap gap-1 pt-0.5">
+                        {r.tags!.map((tg) => (
+                          <span
+                            key={tg.id}
+                            className="rounded px-1.5 text-xs"
+                            style={tagStyle(tg)}
+                          >
+                            {tg.name}
+                          </span>
+                        ))}
+                      </div>
                     )}
                   </td>
                   <td className="num text-sub">{r.comments || ""}</td>

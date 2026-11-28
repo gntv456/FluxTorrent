@@ -25,16 +25,15 @@ pub(super) async fn resurrection_list(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
-    let _auth = require_auth(&req, &state).await?; // 登录可见（未过审不可见由 approval_status 保证）
-                                                   // 审计修复（P2）：旧版 ORDER BY t.created_at ASC 恒取最老的 50 条——新死种永远
-                                                   // 排不进列表（30 天活动排除口径下“最老”几乎全是无人问津的陈种）。改为按
-                                                   // “最近一次有人活跃的时间”倒序：新鲜死种（刚断种、还有救的价值）优先露出。
-                                                   // 0284 P1-5：契约前置可见——行内直接带 required_hours/reward_sparks，
-                                                   // 认领前用户就能看到「要做多久、给多少」（此前只在 claim 响应里才揭晓）
-                                                   // promo 合成子查询（与保种区列表/promo.rs 同一份聚合口径），主查询与
-                                                   // ends_at 各引一次；提成常量同时守行宽门禁与防两份漂移。
-                                                   // promo 合成子查询（与保种区列表/promo.rs 同一份聚合口径），主查询与
-                                                   // ends_at 各引一次；提成常量同时守行宽门禁与防两份漂移。
+    let _auth = require_auth(&req, &state).await?; // 登录可见
+    // 审计修复（P2）：旧版 ORDER BY t.created_at ASC 恒取最老的 50 条——新死种永远
+    // 排不进列表（30 天活动排除口径下"最老"几乎全是无人问津的陈种）。改为按
+    // "最近一次有人活跃的时间"倒序：新鲜死种（刚断种、还有救的价值）优先露出。
+    // 0284 P1-5：契约前置可见——行内直接带 required_hours/reward_sparks，
+    // 认领前用户就能看到「要做多久、给多少」（此前只在 claim 响应里才揭晓）。
+    // promo 合成子查询与保种区列表/promo.rs 同一份聚合口径；主查询与 ends_at
+    // 各引一次（PROMO_AGG 常量），防两份漂移。
+    // promo 合成子查询同上（第二个出口给 promotion_ends_at）。
     const PROMO_AGG: &str = "(SELECT max(CASE p.kind::text WHEN 'x2' THEN 2 \
          WHEN 'x2free' THEN 2 WHEN 'x2half' THEN 2 ELSE 1 END) AS mu, \
          min(CASE p.kind::text WHEN 'free' THEN 0 WHEN 'x2free' THEN 0 \
@@ -51,6 +50,12 @@ pub(super) async fn resurrection_list(
          t.grade_id, t.edition_id, t.official_tag, t.anonymous, t.sticky, \
          (SELECT count(*) FROM comments c WHERE c.torrent_id = t.id) \
            AS comments, \
+         (SELECT COALESCE(json_agg(json_build_object( \
+              'id', d.id, 'name', d.name, 'kind', d.kind, \
+              'bg_color', d.bg_color, 'color', d.color) \
+              ORDER BY d.sort DESC, d.id), '[]'::json) \
+          FROM tags tg JOIN tag_dict d ON d.id = tg.tag_id \
+          WHERE tg.torrent_id = t.id) AS tags, \
          t.media_info->>'poster' AS poster, \
          CASE WHEN t.anonymous THEN NULL ELSE u.username END AS owner_name, \
          COALESCE(t.approved_at, t.created_at) AS created_at, \
@@ -99,6 +104,7 @@ pub(super) struct ResRow {
     official_tag: bool,
     anonymous: bool,
     sticky: bool,
+    tags: Option<serde_json::Value>,
     promotion: Option<String>,
     promotion_ends_at: Option<chrono::DateTime<chrono::Utc>>,
     poster: Option<String>,
