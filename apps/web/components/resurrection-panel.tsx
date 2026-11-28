@@ -9,6 +9,10 @@ import { useI18n } from "@/i18n/client";
 import { fmt, fmtCur } from "@/i18n/config";
 import { formatBytes, promotionBadge } from "@/lib/format";
 import { promoCls, tagStyle } from "@/components/torrent-table-badges";
+import {
+  TorrentCards,
+  TorrentPosters,
+} from "@/app/(main)/torrents/_parts/torrents-cards";
 import { Badge } from "@/components/ui/badge";
 import type {
   TagBadge,
@@ -16,6 +20,7 @@ import type {
 } from "@fluxtorrent/domain-types";
 import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 import { ResurrectionMine, type MineRow } from "@/components/resurrection-mine";
+import { ResurrectionAltViews } from "@/components/resurrection-alt-views";
 
 /** 复活任务区（0073，U3D Graveyard 口径）：
  *  GET /resurrections 可领取死种（对象含资源库行同构字段）
@@ -63,6 +68,9 @@ export function ResurrectionPanel() {
   const ask = useConfirm();
   const [msg, setMsg] = useState<string | null>(null);
   const [claimed, setClaimed] = useState<Record<number, string>>({});
+  // 种子粒度视图（2026-11-28 站长口径：与资源库完全同款三视图）
+  const [view, setView] = useState<"table" | "card" | "poster">("table");
+  const catColors: Record<number, string> = {};
 
   const load = useCallback(async () => {
     try {
@@ -139,147 +147,40 @@ export function ResurrectionPanel() {
         </p>
       )}
 
-      <div className="brand-wide-table-scroll">
-        <table className="nexus-table torrents-table">
-          <thead>
-            <tr>
-              <th className="w-12">{dict.torrents.colType}</th>
-              <th>{dict.torrents.colTitle}</th>
-              <th className="w-16" title={dict.torrents.colComments}>
-                {dict.torrents.colComments}
-              </th>
-              <th className="w-20" title={dict.torrents.alive}>
-                {dict.torrents.alive}
-              </th>
-              <th className="w-20">{dict.torrents.colSize}</th>
-              <th className="w-16">{dict.torrents.colSeeders}</th>
-              <th className="w-16">{dict.torrents.colLeechers}</th>
-              <th className="w-16">{dict.torrents.colCompleted}</th>
-              <th className="w-24">{dict.torrents.colActions}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {(dead ?? []).map((r) => {
-              const claimedText = claimed[r.torrent_id];
-              const ageDays = Math.floor(
-                (Date.now() - new Date(r.created_at).getTime()) / 86400000,
-              );
-              return (
-                <tr key={r.torrent_id}>
-                  <td className="w-12 text-sub">#{r.category_id}</td>
-                  <td>
-                    <Link
-                      href={`/torrent/${r.torrent_id}`}
-                      className="text-link"
-                    >
-                      {r.name}
-                    </Link>
-                    {(() => {
-                      const promo = promotionBadge(
-                        r.promotion as TorrentListItem["promotion"] | null,
-                      );
-                      if (!promo) return null;
-                      const hLeft = r.promotion_ends_at
-                        ? Math.ceil(
-                            (new Date(r.promotion_ends_at).getTime() -
-                              Date.now()) /
-                              3600000,
-                          )
-                        : null;
-                      const leftCompact =
-                        hLeft && hLeft > 0
-                          ? hLeft >= 48
-                            ? Math.floor(hLeft / 24) + "D"
-                            : hLeft + "H"
-                          : null;
-                      return (
-                        <span
-                          className={`${promoCls(promo.key)} torrents-promo--text`}
-                        >
-                          {promo.key.toUpperCase()}
-                          {leftCompact && (
-                            <b className="torrents-promo-left">
-                              {leftCompact}
-                            </b>
-                          )}
-                        </span>
-                      );
-                    })()}
-                    <div className="text-xs text-sub">
-                      {fmtCur(
-                        t.contract,
-                        {
-                          h: String(r.required_hours),
-                          sparks: String(r.reward_sparks),
-                        },
-                        currency,
-                      )}
-                    </div>
-                    {r.small_descr && (
-                      <div className="text-xs text-sub">{r.small_descr}</div>
-                    )}
-                    {(r.tags?.length ?? 0) > 0 && (
-                      <div className="flex flex-wrap gap-1 pt-0.5">
-                        {r.tags!.map((tg) => (
-                          <span
-                            key={tg.id}
-                            className="rounded px-1.5 text-xs"
-                            style={tagStyle(tg)}
-                          >
-                            {tg.name}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </td>
-                  <td className="num text-sub">{r.comments || ""}</td>
-                  <td className="num text-sub">
-                    {ageDays > 0 ? `${ageDays}d` : ""}
-                  </td>
-                  <td className="num text-sub">{formatBytes(r.size)}</td>
-                  <td className="num">{r.seeders}</td>
-                  <td className="num">{r.leechers}</td>
-                  <td className="num">{r.times_completed}</td>
-                  <td className="text-right">
-                    {claimedText ? (
-                      <span className="text-xs font-bold text-mint">
-                        {claimedText}
-                      </span>
-                    ) : (
-                      <button
-                        type="button"
-                        disabled={busy !== null}
-                        onClick={() =>
-                          ask.open({
-                            title: t.claimBtn,
-                            message: t.note.replaceAll("{magic}", currency),
-                            tone: "danger",
-                            run: () => claim(r.torrent_id),
-                          })
-                        }
-                        className={"min-h-11 rounded-full border border-[var(--compat-orange-dark)] "
-    + "px-3 text-xs font-bold text-[var(--compat-orange-dark)] "
-    + "disabled:opacity-50"}
-                      >
-                        {t.claimBtn}
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-            {dead !== null && dead.length === 0 && (
-              <tr>
-                <td colSpan={9} className="py-6 text-center text-sub">
-                  {t.empty}
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+      {/* 视图切换（2026-11-28 站长口径：与资源库完全同款三视图） */}
+      <div className="mb-2 flex gap-1">
+        {(
+          [
+            ["table", dict.torrents.viewTable],
+            ["card", dict.torrents.viewCard],
+            ["poster", dict.torrents.viewPoster],
+          ] as const
+        ).map(([v, label]) => (
+          <button
+            key={v}
+            type="button"
+            onClick={() => setView(v)}
+            className={`rounded px-2 py-1 text-xs ${
+              view === v
+                ? "bg-brand-soft font-bold text-brand"
+                : "text-sub hover:text-brand"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
-{mineOpen && (<ResurrectionMine mine={mine} />)}
+      <ResurrectionAltViews
+        view={view}
+        items={dead}
+        claimed={claimed}
+        busy={busy}
+        onClaim={claim}
+        dict={dict}
+        colors={catColors}
+      />
+      {mineOpen && <ResurrectionMine mine={mine} />}
       <AskDialog {...ask} />
     </section>
   );
