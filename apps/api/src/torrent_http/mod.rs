@@ -22,6 +22,7 @@ mod works_watch;
 mod list_prefs;
 mod magnet;
 mod manage;
+mod manage_price;
 // 抓轨日志正文（0312）
 mod logs;
 mod peers;
@@ -112,7 +113,9 @@ pub(crate) use magnet::torrent_magnet;
 pub(crate) use manage::edit_torrent;
 pub(crate) use manage::restore_torrent;
 pub(crate) use manage::resubmit_torrent;
-pub(crate) use manage::set_torrent_price;
+#[doc(hidden)]
+pub(crate) use manage_price::__path_set_torrent_price;
+pub(crate) use manage_price::set_torrent_price;
 pub(crate) use peers::torrent_peers;
 pub(crate) use preview::preview_add;
 pub(crate) use preview::preview_list;

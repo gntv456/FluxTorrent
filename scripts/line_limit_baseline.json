@@ -293,7 +293,7 @@
   "apps/api/src/twofa_http/admin_misc.rs::wide": 1,
   "apps/api/src/torrent_http/interact.rs": 476,
   "apps/api/src/torrent_http/list.rs": 314,
-  "apps/api/src/torrent_http/manage.rs": 516,
+  "apps/api/src/torrent_http/manage.rs": 441,
   "apps/api/src/torrent_http/manage.rs::wide": 1,
   "apps/api/src/torrent_http/suggest.rs::wide": 1,
   "apps/api/src/torrents/charge.rs::wide": 7,
@@ -630,5 +630,6 @@
   "apps/tracker/src/peers/bt_probe_tests.rs": 411,
   "apps/api/src/settings_http/pack_import_steps.rs": 470,
   "apps/api/src/domain/mediainfo/scan.rs": 310,
-  "apps/api/src/games_http/fishing_pond/state_ops.rs": 191
+  "apps/api/src/games_http/fishing_pond/state_ops.rs": 191,
+  "apps/api/src/torrent_http/manage_price.rs": 87
 }
