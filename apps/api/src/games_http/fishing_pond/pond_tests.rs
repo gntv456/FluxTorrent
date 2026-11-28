@@ -5,6 +5,7 @@ use serde_json::{json, Value};
 
 use super::data::data;
 use super::rules::{self, *};
+use super::rules_shop::upgrade_cost;
 use super::state::{self as st, is_owned, n, Stats};
 
 const NOW: i64 = 1_795_000_000_000; // 2026-11-21 前后，UTC ms

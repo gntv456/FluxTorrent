@@ -16,9 +16,9 @@
   "apps/api/src/torrent_http/crossseed_panel.rs": 1,
   "apps/api/src/torrent_http/cue.rs": 2,
   "apps/api/src/torrent_http/file_conflict.rs": 2,
-  "apps/api/src/torrent_http/interact.rs": 7,
+  "apps/api/src/torrent_http/interact.rs": 4,
   "apps/api/src/torrent_http/list.rs": 1,
-  "apps/api/src/torrent_http/manage.rs": 12,
+  "apps/api/src/torrent_http/manage.rs": 10,
   "apps/api/src/torrent_http/notify.rs": 4,
   "apps/api/src/torrent_http/peers.rs": 2,
   "apps/api/src/torrent_http/preview.rs": 6,
@@ -80,7 +80,7 @@
   "apps/api/src/settings_http/pack_catalog.rs": 7,
   "apps/api/src/settings_http/pack_embed.rs": 8,
   "apps/api/src/settings_http/pack_format.rs": 7,
-  "apps/api/src/settings_http/pack_import.rs": 17,
+  "apps/api/src/settings_http/pack_import.rs": 8,
   "apps/api/src/settings_http/pack_kinds.rs": 1,
   "apps/api/src/settings_http/pack_store.rs": 30,
   "apps/api/src/settings_http/ruleset.rs": 3,
@@ -432,5 +432,8 @@
   "apps/api/src/admin_http/user_status_notify.rs": 1,
   "apps/api/src/admin_http/user_vouchers.rs": 3,
   "apps/api/src/admin_p3_http/category_flags.rs": 1,
-  "apps/api/src/games_http/doudizhu_pvp_http.rs": 3
+  "apps/api/src/games_http/doudizhu_pvp_http.rs": 3,
+  "apps/api/src/torrent_http/interact_social.rs": 3,
+  "apps/api/src/torrent_http/manage_price.rs": 2,
+  "apps/api/src/settings_http/pack_import_steps.rs": 10
 }

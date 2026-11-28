@@ -5237,28 +5237,28 @@
    "file": "apps/api/src/torrent_http/interact.rs"
   },
   {
+   "method": "DELETE",
+   "path": "/torrents/{id}/bookmark",
+   "handler": "delete_bookmark",
+   "file": "apps/api/src/torrent_http/interact_bookmark.rs"
+  },
+  {
    "method": "POST",
    "path": "/torrents/{id}/thanks",
    "handler": "do_thank",
-   "file": "apps/api/src/torrent_http/interact.rs"
+   "file": "apps/api/src/torrent_http/interact_social.rs"
   },
   {
    "method": "POST",
    "path": "/torrents/{id}/reseed",
    "handler": "request_reseed",
-   "file": "apps/api/src/torrent_http/interact.rs"
+   "file": "apps/api/src/torrent_http/interact_social.rs"
   },
   {
    "method": "PUT",
    "path": "/torrents/{id}/bookmark",
    "handler": "do_bookmark",
-   "file": "apps/api/src/torrent_http/interact.rs"
-  },
-  {
-   "method": "DELETE",
-   "path": "/torrents/{id}/bookmark",
-   "handler": "delete_bookmark",
-   "file": "apps/api/src/torrent_http/interact_bookmark.rs"
+   "file": "apps/api/src/torrent_http/interact_social.rs"
   },
   {
    "method": "GET",
@@ -5303,12 +5303,6 @@
    "file": "apps/api/src/torrent_http/manage.rs"
   },
   {
-   "method": "PUT",
-   "path": "/torrents/{id}/price",
-   "handler": "set_torrent_price",
-   "file": "apps/api/src/torrent_http/manage.rs"
-  },
-  {
    "method": "POST",
    "path": "/torrents/{id}/restore",
    "handler": "restore_torrent",
@@ -5319,6 +5313,12 @@
    "path": "/torrents/{id}/resubmit",
    "handler": "resubmit_torrent",
    "file": "apps/api/src/torrent_http/manage.rs"
+  },
+  {
+   "method": "PUT",
+   "path": "/torrents/{id}/price",
+   "handler": "set_torrent_price",
+   "file": "apps/api/src/torrent_http/manage_price.rs"
   },
   {
    "method": "GET",
