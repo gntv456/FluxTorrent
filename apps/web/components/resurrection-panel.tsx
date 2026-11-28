@@ -6,7 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
-import { dateLocale, fmt, fmtCur } from "@/i18n/config";
+import { fmt, fmtCur } from "@/i18n/config";
 import { formatBytes, promotionBadge } from "@/lib/format";
 import { promoCls, tagStyle } from "@/components/torrent-table-badges";
 import { Badge } from "@/components/ui/badge";
@@ -15,11 +15,13 @@ import type {
   TorrentListItem,
 } from "@fluxtorrent/domain-types";
 import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
+import { ResurrectionMine, type MineRow } from "@/components/resurrection-mine";
 
 /** 复活任务区（0073，U3D Graveyard 口径）：
  *  GET /resurrections 可领取死种（对象含资源库行同构字段）
  *  POST /resurrections/claim {torrent_id} 认领
- *  GET /resurrections/mine 我的任务（元组 [torrent_id, reward_sparks, required_hours, claimed_at, status, seeded_seconds]） */
+ *  GET /resurrections/mine 我的任务（元组 [torrent_id, reward_sparks,
+ *   required_hours, claimed_at, status, seeded_seconds]） */
 
 /** 对象形态：PreserveItem 同构字段 + 复活契约两字段（required_hours/reward_sparks）。
  *  表头与资源库统一后行渲染复用 TorrentTr（t 传本类型，字段名全对齐）。 */
@@ -49,7 +51,6 @@ type DeadRow = {
   required_hours: number;
   reward_sparks: number;
 };
-type MineRow = [number, number, number, string, string, number];
 
 export function ResurrectionPanel() {
   const { dict, locale, currency } = useI18n();
@@ -154,9 +155,6 @@ export function ResurrectionPanel() {
               <th className="w-16">{dict.torrents.colSeeders}</th>
               <th className="w-16">{dict.torrents.colLeechers}</th>
               <th className="w-16">{dict.torrents.colCompleted}</th>
-              <th className="w-24" title={t.contract}>
-                {t.colRescue}
-              </th>
               <th className="w-24">{dict.torrents.colActions}</th>
             </tr>
           </thead>
@@ -207,6 +205,16 @@ export function ResurrectionPanel() {
                         </span>
                       );
                     })()}
+                    <div className="text-xs text-sub">
+                      {fmtCur(
+                        t.contract,
+                        {
+                          h: String(r.required_hours),
+                          sparks: String(r.reward_sparks),
+                        },
+                        currency,
+                      )}
+                    </div>
                     {r.small_descr && (
                       <div className="text-xs text-sub">{r.small_descr}</div>
                     )}
@@ -232,16 +240,6 @@ export function ResurrectionPanel() {
                   <td className="num">{r.seeders}</td>
                   <td className="num">{r.leechers}</td>
                   <td className="num">{r.times_completed}</td>
-                  <td className="text-xs text-sub">
-                    {fmtCur(
-                      t.contract,
-                      {
-                        h: String(r.required_hours),
-                        sparks: String(r.reward_sparks),
-                      },
-                      currency,
-                    )}
-                  </td>
                   <td className="text-right">
                     {claimedText ? (
                       <span className="text-xs font-bold text-mint">
@@ -259,7 +257,9 @@ export function ResurrectionPanel() {
                             run: () => claim(r.torrent_id),
                           })
                         }
-                        className="min-h-11 rounded-full border border-[var(--compat-orange-dark)] px-3 text-xs font-bold text-[var(--compat-orange-dark)] disabled:opacity-50"
+                        className={"min-h-11 rounded-full border border-[var(--compat-orange-dark)] "
+    + "px-3 text-xs font-bold text-[var(--compat-orange-dark)] "
+    + "disabled:opacity-50"}
                       >
                         {t.claimBtn}
                       </button>
@@ -270,7 +270,7 @@ export function ResurrectionPanel() {
             })}
             {dead !== null && dead.length === 0 && (
               <tr>
-                <td colSpan={10} className="py-6 text-center text-sub">
+                <td colSpan={9} className="py-6 text-center text-sub">
                   {t.empty}
                 </td>
               </tr>
@@ -279,53 +279,7 @@ export function ResurrectionPanel() {
         </table>
       </div>
 
-      {mineOpen && (
-        <div className="mt-3 border-t border-dashed border-line px-4 pt-3">
-          <h3 className="mb-2 text-sm font-bold">{t.mine}</h3>
-          <table className="nexus-table text-xs">
-            <tbody>
-              <tr>
-                <th scope="col" className="colhead">
-                  {t.colTorrent}
-                </th>
-                <th scope="col" className="colhead w-28">
-                  {t.colRequired}
-                </th>
-                <th scope="col" className="colhead w-28">
-                  {t.colSeeded}
-                </th>
-                <th scope="col" className="colhead w-24">
-                  {t.colStatus}
-                </th>
-              </tr>
-              {(mine ?? []).map((m, i) => (
-                <tr key={`${m[0]}-${i}`}>
-                  <td>
-                    <Link href={`/torrent/${m[0]}`} className="text-link">
-                      #{m[0]}
-                    </Link>
-                    <span className="ml-2 text-sub">
-                      {new Date(m[3]).toLocaleString(dateLocale(locale))}
-                    </span>
-                  </td>
-                  <td className="num">{fmt(t.required, { n: m[2] })}</td>
-                  <td className="num">
-                    {fmt(t.seeded, { n: Math.floor(m[5] / 3600) })}
-                  </td>
-                  <td>{statusLabel(m[4])}</td>
-                </tr>
-              ))}
-              {mine !== null && mine.length === 0 && (
-                <tr>
-                  <td colSpan={4} className="py-4 text-center text-sub">
-                    {t.mineEmpty}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
+{mineOpen && (<ResurrectionMine mine={mine} />)}
       <AskDialog {...ask} />
     </section>
   );

@@ -97,6 +97,10 @@ const zhCnBase = {
     notFoundTitle: "404 · 页面不存在",
     notFoundDesc:
       "链接可能已失效，或资源已被删除。种子页地址形如 /torrent/{id}，可回首页搜索关键词找到同类资源。",
+    notFoundHintGames: "娱乐屋页面地址形如 /games/{玩法}，可回娱乐屋大厅选择玩法。",
+    notFoundHintPreserve: "保种区页面地址形如 /preserve，可回首页从顶栏「保种区」进入。",
+    notFoundHintRescue: "拯救区页面地址形如 /resurrections，可回首页从顶栏「保种区 ▾ → 拯救区」进入。",
+    notFoundHintTorrent: "种子页地址形如 /torrent/{id}，可回首页搜索关键词找到同类资源。",
     backIndex: "返回首页",
   },
   // 设计系统原语文案（DS-PLAN-01：components/ui 全部文案的唯一来源）

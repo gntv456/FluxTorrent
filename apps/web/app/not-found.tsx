@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { EmptyState } from "@/components/ui/empty-state";
+import { NotFoundHint } from "@/components/not-found-hint";
 import { getDict } from "@/i18n/server";
 
 /** 404 页（2026-10-03 新建）。
@@ -44,6 +45,10 @@ export default async function NotFound() {
             </div>
           }
         />
+        {/* 按路径类型补充提示（2026-11-28 站长口径）：/games、/preserve、
+            /resurrections 等 404 时通用文案文不对题——client 小件读
+            usePathname 回对应板块的地址形如说明；无匹配时渲染 null。 */}
+        <NotFoundHint />
       </div>
     </main>
   );

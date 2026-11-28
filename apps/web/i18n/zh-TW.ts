@@ -123,6 +123,10 @@ const zhTwBase: Omit<
     notFoundTitle: "404 · 頁面不存在",
     notFoundDesc:
       "連結可能已失效，或資源已被刪除。種子頁地址形如 /torrent/{id}，可回首頁搜尋關鍵詞找到同類資源。",
+    notFoundHintGames: "娛樂屋頁面地址形如 /games/{玩法}，可回娛樂屋大廳選擇玩法。",
+    notFoundHintPreserve: "保種區頁面地址形如 /preserve，可回首頁從頂欄「保種區」進入。",
+    notFoundHintRescue: "拯救區頁面地址形如 /resurrections，可回首頁從頂欄「保種區 ▾ → 拯救區」進入。",
+    notFoundHintTorrent: "種子頁地址形如 /torrent/{id}，可回首頁搜尋關鍵詞找到同類資源。",
     backIndex: "返回首頁",
   },
   // 設計系統原語文案（DS-PLAN-01：components/ui 全部文案的唯一來源）

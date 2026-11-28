@@ -126,6 +126,14 @@ const enBase: Omit<
     notFoundTitle: "404 · Page not found",
     notFoundDesc:
       "The link may have expired, or the resource was removed. Torrent URLs look like /torrent/{id}; go back home and search for similar resources.",
+    notFoundHintGames:
+      "Arcade pages look like /games/{game}; pick a game from the arcade hall.",
+    notFoundHintPreserve:
+      "Preserve zone pages look like /preserve; enter from the top nav.",
+    notFoundHintRescue:
+      "Rescue zone pages look like /resurrections; enter from the top nav under Preserve.",
+    notFoundHintTorrent:
+      "Torrent pages look like /torrent/{id}; go back home and search for similar resources.",
     backIndex: "Back to home",
   },
   // Design-system primitive copy (DS-PLAN-01: single source for components/ui)
